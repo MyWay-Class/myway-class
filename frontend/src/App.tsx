@@ -1,8 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
-import { type CourseCard, type CourseDetail, type Dashboard, type LectureDetail } from '@myway/shared';
-import { enrollCourse, loadCourseDetail, loadDashboard, loadLectureDetail } from './lib/api';
-
-const DEMO_USER_ID = 'usr_std_001';
+import {
+  canEnroll,
+  demoUsers,
+  type CourseCard,
+  type CourseDetail,
+  type Dashboard,
+  type LectureDetail,
+  type LoginResponse,
+} from '@myway/shared';
+import {
+  clearStoredAuth,
+  enrollCourse,
+  getCurrentRoleLabel,
+  loadCourseDetail,
+  loadCourses,
+  loadCurrentSession,
+  loadDashboard,
+  loadLectureDetail,
+  loginWithUser,
+  logoutCurrentSession,
+  storeAuth,
+} from './lib/api';
 
 function formatDifficulty(value: CourseCard['difficulty']): string {
   switch (value) {
@@ -22,21 +40,41 @@ function formatPercentage(value: number): string {
 }
 
 export default function App() {
+  const [session, setSession] = useState<LoginResponse | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [courseCards, setCourseCards] = useState<CourseCard[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedCourse, setSelectedCourse] = useState<CourseDetail | null>(null);
   const [selectedLectureId, setSelectedLectureId] = useState<string>('');
   const [selectedLecture, setSelectedLecture] = useState<LectureDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState('기본 LMS 코어를 불러오는 중입니다.');
-
-  const courseCards = dashboard?.courses ?? [];
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('로그인 후 내 정보와 진도가 활성화됩니다.');
 
   const selectedCourseCard = useMemo(
     () => courseCards.find((course) => course.id === selectedCourseId) ?? null,
     [courseCards, selectedCourseId],
   );
+
+  const canEnrollCurrent = session ? canEnroll(session.user.role) : false;
+
+  async function refreshLearningState(activeSession: LoginResponse | null) {
+    const courses = await loadCourses(activeSession?.session_token);
+    setCourseCards(courses);
+
+    if (courses.length > 0) {
+      setSelectedCourseId((current) => current || courses[0].id);
+    }
+
+    if (activeSession) {
+      const dashboardData = await loadDashboard(activeSession.session_token);
+      setDashboard(dashboardData);
+      setNotice(`${activeSession.user.name} 님, ${activeSession.user.role} 계정으로 로그인했습니다.`);
+    } else {
+      setDashboard(null);
+      setNotice('로그인 후 내 정보와 진도가 활성화됩니다.');
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -44,16 +82,14 @@ export default function App() {
     async function initialize() {
       setLoading(true);
 
-      const dashboardData = await loadDashboard(DEMO_USER_ID);
-      const firstCourseId = dashboardData.courses[0]?.id ?? '';
+      const storedSession = await loadCurrentSession();
 
       if (!active) {
         return;
       }
 
-      setDashboard(dashboardData);
-      setSelectedCourseId((current) => current || firstCourseId);
-      setNotice('기본 LMS 코어를 불러왔습니다.');
+      setSession(storedSession);
+      await refreshLearningState(storedSession);
       setLoading(false);
     }
 
@@ -72,7 +108,7 @@ export default function App() {
     let active = true;
 
     async function loadSelectedCourse() {
-      const course = await loadCourseDetail(selectedCourseId, DEMO_USER_ID);
+      const course = await loadCourseDetail(selectedCourseId, session?.session_token);
 
       if (!active) {
         return;
@@ -87,7 +123,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [selectedCourseId]);
+  }, [selectedCourseId, session?.session_token]);
 
   useEffect(() => {
     if (!selectedLectureId) {
@@ -98,7 +134,7 @@ export default function App() {
     let active = true;
 
     async function loadSelectedLecture() {
-      const lecture = await loadLectureDetail(selectedLectureId);
+      const lecture = await loadLectureDetail(selectedLectureId, session?.session_token);
 
       if (!active) {
         return;
@@ -112,22 +148,57 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [selectedLectureId]);
+  }, [selectedLectureId, session?.session_token]);
+
+  async function handleLogin(userId: string) {
+    setBusy(true);
+
+    const auth = await loginWithUser(userId);
+    if (!auth) {
+      setNotice('로그인에 실패했습니다.');
+      setBusy(false);
+      return;
+    }
+
+    storeAuth(auth);
+    setSession(auth);
+    await refreshLearningState(auth);
+    setBusy(false);
+  }
+
+  async function handleLogout() {
+    setBusy(true);
+    await logoutCurrentSession(session?.session_token);
+    clearStoredAuth();
+    setSession(null);
+    setDashboard(null);
+    await refreshLearningState(null);
+    setBusy(false);
+  }
 
   async function handleEnroll(courseId: string) {
-    setSaving(true);
+    if (!session) {
+      setNotice('수강 신청은 로그인 후 사용할 수 있습니다.');
+      return;
+    }
 
-    const result = await enrollCourse(DEMO_USER_ID, courseId);
-    const dashboardData = await loadDashboard(DEMO_USER_ID);
-    const courseData = await loadCourseDetail(courseId, DEMO_USER_ID);
+    if (!canEnrollCurrent) {
+      setNotice('현재 계정은 수강 신청 권한이 없습니다.');
+      return;
+    }
 
-    setDashboard(dashboardData);
-    setSelectedCourse(courseData);
-    setSelectedCourseId(courseId);
-    setSelectedLectureId(courseData?.lectures[0]?.id ?? '');
-    setSelectedLecture(result.course?.lectures[0] ? await loadLectureDetail(result.course.lectures[0].id) : null);
+    setBusy(true);
+    const result = await enrollCourse(courseId, session.session_token);
+    await refreshLearningState(session);
+
+    if (result?.course) {
+      setSelectedCourse(result.course);
+      setSelectedLectureId(result.course.lectures[0]?.id ?? '');
+      setSelectedLecture(result.course.lectures[0] ? await loadLectureDetail(result.course.lectures[0].id, session.session_token) : null);
+    }
+
     setNotice('수강 신청이 완료되었습니다.');
-    setSaving(false);
+    setBusy(false);
   }
 
   const highlightedLecture = selectedLecture ?? selectedCourse?.lectures[0] ?? null;
@@ -136,30 +207,104 @@ export default function App() {
     <main className="app-shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">MyWayClass · 기본 LMS 코어</p>
-          <h1>강의를 보고, 수강하고, 진도를 이어가는 학습 시작점</h1>
+          <p className="eyebrow">MyWayClass · 인증과 권한</p>
+          <h1>학습자, 강사, 운영자를 구분하는 기본 권한 체계</h1>
           <p className="lead">
-            내맘대로클래스는 기본 LMS 위에 강의 숏폼화와 커스텀 강의를 얹는 플랫폼입니다. 지금 화면은 그 바닥이 되는
-            수강, 강의, 진도, 자료 흐름을 먼저 보여줍니다.
+            같은 LMS라도 역할이 섞이면 책임이 흐려집니다. 이 화면은 로그인, 로그아웃, 내 정보, 역할 기반 접근 제어를
+            먼저 보여주고, 그 위에 기본 LMS 코어를 얹습니다.
           </p>
         </div>
 
         <aside className="hero-panel">
-          <span className="hero-panel__label">{loading ? '로딩 중' : '준비 완료'}</span>
+          <span className="hero-panel__label">{loading ? '로딩 중' : session ? '로그인 완료' : '게스트 모드'}</span>
           <strong>{notice}</strong>
           <p>
-            현재 사용자: <code>{DEMO_USER_ID}</code>
+            현재 상태: <code>{session ? `${session.user.name} · ${getCurrentRoleLabel()}` : '로그인 대기'}</code>
           </p>
           <p>
-            연결 상태: <code>{dashboard ? '데모 데이터 또는 API 연결 성공' : '초기화 실패'}</code>
+            권한: <code>{session ? session.permissions.join(', ') : 'NONE'}</code>
           </p>
+          {session ? (
+            <button className="action-button action-button--ghost" onClick={() => void handleLogout()} type="button">
+              {busy ? '처리 중...' : '로그아웃'}
+            </button>
+          ) : null}
         </aside>
+      </section>
+
+      <section className="auth-grid">
+        <div className="panel panel--wide">
+          <div className="panel__header">
+            <div>
+              <p className="section-label">로그인</p>
+              <h2>데모 계정으로 역할을 전환해보세요</h2>
+            </div>
+          </div>
+
+          <div className="auth-card-grid">
+            {demoUsers.map((user) => (
+              <button
+                key={user.id}
+                className={`auth-card ${session?.user.id === user.id ? 'is-active' : ''}`}
+                disabled={busy}
+                onClick={() => void handleLogin(user.id)}
+                type="button"
+              >
+                <span className="auth-card__role">{user.role}</span>
+                <strong>{user.name}</strong>
+                <p>{user.bio}</p>
+                <dl>
+                  <div>
+                    <dt>부서</dt>
+                    <dd>{user.department}</dd>
+                  </div>
+                  <div>
+                    <dt>이메일</dt>
+                    <dd>{user.email}</dd>
+                  </div>
+                </dl>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel__header">
+            <div>
+              <p className="section-label">내 정보</p>
+              <h2>{session?.user.name ?? '로그인 전'}</h2>
+            </div>
+          </div>
+
+          {session ? (
+            <div className="detail-grid detail-grid--single">
+              <article>
+                <span>역할</span>
+                <strong>{session.user.role}</strong>
+              </article>
+              <article>
+                <span>권한 라벨</span>
+                <strong>{getCurrentRoleLabel()}</strong>
+              </article>
+              <article>
+                <span>이메일</span>
+                <strong>{session.user.email}</strong>
+              </article>
+              <article>
+                <span>부서</span>
+                <strong>{session.user.department}</strong>
+              </article>
+            </div>
+          ) : (
+            <p className="empty-state">로그인하면 내 정보와 진도, 수강 상태가 보입니다.</p>
+          )}
+        </div>
       </section>
 
       <section className="metrics">
         <article>
           <span>전체 강의</span>
-          <strong>{dashboard?.total_courses ?? 0}</strong>
+          <strong>{dashboard?.total_courses ?? courseCards.length}</strong>
         </article>
         <article>
           <span>수강 중</span>
@@ -170,8 +315,8 @@ export default function App() {
           <strong>{formatPercentage(dashboard?.average_progress ?? 0)}</strong>
         </article>
         <article>
-          <span>역할</span>
-          <strong>{dashboard?.role ?? 'STUDENT'}</strong>
+          <span>권한 상태</span>
+          <strong>{session ? '활성' : '제한됨'}</strong>
         </article>
       </section>
 
@@ -224,16 +369,14 @@ export default function App() {
               <h2>{selectedCourse?.title ?? '강의를 선택하세요'}</h2>
             </div>
 
-            {!selectedCourseCard?.enrolled ? (
-              <button
-                className="action-button"
-                disabled={saving || !selectedCourseId}
-                onClick={() => void handleEnroll(selectedCourseId)}
-                type="button"
-              >
-                {saving ? '신청 중...' : '수강 신청'}
-              </button>
-            ) : null}
+            <button
+              className="action-button"
+              disabled={busy || !selectedCourseId || !canEnrollCurrent}
+              onClick={() => void handleEnroll(selectedCourseId)}
+              type="button"
+            >
+              {busy ? '처리 중...' : canEnrollCurrent ? '수강 신청' : '권한 없음'}
+            </button>
           </div>
 
           {selectedCourse ? (

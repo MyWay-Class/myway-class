@@ -12,11 +12,101 @@ export type ApiResponse<T> = {
 
 export type UserRole = 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
 
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  department: string;
+  bio: string;
+};
+
+export type AuthSession = {
+  session_token: string;
+  user: AuthUser;
+  issued_at: string;
+};
+
+export type AuthState = {
+  authenticated: boolean;
+  user: AuthUser | null;
+  session_token: string | null;
+};
+
+export type LoginRequest = {
+  user_id: string;
+};
+
+export type LoginResponse = {
+  session_token: string;
+  user: AuthUser;
+  permissions: string[];
+};
+
+export const roleLabels: Record<UserRole, string> = {
+  STUDENT: '수강생',
+  INSTRUCTOR: '강사',
+  ADMIN: '운영자',
+};
+
+export const rolePermissions: Record<UserRole, string[]> = {
+  STUDENT: ['COURSE_VIEW', 'LECTURE_VIEW', 'ENROLL', 'PROGRESS_READ'],
+  INSTRUCTOR: ['COURSE_VIEW', 'LECTURE_VIEW', 'COURSE_MANAGE', 'LECTURE_MANAGE', 'PROGRESS_READ'],
+  ADMIN: ['COURSE_VIEW', 'LECTURE_VIEW', 'COURSE_MANAGE', 'LECTURE_MANAGE', 'ENROLL_MANAGE', 'PROGRESS_READ', 'USER_MANAGE'],
+};
+
 export type CourseDifficulty = 'beginner' | 'intermediate' | 'advanced';
 
 export type EnrollmentStatus = 'active' | 'paused' | 'completed';
 
 export type LectureContentType = 'video' | 'text';
+
+export const demoUsers: AuthUser[] = [
+  {
+    id: 'usr_std_001',
+    name: '데모 수강생',
+    email: 'student@mywayclass.local',
+    role: 'STUDENT',
+    department: '학습자',
+    bio: '강의 숏폼과 커스텀 강의를 활용해 복습 효율을 높이고 싶은 수강생입니다.',
+  },
+  {
+    id: 'usr_inst_001',
+    name: '김민준',
+    email: 'instructor1@mywayclass.local',
+    role: 'INSTRUCTOR',
+    department: 'AI 교육학부',
+    bio: '학습 데이터를 기반으로 더 나은 강의를 설계하는 강사입니다.',
+  },
+  {
+    id: 'usr_admin_001',
+    name: '오운영',
+    email: 'admin@mywayclass.local',
+    role: 'ADMIN',
+    department: '교육 운영팀',
+    bio: '수강 흐름과 운영 데이터를 관리하는 운영자입니다.',
+  },
+];
+
+export function getDemoUser(userId: string): AuthUser | undefined {
+  return demoUsers.find((user) => user.id === userId);
+}
+
+export function getRoleLabel(role: UserRole): string {
+  return roleLabels[role];
+}
+
+export function getPermissions(role: UserRole): string[] {
+  return rolePermissions[role];
+}
+
+export function canEnroll(role: UserRole): boolean {
+  return role === 'STUDENT' || role === 'ADMIN';
+}
+
+export function canManageCourses(role: UserRole): boolean {
+  return role === 'INSTRUCTOR' || role === 'ADMIN';
+}
 
 export type Course = {
   id: string;
@@ -211,7 +301,7 @@ export let demoLectureProgress: LectureProgress[] = [
 ];
 
 export function getLectureInstructorName(instructorId: string): string {
-  return instructorNames[instructorId] ?? '알 수 없는 강사';
+  return getDemoUser(instructorId)?.name ?? instructorNames[instructorId] ?? '알 수 없는 강사';
 }
 
 export function getCourseLectures(courseId: string): Lecture[] {
@@ -297,13 +387,14 @@ export function getLectureDetail(lectureId: string): LectureDetail | undefined {
 export function getDashboard(userId: string): Dashboard {
   const courses = listCourseCards(userId);
   const activeEnrollments = courses.filter((course) => course.enrolled).length;
+  const user = getDemoUser(userId);
   const averageProgress = courses.length === 0
     ? 0
     : Math.round(courses.reduce((sum, course) => sum + course.progress_percent, 0) / courses.length);
 
   return {
-    learner_name: userId === 'usr_std_001' ? '데모 수강생' : '학습자',
-    role: userId.startsWith('usr_inst_') ? 'INSTRUCTOR' : 'STUDENT',
+    learner_name: user?.name ?? '학습자',
+    role: user?.role ?? 'STUDENT',
     total_courses: courses.length,
     active_enrollments: activeEnrollments,
     average_progress: averageProgress,

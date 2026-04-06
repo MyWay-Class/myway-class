@@ -46,13 +46,17 @@ type ApiResponse<T> = {
 ```
 
 ## 핵심 엔드포인트
+- `GET /api/v1/auth/users`
 - `POST /api/v1/auth/login`
-- `POST /api/v1/auth/register`
 - `GET /api/v1/auth/me`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/dashboard`
 - `GET /api/v1/courses`
-- `GET /api/v1/courses/:id`
-- `POST /api/v1/lectures`
-- `GET /api/v1/lectures/:id`
+- `GET /api/v1/courses/:courseId`
+- `GET /api/v1/courses/:courseId/lectures`
+- `GET /api/v1/lectures/:lectureId`
+- `GET /api/v1/enrollments`
+- `POST /api/v1/enrollments`
 - `POST /api/v1/ai/qa`
 - `POST /api/v1/ai/quiz/generate`
 - `POST /api/v1/ai/search`
@@ -69,6 +73,13 @@ type ApiResponse<T> = {
 - `403` unauthorized
 - `404` not found
 - `500` unexpected server failure
+
+## 현재 인증 계약
+- 로그인은 데모 계정의 `userId`를 받아 세션 토큰을 발급한다.
+- 세션 토큰은 `Authorization: Bearer <token>` 헤더로 전달한다.
+- `GET /api/v1/auth/me`는 현재 세션 사용자와 권한을 돌려준다.
+- `POST /api/v1/auth/logout`은 세션을 무효화한다.
+- 인증이 필요한 API는 `401` 또는 `403`을 공통 응답 봉투로 반환한다.
 
 ## 예외 상황
 - 데모 전용 엔드포인트는 문서와 UI에 반드시 표시한다.

@@ -1,16 +1,17 @@
 import { Hono } from 'hono';
 import { getCourseDetail, listCourseCards } from '@myway/shared';
+import { getAuthenticatedUser } from '../lib/auth';
 import { jsonFailure, jsonSuccess } from '../lib/http';
 
 const courses = new Hono();
 
 courses.get('/', (c) => {
-  const userId = c.req.query('userId') ?? 'usr_std_001';
+  const userId = getAuthenticatedUser(c.req.raw)?.id ?? 'guest';
   return jsonSuccess(listCourseCards(userId));
 });
 
 courses.get('/:courseId/lectures', (c) => {
-  const userId = c.req.query('userId') ?? 'usr_std_001';
+  const userId = getAuthenticatedUser(c.req.raw)?.id ?? 'guest';
   const courseId = c.req.param('courseId');
   const detail = getCourseDetail(courseId, userId);
 
@@ -22,7 +23,7 @@ courses.get('/:courseId/lectures', (c) => {
 });
 
 courses.get('/:courseId', (c) => {
-  const userId = c.req.query('userId') ?? 'usr_std_001';
+  const userId = getAuthenticatedUser(c.req.raw)?.id ?? 'guest';
   const courseId = c.req.param('courseId');
   const detail = getCourseDetail(courseId, userId);
 

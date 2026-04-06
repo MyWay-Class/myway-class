@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { demoCourses, demoEnrollments, enrollUser, getCourseDetail } from '@myway/shared';
+import { getAuthenticatedUser, hasRole } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 
 type EnrollmentRequest = {
@@ -10,7 +11,13 @@ type EnrollmentRequest = {
 const enrollments = new Hono();
 
 enrollments.get('/', (c) => {
-  const userId = c.req.query('userId') ?? 'usr_std_001';
+  const user = getAuthenticatedUser(c.req.raw);
+
+  if (!user) {
+    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+  }
+
+  const userId = user.id;
 
   const items = demoEnrollments
     .filter((enrollment) => enrollment.user_id === userId)
@@ -24,8 +31,16 @@ enrollments.get('/', (c) => {
 });
 
 enrollments.post('/', async (c) => {
+  const user = getAuthenticatedUser(c.req.raw);
+  if (!user) {
+    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+  }
+
+  if (!hasRole(user, ['STUDENT', 'ADMIN'])) {
+    return jsonFailure('FORBIDDEN', '현재 역할은 수강 신청을 할 수 없습니다.', 403);
+  }
+
   const body = await readJsonBody<EnrollmentRequest>(c.req.raw);
-  const userId = body?.userId?.trim() || 'usr_std_001';
   const courseId = body?.courseId?.trim();
 
   if (!courseId) {
@@ -37,8 +52,8 @@ enrollments.post('/', async (c) => {
     return jsonFailure('COURSE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const enrollment = enrollUser(userId, courseId);
-  const courseDetail = getCourseDetail(courseId, userId);
+  const enrollment = enrollUser(user.id, courseId);
+  const courseDetail = getCourseDetail(courseId, user.id);
 
   return jsonSuccess(
     {
