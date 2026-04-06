@@ -7,6 +7,11 @@ MyWayClass의 기능, 기획, 구현 기준 문서를 한곳에서 찾기 쉽게
 - 이 문서는 MyWayClass의 프로젝트 핵심 문서만 모은다.
 - 다른 문서 허브는 `docs/README.md`에서 찾는다.
 
+## 핵심 차별점
+- 강의 숏폼화
+- 커스텀 강의 조립
+- 같은 강의 수강생끼리의 공유와 담아가기
+
 ## 읽는 순서
 1. `docs/project/PHASE-ROADMAP.md`
 2. `docs/project/POLY-REPO.md`
@@ -25,3 +30,4 @@ MyWayClass의 기능, 기획, 구현 기준 문서를 한곳에서 찾기 쉽게
 15. `docs/project/13-domain-entities.md`
 16. `docs/project/14-ai-layer.md`
 17. `docs/project/15-api-map.md`
+18. `docs/project/16-custom-course-composer.md`
