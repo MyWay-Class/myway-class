@@ -53,12 +53,33 @@
 - 커뮤니티
   - 반응, 랭킹, 신고
 
+## 현재 구현 라우트
+- `GET /`
+  - 백엔드 준비 상태
+- `GET /api/v1/health`
+  - 서비스 상태 확인
+- `GET /api/v1/dashboard`
+  - 학습자 대시보드
+- `GET /api/v1/courses`
+  - 수강 가능한 코스 목록
+- `GET /api/v1/courses/:courseId`
+  - 코스 상세와 강의 목록
+- `GET /api/v1/courses/:courseId/lectures`
+  - 코스의 강의 목록만 조회
+- `GET /api/v1/lectures/:lectureId`
+  - 강의 상세
+- `GET /api/v1/enrollments`
+  - 내 수강 목록
+- `POST /api/v1/enrollments`
+  - 수강 신청
+
 ## 기준값
 - LMS 코어 API는 강의와 수강의 기본 흐름만 담당한다.
 - AI API는 요약, 챗봇, 검색, 퀴즈, 인텐트 같은 증강 기능만 담당한다.
 - 커스텀 강의 API는 같은 강의 수강자만 공유와 담아가기가 가능해야 한다.
 - 프론트는 공통 응답 봉투만 알면 되도록 계약을 단순화한다.
 - API 경로는 도메인 단위로 읽히도록 구성한다.
+- 현재 구현은 데모 데이터 기반이지만 응답 봉투와 경로 구조는 실제 계약과 동일하다.
 
 ## 예외 상황
 - 데모 전용 API는 운영 API와 분리한다.
