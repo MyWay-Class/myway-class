@@ -8,7 +8,7 @@
 - 작업은 항상 목적이 드러나는 브랜치에서 시작한다.
 - 브랜치명은 영어 소문자와 하이픈을 사용한다.
 - 브랜치명은 짧고 의미가 보여야 한다.
-- 브랜치명은 `codex/` 접두어를 기본으로 사용한다.
+- 브랜치명은 `feat/`, `docs/`, `fix/`, `refactor/`, `hotfix/` 중 하나로 시작한다.
 - 한 브랜치에는 하나의 작업만 담는다.
 
 ## 브랜치 보호 규칙
@@ -34,18 +34,18 @@
 - 필요 시 `repo-structure`, `docs-integrity`, `utf8-check`, `ci-checks`, `cd-checks`를 동일하게 적용한다.
 
 ## 권장 형식
-- 기능: `codex/feat/{issue}-{description}`
-- 버그: `codex/fix/{issue}-{description}`
-- 리팩토링: `codex/refactor/{issue}-{description}`
-- 문서: `codex/docs/{issue}-{description}`
-- 긴급 수정: `codex/hotfix/{issue}-{description}`
+- 기능: `feat/{issue}-{description}`
+- 버그: `fix/{issue}-{description}`
+- 리팩토링: `refactor/{issue}-{description}`
+- 문서: `docs/{issue}-{description}`
+- 긴급 수정: `hotfix/{issue}-{description}`
 
 ## 브랜치 템플릿
-- 새 기능 작업: `codex/feat/123-user-login`
-- 버그 수정: `codex/fix/456-auth-error`
-- 리팩토링: `codex/refactor/789-split-service`
-- 문서 작업: `codex/docs/101-api-docs`
-- 긴급 수정: `codex/hotfix/999-critical-bug`
+- 새 기능 작업: `feat/123-user-login`
+- 버그 수정: `fix/456-auth-error`
+- 리팩토링: `refactor/789-split-service`
+- 문서 작업: `docs/101-api-docs`
+- 긴급 수정: `hotfix/999-critical-bug`
 
 ## 머지 전략
 - `feat/*` → `dev`: Squash and merge
