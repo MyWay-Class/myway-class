@@ -1,0 +1,144 @@
+name: Branch Protection Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  repo-structure:
+    name: repo-structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required directories
+        run: |
+          test -d frontend
+          test -d backend
+          test -d packages/shared
+          test -d docs/project
+          test -d docs/context
+          test -d docs/conventions
+
+      - name: Check package names
+        run: |
+          grep -q '"name": "mywayclass"' package.json
+          grep -q '"name": "@myway/frontend"' frontend/package.json
+          grep -q '"name": "@myway/backend"' backend/package.json
+          grep -q '"name": "@myway/shared"' packages/shared/package.json
+
+  docs-integrity:
+    name: docs-integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check agent guide size
+        run: |
+          lines=$(wc -l < agent.md)
+          test "$lines" -le 200
+
+      - name: Check project docs
+        run: |
+          test -f docs/project/00-index.md
+          test -f docs/context/architecture.md
+          test -f docs/conventions/00-CONVENTIONS-CORE.md
+          test -f docs/ai-context/harness-engineering.md
+          test -f .github/pull_request_template.md
+          test -f .github/MERGE_REQUEST_TEMPLATE.md
+          test -f .github/CODEOWNERS
+
+      - name: Reject JavaScript app files
+        run: |
+          if find frontend backend packages -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.mjs' -o -name '*.cjs' \) | grep -q .; then
+            echo "JavaScript app files are not allowed."
+            exit 1
+          fi
+
+      - name: Check CODEOWNERS scope
+        run: |
+          grep -q '^frontend/ @ggg99' .github/CODEOWNERS
+          grep -q '^backend/ @ggg99' .github/CODEOWNERS
+          grep -q '^docs/ @ggg99' .github/CODEOWNERS
+          grep -q '^packages/shared/ @ggg99' .github/CODEOWNERS
+
+  utf8-check:
+    name: utf8-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify UTF-8 text files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          roots = [Path("agent.md"), Path("README.md"), Path("docs"), Path("frontend"), Path("backend"), Path("packages"), Path(".github")]
+          allowed = {".md", ".ts", ".tsx", ".json", ".jsonc", ".yml", ".yaml", ".gitmessage", ".gitignore", ""}
+          errors = []
+
+          for root in roots:
+              if root.is_file():
+                  files = [root]
+              else:
+                  files = [p for p in root.rglob("*") if p.is_file()]
+              for path in files:
+                  if path.suffix not in allowed and path.name != ".gitmessage":
+                      continue
+                  try:
+                      path.read_text(encoding="utf-8")
+                  except UnicodeDecodeError:
+                      errors.append(str(path))
+
+          if errors:
+              print("Non UTF-8 files found:")
+              for item in errors:
+                  print(item)
+              raise SystemExit(1)
+          PY
+
+  ci-checks:
+    name: ci-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check root scripts
+        run: |
+          grep -q '"dev:frontend"' package.json
+          grep -q '"dev:backend"' package.json
+          grep -q '"build:frontend"' package.json
+          grep -q '"build:backend"' package.json
+
+      - name: Check workspace packages
+        run: |
+          test -f frontend/package.json
+          test -f backend/package.json
+          test -f packages/shared/package.json
+          test -f frontend/vite.config.ts
+          test -f backend/wrangler.jsonc
+
+  cd-checks:
+    name: cd-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check deploy readiness
+        run: |
+          test -f frontend/package.json
+          test -f backend/wrangler.jsonc
+          test -f docs/project/POLY-REPO.md
+          test -f docs/project/PHASE-ROADMAP.md
+          test -f docs/conventions/09-GITHUB-ACTION-CHECKS.md
