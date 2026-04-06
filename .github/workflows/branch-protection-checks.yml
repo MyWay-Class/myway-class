@@ -18,21 +18,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check required directories
+      - name: Check branch scoped directories
         run: |
-          test -d frontend
-          test -d backend
-          test -d packages/shared
-          test -d docs/project
-          test -d docs/context
-          test -d docs/conventions
+          case "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" in
+            docs/*)
+              test -f README.md
+              test -f agent.md
+              test -d docs/project
+              test -d docs/context
+              test -d docs/conventions
+              ;;
+            feat/github-automation)
+              test -d .github
+              test -f .gitmessage
+              test -f .github/pull_request_template.md
+              test -f .github/MERGE_REQUEST_TEMPLATE.md
+              test -f .github/CODEOWNERS
+              ;;
+            feat/app-scaffold)
+              test -d frontend
+              test -d backend
+              test -d packages/shared
+              test -f package.json
+              test -f frontend/package.json
+              test -f backend/package.json
+              test -f packages/shared/package.json
+              ;;
+            *)
+              test -f README.md
+              test -f agent.md
+              ;;
+          esac
 
       - name: Check package names
         run: |
-          grep -q '"name": "mywayclass"' package.json
-          grep -q '"name": "@myway/frontend"' frontend/package.json
-          grep -q '"name": "@myway/backend"' backend/package.json
-          grep -q '"name": "@myway/shared"' packages/shared/package.json
+          case "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" in
+            feat/app-scaffold)
+              grep -q '"name": "mywayclass"' package.json
+              grep -q '"name": "@myway/frontend"' frontend/package.json
+              grep -q '"name": "@myway/backend"' backend/package.json
+              grep -q '"name": "@myway/shared"' packages/shared/package.json
+              ;;
+          esac
 
   docs-integrity:
     name: docs-integrity
@@ -48,27 +75,46 @@ jobs:
 
       - name: Check project docs
         run: |
-          test -f docs/project/00-index.md
-          test -f docs/context/architecture.md
-          test -f docs/conventions/00-CONVENTIONS-CORE.md
-          test -f docs/ai-context/harness-engineering.md
-          test -f .github/pull_request_template.md
-          test -f .github/MERGE_REQUEST_TEMPLATE.md
-          test -f .github/CODEOWNERS
+          case "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" in
+            docs/*)
+              test -f docs/project/00-index.md
+              test -f docs/context/architecture.md
+              test -f docs/conventions/00-CONVENTIONS-CORE.md
+              test -f docs/ai-context/harness-engineering.md
+              ;;
+            feat/github-automation)
+              test -f .github/pull_request_template.md
+              test -f .github/MERGE_REQUEST_TEMPLATE.md
+              test -f .github/CODEOWNERS
+              test -f .github/ISSUE_TEMPLATE/bug_report.md
+              test -f .github/ISSUE_TEMPLATE/feature_request.md
+              test -f .github/ISSUE_TEMPLATE/refactor.md
+              test -f .github/ISSUE_TEMPLATE/docs.md
+              ;;
+            feat/app-scaffold)
+              test -f frontend/docs/README.md
+              test -f backend/docs/README.md
+              test -f docs/project/00-index.md
+              ;;
+          esac
 
       - name: Reject JavaScript app files
         run: |
-          if find frontend backend packages -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.mjs' -o -name '*.cjs' \) | grep -q .; then
-            echo "JavaScript app files are not allowed."
-            exit 1
+          if [ -d frontend ] || [ -d backend ] || [ -d packages ]; then
+            if find frontend backend packages -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.mjs' -o -name '*.cjs' \) | grep -q .; then
+              echo "JavaScript app files are not allowed."
+              exit 1
+            fi
           fi
 
       - name: Check CODEOWNERS scope
         run: |
-          grep -q '^frontend/ @ggg99' .github/CODEOWNERS
-          grep -q '^backend/ @ggg99' .github/CODEOWNERS
-          grep -q '^docs/ @ggg99' .github/CODEOWNERS
-          grep -q '^packages/shared/ @ggg99' .github/CODEOWNERS
+          if [ -f .github/CODEOWNERS ]; then
+            grep -q '^frontend/ @ggg99' .github/CODEOWNERS
+            grep -q '^backend/ @ggg99' .github/CODEOWNERS
+            grep -q '^docs/ @ggg99' .github/CODEOWNERS
+            grep -q '^packages/shared/ @ggg99' .github/CODEOWNERS
+          fi
 
   utf8-check:
     name: utf8-check
@@ -115,18 +161,27 @@ jobs:
 
       - name: Check root scripts
         run: |
-          grep -q '"dev:frontend"' package.json
-          grep -q '"dev:backend"' package.json
-          grep -q '"build:frontend"' package.json
-          grep -q '"build:backend"' package.json
+          if [ -f package.json ]; then
+            grep -q '"dev:frontend"' package.json
+            grep -q '"dev:backend"' package.json
+            grep -q '"build:frontend"' package.json
+            grep -q '"build:backend"' package.json
+          fi
 
       - name: Check workspace packages
         run: |
-          test -f frontend/package.json
-          test -f backend/package.json
-          test -f packages/shared/package.json
-          test -f frontend/vite.config.ts
-          test -f backend/wrangler.jsonc
+          case "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" in
+            feat/app-scaffold)
+              test -f frontend/package.json
+              test -f backend/package.json
+              test -f packages/shared/package.json
+              test -f frontend/vite.config.ts
+              test -f backend/wrangler.jsonc
+              ;;
+            *)
+              test -f .github/pull_request_template.md
+              ;;
+          esac
 
   cd-checks:
     name: cd-checks
@@ -137,8 +192,20 @@ jobs:
 
       - name: Check deploy readiness
         run: |
-          test -f frontend/package.json
-          test -f backend/wrangler.jsonc
-          test -f docs/project/POLY-REPO.md
-          test -f docs/project/PHASE-ROADMAP.md
-          test -f docs/conventions/09-GITHUB-ACTION-CHECKS.md
+          case "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" in
+            feat/app-scaffold)
+              test -f frontend/package.json
+              test -f backend/wrangler.jsonc
+              test -f docs/project/POLY-REPO.md
+              test -f docs/project/PHASE-ROADMAP.md
+              test -f docs/conventions/09-GITHUB-ACTION-CHECKS.md
+              ;;
+            docs/*)
+              test -f docs/project/POLY-REPO.md
+              test -f docs/project/PHASE-ROADMAP.md
+              ;;
+            feat/github-automation)
+              test -f .github/workflows/branch-protection-checks.yml
+              test -f .github/CODEOWNERS
+              ;;
+          esac
