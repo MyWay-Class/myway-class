@@ -1,7 +1,12 @@
-## API 계약
+# API 계약
 
 ## 목적
 모든 공개 엔드포인트의 요청과 응답 규칙을 정의한다.
+
+## 역할
+- 실제 계약 원본은 `packages/shared/src/index.ts`다.
+- 이 문서는 계약의 의미와 사용 규칙을 설명한다.
+- 에러는 문자열이 아니라 구조화된 객체로 통일한다.
 
 ## 범위
 - 인증
@@ -27,10 +32,15 @@
 
 ## 공통 응답 형태
 ```ts
+type ApiError = {
+  code: string;
+  message: string;
+};
+
 type ApiResponse<T> = {
   success: boolean;
   data?: T;
-  error?: string;
+  error?: ApiError;
   message?: string;
 };
 ```
