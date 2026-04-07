@@ -8,12 +8,16 @@ import {
   getLectureDetail,
   getPermissions,
   getRoleLabel,
+  type Material,
+  type MaterialCreateRequest,
   type ApiResponse,
   type CourseCard,
   type CourseDetail,
   type Dashboard,
   type LectureDetail,
   type LoginResponse,
+  type Notice,
+  type NoticeCreateRequest,
 } from '@myway/shared';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8787';
@@ -179,6 +183,72 @@ export async function loadLectureDetail(lectureId: string, sessionToken?: string
   const response = await request<LectureDetail>(`/api/v1/lectures/${encodeURIComponent(lectureId)}`, undefined, token);
   const fallback = getLectureDetail(lectureId, userId);
   return response?.success && response.data ? response.data : fallback ?? null;
+}
+
+export async function loadCourseMaterials(courseId: string, sessionToken?: string | null): Promise<Material[]> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const response = await request<Material[]>(
+    `/api/v1/courses/${encodeURIComponent(courseId)}/materials`,
+    undefined,
+    token,
+  );
+  return response?.success && response.data ? response.data : [];
+}
+
+export async function loadCourseNotices(courseId: string, sessionToken?: string | null): Promise<Notice[]> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const response = await request<Notice[]>(
+    `/api/v1/courses/${encodeURIComponent(courseId)}/notices`,
+    undefined,
+    token,
+  );
+  return response?.success && response.data ? response.data : [];
+}
+
+export async function createCourseMaterial(
+  courseId: string,
+  input: MaterialCreateRequest,
+  sessionToken?: string | null,
+): Promise<Material | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await request<Material>(
+    `/api/v1/courses/${encodeURIComponent(courseId)}/materials`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return response?.success && response.data ? response.data : null;
+}
+
+export async function createCourseNotice(
+  courseId: string,
+  input: NoticeCreateRequest,
+  sessionToken?: string | null,
+): Promise<Notice | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await request<Notice>(
+    `/api/v1/courses/${encodeURIComponent(courseId)}/notices`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return response?.success && response.data ? response.data : null;
 }
 
 type CompleteLectureResponse = {
