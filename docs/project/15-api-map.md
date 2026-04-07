@@ -45,7 +45,7 @@
 - 자료
   - 업로드, 조회, 삭제
 - AI
-  - 요약, 챗봇, 검색, 퀴즈, 인텐트
+  - 요약, 챗봇, 검색, 퀴즈, 인텐트, 통합 채팅
 - 숏폼
   - 생성, 후보 선택, 조립, 공개, 내 목록, 커뮤니티
 - 커스텀 강의
@@ -140,6 +140,10 @@
   - 강의 요약 생성
 - `POST /api/v1/ai/quiz`
   - 강의 기반 퀴즈 생성
+- `GET /api/v1/ai/insights`
+  - AI 사용량과 역할별 인사이트
+- `POST /api/v1/smart/chat`
+  - 스마트 AI 통합 채팅
 - `GET /api/v1/enrollments`
   - 내 수강 목록
 - `POST /api/v1/enrollments`

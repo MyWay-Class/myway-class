@@ -271,6 +271,96 @@ export type AIUsageLog = {
   created_at: string;
 };
 
+export type AIIntentLog = {
+  id: string;
+  user_id: string;
+  message: string;
+  detected_intent: AIIntent;
+  confidence: number;
+  feature: string;
+  success: boolean;
+  action_taken: string;
+  lecture_id: string | null;
+  course_id: string | null;
+  created_at: string;
+};
+
+export type AIQuestionLog = {
+  id: string;
+  user_id: string;
+  lecture_id: string;
+  course_id: string;
+  question: string;
+  answer: string;
+  model: string;
+  success: boolean;
+  created_at: string;
+};
+
+export type AIInsightFeatureStat = {
+  feature: string;
+  label: string;
+  count: number;
+  success_rate: number;
+  avg_latency_ms: number;
+};
+
+export type AIInsightIntentStat = {
+  intent: AIIntent | 'unknown';
+  label: string;
+  count: number;
+  success_rate: number;
+  avg_confidence: number;
+};
+
+export type AIInsightSummary = {
+  total_requests: number;
+  success_rate: number;
+  avg_latency_ms: number;
+  unique_users: number;
+  recent_window_days: number;
+};
+
+export type AIStudentInsight = {
+  role: 'STUDENT';
+  total_requests: number;
+  recent_intents: AIInsightIntentStat[];
+  feature_stats: AIInsightFeatureStat[];
+  recommended_actions: string[];
+};
+
+export type AIInstructorLectureInsight = {
+  lecture_id: string;
+  lecture_title: string;
+  question_count: number;
+};
+
+export type AIInstructorInsight = {
+  role: 'INSTRUCTOR';
+  total_questions: number;
+  top_lecture_questions: AIInstructorLectureInsight[];
+  feature_stats: AIInsightFeatureStat[];
+  intent_stats: AIInsightIntentStat[];
+};
+
+export type AIAdminInsight = {
+  role: 'ADMIN';
+  total_users: number;
+  published_courses: number;
+  total_enrollments: number;
+  ai_usage_7d: number;
+  feature_stats: AIInsightFeatureStat[];
+  intent_stats: AIInsightIntentStat[];
+};
+
+export type AIInsights = {
+  role: UserRole;
+  summary: AIInsightSummary;
+  feature_stats: AIInsightFeatureStat[];
+  intent_stats: AIInsightIntentStat[];
+  role_insight: AIStudentInsight | AIInstructorInsight | AIAdminInsight;
+};
+
 export type CustomCourseStatus = 'DRAFT' | 'COMPOSING' | 'READY' | 'SHARED' | 'COPIED' | 'ARCHIVED';
 
 export type CustomCourseClip = {
@@ -463,6 +553,29 @@ export type AISummaryResult = {
   content: string;
   key_points: string[];
   references: AIReference[];
+};
+
+export type SmartChatRequest = {
+  message: string;
+  lecture_id?: string;
+  course_id?: string;
+  context?: string[];
+  language?: 'ko' | 'en';
+};
+
+export type SmartChatRoute = 'summary' | 'quiz' | 'search' | 'answer' | 'translate' | 'compare' | 'clarify' | 'general';
+
+export type SmartChatResult = {
+  message: string;
+  lecture_id: string | null;
+  course_id: string | null;
+  route: SmartChatRoute;
+  intent: AIIntentResult;
+  answer: string;
+  references: AIReference[];
+  suggestions: string[];
+  summary?: AISummaryResult | null;
+  quiz?: AIQuizResult | null;
 };
 
 export type ShortformStyle = 'highlight' | 'exam_prep' | 'quick_review' | 'deep_dive' | 'custom';

@@ -90,6 +90,9 @@ type ApiResponse<T> = {
 - `GET /api/v1/shortform/library`
   - 내 숏폼 라이브러리
 - `POST /api/v1/smart/chat`
+  - 스마트 AI 통합 채팅
+- `GET /api/v1/ai/insights`
+  - AI 사용량과 역할별 인사이트 조회
 
 ## 에러 정책
 - `400` invalid input
