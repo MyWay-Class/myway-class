@@ -1,4 +1,16 @@
-import type { AuthUser, Course, Enrollment, Lecture, LectureProgress, Material, Notice } from './types';
+import type {
+  AudioExtraction,
+  AuthUser,
+  Course,
+  Enrollment,
+  Lecture,
+  LectureNote,
+  LecturePipeline,
+  LectureProgress,
+  LectureTranscript,
+  Material,
+  Notice,
+} from './types';
 
 export const demoUsers: AuthUser[] = [
   {
@@ -215,3 +227,11 @@ export let demoNotices: Notice[] = [
     created_at: '2026-04-03T12:00:00.000Z',
   },
 ];
+
+export let demoLectureTranscripts: LectureTranscript[] = [];
+
+export let demoLectureNotes: LectureNote[] = [];
+
+export let demoAudioExtractions: AudioExtraction[] = [];
+
+export let demoLecturePipelines: LecturePipeline[] = [];

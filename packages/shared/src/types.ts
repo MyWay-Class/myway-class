@@ -118,6 +118,93 @@ export type NoticeCreateRequest = {
   pinned?: boolean;
 };
 
+export type MediaPipelineStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+export type TranscriptStatus = MediaPipelineStatus;
+
+export type MediaSummaryStyle = 'brief' | 'detailed' | 'timeline';
+
+export type TranscriptSegment = {
+  index: number;
+  start_ms: number;
+  end_ms: number;
+  text: string;
+};
+
+export type LectureTranscript = {
+  id: string;
+  lecture_id: string;
+  user_id: string;
+  language: string;
+  full_text: string;
+  segments: TranscriptSegment[];
+  word_count: number;
+  duration_ms: number;
+  stt_provider: string;
+  stt_model: string;
+  created_at: string;
+};
+
+export type LectureNote = {
+  id: string;
+  lecture_id: string;
+  user_id: string;
+  note_type: 'ai_summary' | 'ai_detailed' | 'ai_timeline';
+  title: string;
+  content: string;
+  key_concepts: string[];
+  keywords: string[];
+  timestamps: { time_ms: number; label: string; description: string }[] | null;
+  language: string;
+  ai_model: string;
+  created_at: string;
+};
+
+export type AudioExtraction = {
+  id: string;
+  lecture_id: string;
+  user_id: string;
+  source_type: 'video' | 'audio';
+  source_url: string;
+  audio_format: string;
+  audio_duration_ms: number;
+  sample_rate: number;
+  channels: number;
+  status: MediaPipelineStatus;
+  transcript_id: string | null;
+  stt_status: TranscriptStatus;
+  created_at: string;
+};
+
+export type LecturePipeline = {
+  lecture_id: string;
+  transcript_status: TranscriptStatus;
+  summary_status: MediaPipelineStatus;
+  audio_status: MediaPipelineStatus;
+  transcript_id: string | null;
+  note_id: string | null;
+  extraction_id: string | null;
+  updated_at: string;
+};
+
+export type TranscriptCreateRequest = {
+  lecture_id: string;
+  text?: string;
+  duration_ms?: number;
+  language?: string;
+};
+
+export type MediaSummaryRequest = {
+  lecture_id: string;
+  style?: MediaSummaryStyle;
+  language?: 'ko' | 'en';
+};
+
+export type AudioExtractionRequest = {
+  lecture_id: string;
+  video_url?: string;
+};
+
 export type CourseCard = Course & {
   instructor_name: string;
   lecture_count: number;

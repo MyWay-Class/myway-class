@@ -82,6 +82,20 @@
   - 강의 상세
 - `POST /api/v1/lectures/:lectureId/complete`
   - 강의 완료와 진도 저장
+- `POST /api/v1/media/transcribe`
+  - 트랜스크립트 생성
+- `POST /api/v1/media/summarize`
+  - 요약 노트 생성
+- `POST /api/v1/media/extract-audio`
+  - 오디오 추출 메타데이터 생성
+- `GET /api/v1/media/transcript/:lectureId`
+  - 강의 트랜스크립트 조회
+- `GET /api/v1/media/notes/:lectureId`
+  - 강의 요약 노트 조회
+- `GET /api/v1/media/audio-extractions/:lectureId`
+  - 강의 오디오 추출 기록 조회
+- `GET /api/v1/media/pipeline/:lectureId`
+  - 강의 미디어 파이프라인 상태 조회
 - `GET /api/v1/enrollments`
   - 내 수강 목록
 - `POST /api/v1/enrollments`

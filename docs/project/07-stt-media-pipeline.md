@@ -31,6 +31,13 @@
 - STT 결과에는 구간 정보와 원문 위치가 함께 남아야 한다.
 - 요약은 트랜스크립트가 생성된 이후에만 수행한다.
 
+## 현재 구현
+- `POST /api/v1/media/transcribe`로 텍스트 기반 트랜스크립트를 생성한다.
+- `POST /api/v1/media/summarize`로 brief, detailed, timeline 요약 노트를 생성한다.
+- `POST /api/v1/media/extract-audio`로 오디오 추출 메타데이터를 기록한다.
+- `GET /api/v1/media/transcript/:lectureId`, `GET /api/v1/media/notes/:lectureId`, `GET /api/v1/media/audio-extractions/:lectureId`, `GET /api/v1/media/pipeline/:lectureId`로 상태와 산출물을 확인한다.
+- 데모 데이터는 `packages/shared/src/media.ts`와 `packages/shared/src/demo-data.ts`에서 관리한다.
+
 ## 상태
 - `PENDING`
 - `PROCESSING`
