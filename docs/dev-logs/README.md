@@ -12,6 +12,7 @@
 - 로그는 `왜 바꿨는지`, `무엇을 바꿨는지`, `어떻게 검증했는지`만 짧게 적는다.
 
 ## 최신 로그
+- `2026-04-07-readme-ai-collaboration.md`
 - `2026-04-07-docs-refine-llm.md`
 - `2026-04-07-auth-permissions.md`
 - `2026-04-06-lms-core.md`
