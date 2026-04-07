@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { CourseDetail, LoginResponse } from '@myway/shared';
 import { formatDifficulty } from '../../lib/format';
+import { Button } from '../ui/Button';
+import { ResourceCardItem } from '../domain/ResourceCardItem';
+import { NoticeCardItem } from '../domain/NoticeCardItem';
 
 export type MaterialInput = {
   title: string;
@@ -93,14 +96,7 @@ export function CourseResourcesPanel({
 
           <div className="resource-list">
             {selectedCourse.materials.map((material) => (
-              <article key={material.id} className="resource-card">
-                <div className="resource-card__head">
-                  <strong>{material.title}</strong>
-                  <span>{formatDate(material.uploaded_at)}</span>
-                </div>
-                <p>{material.summary}</p>
-                <small>{material.file_name}</small>
-              </article>
+              <ResourceCardItem key={material.id} material={material} formatDate={formatDate} />
             ))}
           </div>
 
@@ -135,9 +131,9 @@ export function CourseResourcesPanel({
                 파일명
                 <input value={materialFileName} onChange={(event) => setMaterialFileName(event.target.value)} />
               </label>
-              <button disabled={busy || !session} type="submit">
+              <Button disabled={busy || !session} type="submit">
                 자료 등록
-              </button>
+              </Button>
             </form>
           ) : (
             <p className="empty-state">강사와 운영자만 자료를 등록할 수 있습니다.</p>
@@ -154,14 +150,7 @@ export function CourseResourcesPanel({
 
           <div className="resource-list">
             {selectedCourse.notices.map((notice) => (
-              <article key={notice.id} className={`resource-card resource-card--notice ${notice.pinned ? 'is-pinned' : ''}`}>
-                <div className="resource-card__head">
-                  <strong>{notice.title}</strong>
-                  <span>{formatDate(notice.created_at)}</span>
-                </div>
-                <p>{notice.content}</p>
-                <small>{notice.pinned ? '고정 공지' : '일반 공지'}</small>
-              </article>
+              <NoticeCardItem key={notice.id} notice={notice} formatDate={formatDate} />
             ))}
           </div>
 
@@ -196,9 +185,9 @@ export function CourseResourcesPanel({
                 <input checked={noticePinned} onChange={(event) => setNoticePinned(event.target.checked)} type="checkbox" />
                 고정 공지
               </label>
-              <button disabled={busy || !session} type="submit">
+              <Button disabled={busy || !session} type="submit">
                 공지 등록
-              </button>
+              </Button>
             </form>
           ) : (
             <p className="empty-state">강사와 운영자만 공지를 등록할 수 있습니다.</p>

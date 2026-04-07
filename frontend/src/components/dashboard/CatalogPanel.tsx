@@ -1,7 +1,11 @@
 import type { CourseCard, CourseDetail, Dashboard } from '@myway/shared';
 import { formatDifficulty, formatPercentage } from '../../lib/format';
+import { CourseCardItem } from '../domain/CourseCardItem';
+import { Button } from '../ui/Button';
+import { Skeleton } from '../ui/Skeleton';
 
 type CatalogPanelProps = {
+  loading?: boolean;
   busy: boolean;
   canEnrollCurrent: boolean;
   courseCards: CourseCard[];
@@ -15,6 +19,7 @@ type CatalogPanelProps = {
 };
 
 export function CatalogPanel({
+  loading,
   busy,
   canEnrollCurrent,
   courseCards,
@@ -26,6 +31,34 @@ export function CatalogPanel({
   onSelectLecture,
   onEnroll,
 }: CatalogPanelProps) {
+  if (!dashboard && loading) {
+    return (
+      <section className="content-grid" style={{ marginBottom: '24px' }}>
+        <div className="panel panel--wide">
+          <div className="panel__header">
+            <div>
+              <Skeleton type="text" style={{ width: '80px' }} />
+              <Skeleton type="title" />
+            </div>
+          </div>
+          <div className="metrics">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <article key={i}>
+                <Skeleton type="text" style={{ width: '60px' }} />
+                <Skeleton type="title" style={{ width: '40px', margin: 0 }} />
+              </article>
+            ))}
+          </div>
+          <div className="course-grid">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} type="card" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="content-grid">
       <div className="panel panel--wide">
@@ -57,33 +90,12 @@ export function CatalogPanel({
 
         <div className="course-grid">
           {courseCards.map((course) => (
-            <button
+            <CourseCardItem
               key={course.id}
-              className={`course-card ${course.id === selectedCourseId ? 'is-active' : ''}`}
-              onClick={() => onSelectCourse(course.id)}
-              type="button"
-            >
-              <span className="course-card__category">{course.category}</span>
-              <strong>{course.title}</strong>
-              <p>{course.description}</p>
-              <dl>
-                <div>
-                  <dt>난이도</dt>
-                  <dd>{formatDifficulty(course.difficulty)}</dd>
-                </div>
-                <div>
-                  <dt>강의</dt>
-                  <dd>{course.lecture_count}개</dd>
-                </div>
-                <div>
-                  <dt>진도</dt>
-                  <dd>{formatPercentage(course.progress_percent)}</dd>
-                </div>
-              </dl>
-              <span className={`course-card__status ${course.enrolled ? 'is-enrolled' : ''}`}>
-                {course.enrolled ? '수강 중' : '미수강'}
-              </span>
-            </button>
+              course={course}
+              isActive={course.id === selectedCourseId}
+              onSelect={onSelectCourse}
+            />
           ))}
         </div>
       </div>
@@ -95,14 +107,12 @@ export function CatalogPanel({
             <h2>{selectedCourse?.title ?? '강의를 선택하세요'}</h2>
           </div>
 
-          <button
-            className="action-button"
+          <Button
             disabled={busy || !selectedCourseId || !canEnrollCurrent || Boolean(selectedCourse?.enrolled)}
             onClick={() => onEnroll(selectedCourseId)}
-            type="button"
           >
             {busy ? '처리 중...' : selectedCourse?.enrolled ? '수강 중' : canEnrollCurrent ? '수강 신청' : '권한 없음'}
-          </button>
+          </Button>
         </div>
 
         {selectedCourse ? (
