@@ -1,4 +1,5 @@
-import type { AuthUser, CourseCard, CourseDetail, Dashboard, LectureDetail, LoginResponse } from '@myway/shared';
+import type { AIInsights, AuthUser, CourseCard, CourseDetail, Dashboard, LectureDetail, LoginResponse } from '@myway/shared';
+import { AIInsightsPanel } from './dashboard/AIInsightsPanel';
 import { CatalogPanel } from './dashboard/CatalogPanel';
 import { CourseResourcesPanel } from './dashboard/CourseResourcesPanel';
 import { IdentityPanel } from './dashboard/IdentityPanel';
@@ -12,6 +13,7 @@ type LmsDashboardProps = {
   canManageCurrent: boolean;
   apiStatus: 'checking' | 'online' | 'offline';
   dashboard: Dashboard | null;
+  insights: AIInsights | null;
   courseCards: CourseCard[];
   selectedCourseId: string;
   selectedCourse: CourseDetail | null;
@@ -59,6 +61,8 @@ export function LmsDashboard(props: LmsDashboardProps) {
         selectedCourseId={props.selectedCourseId}
         selectedLectureId={props.selectedLectureId}
       />
+
+      <AIInsightsPanel insights={props.insights} />
 
       <CourseResourcesPanel
         busy={props.busy}

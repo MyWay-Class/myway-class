@@ -81,4 +81,5 @@
 - `POST /api/v1/ai/answer`로 질문 응답과 근거 참조를 함께 돌려준다.
 - `POST /api/v1/ai/summary`로 강의 요약을 생성한다.
 - `POST /api/v1/ai/quiz`로 강의 기반 퀴즈를 생성한다.
+- `GET /api/v1/ai/insights`로 AI 사용량과 역할별 인사이트를 조회한다.
 - 공통 로직은 `packages/shared/src/ai.ts`에서 관리한다.

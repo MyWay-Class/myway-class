@@ -3,6 +3,7 @@ import {
   canEnroll,
   canManageCourses,
   demoUsers,
+  type AIInsights,
   type CourseCard,
   type CourseDetail,
   type Dashboard,
@@ -32,6 +33,7 @@ import { LmsDashboard } from './components/LmsDashboard';
 export default function App() {
   const [session, setSession] = useState<LoginResponse | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [insights, setInsights] = useState<AIInsights | null>(null);
   const [courseCards, setCourseCards] = useState<CourseCard[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedCourse, setSelectedCourse] = useState<CourseDetail | null>(null);
@@ -49,6 +51,13 @@ export default function App() {
 
   const canEnrollCurrent = session ? canEnroll(session.user.role) : false;
   const canManageCurrent = session ? canManageCourses(session.user.role) : false;
+  const learningDeps = {
+    setCourseCards,
+    setSelectedCourseId,
+    setDashboard,
+    setInsights,
+    setNotice,
+  };
 
   useEffect(() => {
     let active = true;
@@ -65,7 +74,7 @@ export default function App() {
 
       setSession(storedSession);
       setApiStatus(backendOnline ? 'online' : 'offline');
-      await refreshLearningState(storedSession);
+      await refreshLearningState(learningDeps, storedSession);
       setLoading(false);
     }
 
@@ -138,7 +147,7 @@ export default function App() {
 
     storeAuth(auth);
     setSession(auth);
-    await refreshLearningState(auth);
+    await refreshLearningState(learningDeps, auth);
     setBusy(false);
   }
 
@@ -147,8 +156,7 @@ export default function App() {
     await logoutCurrentSession(session?.session_token);
     clearStoredAuth();
     setSession(null);
-    setDashboard(null);
-    await refreshLearningState(null);
+    await refreshLearningState(learningDeps, null);
     setBusy(false);
   }
 
@@ -165,7 +173,7 @@ export default function App() {
 
     setBusy(true);
     const result = await enrollCourse(courseId, session.session_token);
-    await refreshLearningState(session);
+    await refreshLearningState(learningDeps, session);
 
     if (result?.course) {
       setSelectedCourse(result.course);
@@ -190,7 +198,8 @@ export default function App() {
     setNotice,
     setSelectedCourse,
     setSelectedLecture,
-    refreshLearningState,
+    refreshLearningState: (activeSession: LoginResponse | null) => refreshLearningState(learningDeps, activeSession),
+    setInsights,
   };
   const highlightedLecture = selectedLecture ?? selectedCourse?.lectures[0] ?? null;
   return (
@@ -207,6 +216,7 @@ export default function App() {
       highlightedLecture={highlightedLecture}
       loading={loading}
       notice={notice}
+      insights={insights}
       onCompleteLecture={(lectureId) => void completeLectureFlow(flowDeps, lectureId)}
       onAddMaterial={(input) => addCourseMaterialFlow(flowDeps, input)}
       onAddNotice={(input) => addCourseNoticeFlow(flowDeps, input)}

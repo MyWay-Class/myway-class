@@ -1,6 +1,7 @@
 import {
   canEnroll,
   completeLectureProgress,
+  getAIInsightsForUser,
   enrollUser,
   getCourseDetail,
   getDashboard,
@@ -11,6 +12,7 @@ import {
   type Material,
   type MaterialCreateRequest,
   type ApiResponse,
+  type AIInsights,
   type CourseCard,
   type CourseDetail,
   type Dashboard,
@@ -164,6 +166,19 @@ export async function loadDashboard(sessionToken?: string | null): Promise<Dashb
   const userId = getFallbackUserId();
 
   return response?.success && response.data ? response.data : getDashboard(userId);
+}
+
+export async function loadAIInsights(sessionToken?: string | null): Promise<AIInsights | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await request<AIInsights>('/api/v1/ai/insights', undefined, token);
+  const userId = getFallbackUserId();
+
+  return response?.success && response.data ? response.data : getAIInsightsForUser(userId);
 }
 
 export async function loadCourses(sessionToken?: string | null): Promise<CourseCard[]> {
