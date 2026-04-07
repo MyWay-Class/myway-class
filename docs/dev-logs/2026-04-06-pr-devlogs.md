@@ -9,7 +9,7 @@
 
 ## 무엇을 바꿨는지
 - `docs/dev-logs/README.md`에 PR 변경 요약 기록 원칙과 최신 로그 링크를 추가했다.
-- `docs/templates/task-workflow.md`에 PR 전/후 로그 기록 단계를 추가했다.
+- AI 작업 흐름 문서에 PR 전/후 로그 기록 단계를 추가했다.
 - `.github/pull_request_template.md`와 `.github/MERGE_REQUEST_TEMPLATE.md`에 `docs/dev-logs/` 체크를 추가했다.
 - `agent.md`에 PR 전 로그 기록 규칙을 추가했다.
 
