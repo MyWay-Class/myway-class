@@ -5,7 +5,8 @@
 
 ## 공통 응답 예시
 ```ts
-// 실제 타입 원본은 packages/shared에 둔다.
+// 실제 타입 원본은 packages/shared/src/index.ts에 둔다.
+// 아래는 참조용 복사이며, 원본과 항상 일치해야 한다.
 type ApiError = {
   code: string;
   message: string;
@@ -15,6 +16,7 @@ type ApiResponse<T> = {
   success: boolean;
   data?: T;
   error?: ApiError;
+  message?: string;
 };
 ```
 
