@@ -13,10 +13,9 @@ import {
   clearStoredAuth,
   enrollCourse,
   getCurrentRoleLabel,
+  loadBackendHealth,
   loadCourseDetail,
-  loadCourses,
   loadCurrentSession,
-  loadDashboard,
   loadLectureDetail,
   loginWithUser,
   logoutCurrentSession,
@@ -27,6 +26,7 @@ import {
   addCourseNoticeFlow,
   completeLectureFlow,
 } from './lib/course-flow';
+import { refreshLearningState } from './lib/app-state';
 import { LmsDashboard } from './components/LmsDashboard';
 
 export default function App() {
@@ -39,6 +39,7 @@ export default function App() {
   const [selectedLecture, setSelectedLecture] = useState<LectureDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [notice, setNotice] = useState('로그인 후 내 정보와 진도가 활성화됩니다.');
 
   const enrolledCourses = useMemo(
@@ -49,24 +50,6 @@ export default function App() {
   const canEnrollCurrent = session ? canEnroll(session.user.role) : false;
   const canManageCurrent = session ? canManageCourses(session.user.role) : false;
 
-  async function refreshLearningState(activeSession: LoginResponse | null) {
-    const courses = await loadCourses(activeSession?.session_token);
-    setCourseCards(courses);
-
-    if (courses.length > 0) {
-      setSelectedCourseId((current) => current || courses[0].id);
-    }
-
-    if (activeSession) {
-      const dashboardData = await loadDashboard(activeSession.session_token);
-      setDashboard(dashboardData);
-      setNotice(`${activeSession.user.name} 님, ${activeSession.user.role} 계정으로 로그인했습니다.`);
-    } else {
-      setDashboard(null);
-      setNotice('로그인 후 내 정보와 진도가 활성화됩니다.');
-    }
-  }
-
   useEffect(() => {
     let active = true;
 
@@ -74,12 +57,14 @@ export default function App() {
       setLoading(true);
 
       const storedSession = await loadCurrentSession();
+      const backendOnline = await loadBackendHealth();
 
       if (!active) {
         return;
       }
 
       setSession(storedSession);
+      setApiStatus(backendOnline ? 'online' : 'offline');
       await refreshLearningState(storedSession);
       setLoading(false);
     }
@@ -196,9 +181,7 @@ export default function App() {
     setBusy(false);
   }
 
-  const highlightedLecture = selectedLecture ?? selectedCourse?.lectures[0] ?? null;
-
-  const courseFlowDeps = {
+  const flowDeps = {
     session,
     selectedCourse,
     selectedCourseId,
@@ -209,11 +192,13 @@ export default function App() {
     setSelectedLecture,
     refreshLearningState,
   };
+  const highlightedLecture = selectedLecture ?? selectedCourse?.lectures[0] ?? null;
   return (
     <LmsDashboard
       busy={busy}
       canEnrollCurrent={canEnrollCurrent}
       canManageCurrent={canManageCurrent}
+      apiStatus={apiStatus}
       courseCards={courseCards}
       dashboard={dashboard}
       demoUsers={demoUsers}
@@ -222,9 +207,9 @@ export default function App() {
       highlightedLecture={highlightedLecture}
       loading={loading}
       notice={notice}
-      onCompleteLecture={(lectureId) => void completeLectureFlow(courseFlowDeps, lectureId)}
-      onAddMaterial={(input) => addCourseMaterialFlow(courseFlowDeps, input)}
-      onAddNotice={(input) => addCourseNoticeFlow(courseFlowDeps, input)}
+      onCompleteLecture={(lectureId) => void completeLectureFlow(flowDeps, lectureId)}
+      onAddMaterial={(input) => addCourseMaterialFlow(flowDeps, input)}
+      onAddNotice={(input) => addCourseNoticeFlow(flowDeps, input)}
       onEnroll={(courseId) => void handleEnroll(courseId)}
       onLogin={(userId) => void handleLogin(userId)}
       onLogout={() => void handleLogout()}
