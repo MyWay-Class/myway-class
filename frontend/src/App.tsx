@@ -19,6 +19,7 @@ import {
   loadLectureDetail,
   loginWithUser,
   logoutCurrentSession,
+  completeLecture,
   storeAuth,
 } from './lib/api';
 
@@ -51,9 +52,9 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('로그인 후 내 정보와 진도가 활성화됩니다.');
 
-  const selectedCourseCard = useMemo(
-    () => courseCards.find((course) => course.id === selectedCourseId) ?? null,
-    [courseCards, selectedCourseId],
+  const enrolledCourses = useMemo(
+    () => dashboard?.courses.filter((course) => course.enrolled) ?? [],
+    [dashboard],
   );
 
   const canEnrollCurrent = session ? canEnroll(session.user.role) : false;
@@ -201,6 +202,47 @@ export default function App() {
     setBusy(false);
   }
 
+  async function handleCompleteLecture(lectureId: string) {
+    if (!session) {
+      setNotice('강의 완료는 로그인 후 사용할 수 있습니다.');
+      return;
+    }
+
+    if (!selectedCourse?.enrolled) {
+      setNotice('수강 신청 후에 진도를 저장할 수 있습니다.');
+      return;
+    }
+
+    if (!highlightedLecture) {
+      return;
+    }
+
+    if (highlightedLecture.is_completed) {
+      setNotice('이미 완료한 강의입니다.');
+      return;
+    }
+
+    setBusy(true);
+    const result = await completeLecture(lectureId, session.session_token);
+
+    if (!result) {
+      setNotice('강의 진도 저장에 실패했습니다.');
+      setBusy(false);
+      return;
+    }
+
+    await refreshLearningState(session);
+
+    const refreshedCourse = await loadCourseDetail(selectedCourseId, session.session_token);
+    setSelectedCourse(refreshedCourse);
+
+    const refreshedLecture = await loadLectureDetail(lectureId, session.session_token);
+    setSelectedLecture(refreshedLecture);
+
+    setNotice(`진도가 ${result.progress_percent}%로 저장되었습니다.`);
+    setBusy(false);
+  }
+
   const highlightedLecture = selectedLecture ?? selectedCourse?.lectures[0] ?? null;
 
   return (
@@ -277,24 +319,57 @@ export default function App() {
           </div>
 
           {session ? (
-            <div className="detail-grid detail-grid--single">
-              <article>
-                <span>역할</span>
-                <strong>{session.user.role}</strong>
-              </article>
-              <article>
-                <span>권한 라벨</span>
-                <strong>{getCurrentRoleLabel()}</strong>
-              </article>
-              <article>
-                <span>이메일</span>
-                <strong>{session.user.email}</strong>
-              </article>
-              <article>
-                <span>부서</span>
-                <strong>{session.user.department}</strong>
-              </article>
-            </div>
+            <>
+              <div className="detail-grid detail-grid--single">
+                <article>
+                  <span>역할</span>
+                  <strong>{session.user.role}</strong>
+                </article>
+                <article>
+                  <span>권한 라벨</span>
+                  <strong>{getCurrentRoleLabel()}</strong>
+                </article>
+                <article>
+                  <span>이메일</span>
+                  <strong>{session.user.email}</strong>
+                </article>
+                <article>
+                  <span>부서</span>
+                  <strong>{session.user.department}</strong>
+                </article>
+              </div>
+
+              <div className="enrollment-panel">
+                <div className="enrollment-panel__header">
+                  <div>
+                    <p className="section-label">내 수강</p>
+                    <h3>{enrolledCourses.length ? `${enrolledCourses.length}개 강의 수강 중` : '수강 중인 강의 없음'}</h3>
+                  </div>
+                </div>
+
+                {enrolledCourses.length > 0 ? (
+                  <div className="enrollment-list">
+                    {enrolledCourses.map((course) => (
+                      <article key={course.id} className="enrollment-card">
+                        <div className="enrollment-card__head">
+                          <strong>{course.title}</strong>
+                          <span>{course.progress_percent}%</span>
+                        </div>
+                        <p>
+                          완료 {course.completed_lectures} / {course.lecture_count} · {course.category} ·{' '}
+                          {formatDifficulty(course.difficulty)}
+                        </p>
+                        <div className="progress-track" aria-hidden="true">
+                          <span style={{ width: `${course.progress_percent}%` }} />
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-state">수강 신청을 하면 여기에서 진도와 완료한 강의가 보입니다.</p>
+                )}
+              </div>
+            </>
           ) : (
             <p className="empty-state">로그인하면 내 정보와 진도, 수강 상태가 보입니다.</p>
           )}
@@ -371,11 +446,11 @@ export default function App() {
 
             <button
               className="action-button"
-              disabled={busy || !selectedCourseId || !canEnrollCurrent}
+              disabled={busy || !selectedCourseId || !canEnrollCurrent || Boolean(selectedCourse?.enrolled)}
               onClick={() => void handleEnroll(selectedCourseId)}
               type="button"
             >
-              {busy ? '처리 중...' : canEnrollCurrent ? '수강 신청' : '권한 없음'}
+              {busy ? '처리 중...' : selectedCourse?.enrolled ? '수강 중' : canEnrollCurrent ? '수강 신청' : '권한 없음'}
             </button>
           </div>
 
@@ -436,8 +511,19 @@ export default function App() {
             <div className="lecture-detail__meta">
               <span>{highlightedLecture.course_title}</span>
               <span>{highlightedLecture.course_instructor}</span>
+              {selectedCourse ? <span>{selectedCourse.progress_percent}% 완료</span> : null}
             </div>
             <p>{highlightedLecture.content_text}</p>
+            <div className="lecture-detail__actions">
+              <button
+                className="action-button"
+                disabled={busy || !session || !selectedCourse?.enrolled || Boolean(highlightedLecture.is_completed)}
+                onClick={() => void handleCompleteLecture(highlightedLecture.id)}
+                type="button"
+              >
+                {highlightedLecture.is_completed ? '완료됨' : selectedCourse?.enrolled ? '강의 완료' : '수강 후 가능'}
+              </button>
+            </div>
             <div className="lecture-detail__nav">
               <button
                 disabled={!highlightedLecture.previous_lecture_id}

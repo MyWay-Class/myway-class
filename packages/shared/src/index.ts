@@ -162,7 +162,22 @@ export type LectureDetail = Lecture & {
   course_instructor: string;
   previous_lecture_id?: string;
   next_lecture_id?: string;
+  is_completed?: boolean;
 };
+
+export type LectureCompletionResult =
+  | {
+      ok: true;
+      lecture_id: string;
+      course_id: string;
+      progress_percent: number;
+      completed_lectures: number;
+      total_lectures: number;
+    }
+  | {
+      ok: false;
+      reason: 'lecture_not_found' | 'enrollment_required';
+    };
 
 export type Dashboard = {
   learner_name: string;
@@ -365,7 +380,7 @@ export function getCourseDetail(courseId: string, userId: string): CourseDetail 
   };
 }
 
-export function getLectureDetail(lectureId: string): LectureDetail | undefined {
+export function getLectureDetail(lectureId: string, userId?: string): LectureDetail | undefined {
   const lecture = demoLectures.find((item) => item.id === lectureId);
   if (!lecture) {
     return undefined;
@@ -381,6 +396,64 @@ export function getLectureDetail(lectureId: string): LectureDetail | undefined {
       getLectureInstructorName(demoCourses.find((item) => item.id === lecture.course_id)?.instructor_id ?? ''),
     previous_lecture_id: index > 0 ? lectures[index - 1]?.id : undefined,
     next_lecture_id: index >= 0 && index < lectures.length - 1 ? lectures[index + 1]?.id : undefined,
+    is_completed: userId
+      ? demoLectureProgress.some((progress) => progress.user_id === userId && progress.lecture_id === lectureId && progress.is_completed)
+      : undefined,
+  };
+}
+
+export function completeLectureProgress(userId: string, lectureId: string): LectureCompletionResult {
+  const lecture = demoLectures.find((item) => item.id === lectureId);
+  if (!lecture) {
+    return { ok: false, reason: 'lecture_not_found' };
+  }
+
+  const enrollment = demoEnrollments.find(
+    (item) => item.user_id === userId && item.course_id === lecture.course_id && item.status === 'active',
+  );
+
+  if (!enrollment) {
+    return { ok: false, reason: 'enrollment_required' };
+  }
+
+  const existingProgress = demoLectureProgress.find(
+    (progress) => progress.user_id === userId && progress.lecture_id === lectureId,
+  );
+
+  if (existingProgress) {
+    existingProgress.is_completed = true;
+  } else {
+    demoLectureProgress = [
+      ...demoLectureProgress,
+      {
+        id: `prg_${String(demoLectureProgress.length + 1).padStart(3, '0')}`,
+        user_id: userId,
+        lecture_id: lectureId,
+        is_completed: true,
+      },
+    ];
+  }
+
+  const courseLectures = getCourseLectures(lecture.course_id);
+  const completedLectureIds = new Set(
+    demoLectureProgress
+      .filter((progress) => progress.user_id === userId && progress.is_completed)
+      .map((progress) => progress.lecture_id),
+  );
+
+  const completedLectures = courseLectures.filter((item) => completedLectureIds.has(item.id)).length;
+  const totalLectures = courseLectures.length;
+  const progressPercent = totalLectures === 0 ? 0 : Math.round((completedLectures / totalLectures) * 100);
+
+  enrollment.progress_percent = progressPercent;
+
+  return {
+    ok: true,
+    lecture_id: lectureId,
+    course_id: lecture.course_id,
+    progress_percent: progressPercent,
+    completed_lectures: completedLectures,
+    total_lectures: totalLectures,
   };
 }
 
