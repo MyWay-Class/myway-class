@@ -349,6 +349,69 @@ button {
   font-size: 1.1rem;
 }
 
+.enrollment-panel {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.enrollment-panel__header h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.enrollment-list {
+  display: grid;
+  gap: 12px;
+}
+
+.enrollment-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  display: grid;
+  gap: 10px;
+}
+
+.enrollment-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.enrollment-card__head strong {
+  font-size: 0.98rem;
+}
+
+.enrollment-card__head span {
+  font-weight: 800;
+  color: var(--accent-strong);
+}
+
+.enrollment-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(31, 41, 55, 0.08);
+  overflow: hidden;
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+}
+
 .lecture-list {
   display: grid;
   gap: 10px;
@@ -392,6 +455,11 @@ button {
   flex-wrap: wrap;
   gap: 10px;
   color: var(--muted);
+}
+
+.lecture-detail__actions {
+  display: flex;
+  gap: 12px;
 }
 
 .lecture-detail__nav {
