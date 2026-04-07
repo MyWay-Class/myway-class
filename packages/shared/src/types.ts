@@ -465,6 +465,29 @@ export type AISummaryResult = {
   references: AIReference[];
 };
 
+export type SmartChatRequest = {
+  message: string;
+  lecture_id?: string;
+  course_id?: string;
+  context?: string[];
+  language?: 'ko' | 'en';
+};
+
+export type SmartChatRoute = 'summary' | 'quiz' | 'search' | 'answer' | 'translate' | 'compare' | 'clarify' | 'general';
+
+export type SmartChatResult = {
+  message: string;
+  lecture_id: string | null;
+  course_id: string | null;
+  route: SmartChatRoute;
+  intent: AIIntentResult;
+  answer: string;
+  references: AIReference[];
+  suggestions: string[];
+  summary?: AISummaryResult | null;
+  quiz?: AIQuizResult | null;
+};
+
 export type ShortformStyle = 'highlight' | 'exam_prep' | 'quick_review' | 'deep_dive' | 'custom';
 
 export type ShortformStatus = 'DRAFT' | 'GENERATED' | 'REVIEWED' | 'PUBLIC' | 'ARCHIVED';
