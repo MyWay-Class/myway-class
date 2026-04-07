@@ -17,6 +17,7 @@
 
 ## 최신 로그
 - `2026-04-08-smart-ai-chat.md`
+- `2026-04-08-ai-insights-dashboard.md`
 - `2026-04-08-shortform-community.md`
 - `2026-04-08-custom-course-composer.md`
 - `2026-04-08-ai-layer-core.md`
