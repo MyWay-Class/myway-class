@@ -74,3 +74,11 @@
 ## 검증 기준
 - 각 AI 기능의 책임이 겹치지 않는다.
 - 실패 시 fallback 경로가 문서로 설명된다.
+
+## 현재 구현
+- `POST /api/v1/ai/intent`로 사용자 메시지의 의도를 분류한다.
+- `POST /api/v1/ai/search`로 강의 본문, 트랜스크립트, 요약 노트에서 근거를 찾는다.
+- `POST /api/v1/ai/answer`로 질문 응답과 근거 참조를 함께 돌려준다.
+- `POST /api/v1/ai/summary`로 강의 요약을 생성한다.
+- `POST /api/v1/ai/quiz`로 강의 기반 퀴즈를 생성한다.
+- 공통 로직은 `packages/shared/src/ai.ts`에서 관리한다.
