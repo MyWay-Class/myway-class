@@ -107,6 +107,9 @@
 - 불확실하면 불확실하다고 분명히 말한다.
 - 사용자가 명시적으로 원하지 않은 방향으로 범위를 넓히지 않는다.
 - PR을 열기 전에는 `docs/dev-logs/`에 변경 요약을 남긴다.
+- `git pull`은 기본적으로 rebase로 처리하고, merge 커밋을 만들지 않는다.
+- 원격 최신화는 `git pull --rebase` 또는 `git fetch` 후 `git rebase`로 한다.
+- merge가 꼭 필요하면 작업 전에 이유를 문서나 로그에 남긴다.
 
 ## 작업 규칙
 1. 작업은 작은 단위로 나눠서 변경한다.
@@ -119,6 +122,7 @@
 8. PR마다 변경 기록을 `docs/dev-logs/`에 남긴다.
 9. 비교 여지가 있는 기능 작업은 워킹트리 2안 비교를 기본값으로 두고, 생략은 예외로만 허용한다.
 10. PowerShell UTF-8 설정은 `docs/ops/agent/agent.md`를 따른다.
+11. 브랜치 최신화는 merge pull보다 rebase를 우선한다.
 
 ## TypeScript 스타일
 - Type inference를 기본으로 사용한다.
