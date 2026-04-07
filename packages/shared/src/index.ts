@@ -3,6 +3,7 @@ export * from './demo-data';
 export * from './auth';
 export * from './learning';
 export * from './ai';
+export * from './smart';
 export * from './media';
 export * from './custom-course';
 export * from './shortform';
