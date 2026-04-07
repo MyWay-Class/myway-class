@@ -1,4 +1,7 @@
 import type { AuthUser, CourseCard, LoginResponse } from '@myway/shared';
+import { Button } from '../ui/Button';
+import { AuthIdentityItem } from '../domain/AuthIdentityItem';
+import { EnrollmentCardItem } from '../domain/EnrollmentCardItem';
 
 type IdentityPanelProps = {
   loading: boolean;
@@ -50,9 +53,9 @@ export function IdentityPanel({
             API 상태: <code>{apiStatus === 'checking' ? '확인 중' : apiStatus === 'online' ? '연결됨' : '오프라인'}</code>
           </p>
           {session ? (
-            <button className="action-button action-button--ghost" onClick={onLogout} type="button">
+            <Button variant="ghost" onClick={onLogout}>
               {busy ? '처리 중...' : '로그아웃'}
-            </button>
+            </Button>
           ) : null}
         </aside>
       </section>
@@ -68,27 +71,13 @@ export function IdentityPanel({
 
           <div className="auth-card-grid">
             {demoUsers.map((user) => (
-              <button
+              <AuthIdentityItem
                 key={user.id}
-                className={`auth-card ${session?.user.id === user.id ? 'is-active' : ''}`}
+                user={user}
+                isActive={session?.user.id === user.id}
                 disabled={busy}
-                onClick={() => onLogin(user.id)}
-                type="button"
-              >
-                <span className="auth-card__role">{user.role}</span>
-                <strong>{user.name}</strong>
-                <p>{user.bio}</p>
-                <dl>
-                  <div>
-                    <dt>부서</dt>
-                    <dd>{user.department}</dd>
-                  </div>
-                  <div>
-                    <dt>이메일</dt>
-                    <dd>{user.email}</dd>
-                  </div>
-                </dl>
-              </button>
+                onSelect={onLogin}
+              />
             ))}
           </div>
         </div>
@@ -133,18 +122,7 @@ export function IdentityPanel({
                 {enrolledCourses.length > 0 ? (
                   <div className="enrollment-list">
                     {enrolledCourses.map((course) => (
-                      <article key={course.id} className="enrollment-card">
-                        <div className="enrollment-card__head">
-                          <strong>{course.title}</strong>
-                          <span>{course.progress_percent}%</span>
-                        </div>
-                        <p>
-                          완료 {course.completed_lectures} / {course.lecture_count} · {course.category}
-                        </p>
-                        <div className="progress-track" aria-hidden="true">
-                          <span style={{ width: `${course.progress_percent}%` }} />
-                        </div>
-                      </article>
+                      <EnrollmentCardItem key={course.id} course={course} />
                     ))}
                   </div>
                 ) : (

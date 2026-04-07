@@ -1,4 +1,5 @@
 import type { CourseDetail, LectureDetail, LoginResponse } from '@myway/shared';
+import { Button } from '../ui/Button';
 
 type LecturePanelProps = {
   busy: boolean;
@@ -37,30 +38,28 @@ export function LecturePanel({
           </div>
           <p>{highlightedLecture.content_text}</p>
           <div className="lecture-detail__actions">
-            <button
-              className="action-button"
+            <Button
               disabled={busy || !session || !selectedCourse?.enrolled || Boolean(highlightedLecture.is_completed)}
               onClick={() => onCompleteLecture(highlightedLecture.id)}
-              type="button"
             >
               {highlightedLecture.is_completed ? '완료됨' : selectedCourse?.enrolled ? '강의 완료' : '수강 후 가능'}
-            </button>
+            </Button>
           </div>
           <div className="lecture-detail__nav">
-            <button
+            <Button
+              variant="outline"
               disabled={!highlightedLecture.previous_lecture_id}
               onClick={() => onSelectLecture(highlightedLecture.previous_lecture_id ?? selectedLectureId)}
-              type="button"
             >
               이전 강의
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
               disabled={!highlightedLecture.next_lecture_id}
               onClick={() => onSelectLecture(highlightedLecture.next_lecture_id ?? selectedLectureId)}
-              type="button"
             >
               다음 강의
-            </button>
+            </Button>
           </div>
         </div>
       ) : (

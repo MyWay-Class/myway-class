@@ -4,6 +4,7 @@ import { CatalogPanel } from './dashboard/CatalogPanel';
 import { CourseResourcesPanel } from './dashboard/CourseResourcesPanel';
 import { IdentityPanel } from './dashboard/IdentityPanel';
 import { LecturePanel } from './dashboard/LecturePanel';
+import { AppLayout } from './ui/Layout';
 
 type LmsDashboardProps = {
   loading: boolean;
@@ -35,7 +36,7 @@ type LmsDashboardProps = {
 
 export function LmsDashboard(props: LmsDashboardProps) {
   return (
-    <main className="app-shell">
+    <AppLayout session={props.session} onLogout={props.onLogout} loading={props.loading}>
       <IdentityPanel
         busy={props.busy}
         apiStatus={props.apiStatus}
@@ -50,6 +51,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
       />
 
       <CatalogPanel
+        loading={props.loading}
         busy={props.busy}
         canEnrollCurrent={props.canEnrollCurrent}
         courseCards={props.courseCards}
@@ -82,6 +84,6 @@ export function LmsDashboard(props: LmsDashboardProps) {
         selectedLectureId={props.selectedLectureId}
         session={props.session}
       />
-    </main>
+    </AppLayout>
   );
 }
