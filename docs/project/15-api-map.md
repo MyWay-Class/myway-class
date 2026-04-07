@@ -96,6 +96,16 @@
   - 강의 오디오 추출 기록 조회
 - `GET /api/v1/media/pipeline/:lectureId`
   - 강의 미디어 파이프라인 상태 조회
+- `POST /api/v1/ai/intent`
+  - 사용자 메시지 의도 분류
+- `POST /api/v1/ai/search`
+  - 강의 근거 검색
+- `POST /api/v1/ai/answer`
+  - 질문 응답과 근거 참조 생성
+- `POST /api/v1/ai/summary`
+  - 강의 요약 생성
+- `POST /api/v1/ai/quiz`
+  - 강의 기반 퀴즈 생성
 - `GET /api/v1/enrollments`
   - 내 수강 목록
 - `POST /api/v1/enrollments`
