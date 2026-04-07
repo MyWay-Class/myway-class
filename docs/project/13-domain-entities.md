@@ -34,6 +34,10 @@
 - 사용자 데이터와 운영 로그는 분리한다.
 
 ## 핵심 엔티티
+- `AuthUser`
+- `AuthSession`
+- `LoginRequest`
+- `LoginResponse`
 - `User`
 - `Role`
 - `Course`
@@ -57,10 +61,15 @@
 - `ShortformStatus`
 
 ## 기준값
-- `User`와 `Role`은 인증과 권한에서 공통 사용한다.
+- `AuthUser`, `AuthSession`, `LoginRequest`, `LoginResponse`는 인증과 권한에서 공통 사용한다.
+- `User`와 `Role`은 LMS와 AI 전반에서 쓰는 상위 도메인 용어다.
 - `Course`와 `Lecture`는 LMS 코어의 중심 엔티티다.
 - `Transcript`, `Chunk`, `Summary`, `Shortform`, `IntentLog`는 AI 레이어의 추적 엔티티다.
 - `Reaction`은 커뮤니티와 랭킹 계산에만 쓰고 학습 데이터와 섞지 않는다.
+
+## 인증 상태
+- 사용자는 `STUDENT`, `INSTRUCTOR`, `ADMIN` 역할 중 하나를 가진다.
+- 인증 세션은 로그인과 로그아웃 흐름에서 생성과 삭제가 일어난다.
 
 ## 예외 상황
 - AI 산출물은 원본 강의와 연결되지 않으면 저장하지 않는다.

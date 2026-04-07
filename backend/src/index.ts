@@ -5,7 +5,14 @@ import { registerRoutes } from './routes';
 
 const app = new Hono();
 
-app.use('*', cors());
+app.use(
+  '*',
+  cors({
+    origin: '*',
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Session-Token'],
+  }),
+);
 
 app.get('/', () =>
   jsonSuccess({
