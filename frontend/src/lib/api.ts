@@ -142,6 +142,17 @@ export async function logoutCurrentSession(sessionToken?: string | null): Promis
   clearStoredAuth();
 }
 
+type BackendHealth = {
+  status: string;
+  service: string;
+  timestamp: string;
+};
+
+export async function loadBackendHealth(): Promise<boolean> {
+  const response = await request<BackendHealth>('/api/v1/health');
+  return Boolean(response?.success && response.data?.status === 'ok');
+}
+
 export async function loadDashboard(sessionToken?: string | null): Promise<Dashboard | null> {
   const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
 

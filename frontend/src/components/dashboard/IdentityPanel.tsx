@@ -5,6 +5,7 @@ type IdentityPanelProps = {
   busy: boolean;
   notice: string;
   session: LoginResponse | null;
+  apiStatus: 'checking' | 'online' | 'offline';
   demoUsers: AuthUser[];
   enrolledCourses: CourseCard[];
   getCurrentRoleLabel: () => string;
@@ -17,6 +18,7 @@ export function IdentityPanel({
   busy,
   notice,
   session,
+  apiStatus,
   demoUsers,
   enrolledCourses,
   getCurrentRoleLabel,
@@ -43,6 +45,9 @@ export function IdentityPanel({
           </p>
           <p>
             권한: <code>{session ? session.permissions.join(', ') : 'NONE'}</code>
+          </p>
+          <p>
+            API 상태: <code>{apiStatus === 'checking' ? '확인 중' : apiStatus === 'online' ? '연결됨' : '오프라인'}</code>
           </p>
           {session ? (
             <button className="action-button action-button--ghost" onClick={onLogout} type="button">
