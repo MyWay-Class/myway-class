@@ -14,7 +14,6 @@ docs/
 ├── context/                 # 프로젝트 컨텍스트
 ├── conventions/             # 코딩 컨벤션
 ├── structure/               # 모듈별 상세 구조
-├── templates/               # 작업 템플릿
 ├── dev-logs/                # 개발 로그
 ├── ai-context/              # AI 협업 규칙
 ├── frontend/docs/           # 프론트엔드 문서 허브
@@ -33,7 +32,6 @@ docs/
 | `docs/context/` | 아키텍처, 모듈 구조, 환경 설정 |
 | `docs/conventions/` | 공통 규칙과 세부 컨벤션 |
 | `docs/structure/` | 기능별 API/구조 상세 |
-| `docs/templates/` | 새 문서 작성용 템플릿 |
 | `docs/dev-logs/` | 개발 기록과 변경 이력 |
 | `docs/ai-context/` | AI 작업 규칙 |
 | `docs/ops/` | 짧은 운영용 보조 문서 |
@@ -56,8 +54,6 @@ docs/
 | 전체 구조 파악 | `context/architecture.md` |
 | 모듈 배치 확인 | `context/module-structure.md` |
 | 공통 규칙 확인 | `conventions/00-CONVENTIONS-CORE.md` |
-| 기능 문서 작성 | `templates/project-specification.md` |
-| 작업 흐름 확인 | `templates/task-workflow.md` |
 
 ---
 

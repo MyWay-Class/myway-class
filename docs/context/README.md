@@ -10,8 +10,6 @@
 |------|------|
 | `architecture.md` | 전체 시스템 구조, 데이터 흐름, 배포 모델 |
 | `module-structure.md` | 기능별 모듈 배치와 책임 |
-| `frontend-setup.md` | 프론트엔드 실행 방식과 기본 설정 |
-| `backend-setup.md` | 백엔드 실행 방식과 기본 설정 |
 
 ## 역할
 - 이 묶음은 빠르게 방향을 잡기 위한 요약 문서다.
@@ -23,6 +21,4 @@
 ## 읽는 순서
 1. `architecture.md`
 2. `module-structure.md`
-3. `frontend-setup.md`
-4. `backend-setup.md`
 

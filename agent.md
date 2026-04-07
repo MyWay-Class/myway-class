@@ -45,13 +45,10 @@
 12. `docs/conventions/09-GITHUB-ACTION-CHECKS.md`
 13. `docs/structure/README.md`
 14. `docs/structure/backend/common/overview.md`
-15. `docs/templates/README.md`
-16. `docs/templates/project-specification.md`
-17. `docs/templates/task-workflow.md`
-18. `docs/dev-logs/README.md`
-19. `docs/ai-context/harness-engineering.md`
-20. `frontend/docs/README.md`
-21. `backend/docs/README.md`
+15. `docs/dev-logs/README.md`
+16. `docs/ai-context/harness-engineering.md`
+17. `frontend/docs/README.md`
+18. `backend/docs/README.md`
 
 ### 문서 추적 원칙
 - 먼저 `agent.md`를 읽고 작업 목적을 확정한다.
@@ -165,6 +162,7 @@ $OutputEncoding = [Console]::OutputEncoding
 - RAG, STT, 인텐트, 숏폼 생성은 각각 독립된 책임으로 나눈다.
 - 무료 AI가 없더라도 흐름이 끊기지 않도록 fallback을 둔다.
 - 추적을 위해 provider, latency, success/failure, token 관련 정보를 기록한다.
+- LLM 사용 방식은 `docs/ai-context/agent.md`의 지시 가중치 규칙을 따른다.
 - 실험용 기능과 운영용 기능은 문서와 코드에서 구분하고, 하네스 원칙은 `docs/ai-context/harness-engineering.md`를 따른다.
 - 작업 전에는 `docs/context/architecture.md`와 `docs/context/module-structure.md`로 구조 경계를 확인한다.
 - 우선순위 판단은 `docs/conventions/01-MOSCOW-PRIORITY.md`를 따른다.

@@ -38,7 +38,7 @@ MyWayClass에서 AI와 협업할 때, 컨텍스트 과부하를 줄이고 리포
 ## MyWayClass 적용 방식
 - 메인 진입점은 `agent.md`다.
 - 200줄을 넘는 설명은 `docs/ai-context/`의 보조 문서로 옮긴다.
-- 기능별 계획은 `docs/templates/`와 `docs/dev-logs/`를 함께 사용한다.
+- 기능별 계획은 `docs/dev-logs/`와 관련 프로젝트 문서를 함께 사용한다.
 - 구조와 경계는 `docs/context/`와 `docs/structure/`에 둔다.
 - 작업 우선순위는 `docs/conventions/01-MOSCOW-PRIORITY.md`를 따른다.
 
