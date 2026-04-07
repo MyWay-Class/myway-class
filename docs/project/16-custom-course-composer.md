@@ -68,3 +68,12 @@
 - 사용자는 여러 영상에서 원하는 구간만 모아 하나의 커스텀 강의를 만들 수 있다.
 - 같은 강의를 듣는 수강생끼리만 공유와 담아가기가 가능하다.
 - 커스텀 강의는 원본 강의와 다시 연결해서 추적할 수 있다.
+
+## 현재 구현
+- `POST /api/v1/custom-courses/compose`로 커스텀 강의를 생성한다.
+- `GET /api/v1/custom-courses/my`로 내 커스텀 강의 목록을 조회한다.
+- `GET /api/v1/custom-courses/community`로 같은 강의 수강생의 공유본을 조회한다.
+- `GET /api/v1/custom-courses/:customCourseId`로 상세와 클립을 확인한다.
+- `POST /api/v1/custom-courses/:customCourseId/share`로 같은 강의 커뮤니티에 공유한다.
+- `POST /api/v1/custom-courses/:customCourseId/copy`로 내 라이브러리에 담아간다.
+- 공통 로직은 `packages/shared/src/custom-course.ts`에 둔다.
