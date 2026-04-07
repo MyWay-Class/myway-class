@@ -68,7 +68,27 @@ type ApiResponse<T> = {
 - `GET /api/v1/media/audio-extractions/:lectureId`
 - `GET /api/v1/media/pipeline/:lectureId`
 - `POST /api/v1/shortform/generate`
-- `GET /api/v1/shortform/my`
+  - 숏폼 후보 생성
+- `PUT /api/v1/shortform/candidates/select`
+  - 숏폼 후보 선택 반영
+- `GET /api/v1/shortform/extraction/:id`
+  - 숏폼 추출 결과 조회
+- `POST /api/v1/shortform/compose`
+  - 숏폼 조립
+- `GET /api/v1/shortform/videos/my`
+  - 내 숏폼 목록
+- `GET /api/v1/shortform/video/:id`
+  - 숏폼 상세
+- `POST /api/v1/shortform/share`
+  - 숏폼 공유
+- `GET /api/v1/shortform/community`
+  - 숏폼 커뮤니티 피드
+- `POST /api/v1/shortform/save`
+  - 숏폼 담아가기
+- `POST /api/v1/shortform/like`
+  - 숏폼 좋아요
+- `GET /api/v1/shortform/library`
+  - 내 숏폼 라이브러리
 - `POST /api/v1/smart/chat`
 
 ## 에러 정책
