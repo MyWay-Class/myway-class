@@ -2,6 +2,18 @@
 
 > MyWayClass에서 AI와 협업하며 일관된 개발을 진행하기 위한 문서 모음
 
+## 문서 유형
+허브 문서입니다. 다른 문서의 원본, 요약, 기록 위치를 안내합니다.
+
+### 유형 기준
+| 유형 | 의미 | 예시 |
+|------|------|------|
+| 원본 | 기준이 되는 본문 문서 | `agent.md`, `docs/project/*` |
+| 요약 허브 | 상세 문서를 읽기 전에 방향을 잡는 문서 | `docs/context/README.md`, `docs/structure/README.md` |
+| 기록 허브 | 결정 이유와 변경 흐름을 남기는 문서 | `docs/dev-logs/README.md` |
+| 보조 원본 | 특정 영역의 특수 기준을 담는 문서 | `docs/ai-context/agent.md` |
+| 보조 요약 | 빠른 운영 체크만 담는 문서 | `docs/ops/agent/agent.md` |
+
 ---
 
 ## 문서 구조
