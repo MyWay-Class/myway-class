@@ -9,5 +9,10 @@
 - `packages/shared/src/smart.ts`와 관련 타입을 추가했다.
 - `docs/project/04-api-contract.md`, `docs/project/14-ai-layer.md`, `docs/project/15-api-map.md`, `docs/project/17-smart-ai-chat.md`를 갱신했다.
 
+## 비교 결과
+- A안은 `backend/src/routes/smart.ts`(36줄) + `packages/shared/src/smart.ts`(313줄) + `backend/src/routes/ai.ts`(110줄)로 역할이 분리된다.
+- B안은 `backend/src/routes/ai.ts`만 349줄로 커지며 파일 수는 줄지만 중앙 라우트가 더 비대해진다.
+- 이번 비교에서는 A안의 분리가 더 낫다고 판단했다.
+
 ## 검증
 - `npm run build:backend` 통과
