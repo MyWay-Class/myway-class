@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   canEnroll,
+  canManageCourses,
   demoUsers,
   type CourseCard,
   type CourseDetail,
@@ -10,7 +11,6 @@ import {
 } from '@myway/shared';
 import {
   clearStoredAuth,
-  completeLecture,
   enrollCourse,
   getCurrentRoleLabel,
   loadCourseDetail,
@@ -22,6 +22,11 @@ import {
   logoutCurrentSession,
   storeAuth,
 } from './lib/api';
+import {
+  addCourseMaterialFlow,
+  addCourseNoticeFlow,
+  completeLectureFlow,
+} from './lib/course-flow';
 import { LmsDashboard } from './components/LmsDashboard';
 
 export default function App() {
@@ -42,6 +47,7 @@ export default function App() {
   );
 
   const canEnrollCurrent = session ? canEnroll(session.user.role) : false;
+  const canManageCurrent = session ? canManageCourses(session.user.role) : false;
 
   async function refreshLearningState(activeSession: LoginResponse | null) {
     const courses = await loadCourses(activeSession?.session_token);
@@ -190,53 +196,24 @@ export default function App() {
     setBusy(false);
   }
 
-  async function handleCompleteLecture(lectureId: string) {
-    if (!session) {
-      setNotice('강의 완료는 로그인 후 사용할 수 있습니다.');
-      return;
-    }
-
-    if (!selectedCourse?.enrolled) {
-      setNotice('수강 신청 후에 진도를 저장할 수 있습니다.');
-      return;
-    }
-
-    if (!selectedCourse) {
-      return;
-    }
-
-    if (selectedLecture?.is_completed) {
-      setNotice('이미 완료한 강의입니다.');
-      return;
-    }
-
-    setBusy(true);
-    const result = await completeLecture(lectureId, session.session_token);
-
-    if (!result) {
-      setNotice('강의 진도 저장에 실패했습니다.');
-      setBusy(false);
-      return;
-    }
-
-    await refreshLearningState(session);
-
-    const refreshedCourse = await loadCourseDetail(selectedCourseId, session.session_token);
-    setSelectedCourse(refreshedCourse);
-
-    const refreshedLecture = await loadLectureDetail(lectureId, session.session_token);
-    setSelectedLecture(refreshedLecture);
-
-    setNotice(`진도가 ${result.progress_percent}%로 저장되었습니다.`);
-    setBusy(false);
-  }
-
   const highlightedLecture = selectedLecture ?? selectedCourse?.lectures[0] ?? null;
 
+  const courseFlowDeps = {
+    session,
+    selectedCourse,
+    selectedCourseId,
+    canManageCurrent,
+    setBusy,
+    setNotice,
+    setSelectedCourse,
+    setSelectedLecture,
+    refreshLearningState,
+  };
   return (
     <LmsDashboard
       busy={busy}
       canEnrollCurrent={canEnrollCurrent}
+      canManageCurrent={canManageCurrent}
       courseCards={courseCards}
       dashboard={dashboard}
       demoUsers={demoUsers}
@@ -245,7 +222,9 @@ export default function App() {
       highlightedLecture={highlightedLecture}
       loading={loading}
       notice={notice}
-      onCompleteLecture={(lectureId) => void handleCompleteLecture(lectureId)}
+      onCompleteLecture={(lectureId) => void completeLectureFlow(courseFlowDeps, lectureId)}
+      onAddMaterial={(input) => addCourseMaterialFlow(courseFlowDeps, input)}
+      onAddNotice={(input) => addCourseNoticeFlow(courseFlowDeps, input)}
       onEnroll={(courseId) => void handleEnroll(courseId)}
       onLogin={(userId) => void handleLogin(userId)}
       onLogout={() => void handleLogout()}

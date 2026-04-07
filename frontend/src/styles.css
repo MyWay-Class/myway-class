@@ -480,11 +480,126 @@ button {
   cursor: not-allowed;
 }
 
+.panel--resources {
+  margin-top: 24px;
+}
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.resource-column {
+  display: grid;
+  gap: 14px;
+}
+
+.resource-column__header h3 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.resource-list {
+  display: grid;
+  gap: 10px;
+}
+
+.resource-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  padding: 14px 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.resource-card--notice.is-pinned {
+  border-color: rgba(15, 118, 110, 0.35);
+  background: rgba(15, 118, 110, 0.05);
+}
+
+.resource-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.resource-card__head strong {
+  font-size: 0.96rem;
+}
+
+.resource-card__head span,
+.resource-card small {
+  color: var(--muted);
+}
+
+.resource-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.resource-form {
+  border: 1px dashed rgba(15, 118, 110, 0.25);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(15, 118, 110, 0.04);
+  display: grid;
+  gap: 10px;
+}
+
+.resource-form strong {
+  font-size: 0.96rem;
+}
+
+.resource-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.resource-form input,
+.resource-form textarea {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: white;
+}
+
+.resource-form textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.resource-form__checkbox {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.resource-form button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+  padding: 11px 16px;
+}
+
+.resource-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 960px) {
   .hero,
   .auth-grid,
   .content-grid,
-  .metrics {
+  .metrics,
+  .resources-grid {
     grid-template-columns: 1fr;
   }
 

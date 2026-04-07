@@ -86,6 +86,38 @@ export type LectureProgress = {
   is_completed: boolean;
 };
 
+export type Material = {
+  id: string;
+  course_id: string;
+  title: string;
+  summary: string;
+  file_name: string;
+  uploaded_by: string;
+  uploaded_at: string;
+};
+
+export type Notice = {
+  id: string;
+  course_id: string;
+  title: string;
+  content: string;
+  pinned: boolean;
+  author_id: string;
+  created_at: string;
+};
+
+export type MaterialCreateRequest = {
+  title: string;
+  summary: string;
+  file_name: string;
+};
+
+export type NoticeCreateRequest = {
+  title: string;
+  content: string;
+  pinned?: boolean;
+};
+
 export type CourseCard = Course & {
   instructor_name: string;
   lecture_count: number;
@@ -96,6 +128,8 @@ export type CourseCard = Course & {
 
 export type CourseDetail = CourseCard & {
   lectures: Lecture[];
+  materials: Material[];
+  notices: Notice[];
 };
 
 export type LectureDetail = Lecture & {

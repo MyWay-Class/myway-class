@@ -70,6 +70,14 @@
   - 코스 상세와 강의 목록
 - `GET /api/v1/courses/:courseId/lectures`
   - 코스의 강의 목록만 조회
+- `GET /api/v1/courses/:courseId/materials`
+  - 코스의 자료 목록 조회
+- `POST /api/v1/courses/:courseId/materials`
+  - 코스 자료 등록
+- `GET /api/v1/courses/:courseId/notices`
+  - 코스의 공지 목록 조회
+- `POST /api/v1/courses/:courseId/notices`
+  - 코스 공지 등록
 - `GET /api/v1/lectures/:lectureId`
   - 강의 상세
 - `POST /api/v1/lectures/:lectureId/complete`
@@ -83,6 +91,7 @@
 - LMS 코어 API는 강의와 수강의 기본 흐름만 담당한다.
 - 인증 API는 로그인, 로그아웃, 내 정보만 담당한다.
 - 역할 기반 접근 제어는 세션 사용자 역할로 처리한다.
+- 자료와 공지는 코스 상세와 같은 도메인 안에서 관리한다.
 - AI API는 요약, 챗봇, 검색, 퀴즈, 인텐트 같은 증강 기능만 담당한다.
 - 커스텀 강의 API는 같은 강의 수강자만 공유와 담아가기가 가능해야 한다.
 - 프론트는 공통 응답 봉투만 알면 되도록 계약을 단순화한다.
