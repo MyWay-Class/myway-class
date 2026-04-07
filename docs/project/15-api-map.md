@@ -72,6 +72,8 @@
   - 코스의 강의 목록만 조회
 - `GET /api/v1/lectures/:lectureId`
   - 강의 상세
+- `POST /api/v1/lectures/:lectureId/complete`
+  - 강의 완료와 진도 저장
 - `GET /api/v1/enrollments`
   - 내 수강 목록
 - `POST /api/v1/enrollments`

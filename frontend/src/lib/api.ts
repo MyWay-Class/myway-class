@@ -1,5 +1,6 @@
 import {
   canEnroll,
+  completeLectureProgress,
   enrollUser,
   getCourseDetail,
   getDashboard,
@@ -174,9 +175,59 @@ export async function loadCourseDetail(
 
 export async function loadLectureDetail(lectureId: string, sessionToken?: string | null): Promise<LectureDetail | null> {
   const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
   const response = await request<LectureDetail>(`/api/v1/lectures/${encodeURIComponent(lectureId)}`, undefined, token);
-  const fallback = getLectureDetail(lectureId);
+  const fallback = getLectureDetail(lectureId, userId);
   return response?.success && response.data ? response.data : fallback ?? null;
+}
+
+type CompleteLectureResponse = {
+  lecture_id: string;
+  course_id: string;
+  progress_percent: number;
+  completed_lectures: number;
+  total_lectures: number;
+};
+
+export async function completeLecture(
+  lectureId: string,
+  sessionToken?: string | null,
+): Promise<CompleteLectureResponse | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await request<CompleteLectureResponse>(
+    `/api/v1/lectures/${encodeURIComponent(lectureId)}/complete`,
+    { method: 'POST' },
+    token,
+  );
+
+  if (response?.success && response.data) {
+    return response.data;
+  }
+
+  const storedAuth = readStoredAuth();
+  const userId = storedAuth?.user.id;
+
+  if (!userId) {
+    return null;
+  }
+
+  const fallback = completeLectureProgress(userId, lectureId);
+  if (!fallback.ok) {
+    return null;
+  }
+
+  return {
+    lecture_id: fallback.lecture_id,
+    course_id: fallback.course_id,
+    progress_percent: fallback.progress_percent,
+    completed_lectures: fallback.completed_lectures,
+    total_lectures: fallback.total_lectures,
+  };
 }
 
 export async function enrollCourse(

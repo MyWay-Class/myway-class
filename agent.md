@@ -1,4 +1,4 @@
-# MyWayClass 에이전트 가이드
+﻿# MyWayClass 에이전트 가이드
 
 ## 목적
 이 문서는 `MyWayClass` 저장소에서 일하는 AI의 메인 작업 지침서다.
@@ -9,11 +9,12 @@
 
 ## AI 협업 방식
 - 문서는 먼저 읽고, 코드는 그 다음에 만진다.
+- 컨벤션과 작업 지시는 섞지 않는다.
 - 작업 지시와 다답안 비교의 자세한 형식은 `docs/ai-context/agent.md`를 따른다.
+- 분석 요청에는 파일명과 코드 라인 번호를 함께 적고, 문서와 코드가 다르면 문서를 먼저 바로잡는다.
 
 ## 프로젝트 정체성
-- 한글명: `내맘대로클래스`
-- 영어명: `MyWayClass`
+- 한글명: `내맘대로클래스`, 영어명: `MyWayClass`
 - 프로젝트 성격: 강의를 개인화된 숏폼 콘텐츠로 재구성하고, 학습자와 AI가 함께 더 나은 학습 콘텐츠를 만드는 플랫폼
 
 ## 기본 스택
@@ -21,8 +22,7 @@
 - 백엔드: `TypeScript + Hono + Cloudflare Workers`
 - 데이터베이스: `Cloudflare D1`
 - 파일 저장소: `Cloudflare R2`
-- 배포: `Cloudflare Pages + Workers`
-- 공통 계약: `packages/shared`
+- 배포: `Cloudflare Pages + Workers`, 공통 계약: `packages/shared`
 
 ## 표준 작업 공간 구조
 - `frontend/` - 브라우저 UI, 화면 상태, 프론트 API 호출
