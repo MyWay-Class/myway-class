@@ -1,5 +1,6 @@
 import type { AuthUser, CourseCard, CourseDetail, Dashboard, LectureDetail, LoginResponse } from '@myway/shared';
 import { CatalogPanel } from './dashboard/CatalogPanel';
+import { CourseResourcesPanel } from './dashboard/CourseResourcesPanel';
 import { IdentityPanel } from './dashboard/IdentityPanel';
 import { LecturePanel } from './dashboard/LecturePanel';
 
@@ -8,6 +9,7 @@ type LmsDashboardProps = {
   busy: boolean;
   notice: string;
   session: LoginResponse | null;
+  canManageCurrent: boolean;
   dashboard: Dashboard | null;
   courseCards: CourseCard[];
   selectedCourseId: string;
@@ -23,6 +25,8 @@ type LmsDashboardProps = {
   onSelectLecture: (lectureId: string) => void;
   onEnroll: (courseId: string) => void;
   onCompleteLecture: (lectureId: string) => void;
+  onAddMaterial: (input: { title: string; summary: string; file_name: string }) => Promise<boolean>;
+  onAddNotice: (input: { title: string; content: string; pinned: boolean }) => Promise<boolean>;
   getCurrentRoleLabel: () => string;
 };
 
@@ -52,6 +56,15 @@ export function LmsDashboard(props: LmsDashboardProps) {
         selectedCourse={props.selectedCourse}
         selectedCourseId={props.selectedCourseId}
         selectedLectureId={props.selectedLectureId}
+      />
+
+      <CourseResourcesPanel
+        busy={props.busy}
+        canManageCurrent={props.canManageCurrent}
+        onAddMaterial={props.onAddMaterial}
+        onAddNotice={props.onAddNotice}
+        selectedCourse={props.selectedCourse}
+        session={props.session}
       />
 
       <LecturePanel
