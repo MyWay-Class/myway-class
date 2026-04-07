@@ -118,19 +118,7 @@
 7. 문서가 너무 길어지면 분리한다.
 8. PR마다 변경 기록을 `docs/dev-logs/`에 남긴다.
 9. 비교 여지가 있는 기능 작업은 워킹트리 2안 비교를 기본값으로 두고, 생략은 예외로만 허용한다.
-
-## 인코딩
-- PowerShell에서 한글이 깨질 때는 먼저 UTF-8 콘솔 설정을 적용한다.
-- 파일 저장은 UTF-8을 사용한다.
-- 새 문서를 만들거나 수정할 때 인코딩이 흔들리면 저장 방식을 먼저 확인한다.
-
-### PowerShell UTF-8 설정
-```powershell
-chcp 65001 > $null
-[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-$OutputEncoding = [Console]::OutputEncoding
-```
+10. PowerShell UTF-8 설정은 `docs/ops/agent/agent.md`를 따른다.
 
 ## TypeScript 스타일
 - Type inference를 기본으로 사용한다.
