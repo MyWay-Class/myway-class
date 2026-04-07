@@ -10,6 +10,7 @@ type LmsDashboardProps = {
   notice: string;
   session: LoginResponse | null;
   canManageCurrent: boolean;
+  apiStatus: 'checking' | 'online' | 'offline';
   dashboard: Dashboard | null;
   courseCards: CourseCard[];
   selectedCourseId: string;
@@ -35,6 +36,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
     <main className="app-shell">
       <IdentityPanel
         busy={props.busy}
+        apiStatus={props.apiStatus}
         demoUsers={props.demoUsers}
         enrolledCourses={props.enrolledCourses}
         getCurrentRoleLabel={props.getCurrentRoleLabel}
