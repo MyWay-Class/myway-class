@@ -96,6 +96,18 @@
   - 강의 오디오 추출 기록 조회
 - `GET /api/v1/media/pipeline/:lectureId`
   - 강의 미디어 파이프라인 상태 조회
+- `POST /api/v1/custom-courses/compose`
+  - 커스텀 강의 생성
+- `GET /api/v1/custom-courses/my`
+  - 내 커스텀 강의 목록
+- `GET /api/v1/custom-courses/community`
+  - 같은 강의 수강생 공유 목록
+- `GET /api/v1/custom-courses/:customCourseId`
+  - 커스텀 강의 상세
+- `POST /api/v1/custom-courses/:customCourseId/share`
+  - 커스텀 강의 공유
+- `POST /api/v1/custom-courses/:customCourseId/copy`
+  - 커스텀 강의 담아가기
 - `POST /api/v1/ai/intent`
   - 사용자 메시지 의도 분류
 - `POST /api/v1/ai/search`
