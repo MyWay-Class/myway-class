@@ -54,6 +54,9 @@ docs/
 | 전체 구조 파악 | `context/architecture.md` |
 | 모듈 배치 확인 | `context/module-structure.md` |
 | 공통 규칙 확인 | `conventions/00-CONVENTIONS-CORE.md` |
+| LLM 지시 가중치 | `ai-context/agent.md` |
+| 워킹트리 비교 전략 | `conventions/07-WORKTREE-CONVENTIONS.md` |
+| 터미널 지시 형식 | `conventions/08-LLM-CLI-TERMINAL.md` |
 
 ---
 

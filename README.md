@@ -3,3 +3,14 @@
 강의를 개인화된 숏폼과 커스텀 강의로 재구성해, 같은 강의를 듣는 수강생끼리 더 효율적으로 학습하고 공유하는 LMS 플랫폼입니다.
 
 문서 허브는 `docs/README.md`이고, 프로젝트 핵심 문서는 `docs/project/00-index.md`에 모아둡니다.
+
+## AI와 협업하는 방법
+
+- 작업을 시작할 때는 먼저 `agent.md`를 읽고, 필요한 경우 `docs/README.md`에서 관련 문서만 따라갑니다.
+- 작업 지시는 짧고 구체적으로 적습니다. 목표, 대상 파일, 완료 기준만 먼저 줍니다.
+- 컨벤션과 작업 지시는 섞지 않습니다. 규칙은 문서에 두고, 지시에서는 파일 경로로만 참조합니다.
+- 분석이 필요하면 파일명과 라인 번호를 함께 적습니다.
+- 같은 이슈에 여러 접근이 가능하면 2개 정도의 결과를 비교하고, 더 나은 쪽을 채택한 이유를 남깁니다.
+- 변경 후에는 `docs/dev-logs/`에 요약을 남기고, 문서와 코드가 맞는지 확인합니다.
+
+세부 규칙은 `docs/ai-context/agent.md`, `docs/ai-context/harness-engineering.md`, `docs/conventions/07-WORKTREE-CONVENTIONS.md`, `docs/conventions/08-LLM-CLI-TERMINAL.md`를 따릅니다.
