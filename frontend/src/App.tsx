@@ -10,6 +10,7 @@ import {
 } from '@myway/shared';
 import {
   clearStoredAuth,
+  completeLecture,
   enrollCourse,
   getCurrentRoleLabel,
   loadCourseDetail,
@@ -19,26 +20,9 @@ import {
   loadLectureDetail,
   loginWithUser,
   logoutCurrentSession,
-  completeLecture,
   storeAuth,
 } from './lib/api';
-
-function formatDifficulty(value: CourseCard['difficulty']): string {
-  switch (value) {
-    case 'beginner':
-      return '입문';
-    case 'intermediate':
-      return '중급';
-    case 'advanced':
-      return '고급';
-    default:
-      return value;
-  }
-}
-
-function formatPercentage(value: number): string {
-  return `${value}%`;
-}
+import { LmsDashboard } from './components/LmsDashboard';
 
 export default function App() {
   const [session, setSession] = useState<LoginResponse | null>(null);
@@ -195,7 +179,11 @@ export default function App() {
     if (result?.course) {
       setSelectedCourse(result.course);
       setSelectedLectureId(result.course.lectures[0]?.id ?? '');
-      setSelectedLecture(result.course.lectures[0] ? await loadLectureDetail(result.course.lectures[0].id, session.session_token) : null);
+      setSelectedLecture(
+        result.course.lectures[0]
+          ? await loadLectureDetail(result.course.lectures[0].id, session.session_token)
+          : null,
+      );
     }
 
     setNotice('수강 신청이 완료되었습니다.');
@@ -213,11 +201,11 @@ export default function App() {
       return;
     }
 
-    if (!highlightedLecture) {
+    if (!selectedCourse) {
       return;
     }
 
-    if (highlightedLecture.is_completed) {
+    if (selectedLecture?.is_completed) {
       setNotice('이미 완료한 강의입니다.');
       return;
     }
@@ -246,305 +234,27 @@ export default function App() {
   const highlightedLecture = selectedLecture ?? selectedCourse?.lectures[0] ?? null;
 
   return (
-    <main className="app-shell">
-      <section className="hero">
-        <div>
-          <p className="eyebrow">MyWayClass · 인증과 권한</p>
-          <h1>학습자, 강사, 운영자를 구분하는 기본 권한 체계</h1>
-          <p className="lead">
-            같은 LMS라도 역할이 섞이면 책임이 흐려집니다. 이 화면은 로그인, 로그아웃, 내 정보, 역할 기반 접근 제어를
-            먼저 보여주고, 그 위에 기본 LMS 코어를 얹습니다.
-          </p>
-        </div>
-
-        <aside className="hero-panel">
-          <span className="hero-panel__label">{loading ? '로딩 중' : session ? '로그인 완료' : '게스트 모드'}</span>
-          <strong>{notice}</strong>
-          <p>
-            현재 상태: <code>{session ? `${session.user.name} · ${getCurrentRoleLabel()}` : '로그인 대기'}</code>
-          </p>
-          <p>
-            권한: <code>{session ? session.permissions.join(', ') : 'NONE'}</code>
-          </p>
-          {session ? (
-            <button className="action-button action-button--ghost" onClick={() => void handleLogout()} type="button">
-              {busy ? '처리 중...' : '로그아웃'}
-            </button>
-          ) : null}
-        </aside>
-      </section>
-
-      <section className="auth-grid">
-        <div className="panel panel--wide">
-          <div className="panel__header">
-            <div>
-              <p className="section-label">로그인</p>
-              <h2>데모 계정으로 역할을 전환해보세요</h2>
-            </div>
-          </div>
-
-          <div className="auth-card-grid">
-            {demoUsers.map((user) => (
-              <button
-                key={user.id}
-                className={`auth-card ${session?.user.id === user.id ? 'is-active' : ''}`}
-                disabled={busy}
-                onClick={() => void handleLogin(user.id)}
-                type="button"
-              >
-                <span className="auth-card__role">{user.role}</span>
-                <strong>{user.name}</strong>
-                <p>{user.bio}</p>
-                <dl>
-                  <div>
-                    <dt>부서</dt>
-                    <dd>{user.department}</dd>
-                  </div>
-                  <div>
-                    <dt>이메일</dt>
-                    <dd>{user.email}</dd>
-                  </div>
-                </dl>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel__header">
-            <div>
-              <p className="section-label">내 정보</p>
-              <h2>{session?.user.name ?? '로그인 전'}</h2>
-            </div>
-          </div>
-
-          {session ? (
-            <>
-              <div className="detail-grid detail-grid--single">
-                <article>
-                  <span>역할</span>
-                  <strong>{session.user.role}</strong>
-                </article>
-                <article>
-                  <span>권한 라벨</span>
-                  <strong>{getCurrentRoleLabel()}</strong>
-                </article>
-                <article>
-                  <span>이메일</span>
-                  <strong>{session.user.email}</strong>
-                </article>
-                <article>
-                  <span>부서</span>
-                  <strong>{session.user.department}</strong>
-                </article>
-              </div>
-
-              <div className="enrollment-panel">
-                <div className="enrollment-panel__header">
-                  <div>
-                    <p className="section-label">내 수강</p>
-                    <h3>{enrolledCourses.length ? `${enrolledCourses.length}개 강의 수강 중` : '수강 중인 강의 없음'}</h3>
-                  </div>
-                </div>
-
-                {enrolledCourses.length > 0 ? (
-                  <div className="enrollment-list">
-                    {enrolledCourses.map((course) => (
-                      <article key={course.id} className="enrollment-card">
-                        <div className="enrollment-card__head">
-                          <strong>{course.title}</strong>
-                          <span>{course.progress_percent}%</span>
-                        </div>
-                        <p>
-                          완료 {course.completed_lectures} / {course.lecture_count} · {course.category} ·{' '}
-                          {formatDifficulty(course.difficulty)}
-                        </p>
-                        <div className="progress-track" aria-hidden="true">
-                          <span style={{ width: `${course.progress_percent}%` }} />
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="empty-state">수강 신청을 하면 여기에서 진도와 완료한 강의가 보입니다.</p>
-                )}
-              </div>
-            </>
-          ) : (
-            <p className="empty-state">로그인하면 내 정보와 진도, 수강 상태가 보입니다.</p>
-          )}
-        </div>
-      </section>
-
-      <section className="metrics">
-        <article>
-          <span>전체 강의</span>
-          <strong>{dashboard?.total_courses ?? courseCards.length}</strong>
-        </article>
-        <article>
-          <span>수강 중</span>
-          <strong>{dashboard?.active_enrollments ?? 0}</strong>
-        </article>
-        <article>
-          <span>평균 진도</span>
-          <strong>{formatPercentage(dashboard?.average_progress ?? 0)}</strong>
-        </article>
-        <article>
-          <span>권한 상태</span>
-          <strong>{session ? '활성' : '제한됨'}</strong>
-        </article>
-      </section>
-
-      <section className="content-grid">
-        <div className="panel panel--wide">
-          <div className="panel__header">
-            <div>
-              <p className="section-label">강의 목록</p>
-              <h2>수강할 코스를 선택하세요</h2>
-            </div>
-          </div>
-
-          <div className="course-grid">
-            {courseCards.map((course) => (
-              <button
-                key={course.id}
-                className={`course-card ${course.id === selectedCourseId ? 'is-active' : ''}`}
-                onClick={() => setSelectedCourseId(course.id)}
-                type="button"
-              >
-                <span className="course-card__category">{course.category}</span>
-                <strong>{course.title}</strong>
-                <p>{course.description}</p>
-                <dl>
-                  <div>
-                    <dt>난이도</dt>
-                    <dd>{formatDifficulty(course.difficulty)}</dd>
-                  </div>
-                  <div>
-                    <dt>강의</dt>
-                    <dd>{course.lecture_count}개</dd>
-                  </div>
-                  <div>
-                    <dt>진도</dt>
-                    <dd>{formatPercentage(course.progress_percent)}</dd>
-                  </div>
-                </dl>
-                <span className={`course-card__status ${course.enrolled ? 'is-enrolled' : ''}`}>
-                  {course.enrolled ? '수강 중' : '미수강'}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel__header">
-            <div>
-              <p className="section-label">강의 상세</p>
-              <h2>{selectedCourse?.title ?? '강의를 선택하세요'}</h2>
-            </div>
-
-            <button
-              className="action-button"
-              disabled={busy || !selectedCourseId || !canEnrollCurrent || Boolean(selectedCourse?.enrolled)}
-              onClick={() => void handleEnroll(selectedCourseId)}
-              type="button"
-            >
-              {busy ? '처리 중...' : selectedCourse?.enrolled ? '수강 중' : canEnrollCurrent ? '수강 신청' : '권한 없음'}
-            </button>
-          </div>
-
-          {selectedCourse ? (
-            <>
-              <p className="panel__description">{selectedCourse.description}</p>
-              <div className="detail-grid">
-                <article>
-                  <span>강사</span>
-                  <strong>{selectedCourse.instructor_name}</strong>
-                </article>
-                <article>
-                  <span>난이도</span>
-                  <strong>{formatDifficulty(selectedCourse.difficulty)}</strong>
-                </article>
-                <article>
-                  <span>강의 수</span>
-                  <strong>{selectedCourse.lecture_count}개</strong>
-                </article>
-                <article>
-                  <span>완료</span>
-                  <strong>{selectedCourse.completed_lectures}개</strong>
-                </article>
-              </div>
-
-              <div className="lecture-list">
-                {selectedCourse.lectures.map((lecture) => (
-                  <button
-                    key={lecture.id}
-                    className={`lecture-item ${lecture.id === selectedLectureId ? 'is-active' : ''}`}
-                    onClick={() => setSelectedLectureId(lecture.id)}
-                    type="button"
-                  >
-                    <span>
-                      {lecture.order_index + 1}강 · {lecture.duration_minutes}분
-                    </span>
-                    <strong>{lecture.title}</strong>
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="empty-state">선택한 강의의 상세 정보가 여기에 표시됩니다.</p>
-          )}
-        </div>
-      </section>
-
-      <section className="panel panel--lecture">
-        <div className="panel__header">
-          <div>
-            <p className="section-label">강의 시청</p>
-            <h2>{highlightedLecture?.title ?? '강의 영상을 선택하세요'}</h2>
-          </div>
-        </div>
-
-        {highlightedLecture ? (
-          <div className="lecture-detail">
-            <div className="lecture-detail__meta">
-              <span>{highlightedLecture.course_title}</span>
-              <span>{highlightedLecture.course_instructor}</span>
-              {selectedCourse ? <span>{selectedCourse.progress_percent}% 완료</span> : null}
-            </div>
-            <p>{highlightedLecture.content_text}</p>
-            <div className="lecture-detail__actions">
-              <button
-                className="action-button"
-                disabled={busy || !session || !selectedCourse?.enrolled || Boolean(highlightedLecture.is_completed)}
-                onClick={() => void handleCompleteLecture(highlightedLecture.id)}
-                type="button"
-              >
-                {highlightedLecture.is_completed ? '완료됨' : selectedCourse?.enrolled ? '강의 완료' : '수강 후 가능'}
-              </button>
-            </div>
-            <div className="lecture-detail__nav">
-              <button
-                disabled={!highlightedLecture.previous_lecture_id}
-                onClick={() => setSelectedLectureId(highlightedLecture.previous_lecture_id ?? selectedLectureId)}
-                type="button"
-              >
-                이전 강의
-              </button>
-              <button
-                disabled={!highlightedLecture.next_lecture_id}
-                onClick={() => setSelectedLectureId(highlightedLecture.next_lecture_id ?? selectedLectureId)}
-                type="button"
-              >
-                다음 강의
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="empty-state">선택한 강의가 없으면 여기에 미리보기 영역이 표시됩니다.</p>
-        )}
-      </section>
-    </main>
+    <LmsDashboard
+      busy={busy}
+      canEnrollCurrent={canEnrollCurrent}
+      courseCards={courseCards}
+      dashboard={dashboard}
+      demoUsers={demoUsers}
+      enrolledCourses={enrolledCourses}
+      getCurrentRoleLabel={getCurrentRoleLabel}
+      highlightedLecture={highlightedLecture}
+      loading={loading}
+      notice={notice}
+      onCompleteLecture={(lectureId) => void handleCompleteLecture(lectureId)}
+      onEnroll={(courseId) => void handleEnroll(courseId)}
+      onLogin={(userId) => void handleLogin(userId)}
+      onLogout={() => void handleLogout()}
+      onSelectCourse={setSelectedCourseId}
+      onSelectLecture={setSelectedLectureId}
+      selectedCourse={selectedCourse}
+      selectedCourseId={selectedCourseId}
+      selectedLectureId={selectedLectureId}
+      session={session}
+    />
   );
 }
