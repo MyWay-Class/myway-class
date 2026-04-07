@@ -82,4 +82,5 @@
 - `POST /api/v1/ai/summary`로 강의 요약을 생성한다.
 - `POST /api/v1/ai/quiz`로 강의 기반 퀴즈를 생성한다.
 - `GET /api/v1/ai/insights`로 AI 사용량과 역할별 인사이트를 조회한다.
+- `POST /api/v1/smart/chat`로 의도 분류와 응답 라우팅을 한 번에 처리한다.
 - 공통 로직은 `packages/shared/src/ai.ts`에서 관리한다.

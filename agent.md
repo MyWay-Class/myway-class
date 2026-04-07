@@ -12,6 +12,10 @@
 - 컨벤션과 작업 지시는 섞지 않는다.
 - 작업 지시와 다답안 비교의 자세한 형식은 `docs/ai-context/agent.md`를 따른다.
 - 분석 요청에는 파일명과 코드 라인 번호를 함께 적고, 문서와 코드가 다르면 문서를 먼저 바로잡는다.
+- `#5` 이상급 기능 작업, 구조 변경, AI 레이어 추가, 라우트 신설처럼 비교 여지가 있는 작업은 기본적으로 워킹트리 2안 비교를 한다.
+- 1안만 만들고 끝내는 것은 예외다. 비교를 생략하려면 변경량이 극히 작거나, 두 안을 나눌 실익이 없다는 점을 작업 전에 명시한다.
+- 다답안 비교에서는 `변경량 / 파일 수 / 검증 결과 / 파일 분리 적합성`을 함께 본다.
+- 비교 결과와 선택 이유는 `docs/dev-logs/`에 남긴다.
 
 ## 프로젝트 정체성
 - 한글명: `내맘대로클래스`, 영어명: `MyWayClass`
@@ -113,19 +117,8 @@
 6. AI 출력은 검증 가능하고 추적 가능해야 한다.
 7. 문서가 너무 길어지면 분리한다.
 8. PR마다 변경 기록을 `docs/dev-logs/`에 남긴다.
-
-## 인코딩
-- PowerShell에서 한글이 깨질 때는 먼저 UTF-8 콘솔 설정을 적용한다.
-- 파일 저장은 UTF-8을 사용한다.
-- 새 문서를 만들거나 수정할 때 인코딩이 흔들리면 저장 방식을 먼저 확인한다.
-
-### PowerShell UTF-8 설정
-```powershell
-chcp 65001 > $null
-[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-$OutputEncoding = [Console]::OutputEncoding
-```
+9. 비교 여지가 있는 기능 작업은 워킹트리 2안 비교를 기본값으로 두고, 생략은 예외로만 허용한다.
+10. PowerShell UTF-8 설정은 `docs/ops/agent/agent.md`를 따른다.
 
 ## TypeScript 스타일
 - Type inference를 기본으로 사용한다.

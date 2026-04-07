@@ -20,6 +20,8 @@ import {
   type LoginResponse,
   type Notice,
   type NoticeCreateRequest,
+  type SmartChatRequest,
+  type SmartChatResult,
 } from '@myway/shared';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8787';
@@ -367,4 +369,26 @@ export function canCurrentUserEnroll(): boolean {
 export function getCurrentRoleLabel(): string {
   const storedAuth = readStoredAuth();
   return storedAuth ? getRoleLabel(storedAuth.user.role) : '게스트';
+}
+
+export async function sendSmartChat(
+  input: SmartChatRequest,
+  sessionToken?: string | null,
+): Promise<SmartChatResult | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await request<SmartChatResult>(
+    '/api/v1/smart/chat',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return response?.success && response.data ? response.data : null;
 }
