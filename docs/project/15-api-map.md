@@ -47,7 +47,7 @@
 - AI
   - 요약, 챗봇, 검색, 퀴즈, 인텐트
 - 숏폼
-  - 생성, 편집, 공개, 내 목록
+  - 생성, 후보 선택, 조립, 공개, 내 목록, 커뮤니티
 - 커스텀 강의
   - 클립 선택, 조립, 저장, 담아가기
 - 커뮤니티
@@ -96,6 +96,28 @@
   - 강의 오디오 추출 기록 조회
 - `GET /api/v1/media/pipeline/:lectureId`
   - 강의 미디어 파이프라인 상태 조회
+- `POST /api/v1/shortform/generate`
+  - 숏폼 후보 생성
+- `PUT /api/v1/shortform/candidates/select`
+  - 숏폼 후보 선택 반영
+- `GET /api/v1/shortform/extraction/:id`
+  - 숏폼 추출 결과 조회
+- `POST /api/v1/shortform/compose`
+  - 숏폼 조립
+- `GET /api/v1/shortform/videos/my`
+  - 내 숏폼 목록
+- `GET /api/v1/shortform/video/:id`
+  - 숏폼 상세
+- `POST /api/v1/shortform/share`
+  - 숏폼 공유
+- `GET /api/v1/shortform/community`
+  - 숏폼 커뮤니티 피드
+- `POST /api/v1/shortform/save`
+  - 숏폼 담아가기
+- `POST /api/v1/shortform/like`
+  - 숏폼 좋아요
+- `GET /api/v1/shortform/library`
+  - 내 숏폼 라이브러리
 - `POST /api/v1/custom-courses/compose`
   - 커스텀 강의 생성
 - `GET /api/v1/custom-courses/my`
