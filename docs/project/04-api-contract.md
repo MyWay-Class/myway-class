@@ -63,6 +63,10 @@ type ApiResponse<T> = {
 - `POST /api/v1/media/transcribe`
 - `POST /api/v1/media/summarize`
 - `POST /api/v1/media/extract-audio`
+- `GET /api/v1/media/transcript/:lectureId`
+- `GET /api/v1/media/notes/:lectureId`
+- `GET /api/v1/media/audio-extractions/:lectureId`
+- `GET /api/v1/media/pipeline/:lectureId`
 - `POST /api/v1/shortform/generate`
 - `GET /api/v1/shortform/my`
 - `POST /api/v1/smart/chat`

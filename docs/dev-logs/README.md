@@ -16,6 +16,7 @@
 - 로그는 `왜 바꿨는지`, `무엇을 바꿨는지`, `어떻게 검증했는지`만 짧게 적는다.
 
 ## 최신 로그
+- `2026-04-08-stt-media-pipeline.md`
 - `2026-04-08-lms-api-screen-connection.md`
 - `2026-04-08-course-materials-notices.md`
 - `2026-04-08-file-split-guidance.md`
