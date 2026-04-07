@@ -16,6 +16,8 @@
 - 로그는 `왜 바꿨는지`, `무엇을 바꿨는지`, `어떻게 검증했는지`만 짧게 적는다.
 
 ## 최신 로그
+- `2026-04-07-ai-collaboration-dedup.md`
+- `2026-04-07-ai-collaboration-official-rules.md`
 - `2026-04-07-document-type-legend.md`
 - `2026-04-07-document-types.md`
 - `2026-04-07-readme-ai-collaboration-tuning.md`

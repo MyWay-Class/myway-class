@@ -9,11 +9,6 @@
 
 ## AI와 협업하는 방법
 
-- 작업을 시작할 때는 먼저 `agent.md`를 읽고, 필요한 경우 `docs/README.md`에서 관련 문서만 따라갑니다.
-- 작업 지시는 짧고 구체적으로 적습니다. 기본 형식은 `목표 / 대상 / 완료 기준 / 참조 문서`입니다.
-- 컨벤션과 작업 지시는 섞지 않습니다. 규칙은 문서에 두고, 지시에서는 파일 경로로만 참조합니다.
-- 분석이 필요하면 파일명과 라인 번호를 함께 적습니다.
-- 같은 이슈에 여러 접근이 가능하면 기본값은 2개만 비교하고, 더 나은 쪽을 채택한 이유를 짧게 남깁니다.
-- 변경 후에는 `docs/dev-logs/`에 짧고 재현 가능한 요약을 남기고, 문서와 코드가 맞는지 확인합니다.
-
-세부 규칙은 `docs/ai-context/agent.md`, `docs/ai-context/harness-engineering.md`, `docs/conventions/07-WORKTREE-CONVENTIONS.md`, `docs/conventions/08-LLM-CLI-TERMINAL.md`를 따릅니다.
+- 이 저장소는 AI를 질문 응답기가 아니라 작업 파트너로 다룹니다.
+- 세부 규칙은 `agent.md`와 `docs/README.md`에서 시작하고, 작업 지시 형식과 비교 기준은 `docs/ai-context/agent.md`를 따릅니다.
+- 워킹트리와 터미널 운영은 `docs/conventions/07-WORKTREE-CONVENTIONS.md`, `docs/conventions/08-LLM-CLI-TERMINAL.md`를 봅니다.
