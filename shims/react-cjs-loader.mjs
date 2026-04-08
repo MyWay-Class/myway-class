@@ -1,48 +1,13 @@
 import reactEntryUrl from '../node_modules/react/index.js?url';
-import reactDevUrl from '../node_modules/react/cjs/react.development.js?url';
-import reactJsxRuntimeIndexUrl from '../node_modules/react/jsx-runtime.js?url';
-import reactJsxRuntimeDevUrl from '../node_modules/react/cjs/react-jsx-runtime.development.js?url';
-import reactJsxDevRuntimeIndexUrl from '../node_modules/react/jsx-dev-runtime.js?url';
-import reactJsxDevRuntimeDevUrl from '../node_modules/react/cjs/react-jsx-dev-runtime.development.js?url';
 import reactDomIndexUrl from '../node_modules/react-dom/index.js?url';
-import reactDomClientIndexUrl from '../node_modules/react-dom/client.js?url';
-import reactDomClientDevUrl from '../node_modules/react-dom/cjs/react-dom-client.development.js?url';
-import reactDomDevUrl from '../node_modules/react-dom/cjs/react-dom.development.js?url';
+import reactDomClientUrl from '../node_modules/react-dom/client.js?url';
 import schedulerIndexUrl from '../node_modules/scheduler/index.js?url';
-import schedulerDevUrl from '../node_modules/scheduler/cjs/scheduler.development.js?url';
 
 const processShim = { env: { NODE_ENV: 'development' } };
+
+const entryUrls = new Set([reactEntryUrl, reactDomIndexUrl, reactDomClientUrl, schedulerIndexUrl]);
 const sources = new Map();
 const cache = new Map();
-
-const sourceUrls = [
-  reactEntryUrl,
-  reactDevUrl,
-  reactJsxRuntimeIndexUrl,
-  reactJsxRuntimeDevUrl,
-  reactJsxDevRuntimeIndexUrl,
-  reactJsxDevRuntimeDevUrl,
-  reactDomIndexUrl,
-  reactDomClientIndexUrl,
-  reactDomClientDevUrl,
-  reactDomDevUrl,
-  schedulerIndexUrl,
-  schedulerDevUrl,
-];
-
-const fetchedSources = await Promise.all(
-  sourceUrls.map(async (url) => {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to load runtime source from ${url}`);
-    }
-    return [url, await response.text()];
-  }),
-);
-
-for (const [url, source] of fetchedSources) {
-  sources.set(url, source);
-}
 
 function resolveSpecifier(specifier, parentUrl) {
   switch (specifier) {
@@ -51,11 +16,7 @@ function resolveSpecifier(specifier, parentUrl) {
     case 'react-dom':
       return reactDomIndexUrl;
     case 'react-dom/client':
-      return reactDomClientIndexUrl;
-    case 'react/jsx-runtime':
-      return reactJsxRuntimeIndexUrl;
-    case 'react/jsx-dev-runtime':
-      return reactJsxDevRuntimeIndexUrl;
+      return reactDomClientUrl;
     case 'scheduler':
       return schedulerIndexUrl;
     default:
@@ -65,6 +26,40 @@ function resolveSpecifier(specifier, parentUrl) {
       throw new Error(`Unsupported CJS module requested: ${specifier}`);
   }
 }
+
+function collectRequires(source) {
+  const requires = [];
+  const pattern = /require\((['"])([^'"]+)\1\)/g;
+  let match;
+
+  while ((match = pattern.exec(source))) {
+    requires.push(match[2]);
+  }
+
+  return requires;
+}
+
+async function preload(url, seen = new Set()) {
+  if (sources.has(url) || seen.has(url)) {
+    return;
+  }
+
+  seen.add(url);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to load runtime source from ${url}`);
+  }
+
+  const source = await response.text();
+  sources.set(url, source);
+
+  for (const specifier of collectRequires(source)) {
+    const resolved = resolveSpecifier(specifier, url);
+    await preload(resolved, seen);
+  }
+}
+
+await Promise.all(Array.from(entryUrls, (url) => preload(url)));
 
 function loadModule(url) {
   if (cache.has(url)) {
@@ -91,14 +86,6 @@ export function loadReactRuntime() {
   return loadModule(reactEntryUrl);
 }
 
-export function loadReactDevRuntime() {
-  return loadModule(reactJsxDevRuntimeIndexUrl);
-}
-
-export function loadReactJsxRuntime() {
-  return loadModule(reactJsxRuntimeIndexUrl);
-}
-
 export function loadReactDomClient() {
-  return loadModule(reactDomClientIndexUrl);
+  return loadModule(reactDomClientUrl);
 }

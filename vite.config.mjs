@@ -7,8 +7,6 @@ import { defineConfig } from 'vite';
 
 const repoRoot = dirname(fileURLToPath(new URL(import.meta.url)));
 const frontendRoot = resolve(repoRoot, 'frontend');
-const reactJsxRuntimeShim = `/@fs/${fileURLToPath(new URL('./shims/react-jsx-runtime.mjs', import.meta.url)).replace(/\\/g, '/')}`;
-const reactJsxDevRuntimeShim = `/@fs/${fileURLToPath(new URL('./shims/react-jsx-dev-runtime.mjs', import.meta.url)).replace(/\\/g, '/')}`;
 
 function sucraseTransformPlugin() {
   return {
@@ -32,25 +30,26 @@ function sucraseTransformPlugin() {
         transforms.push('jsx');
       }
 
-      const result = transform(code, {
+      let source = code;
+      if (isTsx || isJsx) {
+        const hasReactDefaultImport = /^\s*import\s+React(?:\s*,|\s+from|\s+{)/m.test(source);
+        if (!hasReactDefaultImport) {
+          source = `import React from 'react';\n${source}`;
+        }
+      }
+
+      const result = transform(source, {
         filePath: id,
         transforms,
-        jsxRuntime: 'automatic',
-        jsxImportSource: 'react',
+        jsxRuntime: 'classic',
         production: process.env.NODE_ENV === 'production',
         sourceMapOptions: {
           compiledFilename: id,
         },
       });
 
-      const rewrittenCode = result.code
-        .replaceAll('"react/jsx-runtime"', `"${reactJsxRuntimeShim}"`)
-        .replaceAll("'react/jsx-runtime'", `'${reactJsxRuntimeShim}'`)
-        .replaceAll('"react/jsx-dev-runtime"', `"${reactJsxDevRuntimeShim}"`)
-        .replaceAll("'react/jsx-dev-runtime'", `'${reactJsxDevRuntimeShim}'`);
-
       return {
-        code: rewrittenCode,
+        code: result.code,
         map: result.sourceMap ?? null,
       };
     },
@@ -89,14 +88,6 @@ export default defineConfig({
       {
         find: /^react$/,
         replacement: fileURLToPath(new URL('./shims/react.mjs', import.meta.url)),
-      },
-      {
-        find: /^react\/jsx-runtime$/,
-        replacement: fileURLToPath(new URL('./shims/react-jsx-runtime.mjs', import.meta.url)),
-      },
-      {
-        find: /^react\/jsx-dev-runtime$/,
-        replacement: fileURLToPath(new URL('./shims/react-jsx-dev-runtime.mjs', import.meta.url)),
       },
       {
         find: /^react-dom\/client$/,
