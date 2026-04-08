@@ -1,11 +1,11 @@
-import reactProdUrl from '../node_modules/react/cjs/react.production.js?url';
-import jsxDevRuntimeProdUrl from '../node_modules/react/cjs/react-jsx-dev-runtime.production.js?url';
-import jsxRuntimeProdUrl from '../node_modules/react/cjs/react-jsx-runtime.production.js?url';
-import schedulerProdUrl from '../node_modules/scheduler/cjs/scheduler.production.js?url';
-import reactDomProdUrl from '../node_modules/react-dom/cjs/react-dom.production.js?url';
-import reactDomClientProdUrl from '../node_modules/react-dom/cjs/react-dom-client.production.js?url';
+import reactDevUrl from '../node_modules/react/cjs/react.development.js?url';
+import jsxDevRuntimeDevUrl from '../node_modules/react/cjs/react-jsx-dev-runtime.development.js?url';
+import jsxRuntimeDevUrl from '../node_modules/react/cjs/react-jsx-runtime.development.js?url';
+import schedulerDevUrl from '../node_modules/scheduler/cjs/scheduler.development.js?url';
+import reactDomDevUrl from '../node_modules/react-dom/cjs/react-dom.development.js?url';
+import reactDomClientDevUrl from '../node_modules/react-dom/cjs/react-dom-client.development.js?url';
 
-const processShim = { env: { NODE_ENV: 'production' } };
+const processShim = { env: { NODE_ENV: 'development' } };
 
 const [
   reactSource,
@@ -15,12 +15,12 @@ const [
   reactDomSource,
   reactDomClientSource,
 ] = await Promise.all([
-  reactProdUrl,
-  jsxDevRuntimeProdUrl,
-  jsxRuntimeProdUrl,
-  schedulerProdUrl,
-  reactDomProdUrl,
-  reactDomClientProdUrl,
+  reactDevUrl,
+  jsxDevRuntimeDevUrl,
+  jsxRuntimeDevUrl,
+  schedulerDevUrl,
+  reactDomDevUrl,
+  reactDomClientDevUrl,
 ].map(async (url) => {
   const response = await fetch(url);
   if (!response.ok) {
