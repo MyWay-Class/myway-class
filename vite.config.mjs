@@ -80,19 +80,19 @@ export default defineConfig({
       },
       {
         find: /^react$/,
-        replacement: fileURLToPath(new URL('./frontend/src/shims/react.mjs', import.meta.url)),
+        replacement: fileURLToPath(new URL('./shims/react.mjs', import.meta.url)),
       },
       {
         find: /^react\/jsx-runtime$/,
-        replacement: fileURLToPath(new URL('./frontend/src/shims/react-jsx-runtime.mjs', import.meta.url)),
+        replacement: fileURLToPath(new URL('./shims/react-jsx-runtime.mjs', import.meta.url)),
       },
       {
         find: /^react\/jsx-dev-runtime$/,
-        replacement: fileURLToPath(new URL('./frontend/src/shims/react-jsx-dev-runtime.mjs', import.meta.url)),
+        replacement: fileURLToPath(new URL('./shims/react-jsx-dev-runtime.mjs', import.meta.url)),
       },
       {
         find: /^react-dom\/client$/,
-        replacement: fileURLToPath(new URL('./frontend/src/shims/react-dom-client.mjs', import.meta.url)),
+        replacement: fileURLToPath(new URL('./shims/react-dom-client.mjs', import.meta.url)),
       },
     ],
   },

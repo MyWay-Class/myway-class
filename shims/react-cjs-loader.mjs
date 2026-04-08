@@ -1,9 +1,9 @@
-import reactProdUrl from '../../../node_modules/react/cjs/react.production.js?url';
-import jsxDevRuntimeProdUrl from '../../../node_modules/react/cjs/react-jsx-dev-runtime.production.js?url';
-import jsxRuntimeProdUrl from '../../../node_modules/react/cjs/react-jsx-runtime.production.js?url';
-import schedulerProdUrl from '../../../node_modules/scheduler/cjs/scheduler.production.js?url';
-import reactDomProdUrl from '../../../node_modules/react-dom/cjs/react-dom.production.js?url';
-import reactDomClientProdUrl from '../../../node_modules/react-dom/cjs/react-dom-client.production.js?url';
+import reactProdUrl from '../node_modules/react/cjs/react.production.js?url';
+import jsxDevRuntimeProdUrl from '../node_modules/react/cjs/react-jsx-dev-runtime.production.js?url';
+import jsxRuntimeProdUrl from '../node_modules/react/cjs/react-jsx-runtime.production.js?url';
+import schedulerProdUrl from '../node_modules/scheduler/cjs/scheduler.production.js?url';
+import reactDomProdUrl from '../node_modules/react-dom/cjs/react-dom.production.js?url';
+import reactDomClientProdUrl from '../node_modules/react-dom/cjs/react-dom-client.production.js?url';
 
 const processShim = { env: { NODE_ENV: 'production' } };
 
