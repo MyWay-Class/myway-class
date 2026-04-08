@@ -1,26 +1,26 @@
-import reactDevUrl from '../../../node_modules/react/cjs/react.development.js?url';
-import jsxDevRuntimeUrl from '../../../node_modules/react/cjs/react-jsx-dev-runtime.development.js?url';
-import jsxRuntimeUrl from '../../../node_modules/react/cjs/react-jsx-runtime.development.js?url';
-import schedulerDevUrl from '../../../node_modules/scheduler/cjs/scheduler.development.js?url';
-import reactDomDevUrl from '../../../node_modules/react-dom/cjs/react-dom.development.js?url';
-import reactDomClientDevUrl from '../../../node_modules/react-dom/cjs/react-dom-client.development.js?url';
+import reactProdUrl from '../../../node_modules/react/cjs/react.production.js?url';
+import jsxDevRuntimeProdUrl from '../../../node_modules/react/cjs/react-jsx-dev-runtime.production.js?url';
+import jsxRuntimeProdUrl from '../../../node_modules/react/cjs/react-jsx-runtime.production.js?url';
+import schedulerProdUrl from '../../../node_modules/scheduler/cjs/scheduler.production.js?url';
+import reactDomProdUrl from '../../../node_modules/react-dom/cjs/react-dom.production.js?url';
+import reactDomClientProdUrl from '../../../node_modules/react-dom/cjs/react-dom-client.production.js?url';
 
-const processShim = { env: { NODE_ENV: 'development' } };
+const processShim = { env: { NODE_ENV: 'production' } };
 
 const [
-  reactDevSource,
+  reactSource,
   jsxDevRuntimeSource,
   jsxRuntimeSource,
-  schedulerDevSource,
-  reactDomDevSource,
-  reactDomClientDevSource,
+  schedulerSource,
+  reactDomSource,
+  reactDomClientSource,
 ] = await Promise.all([
-  reactDevUrl,
-  jsxDevRuntimeUrl,
-  jsxRuntimeUrl,
-  schedulerDevUrl,
-  reactDomDevUrl,
-  reactDomClientDevUrl,
+  reactProdUrl,
+  jsxDevRuntimeProdUrl,
+  jsxRuntimeProdUrl,
+  schedulerProdUrl,
+  reactDomProdUrl,
+  reactDomClientProdUrl,
 ].map(async (url) => {
   const response = await fetch(url);
   if (!response.ok) {
@@ -30,12 +30,12 @@ const [
 }));
 
 const sources = {
-  react: reactDevSource,
+  react: reactSource,
   'react/jsx-dev-runtime': jsxDevRuntimeSource,
   'react/jsx-runtime': jsxRuntimeSource,
-  scheduler: schedulerDevSource,
-  'react-dom': reactDomDevSource,
-  'react-dom/client': reactDomClientDevSource,
+  scheduler: schedulerSource,
+  'react-dom': reactDomSource,
+  'react-dom/client': reactDomClientSource,
 };
 
 const cache = new Map();

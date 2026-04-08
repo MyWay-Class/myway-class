@@ -1,6 +1,8 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import autoprefixer from 'autoprefixer';
 import { transform } from 'sucrase';
+import tailwindcss from 'tailwindcss';
 import { defineConfig } from 'vite';
 
 const repoRoot = dirname(fileURLToPath(new URL(import.meta.url)));
@@ -58,6 +60,16 @@ export default defineConfig({
   build: {
     cssMinify: false,
     minify: false,
+  },
+  css: {
+    postcss: {
+      plugins: [
+        tailwindcss({
+          content: [resolve(frontendRoot, 'index.html'), resolve(frontendRoot, 'src/**/*.{ts,tsx,js,jsx}')],
+        }),
+        autoprefixer(),
+      ],
+    },
   },
   resolve: {
     preserveSymlinks: true,

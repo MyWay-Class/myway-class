@@ -1,90 +1,32 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-  --bg: #f7f8fc;
-  --bg-soft: #ffffff;
-  --bg-card: #ffffff;
-  --text: #1d2433;
-  --muted: #7d8699;
-  --line: rgba(120, 132, 160, 0.16);
-  --line-strong: rgba(115, 103, 240, 0.2);
-  --sidebar: #ffffff;
-  --accent: #6f63f6;
-  --accent-strong: #8f49ee;
-  --accent-soft: rgba(111, 99, 246, 0.12);
-  --accent-soft-strong: rgba(111, 99, 246, 0.18);
-  --success-soft: rgba(90, 185, 126, 0.14);
-  --warning-soft: rgba(241, 179, 67, 0.18);
-  --danger-soft: rgba(223, 101, 132, 0.16);
-  --shadow: 0 26px 60px rgba(100, 113, 152, 0.12);
-  --shadow-soft: 0 16px 40px rgba(100, 113, 152, 0.08);
-}
+@layer base {
+  :root {
+    color-scheme: light;
+  }
 
-html,
-body,
-#root {
-  min-height: 100%;
-}
+  html {
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f9fb;
+  }
 
-body {
-  margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(111, 99, 246, 0.08), transparent 28%),
-    radial-gradient(circle at top right, rgba(143, 73, 238, 0.06), transparent 24%),
-    var(--bg);
-  color: var(--text);
-  font-family:
-    "Pretendard Variable",
-    Pretendard,
-    "Noto Sans KR",
-    "Apple SD Gothic Neo",
-    "Malgun Gothic",
-    sans-serif;
-}
+  body {
+    @apply m-0 min-h-screen bg-[#f8f9fb] text-slate-900 antialiased;
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
 
-* {
-  box-sizing: border-box;
-}
+  #root {
+    @apply min-h-screen;
+  }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-button {
-  border: 0;
-}
-
-input,
-textarea,
-select {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 1rem;
-  padding: 0.95rem 1rem;
-  background: #f7f8fc;
-  color: var(--text);
-  outline: none;
-  transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    background 140ms ease;
-}
-
-input:focus,
-textarea:focus,
-select:focus {
-  border-color: rgba(111, 99, 246, 0.4);
-  box-shadow: 0 0 0 4px rgba(111, 99, 246, 0.12);
-  background: #fff;
-}
-
-textarea {
-  min-height: 120px;
-  resize: vertical;
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
 }
