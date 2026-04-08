@@ -1,10 +1,14 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import autoprefixer from 'autoprefixer';
 import { transform } from 'sucrase';
+import tailwindcss from 'tailwindcss';
 import { defineConfig } from 'vite';
 
 const repoRoot = dirname(fileURLToPath(new URL(import.meta.url)));
 const frontendRoot = resolve(repoRoot, 'frontend');
+const reactJsxRuntimeShim = `/@fs/${fileURLToPath(new URL('./shims/react-jsx-runtime.mjs', import.meta.url)).replace(/\\/g, '/')}`;
+const reactJsxDevRuntimeShim = `/@fs/${fileURLToPath(new URL('./shims/react-jsx-dev-runtime.mjs', import.meta.url)).replace(/\\/g, '/')}`;
 
 function sucraseTransformPlugin() {
   return {
@@ -39,8 +43,14 @@ function sucraseTransformPlugin() {
         },
       });
 
+      const rewrittenCode = result.code
+        .replaceAll('"react/jsx-runtime"', `"${reactJsxRuntimeShim}"`)
+        .replaceAll("'react/jsx-runtime'", `'${reactJsxRuntimeShim}'`)
+        .replaceAll('"react/jsx-dev-runtime"', `"${reactJsxDevRuntimeShim}"`)
+        .replaceAll("'react/jsx-dev-runtime'", `'${reactJsxDevRuntimeShim}'`);
+
       return {
-        code: result.code,
+        code: rewrittenCode,
         map: result.sourceMap ?? null,
       };
     },
@@ -58,6 +68,16 @@ export default defineConfig({
   build: {
     cssMinify: false,
     minify: false,
+  },
+  css: {
+    postcss: {
+      plugins: [
+        tailwindcss({
+          content: [resolve(frontendRoot, 'index.html'), resolve(frontendRoot, 'src/**/*.{ts,tsx,js,jsx}')],
+        }),
+        autoprefixer(),
+      ],
+    },
   },
   resolve: {
     preserveSymlinks: true,
