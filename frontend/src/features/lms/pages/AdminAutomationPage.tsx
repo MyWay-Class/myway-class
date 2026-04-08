@@ -1,3 +1,5 @@
+import type { AIProviderCatalog } from '@myway/shared';
+
 type AutomationTool = {
   icon: string;
   iconClass: string;
@@ -64,7 +66,13 @@ const rules: AutomationRule[] = [
   },
 ];
 
-export function AdminAutomationPage() {
+type AdminAutomationPageProps = {
+  providerCatalog: AIProviderCatalog | null;
+};
+
+export function AdminAutomationPage({ providerCatalog }: AdminAutomationPageProps) {
+  const providerPlans = providerCatalog?.plans.slice(0, 4) ?? [];
+
   return (
     <div className="space-y-5">
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -106,6 +114,58 @@ export function AdminAutomationPage() {
                 {rule.active ? '활성' : '비활성'}
               </span>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+        <h3 className="flex items-center gap-2 text-[15px] font-bold tracking-[-0.02em] text-slate-900">
+          <i className="ri-database-2-line text-indigo-600" />
+          AI provider 계층
+        </h3>
+        <p className="mt-2 text-[12px] leading-6 text-slate-500">
+          현재는 demo 엔진으로 기본 동작을 유지하고, 앞으로는 Ollama, Gemini, Cloudflare AI 순으로 기능별 fallback을 적용합니다.
+        </p>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {providerPlans.map((plan) => (
+            <article key={plan.feature} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-[13px] font-semibold text-slate-900">{plan.feature}</div>
+                  <div className="mt-1 text-[12px] text-slate-500">{plan.current_provider}가 현재 우선 제공자예요.</div>
+                </div>
+                <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
+                  {plan.steps[0]?.status ?? 'planned'}
+                </span>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {plan.recommended_chain.map((provider, index) => (
+                  <span
+                    key={provider}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      index === 0
+                        ? 'bg-indigo-600 text-white'
+                        : provider === 'demo'
+                          ? 'bg-slate-200 text-slate-600'
+                          : 'bg-white text-slate-600 ring-1 ring-slate-200'
+                    }`}
+                  >
+                    {provider}
+                  </span>
+                ))}
+              </div>
+
+              <ul className="mt-3 space-y-1.5 text-[11px] leading-5 text-slate-500">
+                {plan.steps.slice(0, 3).map((step) => (
+                  <li key={step.provider} className="flex items-center justify-between gap-2">
+                    <span>{step.provider}</span>
+                    <span>{step.reason}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
           ))}
         </div>
       </section>

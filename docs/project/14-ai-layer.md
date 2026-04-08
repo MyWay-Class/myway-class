@@ -75,6 +75,12 @@
 - 각 AI 기능의 책임이 겹치지 않는다.
 - 실패 시 fallback 경로가 문서로 설명된다.
 
+## Provider 계층
+- 현재 구현은 `demo` 엔진을 기본 동작으로 유지한다.
+- 향후 운영 경로는 `Ollama -> Gemini -> Cloudflare AI -> demo` 순의 fallback 계층을 기본으로 둔다.
+- `STT`와 `embedding`은 `Cloudflare AI`를 우선 고려하고, 텍스트 생성 계열은 `Ollama`를 우선 고려한다.
+- provider 선택과 fallback 순서는 `GET /api/v1/ai/providers`로 조회할 수 있다.
+
 ## 현재 구현
 - `POST /api/v1/ai/intent`로 사용자 메시지의 의도를 분류한다.
 - `POST /api/v1/ai/search`로 강의 본문, 트랜스크립트, 요약 노트에서 근거를 찾는다.
@@ -82,5 +88,6 @@
 - `POST /api/v1/ai/summary`로 강의 요약을 생성한다.
 - `POST /api/v1/ai/quiz`로 강의 기반 퀴즈를 생성한다.
 - `GET /api/v1/ai/insights`로 AI 사용량과 역할별 인사이트를 조회한다.
+- `GET /api/v1/ai/providers`로 provider 계층과 fallback 순서를 조회한다.
 - `POST /api/v1/smart/chat`로 의도 분류와 응답 라우팅을 한 번에 처리한다.
 - 공통 로직은 `packages/shared/src/ai.ts`에서 관리한다.

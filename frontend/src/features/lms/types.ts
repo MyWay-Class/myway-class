@@ -1,5 +1,6 @@
 import type {
   AIInsights,
+  AIProviderCatalog,
   AIRecommendationOverview,
   AIUserSettings,
   AuthUser,
@@ -53,6 +54,7 @@ export type LmsDashboardProps = {
   loading: boolean;
   notice: string;
   insights: AIInsights | null;
+  providers: AIProviderCatalog | null;
   recommendations: AIRecommendationOverview | null;
   settings: AIUserSettings | null;
   onCompleteLecture: (lectureId: string) => void;

@@ -4,6 +4,7 @@ import {
   canManageCourses,
   demoUsers,
   type AIInsights,
+  type AIProviderCatalog,
   type AIRecommendationOverview,
   type AIUserSettings,
   type CourseCard,
@@ -37,6 +38,7 @@ export default function App() {
   const [session, setSession] = useState<LoginResponse | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [insights, setInsights] = useState<AIInsights | null>(null);
+  const [providers, setProviders] = useState<AIProviderCatalog | null>(null);
   const [recommendations, setRecommendations] = useState<AIRecommendationOverview | null>(null);
   const [settings, setSettings] = useState<AIUserSettings | null>(null);
   const [courseCards, setCourseCards] = useState<CourseCard[]>([]);
@@ -61,6 +63,7 @@ export default function App() {
     setSelectedCourseId,
     setDashboard,
     setInsights,
+    setProviders,
     setRecommendations,
     setSettings,
     setNotice,
@@ -258,6 +261,7 @@ export default function App() {
       loading={loading}
       notice={notice}
       insights={insights}
+      providers={providers}
       recommendations={recommendations}
       settings={settings}
       onCompleteLecture={(lectureId) => void completeLectureFlow(flowDeps, lectureId)}

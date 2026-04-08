@@ -118,7 +118,7 @@ export async function addCourseMaterialFlow(
 
 export async function addCourseNoticeFlow(
   deps: FlowDeps,
-  input: { title: string; content: string; pinned: boolean },
+  input: { title: string; content: string; pinned?: boolean },
 ): Promise<boolean> {
   const {
     session,

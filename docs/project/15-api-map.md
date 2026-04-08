@@ -142,6 +142,8 @@
   - 강의 기반 퀴즈 생성
 - `GET /api/v1/ai/insights`
   - AI 사용량과 역할별 인사이트
+- `GET /api/v1/ai/providers`
+  - AI provider 계층과 fallback 순서
 - `POST /api/v1/smart/chat`
   - 스마트 AI 통합 채팅
 - `GET /api/v1/enrollments`

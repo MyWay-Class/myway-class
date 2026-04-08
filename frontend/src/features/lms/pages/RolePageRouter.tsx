@@ -24,6 +24,7 @@ type RolePageRouterProps = Pick<
 > & {
   session: LoginResponse;
   page: LmsPageId;
+  providers: LmsDashboardProps['providers'];
 };
 
 export function RolePageRouter({
@@ -33,6 +34,7 @@ export function RolePageRouter({
   enrolledCourses,
   highlightedLecture,
   recommendations,
+  providers,
   courseCards,
   insights,
   onSelectCourse,
@@ -53,7 +55,7 @@ export function RolePageRouter({
       case 'admin-stats':
         return <AdminStatsPage dashboard={dashboard} courses={courseCards} users={demoUsers} insights={insights} />;
       case 'admin-automation':
-        return <AdminAutomationPage />;
+        return <AdminAutomationPage providerCatalog={providers} />;
       default:
         return (
           <RolePageFallback
