@@ -9,18 +9,18 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const VARIANT_STYLES: Record<ButtonVariant, string> = {
   primary:
-    'bg-teal-600 text-white shadow-sm hover:bg-teal-500 focus-visible:outline-teal-600',
+    'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-strong)] text-white shadow-[0_18px_35px_rgba(111,99,246,0.28)] hover:brightness-105 focus-visible:outline-[var(--accent)]',
   ghost:
-    'border border-transparent bg-transparent text-teal-700 hover:bg-teal-50 hover:text-teal-800 focus-visible:outline-teal-600',
+    'border border-transparent bg-transparent text-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent-strong)] focus-visible:outline-[var(--accent)]',
   outline:
-    'border border-teal-200 bg-transparent text-teal-700 hover:border-teal-300 hover:bg-teal-50 focus-visible:outline-teal-600',
+    'border border-[color:var(--line-strong)] bg-white text-[var(--accent)] hover:bg-[var(--accent-soft)] focus-visible:outline-[var(--accent)]',
 };
 
 export function Button({ variant = 'primary', className = '', children, type = 'button', ...props }: ButtonProps) {
   return (
     <button
       className={[
-        'inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition',
+        'inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition',
         'disabled:cursor-not-allowed disabled:opacity-50',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
         VARIANT_STYLES[variant],

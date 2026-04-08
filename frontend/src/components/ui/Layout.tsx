@@ -15,11 +15,11 @@ export function AppLayout({
   loading: boolean;
 }) {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex min-h-screen w-full bg-[var(--bg)] text-[var(--text)]">
       <Sidebar session={session} />
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Header session={session} onLogout={onLogout} loading={loading} />
-        <main className="mx-auto w-full max-w-[1200px] flex-1 overflow-y-auto px-6 py-8 lg:px-10 lg:py-10">
+        <main className="min-w-0 flex-1 px-5 py-5 lg:px-8 lg:py-7">
           {children}
         </main>
       </div>

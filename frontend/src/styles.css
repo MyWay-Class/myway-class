@@ -3,32 +3,24 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light dark;
-  --bg: #f5f1eb;
-  --bg-soft: #fffaf4;
+  color-scheme: light;
+  --bg: #f7f8fc;
+  --bg-soft: #ffffff;
   --bg-card: #ffffff;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --line: rgba(31, 41, 55, 0.1);
-  --accent: #0f766e;
-  --accent-strong: #0d9488;
-  --accent-soft: rgba(15, 118, 110, 0.12);
-  --shadow: 0 18px 50px rgba(27, 33, 44, 0.12);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #101114;
-    --bg-soft: #16181d;
-    --bg-card: #1d2026;
-    --text: #f3f4f6;
-    --muted: #9ca3af;
-    --line: rgba(255, 255, 255, 0.09);
-    --accent: #14b8a6;
-    --accent-strong: #2dd4bf;
-    --accent-soft: rgba(45, 212, 191, 0.12);
-    --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-  }
+  --text: #1d2433;
+  --muted: #7d8699;
+  --line: rgba(120, 132, 160, 0.16);
+  --line-strong: rgba(115, 103, 240, 0.2);
+  --sidebar: #ffffff;
+  --accent: #6f63f6;
+  --accent-strong: #8f49ee;
+  --accent-soft: rgba(111, 99, 246, 0.12);
+  --accent-soft-strong: rgba(111, 99, 246, 0.18);
+  --success-soft: rgba(90, 185, 126, 0.14);
+  --warning-soft: rgba(241, 179, 67, 0.18);
+  --danger-soft: rgba(223, 101, 132, 0.16);
+  --shadow: 0 26px 60px rgba(100, 113, 152, 0.12);
+  --shadow-soft: 0 16px 40px rgba(100, 113, 152, 0.08);
 }
 
 html,
@@ -39,15 +31,17 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at top left, rgba(111, 99, 246, 0.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(143, 73, 238, 0.06), transparent 24%),
+    var(--bg);
   color: var(--text);
   font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
+    "Pretendard Variable",
+    Pretendard,
+    "Noto Sans KR",
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
     sans-serif;
 }
 
@@ -62,314 +56,35 @@ select {
   font: inherit;
 }
 
+button {
+  border: 0;
+}
+
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 0.875rem;
-  padding: 0.75rem 0.875rem;
-  background: var(--bg-soft);
+  border-radius: 1rem;
+  padding: 0.95rem 1rem;
+  background: #f7f8fc;
   color: var(--text);
   outline: none;
   transition:
-    border-color 120ms ease,
-    box-shadow 120ms ease,
-    background 120ms ease;
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
 }
 
 input:focus,
-textarea:focus {
-  border-color: rgba(20, 184, 166, 0.45);
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+textarea:focus,
+select:focus {
+  border-color: rgba(111, 99, 246, 0.4);
+  box-shadow: 0 0 0 4px rgba(111, 99, 246, 0.12);
+  background: #fff;
 }
 
 textarea {
   min-height: 120px;
   resize: vertical;
-}
-
-@layer components {
-  .hero {
-    @apply mb-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px];
-  }
-
-  .hero-panel {
-    @apply grid gap-3 rounded-[1.75rem] border p-6;
-    background: var(--bg-card);
-    border-color: var(--line);
-    box-shadow: var(--shadow);
-  }
-
-  .hero-panel__label {
-    @apply inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em];
-    background: var(--accent-soft);
-    color: var(--accent-strong);
-  }
-
-  .eyebrow {
-    @apply mb-3 text-sm font-semibold uppercase tracking-[0.22em];
-    color: var(--accent-strong);
-  }
-
-  .lead {
-    @apply m-0 max-w-2xl text-base leading-7;
-    color: var(--muted);
-  }
-
-  .auth-grid {
-    @apply mb-6 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)];
-  }
-
-  .auth-card-grid {
-    @apply mt-6 grid gap-4 md:grid-cols-2;
-  }
-
-  .content-grid {
-    @apply mb-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)];
-  }
-
-  .panel {
-    @apply grid gap-5 rounded-[1.75rem] border p-6;
-    background: var(--bg-card);
-    border-color: var(--line);
-    box-shadow: var(--shadow);
-  }
-
-  .panel--wide {
-    @apply min-w-0;
-  }
-
-  .panel--resources,
-  .panel--lecture {
-    @apply min-w-0;
-  }
-
-  .panel__header {
-    @apply flex items-start justify-between gap-4;
-  }
-
-  .panel__description {
-    @apply m-0 leading-7;
-    color: var(--muted);
-  }
-
-  .section-label {
-    @apply mb-1 text-xs font-semibold uppercase tracking-[0.24em];
-    color: var(--accent-strong);
-  }
-
-  .metrics {
-    @apply grid gap-4 md:grid-cols-2 xl:grid-cols-4;
-  }
-
-  .metrics article,
-  .detail-grid article {
-    @apply rounded-2xl border p-4;
-    background: var(--bg-soft);
-    border-color: var(--line);
-  }
-
-  .metrics span,
-  .detail-grid span,
-  .resource-card span,
-  .lecture-detail__meta span {
-    @apply block text-xs;
-    color: var(--muted);
-  }
-
-  .metrics strong,
-  .detail-grid strong {
-    @apply mt-1 block text-lg font-semibold;
-  }
-
-  .course-grid {
-    @apply grid gap-4 md:grid-cols-2 xl:grid-cols-2;
-  }
-
-  .detail-grid {
-    @apply grid gap-4 md:grid-cols-2;
-  }
-
-  .detail-grid--single {
-    @apply lg:grid-cols-4;
-  }
-
-  .enrollment-panel {
-    @apply grid gap-4;
-  }
-
-  .enrollment-panel__header {
-    @apply flex items-start justify-between gap-4;
-  }
-
-  .enrollment-card,
-  .recommendation-card {
-    @apply grid gap-3 rounded-3xl border p-5;
-    background: var(--bg-soft);
-    border-color: var(--line);
-  }
-
-  .enrollment-card__head,
-  .recommendation-card__head {
-    @apply flex items-start justify-between gap-4;
-  }
-
-  .plain-list {
-    @apply m-0 grid gap-2 pl-5 text-sm leading-6;
-    color: var(--muted);
-  }
-
-  .enrollment-list {
-    @apply grid gap-4;
-  }
-
-  .recommendations-layout {
-    @apply grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_320px];
-  }
-
-  .recommendation-list {
-    @apply grid gap-4;
-  }
-
-  .recommendation-card strong {
-    @apply block text-lg font-semibold;
-  }
-
-  .recommendation-card span {
-    @apply block text-xs;
-    color: var(--muted);
-  }
-
-  .recommendation-card__eyebrow {
-    @apply mb-1 text-xs font-semibold uppercase tracking-[0.22em];
-    color: var(--accent-strong);
-  }
-
-  .recommendation-card__score {
-    @apply inline-flex w-fit items-center rounded-full px-3 py-1 text-sm font-semibold;
-    background: var(--accent-soft);
-    color: var(--accent-strong);
-  }
-
-  .recommendation-card__description,
-  .recommendation-card__reason {
-    @apply m-0 leading-7;
-    color: var(--muted);
-  }
-
-  .recommendation-form {
-    @apply grid gap-4 rounded-3xl border p-5;
-    background: var(--bg-soft);
-    border-color: var(--line);
-  }
-
-  .recommendation-form strong {
-    @apply text-sm font-semibold uppercase tracking-[0.2em];
-    color: var(--accent-strong);
-  }
-
-  .recommendation-form label {
-    @apply grid gap-2 text-sm font-medium;
-    color: var(--text);
-  }
-
-  .lecture-list {
-    @apply grid gap-3;
-  }
-
-  .lecture-item {
-    @apply rounded-2xl border px-4 py-3 text-left transition;
-    background: var(--bg-soft);
-    border-color: var(--line);
-    color: var(--text);
-  }
-
-  .lecture-item:hover,
-  .lecture-item.is-active {
-    transform: translateY(-1px);
-    border-color: rgba(20, 184, 166, 0.35);
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-  }
-
-  .lecture-item span {
-    @apply text-xs;
-    color: var(--muted);
-  }
-
-  .lecture-item strong {
-    @apply mt-1 block text-sm font-semibold;
-  }
-
-  .lecture-detail {
-    @apply grid gap-4 rounded-3xl border p-5;
-    background: var(--bg-soft);
-    border-color: var(--line);
-  }
-
-  .lecture-detail__meta {
-    @apply flex flex-wrap gap-2;
-  }
-
-  .lecture-detail__meta span {
-    @apply inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold;
-    background: var(--accent-soft);
-    color: var(--accent-strong);
-  }
-
-  .lecture-detail p {
-    @apply m-0 leading-7;
-    color: var(--muted);
-  }
-
-  .lecture-detail__actions,
-  .lecture-detail__nav {
-    @apply flex flex-wrap gap-3;
-  }
-
-  .resources-grid {
-    @apply grid gap-6 lg:grid-cols-2;
-  }
-
-  .resource-column {
-    @apply grid gap-4;
-  }
-
-  .resource-column__header {
-    @apply flex items-start justify-between gap-4;
-  }
-
-  .resource-list {
-    @apply grid gap-4;
-  }
-
-  .resource-form {
-    @apply grid gap-4 rounded-3xl border p-5;
-    background: var(--bg-soft);
-    border-color: var(--line);
-  }
-
-  .resource-form strong {
-    @apply text-sm font-semibold uppercase tracking-[0.2em];
-    color: var(--accent-strong);
-  }
-
-  .resource-form label {
-    @apply grid gap-2 text-sm font-medium;
-    color: var(--text);
-  }
-
-  .resource-form__checkbox {
-    @apply flex items-center gap-3;
-  }
-
-  .resource-form__checkbox input {
-    @apply h-4 w-4 rounded border;
-  }
-
-  .empty-state {
-    @apply m-0 rounded-2xl border px-4 py-3 leading-7;
-    background: var(--bg-soft);
-    border-color: var(--line);
-    color: var(--muted);
-  }
 }

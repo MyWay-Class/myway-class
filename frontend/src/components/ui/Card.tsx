@@ -13,10 +13,10 @@ export function Card({ children, isActive = false, onClick, className = '' }: Ca
   return (
     <article
       className={[
-        'rounded-2xl border bg-[var(--bg-card)] p-4 shadow-sm transition',
+        'rounded-[28px] border bg-[var(--bg-card)] p-5 shadow-[var(--shadow-soft)] transition',
         'border-[color:var(--line)] text-[color:var(--text)]',
-        interactive ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-lg' : '',
-        isActive ? 'border-teal-300 ring-1 ring-teal-200/80' : '',
+        interactive ? 'cursor-pointer hover:-translate-y-0.5 hover:border-[color:var(--line-strong)] hover:shadow-[var(--shadow)]' : '',
+        isActive ? 'border-[color:var(--line-strong)] ring-1 ring-[color:var(--accent-soft-strong)]' : '',
         className,
       ].join(' ')}
       onClick={onClick}
