@@ -1,5 +1,6 @@
 export * from './ai-intent';
 export * from './ai-learning';
+export * from './ai-provider';
 
 export { classifyAIIntent as buildAIIntentOverview } from './ai-intent';
 export { searchAIContent as buildAISearchOverview } from './ai-intent';

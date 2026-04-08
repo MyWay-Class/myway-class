@@ -33,6 +33,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
         recommendations={props.recommendations}
         courseCards={props.courseCards}
         insights={props.insights}
+        providers={props.providers}
         onSelectCourse={props.onSelectCourse}
         demoUsers={props.demoUsers}
       />

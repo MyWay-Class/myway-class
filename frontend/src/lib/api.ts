@@ -1,6 +1,7 @@
 import {
   canEnroll,
   completeLectureProgress,
+  getAIProviderCatalog,
   getAIInsightsForUser,
   getAIRecommendationsForUser,
   getAIUserSettings,
@@ -16,6 +17,7 @@ import {
   type MaterialCreateRequest,
   type ApiResponse,
   type AIInsights,
+  type AIProviderCatalog,
   type AIRecommendationOverview,
   type AIUserSettings,
   type AIUserSettingsUpdateRequest,
@@ -213,6 +215,18 @@ export async function loadAISettings(sessionToken?: string | null): Promise<AIUs
   const userId = getFallbackUserId();
 
   return response?.success && response.data ? response.data : getAIUserSettings(userId);
+}
+
+export async function loadAIProviders(sessionToken?: string | null): Promise<AIProviderCatalog | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await request<AIProviderCatalog>('/api/v1/ai/providers', undefined, token);
+
+  return response?.success && response.data ? response.data : getAIProviderCatalog();
 }
 
 export async function saveAISettings(

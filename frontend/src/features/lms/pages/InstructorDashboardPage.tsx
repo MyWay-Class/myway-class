@@ -70,7 +70,10 @@ export function InstructorDashboardPage({ courses, insights }: InstructorDashboa
             <i className="ri-lightbulb-flash-line text-indigo-600" />
             AI 인사이트
           </h3>
-          <p className="mt-3 text-[13px] leading-6 text-slate-500">{insights.summary.headline}</p>
+          <p className="mt-3 text-[13px] leading-6 text-slate-500">
+            최근 {insights.summary.recent_window_days}일 동안 AI 요청 {insights.summary.total_requests}회,
+            성공률 {insights.summary.success_rate}%입니다.
+          </p>
         </section>
       ) : null}
     </div>
