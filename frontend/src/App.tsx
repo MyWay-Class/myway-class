@@ -72,8 +72,7 @@ export default function App() {
     async function initialize() {
       setLoading(true);
 
-      const storedSession = await loadCurrentSession();
-      const backendOnline = await loadBackendHealth();
+      const [storedSession, backendOnline] = await Promise.all([loadCurrentSession(), loadBackendHealth()]);
 
       if (!active) {
         return;

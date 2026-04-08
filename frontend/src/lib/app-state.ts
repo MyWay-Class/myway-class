@@ -23,7 +23,14 @@ export async function refreshLearningState(
   deps: RefreshLearningStateDeps,
   activeSession: LoginResponse | null,
 ): Promise<void> {
-  const courses = await loadCourses(activeSession?.session_token);
+  const [courses, dashboardData, insightsData, recommendationsData, settingsData] = await Promise.all([
+    loadCourses(activeSession?.session_token),
+    activeSession ? loadDashboard(activeSession.session_token) : Promise.resolve(null),
+    activeSession ? loadAIInsights(activeSession.session_token) : Promise.resolve(null),
+    activeSession ? loadAIRecommendations(activeSession.session_token) : Promise.resolve(null),
+    activeSession ? loadAISettings(activeSession.session_token) : Promise.resolve(null),
+  ]);
+
   deps.setCourseCards(courses);
 
   if (courses.length > 0) {
@@ -31,10 +38,6 @@ export async function refreshLearningState(
   }
 
   if (activeSession) {
-    const dashboardData = await loadDashboard(activeSession.session_token);
-    const insightsData = await loadAIInsights(activeSession.session_token);
-    const recommendationsData = await loadAIRecommendations(activeSession.session_token);
-    const settingsData = await loadAISettings(activeSession.session_token);
     deps.setDashboard(dashboardData);
     deps.setInsights(insightsData);
     deps.setRecommendations(recommendationsData);

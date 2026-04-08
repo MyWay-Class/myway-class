@@ -1,115 +1,41 @@
-import type {
-  AIInsights,
-  AIRecommendationOverview,
-  AIUserSettings,
-  AuthUser,
-  CourseCard,
-  CourseDetail,
-  Dashboard,
-  LectureDetail,
-  LoginResponse,
-} from '@myway/shared';
-import { AIInsightsPanel } from './dashboard/AIInsightsPanel';
-import { AIRecommendationsPanel } from './dashboard/AIRecommendationsPanel';
-import { CatalogPanel } from './dashboard/CatalogPanel';
-import { CourseResourcesPanel } from './dashboard/CourseResourcesPanel';
-import { IdentityPanel } from './dashboard/IdentityPanel';
-import { LecturePanel } from './dashboard/LecturePanel';
-import { AppLayout } from './ui/Layout';
-
-type LmsDashboardProps = {
-  loading: boolean;
-  busy: boolean;
-  notice: string;
-  session: LoginResponse | null;
-  canManageCurrent: boolean;
-  apiStatus: 'checking' | 'online' | 'offline';
-  dashboard: Dashboard | null;
-  insights: AIInsights | null;
-  recommendations: AIRecommendationOverview | null;
-  settings: AIUserSettings | null;
-  courseCards: CourseCard[];
-  selectedCourseId: string;
-  selectedCourse: CourseDetail | null;
-  selectedLectureId: string;
-  highlightedLecture: LectureDetail | null;
-  enrolledCourses: CourseCard[];
-  canEnrollCurrent: boolean;
-  demoUsers: AuthUser[];
-  onLogin: (userId: string) => void;
-  onLogout: () => void;
-  onSelectCourse: (courseId: string) => void;
-  onSelectLecture: (lectureId: string) => void;
-  onEnroll: (courseId: string) => void;
-  onCompleteLecture: (lectureId: string) => void;
-  onAddMaterial: (input: { title: string; summary: string; file_name: string }) => Promise<boolean>;
-  onAddNotice: (input: { title: string; content: string; pinned: boolean }) => Promise<boolean>;
-  onSaveAISettings: (input: {
-    language?: 'ko' | 'en';
-    theme?: 'light' | 'dark' | 'system';
-    auto_summary?: boolean;
-    recommendation_mode?: 'progress' | 'discovery' | 'balanced';
-  }) => Promise<boolean>;
-  getCurrentRoleLabel: () => string;
-};
+import { useEffect, useState } from 'react';
+import { defaultPageForRole, pageTitle } from '../features/lms/config';
+import { AppShell } from '../features/lms/components/AppShell';
+import { LoginScreen } from '../features/lms/components/LoginScreen';
+import { RolePageRouter } from '../features/lms/pages/RolePageRouter';
+import type { LmsDashboardProps, LmsPageId } from '../features/lms/types';
 
 export function LmsDashboard(props: LmsDashboardProps) {
+  const [activePage, setActivePage] = useState<LmsPageId>(defaultPageForRole(props.session));
+
+  useEffect(() => {
+    setActivePage(defaultPageForRole(props.session));
+  }, [props.session]);
+
+  if (!props.session) {
+    return <LoginScreen demoUsers={props.demoUsers} busy={props.busy} onLogin={props.onLogin} />;
+  }
+
   return (
-    <AppLayout session={props.session} onLogout={props.onLogout} loading={props.loading}>
-      <IdentityPanel
-        busy={props.busy}
-        apiStatus={props.apiStatus}
-        demoUsers={props.demoUsers}
-        enrolledCourses={props.enrolledCourses}
-        getCurrentRoleLabel={props.getCurrentRoleLabel}
-        loading={props.loading}
-        notice={props.notice}
-        onLogin={props.onLogin}
-        onLogout={props.onLogout}
+    <AppShell
+      session={props.session}
+      activePage={activePage}
+      title={pageTitle(activePage, props.session.user.role)}
+      onNavigate={setActivePage}
+      onLogout={props.onLogout}
+    >
+      <RolePageRouter
         session={props.session}
-      />
-
-      <CatalogPanel
-        loading={props.loading}
-        busy={props.busy}
-        canEnrollCurrent={props.canEnrollCurrent}
-        courseCards={props.courseCards}
+        page={activePage}
         dashboard={props.dashboard}
-        onEnroll={props.onEnroll}
-        onSelectCourse={props.onSelectCourse}
-        onSelectLecture={props.onSelectLecture}
-        selectedCourse={props.selectedCourse}
-        selectedCourseId={props.selectedCourseId}
-        selectedLectureId={props.selectedLectureId}
-      />
-
-      <AIInsightsPanel insights={props.insights} />
-
-      <AIRecommendationsPanel
-        busy={props.busy}
-        onSaveAISettings={props.onSaveAISettings}
-        recommendations={props.recommendations}
-        settings={props.settings}
-      />
-
-      <CourseResourcesPanel
-        busy={props.busy}
-        canManageCurrent={props.canManageCurrent}
-        onAddMaterial={props.onAddMaterial}
-        onAddNotice={props.onAddNotice}
-        selectedCourse={props.selectedCourse}
-        session={props.session}
-      />
-
-      <LecturePanel
-        busy={props.busy}
+        enrolledCourses={props.enrolledCourses}
         highlightedLecture={props.highlightedLecture}
-        onCompleteLecture={props.onCompleteLecture}
-        onSelectLecture={props.onSelectLecture}
-        selectedCourse={props.selectedCourse}
-        selectedLectureId={props.selectedLectureId}
-        session={props.session}
+        recommendations={props.recommendations}
+        courseCards={props.courseCards}
+        insights={props.insights}
+        onSelectCourse={props.onSelectCourse}
+        demoUsers={props.demoUsers}
       />
-    </AppLayout>
+    </AppShell>
   );
 }
