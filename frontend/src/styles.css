@@ -1,5 +1,5 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-@config "../tailwind.config.cjs";
+@config "../tailwind.config.ts";
 
 @tailwind base;
 @tailwind components;
