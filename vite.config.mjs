@@ -1,10 +1,15 @@
-import { fileURLToPath, URL } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import autoprefixer from 'autoprefixer';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import tailwindcss from 'tailwindcss';
 
+const repoRoot = dirname(fileURLToPath(new URL(import.meta.url)));
+const frontendRoot = resolve(repoRoot, 'frontend');
+
 export default defineConfig({
+  root: frontendRoot,
   plugins: [react()],
   build: {
     cssMinify: false,
@@ -14,7 +19,7 @@ export default defineConfig({
     postcss: {
       plugins: [
         tailwindcss({
-          content: ['./index.html', './src/**/*.{ts,tsx}'],
+          content: [resolve(frontendRoot, 'index.html'), resolve(frontendRoot, 'src/**/*.{ts,tsx}')],
         }),
         autoprefixer(),
       ],
@@ -23,7 +28,7 @@ export default defineConfig({
   resolve: {
     preserveSymlinks: true,
     alias: {
-      '@myway/shared': fileURLToPath(new URL('../packages/shared/src/index.ts', import.meta.url)),
+      '@myway/shared': fileURLToPath(new URL('./packages/shared/src/index.ts', import.meta.url)),
     },
   },
   server: {
