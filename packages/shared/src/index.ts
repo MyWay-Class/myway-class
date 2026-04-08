@@ -5,6 +5,7 @@ export * from './learning';
 export * from './ai';
 export * from './ai-insights';
 export * from './ai-recommendations';
+export * from './stt-provider';
 export * from './smart';
 export * from './media';
 export * from './custom-course';

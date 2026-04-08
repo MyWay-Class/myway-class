@@ -84,6 +84,8 @@
   - 강의 완료와 진도 저장
 - `POST /api/v1/media/transcribe`
   - 트랜스크립트 생성
+- `GET /api/v1/media/providers`
+  - STT provider 계층과 fallback 순서
 - `POST /api/v1/media/summarize`
   - 요약 노트 생성
 - `POST /api/v1/media/extract-audio`
