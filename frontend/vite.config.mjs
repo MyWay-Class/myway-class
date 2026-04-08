@@ -6,6 +6,10 @@ import tailwindcss from 'tailwindcss';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    cssMinify: false,
+    minify: false,
+  },
   css: {
     postcss: {
       plugins: [
@@ -17,6 +21,7 @@ export default defineConfig({
     },
   },
   resolve: {
+    preserveSymlinks: true,
     alias: {
       '@myway/shared': fileURLToPath(new URL('../packages/shared/src/index.ts', import.meta.url)),
     },
