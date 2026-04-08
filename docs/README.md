@@ -13,7 +13,6 @@
 | 기록 허브 | 결정 이유와 변경 흐름을 남기는 문서 | `docs/dev-logs/README.md` |
 | 보조 원본 | 특정 영역의 특수 기준을 담는 문서 | `docs/ai-context/agent.md` |
 | 보조 요약 | 빠른 운영 체크만 담는 문서 | `docs/ops/agent/agent.md` |
-
 ---
 
 ## 문서 구조
