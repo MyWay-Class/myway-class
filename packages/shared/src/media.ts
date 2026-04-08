@@ -228,8 +228,8 @@ export function createLectureTranscript(
     segments: splitIntoSegments(fullText, durationMs),
     word_count: fullText.split(/\s+/).filter(Boolean).length,
     duration_ms: durationMs,
-    stt_provider: input.text ? 'text-derived-stt' : 'demo-stt',
-    stt_model: 'pseudo-stt-v1',
+    stt_provider: input.stt_provider ?? (input.text ? 'text-derived-stt' : 'demo-stt'),
+    stt_model: input.stt_model ?? 'pseudo-stt-v1',
     created_at: now(),
   };
 

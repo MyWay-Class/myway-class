@@ -3,7 +3,6 @@ import {
   buildPipelineOverview,
   createAudioExtraction,
   createLectureSummaryNote,
-  createLectureTranscript,
   getLectureDetail,
   listAudioExtractions,
   listLectureNotes,
@@ -11,9 +10,12 @@ import {
   type AudioExtractionRequest,
   type MediaSummaryRequest,
   type TranscriptCreateRequest,
+  type STTProviderCatalog,
 } from '@myway/shared';
 import { getAuthenticatedUser, hasRole } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
+import { getSTTProviderOverview } from '../lib/stt-provider';
+import { runTranscriptGeneration } from '../lib/stt-adapter';
 
 const media = new Hono();
 
@@ -38,30 +40,36 @@ media.post('/transcribe', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = createLectureTranscript(user.id, {
+  const result = runTranscriptGeneration(user.id, {
     lecture_id: lectureId,
     text: body?.text?.trim(),
     duration_ms: body?.duration_ms,
     language: body?.language ?? 'ko',
+    stt_provider: body?.stt_provider?.trim(),
+    stt_model: body?.stt_model?.trim(),
   });
 
-  if (!result) {
+  if (!result.ok) {
     return jsonFailure('TRANSCRIPT_FAILED', '트랜스크립트를 생성할 수 없습니다.', 400);
   }
 
   return jsonSuccess(
     {
-      transcript_id: result.transcript.id,
-      lecture_id: result.transcript.lecture_id,
-      segment_count: result.transcript.segments.length,
-      duration_ms: result.transcript.duration_ms,
-      word_count: result.transcript.word_count,
+      transcript_id: result.transcript_id,
+      lecture_id: result.lecture_id,
+      segment_count: result.segment_count,
+      duration_ms: result.duration_ms,
+      word_count: result.word_count,
+      stt_provider: result.stt_provider,
+      stt_model: result.stt_model,
       pipeline: result.pipeline,
     },
     '트랜스크립트가 생성되었습니다.',
     201,
   );
 });
+
+media.get('/providers', (c) => jsonSuccess(getSTTProviderOverview() satisfies STTProviderCatalog, 'STT provider 계층을 조회했습니다.'));
 
 media.post('/summarize', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);

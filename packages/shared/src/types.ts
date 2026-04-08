@@ -192,6 +192,8 @@ export type TranscriptCreateRequest = {
   text?: string;
   duration_ms?: number;
   language?: string;
+  stt_provider?: string;
+  stt_model?: string;
 };
 
 export type MediaSummaryRequest = {
