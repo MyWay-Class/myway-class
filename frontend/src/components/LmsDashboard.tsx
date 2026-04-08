@@ -1,5 +1,16 @@
-import type { AIInsights, AuthUser, CourseCard, CourseDetail, Dashboard, LectureDetail, LoginResponse } from '@myway/shared';
+import type {
+  AIInsights,
+  AIRecommendationOverview,
+  AIUserSettings,
+  AuthUser,
+  CourseCard,
+  CourseDetail,
+  Dashboard,
+  LectureDetail,
+  LoginResponse,
+} from '@myway/shared';
 import { AIInsightsPanel } from './dashboard/AIInsightsPanel';
+import { AIRecommendationsPanel } from './dashboard/AIRecommendationsPanel';
 import { CatalogPanel } from './dashboard/CatalogPanel';
 import { CourseResourcesPanel } from './dashboard/CourseResourcesPanel';
 import { IdentityPanel } from './dashboard/IdentityPanel';
@@ -15,6 +26,8 @@ type LmsDashboardProps = {
   apiStatus: 'checking' | 'online' | 'offline';
   dashboard: Dashboard | null;
   insights: AIInsights | null;
+  recommendations: AIRecommendationOverview | null;
+  settings: AIUserSettings | null;
   courseCards: CourseCard[];
   selectedCourseId: string;
   selectedCourse: CourseDetail | null;
@@ -31,6 +44,12 @@ type LmsDashboardProps = {
   onCompleteLecture: (lectureId: string) => void;
   onAddMaterial: (input: { title: string; summary: string; file_name: string }) => Promise<boolean>;
   onAddNotice: (input: { title: string; content: string; pinned: boolean }) => Promise<boolean>;
+  onSaveAISettings: (input: {
+    language?: 'ko' | 'en';
+    theme?: 'light' | 'dark' | 'system';
+    auto_summary?: boolean;
+    recommendation_mode?: 'progress' | 'discovery' | 'balanced';
+  }) => Promise<boolean>;
   getCurrentRoleLabel: () => string;
 };
 
@@ -65,6 +84,13 @@ export function LmsDashboard(props: LmsDashboardProps) {
       />
 
       <AIInsightsPanel insights={props.insights} />
+
+      <AIRecommendationsPanel
+        busy={props.busy}
+        onSaveAISettings={props.onSaveAISettings}
+        recommendations={props.recommendations}
+        settings={props.settings}
+      />
 
       <CourseResourcesPanel
         busy={props.busy}
