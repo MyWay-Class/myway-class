@@ -64,4 +64,6 @@
 ## 현재 구현
 - `POST /api/v1/ai/search`로 강의 텍스트, 트랜스크립트, 요약 노트를 검색한다.
 - `POST /api/v1/ai/answer`로 검색 근거를 묶은 답변을 생성한다.
+- `POST /api/v1/ai/rag`로 청킹, 엔티티 추출, 검색, 답변을 한 번에 묶은 RAG 파이프라인을 조회한다.
 - 검색과 답변의 공통 로직은 `packages/shared/src/ai.ts`에서 재사용한다.
+- 청킹과 검색 후보 조합은 `packages/shared/src/rag`에서 분리 관리한다.
