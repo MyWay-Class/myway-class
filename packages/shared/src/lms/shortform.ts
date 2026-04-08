@@ -1,4 +1,4 @@
-import { demoCourses, demoEnrollments, demoLectures, getDemoUser } from './demo-data';
+import { demoCourses, demoEnrollments, demoLectures, getDemoUser } from '../data/demo-data';
 import type {
   ShortformCandidate,
   ShortformClip,
@@ -18,7 +18,7 @@ import type {
   ShortformStyle,
   ShortformVideo,
   ShortformVideoDetail,
-} from './types';
+} from '../types';
 
 function now(): string {
   return new Date().toISOString();

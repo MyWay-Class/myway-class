@@ -1,5 +1,5 @@
-import { demoCourses, demoEnrollments, getDemoUser } from './demo-data';
-import { getCourseProgress, getLectureInstructorName, listCourseCards } from './learning';
+import { demoCourses, demoEnrollments, getDemoUser } from '../data/demo-data';
+import { getCourseProgress, getLectureInstructorName, listCourseCards } from '../lms/learning';
 import type {
   AIRecommendationCard,
   AIRecommendationMode,
@@ -10,7 +10,7 @@ import type {
   AIUserSettingsUpdateRequest,
   Course,
   UserRole,
-} from './types';
+} from '../types';
 
 const DEFAULT_SETTINGS: Record<UserRole, Omit<AIUserSettings, 'user_id' | 'updated_at'>> = {
   STUDENT: {

@@ -7,7 +7,7 @@ import {
   demoLectures,
   getDemoUser,
   instructorNames,
-} from './demo-data';
+} from '../data/demo-data';
 import type {
   Course,
   CourseCard,
@@ -21,7 +21,7 @@ import type {
   MaterialCreateRequest,
   Notice,
   NoticeCreateRequest,
-} from './types';
+} from '../types';
 
 export function getLectureInstructorName(instructorId: string): string {
   return getDemoUser(instructorId)?.name ?? instructorNames[instructorId] ?? '알 수 없는 강사';

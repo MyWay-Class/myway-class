@@ -1,6 +1,6 @@
-import { getLectureDetail } from './learning';
+import { getLectureDetail } from '../lms/learning';
 import { collectLectureReferences } from './ai-intent';
-import { getLectureTranscript, listLectureNotes } from './media';
+import { getLectureTranscript, listLectureNotes } from '../lms/media';
 import type {
   AIQuizQuestion,
   AIQuizRequest,
@@ -8,7 +8,7 @@ import type {
   AISummaryRequest,
   AISummaryResult,
   MediaSummaryStyle,
-} from './types';
+} from '../types';
 
 function normalizeText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();

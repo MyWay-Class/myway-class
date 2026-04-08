@@ -4,7 +4,7 @@ import {
   demoLecturePipelines,
   demoLectureTranscripts,
   demoLectures,
-} from './demo-data';
+} from '../data/demo-data';
 import type {
   AudioExtraction,
   AudioExtractionRequest,
@@ -16,7 +16,7 @@ import type {
   MediaSummaryStyle,
   TranscriptCreateRequest,
   TranscriptSegment,
-} from './types';
+} from '../types';
 
 const STOP_WORDS = new Set([
   'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'about', 'into',

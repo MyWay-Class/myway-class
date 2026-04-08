@@ -1,7 +1,7 @@
-import { demoCourses } from './demo-data';
+import { demoCourses } from '../data/demo-data';
 import { answerAIQuestion, classifyAIIntent, collectLectureReferences, searchAIContent } from './ai-intent';
 import { createAISummary, generateAIQuiz } from './ai-learning';
-import { getCourseLectures } from './learning';
+import { getCourseLectures } from '../lms/learning';
 import type {
   AIReference,
   AISummaryResult,
@@ -9,7 +9,7 @@ import type {
   SmartChatRequest,
   SmartChatResult,
   SmartChatRoute,
-} from './types';
+} from '../types';
 
 function normalizeText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();

@@ -13,7 +13,7 @@ import type {
   LectureTranscript,
   Material,
   Notice,
-} from './types';
+} from '../types';
 
 export const demoUsers: AuthUser[] = [
   {

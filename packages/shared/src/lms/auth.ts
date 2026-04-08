@@ -1,4 +1,4 @@
-import type { UserRole } from './types';
+import type { UserRole } from '../types';
 
 export const roleLabels: Record<UserRole, string> = {
   STUDENT: '수강생',
