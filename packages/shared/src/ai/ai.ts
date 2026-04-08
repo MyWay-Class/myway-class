@@ -8,4 +8,4 @@ export { searchAIContent as buildAISearchOverview } from './ai-intent';
 export { answerAIQuestion as buildAIAnswerOverview } from './ai-intent';
 export { createAISummary as buildAISummaryOverview } from './ai-learning';
 export { generateAIQuiz as buildAIQuizOverview } from './ai-learning';
-export { buildAIRAGOverview as buildAIRAGOverview } from '../rag';
+export { buildAIRAGOverview } from '../rag';

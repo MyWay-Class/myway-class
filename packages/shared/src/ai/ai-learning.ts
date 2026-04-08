@@ -11,7 +11,7 @@ import type {
 } from '../types';
 
 function normalizeText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
+  return text.replaceAll(/\s+/g, ' ').trim();
 }
 
 function unique(items: string[]): string[] {
@@ -35,7 +35,7 @@ function formatTimeLabel(milliseconds: number): string {
 function extractKeyPoints(text: string, limit: number): string[] {
   return unique(
     splitSentences(text)
-      .map((sentence) => sentence.replace(/^[\d.-]+\s*/, '').trim())
+      .map((sentence) => sentence.replaceAll(/^[\d.-]+\s*/g, '').trim())
       .filter(Boolean),
   ).slice(0, limit);
 }
@@ -139,6 +139,12 @@ export function createAISummary(input: AISummaryRequest): AISummaryResult | null
   const note = listLectureNotes(lecture.id)[0];
   const sourceText = note?.content ?? transcript?.full_text ?? lecture.content_text;
   const style = input.style ?? 'brief';
+  const titleSuffix =
+    style === 'detailed'
+      ? '상세 요약'
+      : style === 'timeline'
+        ? '타임라인 요약'
+        : '핵심 요약';
   const keyPoints = unique([
     ...extractKeyPoints(sourceText, style === 'detailed' ? 5 : 3),
     ...(note?.key_concepts ?? []),
@@ -146,7 +152,7 @@ export function createAISummary(input: AISummaryRequest): AISummaryResult | null
 
   return {
     lecture_id: lecture.id,
-    title: `${lecture.title} · ${style === 'detailed' ? '상세 요약' : style === 'timeline' ? '타임라인 요약' : '핵심 요약'}`,
+    title: `${lecture.title} · ${titleSuffix}`,
     style,
     language: input.language ?? 'ko',
     content: buildSummaryContent(sourceText, style),
@@ -165,7 +171,13 @@ export function generateAIQuiz(input: AIQuizRequest): AIQuizResult | null {
   const note = listLectureNotes(lecture.id)[0];
   const sourceText = note?.content ?? transcript?.full_text ?? lecture.content_text;
   const concepts = collectQuizConcepts(sourceText, lecture.title, lecture.course_title);
-  const count = Math.max(1, Math.min(5, input.count ?? (input.difficulty === 'hard' ? 5 : input.difficulty === 'easy' ? 3 : 4)));
+  let count = input.count ?? 4;
+  if (input.difficulty === 'hard') {
+    count = input.count ?? 5;
+  } else if (input.difficulty === 'easy') {
+    count = input.count ?? 3;
+  }
+  count = Math.max(1, Math.min(5, count));
   const quizReferences = buildSummaryReferences(lecture.id);
   const questions: AIQuizQuestion[] = Array.from({ length: count }, (_, index) =>
     buildQuizQuestion(
@@ -179,10 +191,15 @@ export function generateAIQuiz(input: AIQuizRequest): AIQuizResult | null {
     ),
   );
 
+  let difficulty = input.difficulty ?? 'medium';
+  if (!input.difficulty && typeof input.count === 'number' && input.count <= 3) {
+    difficulty = 'easy';
+  }
+
   return {
     lecture_id: lecture.id,
     title: `${lecture.title} · AI 퀴즈`,
-    difficulty: input.difficulty ?? (input.count && input.count <= 3 ? 'easy' : 'medium'),
+    difficulty,
     questions,
   };
 }
