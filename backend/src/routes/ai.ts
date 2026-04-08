@@ -1,10 +1,5 @@
 import { Hono } from 'hono';
 import {
-  buildAIAnswerOverview,
-  buildAIIntentOverview,
-  buildAIQuizOverview,
-  buildAISearchOverview,
-  buildAISummaryOverview,
   getLectureDetail,
   type AIAnswerRequest,
   type AIIntentRequest,
@@ -12,6 +7,7 @@ import {
   type AISearchRequest,
   type AISummaryRequest,
 } from '@myway/shared';
+import { runAIAnswer, runAIIntent, runAIQuiz, runAISearch, runAISummary } from '../lib/ai-adapter';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 
 const ai = new Hono();
@@ -28,7 +24,7 @@ ai.post('/intent', async (c) => {
     return jsonFailure('MESSAGE_REQUIRED', 'message가 필요합니다.');
   }
 
-  const result = buildAIIntentOverview({
+  const result = runAIIntent({
     message,
     lecture_id: body?.lecture_id?.trim(),
     context: body?.context,
@@ -51,7 +47,7 @@ ai.post('/search', async (c) => {
   }
 
   return jsonSuccess(
-    buildAISearchOverview({
+    runAISearch({
       query,
       lecture_id: lectureId,
       limit: body?.limit,
@@ -74,7 +70,7 @@ ai.post('/answer', async (c) => {
   }
 
   return jsonSuccess(
-    buildAIAnswerOverview({
+    runAIAnswer({
       question,
       lecture_id: lectureId,
       intent_hint: body?.intent_hint,
@@ -96,7 +92,7 @@ ai.post('/summary', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = buildAISummaryOverview({
+  const result = runAISummary({
     lecture_id: lectureId,
     style: body?.style ?? 'brief',
     language: body?.language ?? 'ko',
@@ -121,7 +117,7 @@ ai.post('/quiz', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = buildAIQuizOverview({
+  const result = runAIQuiz({
     lecture_id: lectureId,
     count: body?.count,
     difficulty: body?.difficulty,
