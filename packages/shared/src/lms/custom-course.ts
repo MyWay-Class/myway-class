@@ -1,4 +1,4 @@
-import { demoCourses, demoLectures, getDemoUser } from './demo-data';
+import { demoCourses, demoLectures, getDemoUser } from '../data/demo-data';
 import { getCourseDetail, isEnrolled } from './learning';
 import type {
   CustomCourse,
@@ -10,7 +10,7 @@ import type {
   CustomCourseLibraryItem,
   CustomCourseShare,
   CustomCourseShareRequest,
-} from './types';
+} from '../types';
 
 function now(): string {
   return new Date().toISOString();

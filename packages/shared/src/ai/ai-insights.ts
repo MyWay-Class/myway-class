@@ -1,4 +1,4 @@
-import { demoAIIntentLogs, demoAIQuestionLogs, demoAIUsageLogs, demoCourses, demoEnrollments, demoLectures, demoUsers, getDemoUser } from './demo-data';
+import { demoAIIntentLogs, demoAIQuestionLogs, demoAIUsageLogs, demoCourses, demoEnrollments, demoLectures, demoUsers, getDemoUser } from '../data/demo-data';
 import type {
   AIAdminInsight,
   AIInsightFeatureStat,
@@ -12,7 +12,7 @@ import type {
   AIQuestionLog,
   AIUsageLog,
   UserRole,
-} from './types';
+} from '../types';
 
 const RECENT_WINDOW_DAYS = 7;
 

@@ -1,6 +1,6 @@
-import { demoLectures } from './demo-data';
-import { getLectureDetail } from './learning';
-import { getLectureTranscript, listLectureNotes } from './media';
+import { demoLectures } from '../data/demo-data';
+import { getLectureDetail } from '../lms/learning';
+import { getLectureTranscript, listLectureNotes } from '../lms/media';
 import { createAISummary } from './ai-learning';
 import type {
   AIAction,
@@ -14,7 +14,7 @@ import type {
   AISearchHit,
   AISearchRequest,
   AISearchResult,
-} from './types';
+} from '../types';
 
 const STOP_WORDS = new Set([
   '그리고', '하지만', '때문에', '정리', '설명', '강의', '내용', '질문', '답변',
