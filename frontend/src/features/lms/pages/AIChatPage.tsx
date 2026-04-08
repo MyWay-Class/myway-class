@@ -1,4 +1,6 @@
-import type { AIInsights, LectureDetail } from '@myway/shared';
+import { useEffect, useState } from 'react';
+import type { AIRagResult, AIInsights, LectureDetail } from '@myway/shared';
+import { loadAIRAGOverview } from '../../../lib/ai-rag';
 
 type AIChatPageProps = {
   highlightedLecture: LectureDetail | null;
@@ -6,6 +8,40 @@ type AIChatPageProps = {
 };
 
 export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
+  const [ragOverview, setRagOverview] = useState<AIRagResult | null>(null);
+  const [ragLoading, setRagLoading] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    if (!highlightedLecture) {
+      setRagOverview(null);
+      setRagLoading(false);
+      return undefined;
+    }
+
+    setRagLoading(true);
+    loadAIRAGOverview({
+      query: `${highlightedLecture.title}의 핵심을 근거와 함께 정리해줘`,
+      lecture_id: highlightedLecture.id,
+      limit: 4,
+    })
+      .then((result) => {
+        if (alive) {
+          setRagOverview(result);
+        }
+      })
+      .finally(() => {
+        if (alive) {
+          setRagLoading(false);
+        }
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [highlightedLecture?.id, highlightedLecture?.title]);
+
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
@@ -61,6 +97,59 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
             <div className="mt-2 text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{insights.summary.total_requests}</div>
           </div>
         ) : null}
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[12px] font-semibold text-slate-500">RAG 파이프라인</div>
+              <div className="mt-1 text-[14px] font-bold text-slate-900">
+                {highlightedLecture ? highlightedLecture.title : '강의를 선택하면 파이프라인이 표시됩니다.'}
+              </div>
+            </div>
+            {ragOverview ? (
+              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
+                {ragOverview.provider.search_provider}
+              </span>
+            ) : null}
+          </div>
+
+          {ragLoading ? (
+            <div className="mt-4 space-y-2">
+              <div className="h-3 w-2/3 animate-pulse rounded-full bg-slate-100" />
+              <div className="h-3 w-full animate-pulse rounded-full bg-slate-100" />
+              <div className="h-3 w-5/6 animate-pulse rounded-full bg-slate-100" />
+            </div>
+          ) : ragOverview ? (
+            <>
+              <p className="mt-4 text-[12px] leading-5 text-slate-600">{ragOverview.answer.answer}</p>
+              <div className="mt-4 space-y-2">
+                {ragOverview.chunks.slice(0, 2).map((chunk) => (
+                  <div key={chunk.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[11px] font-semibold text-indigo-600">{chunk.title}</div>
+                      <div className="text-[11px] text-slate-400">{Math.round(chunk.similarity * 100)}%</div>
+                    </div>
+                    <p className="mt-1 text-[12px] leading-5 text-slate-600">{chunk.excerpt}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {ragOverview.entities.slice(0, 4).map((entity) => (
+                  <span
+                    key={`${entity.kind}-${entity.value}`}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-500"
+                  >
+                    {entity.label}: {entity.value}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="mt-4 text-[12px] leading-5 text-slate-500">
+              선택한 강의에 대해 청킹, 인텐트, 엔티티, 검색 근거를 함께 보여줄 수 있습니다.
+            </p>
+          )}
+        </div>
       </aside>
     </div>
   );
