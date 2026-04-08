@@ -1,0 +1,139 @@
+name: Auto PR Review
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    branches:
+      - main
+      - dev
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: auto-pr-review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Leave automated review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+
+            if (!pr) {
+              core.info('No pull request payload found.');
+              return;
+            }
+
+            if (pr.draft) {
+              core.info('Draft pull request, skipping automated review.');
+              return;
+            }
+
+            if (pr.head.repo.fork) {
+              core.info('Fork pull request, skipping automated review for safety.');
+              return;
+            }
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner,
+              repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const existingReview = reviews.find((review) => {
+              return review.user?.login === 'github-actions[bot]' && review.commit_id === pr.head.sha;
+            });
+
+            if (existingReview) {
+              core.info(`Automated review already exists for ${pr.head.sha}.`);
+              return;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const changedFiles = files.map((file) => file.filename);
+            const categories = {
+              docs: changedFiles.filter((file) => file.startsWith('docs/')),
+              frontend: changedFiles.filter((file) => file.startsWith('frontend/')),
+              backend: changedFiles.filter((file) => file.startsWith('backend/')),
+              shared: changedFiles.filter((file) => file.startsWith('packages/shared/')),
+              workflows: changedFiles.filter((file) => file.startsWith('.github/workflows/')),
+            };
+
+            const highlights = changedFiles.slice(0, 12).map((file) => `- \`${file}\``).join('\n');
+            const notes = [];
+
+            if (categories.frontend.length > 0) {
+              notes.push(`프론트 변경 ${categories.frontend.length}개`);
+            }
+
+            if (categories.backend.length > 0) {
+              notes.push(`백엔드 변경 ${categories.backend.length}개`);
+            }
+
+            if (categories.shared.length > 0) {
+              notes.push(`공유 타입/유틸 변경 ${categories.shared.length}개`);
+            }
+
+            if (categories.docs.length > 0) {
+              notes.push(`문서 변경 ${categories.docs.length}개`);
+            }
+
+            if (categories.workflows.length > 0) {
+              notes.push(`워크플로우 변경 ${categories.workflows.length}개`);
+            }
+
+            const riskNotes = [];
+            if (changedFiles.some((file) => /frontend|backend|packages/.test(file) && /\.(js|jsx|mjs|cjs)$/.test(file))) {
+              riskNotes.push('앱 코드 아래 추적된 JavaScript 파일이 있는지 다시 확인하세요.');
+            }
+
+            if (changedFiles.includes('agent.md') && changedFiles.length > 0) {
+              riskNotes.push('`agent.md`는 200줄 제한과 중복 규칙을 계속 지켜야 합니다.');
+            }
+
+            const body = [
+              '자동 PR 리뷰',
+              '',
+              `- 변경 파일: ${changedFiles.length}개`,
+              notes.length > 0 ? `- 영향 범위: ${notes.join(', ')}` : '- 영향 범위: 단일 영역 변경',
+              '',
+              '확인 포인트',
+              categories.docs.length > 0 ? '- 문서와 코드가 같이 바뀌었는지 확인했습니다.' : '- 코드 변경 중심이라 구현과 테스트를 먼저 확인해야 합니다.',
+              categories.frontend.length > 0 ? '- 프론트 변경은 공통 UI와 스타일 재사용이 과해지지 않았는지 봐야 합니다.' : null,
+              categories.backend.length > 0 ? '- 백엔드 변경은 라우트 응답과 shared 계약이 일치하는지 봐야 합니다.' : null,
+              categories.shared.length > 0 ? '- shared 변경은 양쪽 소비처와의 호환성을 같이 봐야 합니다.' : null,
+              riskNotes.length > 0 ? '' : '- 눈에 띄는 구조 리스크는 없습니다.',
+              riskNotes.length > 0 ? '주의 사항' : null,
+              ...riskNotes.map((item) => `- ${item}`),
+              '',
+              '변경 파일 미리보기',
+              highlights || '- 없음',
+              '',
+              '자동 리뷰는 구조 점검용입니다. 비즈니스 로직과 런타임 결과는 사람이 한 번 더 확인하는 편이 안전합니다.',
+            ].filter(Boolean).join('\n');
+
+            await github.rest.pulls.createReview({
+              owner,
+              repo,
+              pull_number: pr.number,
+              event: 'COMMENT',
+              body,
+            });
