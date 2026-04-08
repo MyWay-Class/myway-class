@@ -4,6 +4,8 @@ import {
   canManageCourses,
   demoUsers,
   type AIInsights,
+  type AIRecommendationOverview,
+  type AIUserSettings,
   type CourseCard,
   type CourseDetail,
   type Dashboard,
@@ -20,6 +22,7 @@ import {
   loadLectureDetail,
   loginWithUser,
   logoutCurrentSession,
+  saveAISettings,
   storeAuth,
 } from './lib/api';
 import {
@@ -34,6 +37,8 @@ export default function App() {
   const [session, setSession] = useState<LoginResponse | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [insights, setInsights] = useState<AIInsights | null>(null);
+  const [recommendations, setRecommendations] = useState<AIRecommendationOverview | null>(null);
+  const [settings, setSettings] = useState<AIUserSettings | null>(null);
   const [courseCards, setCourseCards] = useState<CourseCard[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedCourse, setSelectedCourse] = useState<CourseDetail | null>(null);
@@ -56,6 +61,8 @@ export default function App() {
     setSelectedCourseId,
     setDashboard,
     setInsights,
+    setRecommendations,
+    setSettings,
     setNotice,
   };
 
@@ -160,6 +167,33 @@ export default function App() {
     setBusy(false);
   }
 
+  async function handleSaveAISettings(input: {
+    language?: 'ko' | 'en';
+    theme?: 'light' | 'dark' | 'system';
+    auto_summary?: boolean;
+    recommendation_mode?: 'progress' | 'discovery' | 'balanced';
+  }) {
+    if (!session) {
+      setNotice('로그인 후 설정을 저장할 수 있습니다.');
+      return false;
+    }
+
+    setBusy(true);
+    const saved = await saveAISettings(input, session.session_token);
+
+    if (!saved) {
+      setNotice('AI 설정 저장에 실패했습니다.');
+      setBusy(false);
+      return false;
+    }
+
+    setSettings(saved);
+    await refreshLearningState(learningDeps, session);
+    setNotice('AI 설정이 저장되었습니다.');
+    setBusy(false);
+    return true;
+  }
+
   async function handleEnroll(courseId: string) {
     if (!session) {
       setNotice('수강 신청은 로그인 후 사용할 수 있습니다.');
@@ -225,12 +259,15 @@ export default function App() {
       loading={loading}
       notice={notice}
       insights={insights}
+      recommendations={recommendations}
+      settings={settings}
       onCompleteLecture={(lectureId) => void completeLectureFlow(flowDeps, lectureId)}
       onAddMaterial={(input) => addCourseMaterialFlow(flowDeps, input)}
       onAddNotice={(input) => addCourseNoticeFlow(flowDeps, input)}
       onEnroll={(courseId) => void handleEnroll(courseId)}
       onLogin={(userId) => void handleLogin(userId)}
       onLogout={() => void handleLogout()}
+      onSaveAISettings={handleSaveAISettings}
       onSelectCourse={setSelectedCourseId}
       onSelectLecture={setSelectedLectureId}
       selectedCourse={selectedCourse}

@@ -9,6 +9,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.0",
     "@babel/parser": "^7.29.2",
     "@babel/types": "^7.29.0",
     "@types/node": "^25.5.2",
@@ -22,7 +23,7 @@
     "vite": "^6.3.5"
   },
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
-    "build": "vite build --configLoader runner"
+    "dev": "vite --config ../vite.config.mjs --configLoader native --host 0.0.0.0 --port 5173 --strictPort",
+    "build": "vite build --config ../vite.config.mjs --configLoader native"
   }
 }

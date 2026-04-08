@@ -1,12 +1,21 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { AIInsights, CourseCard, Dashboard, LoginResponse } from '@myway/shared';
-import { loadAIInsights, loadCourses, loadDashboard } from './api';
+import type {
+  AIInsights,
+  AIRecommendationOverview,
+  AIUserSettings,
+  CourseCard,
+  Dashboard,
+  LoginResponse,
+} from '@myway/shared';
+import { loadAIInsights, loadAIRecommendations, loadAISettings, loadCourses, loadDashboard } from './api';
 
 type RefreshLearningStateDeps = {
   setCourseCards: Dispatch<SetStateAction<CourseCard[]>>;
   setSelectedCourseId: Dispatch<SetStateAction<string>>;
   setDashboard: Dispatch<SetStateAction<Dashboard | null>>;
   setInsights: Dispatch<SetStateAction<AIInsights | null>>;
+  setRecommendations: Dispatch<SetStateAction<AIRecommendationOverview | null>>;
+  setSettings: Dispatch<SetStateAction<AIUserSettings | null>>;
   setNotice: Dispatch<SetStateAction<string>>;
 };
 
@@ -24,12 +33,18 @@ export async function refreshLearningState(
   if (activeSession) {
     const dashboardData = await loadDashboard(activeSession.session_token);
     const insightsData = await loadAIInsights(activeSession.session_token);
+    const recommendationsData = await loadAIRecommendations(activeSession.session_token);
+    const settingsData = await loadAISettings(activeSession.session_token);
     deps.setDashboard(dashboardData);
     deps.setInsights(insightsData);
+    deps.setRecommendations(recommendationsData);
+    deps.setSettings(settingsData);
     deps.setNotice(`${activeSession.user.name} 님, ${activeSession.user.role} 계정으로 로그인했습니다.`);
   } else {
     deps.setDashboard(null);
     deps.setInsights(null);
+    deps.setRecommendations(null);
+    deps.setSettings(null);
     deps.setNotice('로그인 후 내 정보와 진도가 활성화됩니다.');
   }
 }

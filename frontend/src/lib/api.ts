@@ -2,6 +2,8 @@ import {
   canEnroll,
   completeLectureProgress,
   getAIInsightsForUser,
+  getAIRecommendationsForUser,
+  getAIUserSettings,
   enrollUser,
   getCourseDetail,
   getDashboard,
@@ -9,10 +11,14 @@ import {
   getLectureDetail,
   getPermissions,
   getRoleLabel,
+  updateAIUserSettings,
   type Material,
   type MaterialCreateRequest,
   type ApiResponse,
   type AIInsights,
+  type AIRecommendationOverview,
+  type AIUserSettings,
+  type AIUserSettingsUpdateRequest,
   type CourseCard,
   type CourseDetail,
   type Dashboard,
@@ -181,6 +187,55 @@ export async function loadAIInsights(sessionToken?: string | null): Promise<AIIn
   const userId = getFallbackUserId();
 
   return response?.success && response.data ? response.data : getAIInsightsForUser(userId);
+}
+
+export async function loadAIRecommendations(sessionToken?: string | null): Promise<AIRecommendationOverview | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await request<AIRecommendationOverview>('/api/v1/ai/recommendations', undefined, token);
+  const userId = getFallbackUserId();
+
+  return response?.success && response.data ? response.data : getAIRecommendationsForUser(userId);
+}
+
+export async function loadAISettings(sessionToken?: string | null): Promise<AIUserSettings | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await request<AIUserSettings>('/api/v1/ai/settings', undefined, token);
+  const userId = getFallbackUserId();
+
+  return response?.success && response.data ? response.data : getAIUserSettings(userId);
+}
+
+export async function saveAISettings(
+  input: AIUserSettingsUpdateRequest,
+  sessionToken?: string | null,
+): Promise<AIUserSettings | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await request<AIUserSettings>(
+    '/api/v1/ai/settings',
+    {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  const userId = getFallbackUserId();
+  return response?.success && response.data ? response.data : updateAIUserSettings(userId, input);
 }
 
 export async function loadCourses(sessionToken?: string | null): Promise<CourseCard[]> {
