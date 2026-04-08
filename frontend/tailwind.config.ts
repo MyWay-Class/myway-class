@@ -1,7 +1,9 @@
-module.exports = {
+import type { Config } from 'tailwindcss';
+
+const config: Config = {
   content: [
-    './frontend/index.html',
-    './frontend/src/**/*.{ts,tsx,js,jsx}',
+    './index.html',
+    './src/**/*.{ts,tsx,js,jsx}',
   ],
   theme: {
     extend: {
@@ -22,3 +24,5 @@ module.exports = {
   },
   plugins: [],
 };
+
+export default config;
