@@ -50,15 +50,15 @@ function buildFeatureStats(logs: AIUsageLog[]): AIInsightFeatureStat[] {
     grouped.set(log.feature, current);
   }
 
-  return [...grouped.entries()]
-    .map(([feature, data]) => ({
-      feature,
-      label: formatLabel(feature),
-      count: data.count,
-      success_rate: getSuccessRate(data.successCount, data.count),
-      avg_latency_ms: Math.round(data.latencyTotal / data.count),
-    }))
-    .sort((a, b) => b.count - a.count);
+  const stats = [...grouped.entries()].map(([feature, data]) => ({
+    feature,
+    label: formatLabel(feature),
+    count: data.count,
+    success_rate: getSuccessRate(data.successCount, data.count),
+    avg_latency_ms: Math.round(data.latencyTotal / data.count),
+  }));
+  stats.sort((a, b) => b.count - a.count);
+  return stats;
 }
 
 function buildIntentStats(logs: AIIntentLog[]): AIInsightIntentStat[] {
@@ -79,15 +79,15 @@ function buildIntentStats(logs: AIIntentLog[]): AIInsightIntentStat[] {
     grouped.set(log.detected_intent, current);
   }
 
-  return [...grouped.entries()]
-    .map(([intent, data]) => ({
-      intent: intent as AIIntentLog['detected_intent'],
-      label: formatLabel(intent),
-      count: data.count,
-      success_rate: getSuccessRate(data.successCount, data.count),
-      avg_confidence: Math.round((data.confidenceTotal / data.count) * 100),
-    }))
-    .sort((a, b) => b.count - a.count);
+  const stats = [...grouped.entries()].map(([intent, data]) => ({
+    intent: intent as AIIntentLog['detected_intent'],
+    label: formatLabel(intent),
+    count: data.count,
+    success_rate: getSuccessRate(data.successCount, data.count),
+    avg_confidence: Math.round((data.confidenceTotal / data.count) * 100),
+  }));
+  stats.sort((a, b) => b.count - a.count);
+  return stats;
 }
 
 function buildSummary(usageLogs: AIUsageLog[]): AIInsightSummary {
@@ -142,13 +142,12 @@ function buildInstructorInsight(
     lectureCounts.set(question.lecture_id, (lectureCounts.get(question.lecture_id) ?? 0) + 1);
   }
 
-  const topLectureQuestions: AIInstructorLectureInsight[] = [...lectureCounts.entries()]
-    .map(([lectureId, count]) => ({
-      lecture_id: lectureId,
-      lecture_title: lectureMap.get(lectureId) ?? '알 수 없는 강의',
-      question_count: count,
-    }))
-    .sort((a, b) => b.question_count - a.question_count);
+  const topLectureQuestions: AIInstructorLectureInsight[] = [...lectureCounts.entries()].map(([lectureId, count]) => ({
+    lecture_id: lectureId,
+    lecture_title: lectureMap.get(lectureId) ?? '알 수 없는 강의',
+    question_count: count,
+  }));
+  topLectureQuestions.sort((a, b) => b.question_count - a.question_count);
 
   return {
     role: 'INSTRUCTOR',

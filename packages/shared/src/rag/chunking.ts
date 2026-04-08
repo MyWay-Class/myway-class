@@ -9,7 +9,7 @@ const STOP_WORDS = new Set([
 ]);
 
 function normalizeText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
+  return text.replaceAll(/\s+/g, ' ').trim();
 }
 
 function tokenize(text: string): string[] {
@@ -162,7 +162,13 @@ export function buildCorpus(input: AIRagRequest): AIRagChunk[] {
 
 function scoreChunk(queryTokens: string[], query: string, chunk: AIRagChunk): number {
   if (queryTokens.length === 0) {
-    return chunk.source_scope === 'transcript' ? 0.62 : chunk.source_scope === 'note' ? 0.58 : 0.55;
+    if (chunk.source_scope === 'transcript') {
+      return 0.62;
+    }
+    if (chunk.source_scope === 'note') {
+      return 0.58;
+    }
+    return 0.55;
   }
 
   const haystackTokens = tokenize(`${chunk.title} ${chunk.content}`);
@@ -170,18 +176,23 @@ function scoreChunk(queryTokens: string[], query: string, chunk: AIRagChunk): nu
   const coverage = overlap / Math.max(3, queryTokens.length);
   const exactMatch = normalizeText(chunk.content).includes(normalizeText(query)) ? 0.14 : 0;
   const titleBoost = normalizeText(chunk.title).includes(normalizeText(query)) ? 0.06 : 0;
-  const scopeBoost = chunk.source_scope === 'transcript' ? 0.05 : chunk.source_scope === 'note' ? 0.03 : 0;
+  let scopeBoost = 0;
+  if (chunk.source_scope === 'transcript') {
+    scopeBoost = 0.05;
+  } else if (chunk.source_scope === 'note') {
+    scopeBoost = 0.03;
+  }
   return Math.min(0.99, coverage + exactMatch + titleBoost + scopeBoost);
 }
 
 export function rankChunks(query: string, chunks: AIRagChunk[], limit: number): AIRagChunk[] {
   const queryTokens = tokenize(query);
-  return chunks
+  const rankedChunks = chunks
     .map((chunk) => ({
       ...chunk,
       similarity: scoreChunk(queryTokens, query, chunk),
     }))
-    .filter((chunk) => chunk.similarity > 0 || queryTokens.length === 0)
-    .sort((left, right) => right.similarity - left.similarity || left.title.localeCompare(right.title))
-    .slice(0, limit);
+    .filter((chunk) => chunk.similarity > 0 || queryTokens.length === 0);
+  rankedChunks.sort((left, right) => right.similarity - left.similarity || left.title.localeCompare(right.title));
+  return rankedChunks.slice(0, limit);
 }

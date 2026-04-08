@@ -19,6 +19,30 @@ import {
   normalizeText,
 } from './helpers';
 
+function collectSmartReferences(lectureId: string | null, courseId: string | null) {
+  if (lectureId) {
+    return collectLectureReferences(lectureId);
+  }
+
+  if (courseId) {
+    return collectCourseReferences(courseId);
+  }
+
+  return [];
+}
+
+function resolveSmartComparisonLabel(courseTitle: string, lectureId: string | null, courseId: string | null) {
+  if (courseId) {
+    return courseTitle;
+  }
+
+  if (lectureId) {
+    return '강의';
+  }
+
+  return '전체 강의';
+}
+
 export function buildSmartChatOverview(input: SmartChatRequest): SmartChatResult {
   const message = normalizeText(input.message);
   const intent = classifyAIIntent({
@@ -40,7 +64,7 @@ export function buildSmartChatOverview(input: SmartChatRequest): SmartChatResult
       route,
       intent,
       answer: '질문의 의도가 여러 가지로 해석됩니다. 요약, 질문응답, 검색, 번역, 비교 중 하나를 더 구체적으로 알려 주세요.',
-      references: lectureId ? collectLectureReferences(lectureId) : courseId ? collectCourseReferences(courseId) : [],
+      references: collectSmartReferences(lectureId, courseId),
       suggestions: ['이 강의를 3줄로 요약해줘.', '이 강의에서 핵심 근거를 찾아줘.', '이 두 개념을 비교해줘.'],
     };
   }
@@ -122,13 +146,19 @@ export function buildSmartChatOverview(input: SmartChatRequest): SmartChatResult
           limit: 4,
         }).references;
 
-    const answer = route === 'search'
-      ? buildSearchAnswer(hits, searchQuery, courseId ? `${courseTitle}` : lectureId ? '강의' : '전체 강의')
-      : answerAIQuestion({
-          question: message,
-          lecture_id: lectureId ?? undefined,
-          limit: 4,
-        }).answer;
+    let answerLabel = '전체 강의';
+    if (courseId) {
+      answerLabel = courseTitle;
+    } else if (lectureId) {
+      answerLabel = '강의';
+    }
+    const searchAnswer = buildSearchAnswer(hits, searchQuery, answerLabel);
+    const directAnswer = answerAIQuestion({
+      question: message,
+      lecture_id: lectureId ?? undefined,
+      limit: 4,
+    }).answer;
+    const answer = route === 'search' ? searchAnswer : directAnswer;
 
     return {
       message,
@@ -155,7 +185,7 @@ export function buildSmartChatOverview(input: SmartChatRequest): SmartChatResult
       route,
       intent,
       answer,
-      references: lectureId ? collectLectureReferences(lectureId) : courseId ? collectCourseReferences(courseId) : [],
+      references: collectSmartReferences(lectureId, courseId),
       suggestions: ['다른 문장도 번역해줘.', '원문 기준으로 다시 풀어줘.'],
     };
   }
@@ -168,6 +198,7 @@ export function buildSmartChatOverview(input: SmartChatRequest): SmartChatResult
           lecture_id: lectureId ?? undefined,
           limit: 2,
         }).references;
+    const comparisonLabel = resolveSmartComparisonLabel(courseTitle, lectureId, courseId);
 
     return {
       message,
@@ -175,7 +206,7 @@ export function buildSmartChatOverview(input: SmartChatRequest): SmartChatResult
       course_id: courseId,
       route,
       intent,
-      answer: buildComparisonAnswer(hits, courseId ? courseTitle : lectureId ? '강의' : '전체 강의'),
+      answer: buildComparisonAnswer(hits, comparisonLabel),
       references: hits,
       suggestions: ['차이점을 표로 다시 정리해줘.', '공통점만 다시 보여줘.'],
     };

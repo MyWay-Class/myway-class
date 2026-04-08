@@ -32,14 +32,14 @@ function buildSearchResult(query: string, lectureId: string | null, hits: AISear
 
 function scoreCandidates(query: string, hits: AISearchResult['hits'], limit: number): AISearchResult['hits'] {
   const queryTokens = tokenize(query);
-  return hits
+  const rankedHits = hits
     .map((reference) => ({
       ...reference,
       similarity: scoreChunk(queryTokens, reference.excerpt, reference.title),
     }))
-    .filter((hit) => hit.similarity > 0 || queryTokens.length === 0)
-    .sort((left, right) => right.similarity - left.similarity || left.title.localeCompare(right.title))
-    .slice(0, limit);
+    .filter((hit) => hit.similarity > 0 || queryTokens.length === 0);
+  rankedHits.sort((left, right) => right.similarity - left.similarity || left.title.localeCompare(right.title));
+  return rankedHits.slice(0, limit);
 }
 
 export function classifyAIIntent(input: AIIntentRequest): AIIntentResult {
@@ -50,7 +50,14 @@ export function classifyAIIntent(input: AIIntentRequest): AIIntentResult {
   const baseScore = topRule?.score ?? (intent === 'general_chat' ? 0.42 : 0.5);
   const confidence = clampConfidence(baseScore + (input.lecture_id ? 0.05 : 0));
   const needsClarification = intent === 'clarify' || confidence < 0.6;
-  const action: AIAction = hasAmbiguousMatch ? 'CLARIFY' : topRule?.action ?? (needsClarification ? 'CLARIFY' : 'DIRECT_ANSWER');
+  let action: AIAction = 'DIRECT_ANSWER';
+  if (hasAmbiguousMatch) {
+    action = 'CLARIFY';
+  } else if (topRule?.action) {
+    action = topRule.action;
+  } else if (needsClarification) {
+    action = 'CLARIFY';
+  }
 
   return {
     intent,
@@ -82,15 +89,16 @@ export function answerAIQuestion(input: AIAnswerRequest): AIAnswerResult {
     limit: input.limit ?? 3,
   });
   const references = search.hits;
-  const summary = input.intent_hint === 'request_summary' || intent.intent === 'request_summary'
-    ? input.lecture_id
-      ? createAISummary({
-          lecture_id: input.lecture_id,
-          style: 'brief',
-          language: 'ko',
-        })?.content ?? buildAnswerFromReference(references, input.lecture_id)
-      : buildAnswerFromReference(references, input.lecture_id)
-    : buildAnswerFromReference(references, input.lecture_id);
+  let summary = buildAnswerFromReference(references, input.lecture_id);
+  const shouldSummarize = input.intent_hint === 'request_summary' || intent.intent === 'request_summary';
+  if (shouldSummarize && input.lecture_id) {
+    summary =
+      createAISummary({
+        lecture_id: input.lecture_id,
+        style: 'brief',
+        language: 'ko',
+      })?.content ?? summary;
+  }
 
   return {
     question: input.question,

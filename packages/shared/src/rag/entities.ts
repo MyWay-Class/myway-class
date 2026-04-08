@@ -10,7 +10,7 @@ import type {
 } from '../types';
 
 function normalizeText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
+  return text.replaceAll(/\s+/g, ' ').trim();
 }
 
 function tokenize(text: string): string[] {

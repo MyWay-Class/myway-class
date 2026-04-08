@@ -1,7 +1,6 @@
 import type {
   AIAction,
   AIIntent,
-  AIIntentRequest,
   AIReference,
   AISearchHit,
 } from '../../types';
@@ -32,7 +31,7 @@ export const INTENT_RULES: Array<{
 ];
 
 export function normalizeText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
+  return text.replaceAll(/\s+/g, ' ').trim();
 }
 
 export function tokenize(text: string): string[] {
@@ -154,7 +153,8 @@ export function rankIntentRules(normalized: string): {
       matchedKeywords,
       score: matchedKeywords.length * 0.2 + (matchedKeywords.length > 0 ? 0.45 : 0),
     };
-  }).sort((left, right) => right.score - left.score);
+  });
+  rankedRules.sort((left, right) => right.score - left.score);
 
   const topRule = rankedRules[0];
   const secondRule = rankedRules[1];
@@ -176,7 +176,7 @@ export function buildIntentReason(
   }
 
   if (topRule) {
-  const matchedKeywords = topRule.keywords.filter((keyword) => normalized.includes(keyword));
+    const matchedKeywords = topRule.keywords.filter((keyword) => normalized.includes(keyword));
     return `${matchedKeywords.join(', ')} 키워드가 감지되었습니다.`;
   }
 

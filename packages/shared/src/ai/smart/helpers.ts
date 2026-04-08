@@ -43,9 +43,9 @@ function searchCourseReferences(query: string, courseId: string, limit: number):
     }
   }
 
-  return Array.from(uniqueHits.values())
-    .sort((left, right) => right.similarity - left.similarity || left.title.localeCompare(right.title))
-    .slice(0, limit);
+  const rankedHits = Array.from(uniqueHits.values());
+  rankedHits.sort((left, right) => right.similarity - left.similarity || left.title.localeCompare(right.title));
+  return rankedHits.slice(0, limit);
 }
 
 function buildSearchAnswer(hits: AIReference[], query: string, label: string): string {
@@ -118,7 +118,7 @@ function extractTranslationTarget(message: string, language?: 'ko' | 'en'): 'ko'
 function buildTranslationAnswer(message: string, targetLanguage: 'ko' | 'en'): string {
   const cleanText = normalizeText(
     message
-      .replace(/(번역|translate|영어로|한국어로|영어|한국어|to english|to korean)/gi, '')
+      .replaceAll(/(번역|translate|영어로|한국어로|영어|한국어|to english|to korean)/gi, '')
       .trim(),
   );
 

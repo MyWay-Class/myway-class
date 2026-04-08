@@ -1,6 +1,6 @@
 import type { AIIntentLog, AIQuestionLog, AIUsageLog } from '../types';
 
-export let demoAIUsageLogs: AIUsageLog[] = [
+export const demoAIUsageLogs: AIUsageLog[] = [
   {
     id: 'aiu_001',
     user_id: 'usr_std_001',
@@ -81,7 +81,7 @@ export let demoAIUsageLogs: AIUsageLog[] = [
   },
 ];
 
-export let demoAIIntentLogs: AIIntentLog[] = [
+export const demoAIIntentLogs: AIIntentLog[] = [
   {
     id: 'aint_001',
     user_id: 'usr_std_001',
@@ -149,7 +149,7 @@ export let demoAIIntentLogs: AIIntentLog[] = [
   },
 ];
 
-export let demoAIQuestionLogs: AIQuestionLog[] = [
+export const demoAIQuestionLogs: AIQuestionLog[] = [
   {
     id: 'aiq_001',
     user_id: 'usr_std_001',

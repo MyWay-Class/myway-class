@@ -49,7 +49,7 @@ function buildAnswerResult(
 }
 
 export function buildAIRAGOverview(input: AIRagRequest): AIRagResult {
-  const query = input.query.replace(/\s+/g, ' ').trim();
+  const query = input.query.replaceAll(/\s+/g, ' ').trim();
   const intent = classifyAIIntent({
     message: query,
     lecture_id: input.lecture_id,
@@ -80,7 +80,7 @@ export function collectAIRagEntities(input: AIRagRequest) {
 }
 
 export function buildAIRagSearch(input: AIRagRequest): AISearchResult {
-  const query = input.query.replace(/\s+/g, ' ').trim();
+  const query = input.query.replaceAll(/\s+/g, ' ').trim();
   const chunks = rankChunks(query, buildCorpus(input), Math.max(1, Math.min(6, input.limit ?? 4)));
   return buildSearchResult(query, input.lecture_id ?? null, chunks);
 }

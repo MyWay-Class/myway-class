@@ -101,7 +101,7 @@ export const demoLectures: Lecture[] = [
   },
 ];
 
-export let demoEnrollments: Enrollment[] = [
+export const demoEnrollments: Enrollment[] = [
   {
     id: 'enr_001',
     user_id: 'usr_std_001',
@@ -118,7 +118,7 @@ export let demoEnrollments: Enrollment[] = [
   },
 ];
 
-export let demoLectureProgress: LectureProgress[] = [
+export const demoLectureProgress: LectureProgress[] = [
   { id: 'prg_001', user_id: 'usr_std_001', lecture_id: 'lec_ai_001', is_completed: true },
   { id: 'prg_002', user_id: 'usr_std_001', lecture_id: 'lec_ai_002', is_completed: false },
   { id: 'prg_003', user_id: 'usr_std_001', lecture_id: 'lec_llm_001', is_completed: false },

@@ -7,7 +7,7 @@ import type {
   Notice,
 } from '../types';
 
-export let demoMaterials: Material[] = [
+export const demoMaterials: Material[] = [
   {
     id: 'mat_001',
     course_id: 'crs_ai_001',
@@ -37,7 +37,7 @@ export let demoMaterials: Material[] = [
   },
 ];
 
-export let demoNotices: Notice[] = [
+export const demoNotices: Notice[] = [
   {
     id: 'ntc_001',
     course_id: 'crs_ai_001',
@@ -67,10 +67,10 @@ export let demoNotices: Notice[] = [
   },
 ];
 
-export let demoLectureTranscripts: LectureTranscript[] = [];
+export const demoLectureTranscripts: LectureTranscript[] = [];
 
-export let demoLectureNotes: LectureNote[] = [];
+export const demoLectureNotes: LectureNote[] = [];
 
-export let demoAudioExtractions: AudioExtraction[] = [];
+export const demoAudioExtractions: AudioExtraction[] = [];
 
-export let demoLecturePipelines: LecturePipeline[] = [];
+export const demoLecturePipelines: LecturePipeline[] = [];

@@ -73,14 +73,32 @@ function isAIRecommendationMode(value: unknown): value is AIRecommendationMode {
 
 export function updateAIUserSettings(userId: string, input: AIUserSettingsUpdateRequest): AIUserSettings {
   const current = getAIUserSettings(userId);
+  let language = current.language;
+  if (typeof input.language === 'string') {
+    language = input.language;
+  }
+
+  let theme = current.theme;
+  if (isAIThemePreference(input.theme)) {
+    theme = input.theme;
+  }
+
+  let autoSummary = current.auto_summary;
+  if (typeof input.auto_summary === 'boolean') {
+    autoSummary = input.auto_summary;
+  }
+
+  let recommendationMode = current.recommendation_mode;
+  if (isAIRecommendationMode(input.recommendation_mode)) {
+    recommendationMode = input.recommendation_mode;
+  }
+
   const next: AIUserSettings = {
     ...current,
-    ...(typeof input.language === 'string' ? { language: input.language } : {}),
-    ...(isAIThemePreference(input.theme) ? { theme: input.theme } : {}),
-    ...(typeof input.auto_summary === 'boolean' ? { auto_summary: input.auto_summary } : {}),
-    ...(isAIRecommendationMode(input.recommendation_mode)
-      ? { recommendation_mode: input.recommendation_mode }
-      : {}),
+    language,
+    theme,
+    auto_summary: autoSummary,
+    recommendation_mode: recommendationMode,
     updated_at: nowIso(),
   };
 
@@ -130,7 +148,12 @@ function getRelatedCourseScore(course: Course, seedCourses: Course[]): number {
   const seedTags = new Set(seedCourses.flatMap((item) => item.tags));
   const sharedTagCount = course.tags.filter((tag) => seedTags.has(tag)).length;
   const sameCategory = seedCourses.some((item) => item.category === course.category) ? 2 : 0;
-  const difficultyScore = course.difficulty === 'beginner' ? 3 : course.difficulty === 'intermediate' ? 2 : 1;
+  let difficultyScore = 1;
+  if (course.difficulty === 'beginner') {
+    difficultyScore = 3;
+  } else if (course.difficulty === 'intermediate') {
+    difficultyScore = 2;
+  }
   return sharedTagCount * 4 + sameCategory + difficultyScore;
 }
 
@@ -138,8 +161,10 @@ function sortRecommendations(
   items: AIRecommendationCard[],
   mode: AIRecommendationMode,
 ): AIRecommendationCard[] {
-  const progressFirst = [...items].sort((left, right) => left.progress_percent - right.progress_percent || right.score - left.score);
-  const discoveryFirst = [...items].sort((left, right) => right.score - left.score || left.progress_percent - right.progress_percent);
+  const progressFirst = [...items];
+  const discoveryFirst = [...items];
+  progressFirst.sort((left, right) => left.progress_percent - right.progress_percent || right.score - left.score);
+  discoveryFirst.sort((left, right) => right.score - left.score || left.progress_percent - right.progress_percent);
 
   if (mode === 'discovery') {
     return discoveryFirst;
@@ -149,11 +174,13 @@ function sortRecommendations(
     const result: AIRecommendationCard[] = [];
     const maxLength = Math.max(progressFirst.length, discoveryFirst.length);
     for (let index = 0; index < maxLength; index += 1) {
-      if (progressFirst[index] && !result.some((item) => item.id === progressFirst[index].id)) {
-        result.push(progressFirst[index]);
+      const progressItem = progressFirst[index];
+      if (progressItem && !result.some((item) => item.id === progressItem.id)) {
+        result.push(progressItem);
       }
-      if (discoveryFirst[index] && !result.some((item) => item.id === discoveryFirst[index].id)) {
-        result.push(discoveryFirst[index]);
+      const discoveryItem = discoveryFirst[index];
+      if (discoveryItem && !result.some((item) => item.id === discoveryItem.id)) {
+        result.push(discoveryItem);
       }
     }
     return result;
@@ -168,8 +195,9 @@ function buildStudentRecommendations(userId: string, settings: AIUserSettings): 
   const enrolledIds = new Set(active.map((course) => course.id));
   const enrolledCourses = demoCourses.filter((course) => enrolledIds.has(course.id));
 
-  const progressItems = active
-    .sort((left, right) => left.progress_percent - right.progress_percent || left.title.localeCompare(right.title))
+  const sortedActiveCourses = active.slice();
+  sortedActiveCourses.sort((left, right) => left.progress_percent - right.progress_percent || left.title.localeCompare(right.title));
+  const progressItems = sortedActiveCourses
     .map((course) =>
       createRecommendationCard(
         demoCourses.find((item) => item.id === course.id)!,
@@ -188,10 +216,11 @@ function buildStudentRecommendations(userId: string, settings: AIUserSettings): 
     .map((course) => ({
       course,
       score: getRelatedCourseScore(course, enrolledCourses),
-    }))
-    .sort((left, right) => right.score - left.score || left.course.title.localeCompare(right.course.title));
+    }));
+  const sortedDiscoveryCandidates = discoveryCandidates.slice();
+  sortedDiscoveryCandidates.sort((left, right) => right.score - left.score || left.course.title.localeCompare(right.course.title));
 
-  const discoveryItems = discoveryCandidates.slice(0, 3).map(({ course, score }) =>
+  const discoveryItems = sortedDiscoveryCandidates.slice(0, 3).map(({ course, score }) =>
     createRecommendationCard(course, {
       source: 'discovery',
       reason: enrolledCourses.length > 0
@@ -208,26 +237,28 @@ function buildStudentRecommendations(userId: string, settings: AIUserSettings): 
 
 function buildInstructorRecommendations(userId: string, settings: AIUserSettings): AIRecommendationCard[] {
   const ownedCourses = demoCourses.filter((course) => course.instructor_id === userId);
-  const ownedItems = ownedCourses
-    .map((course) => {
-      const progress = getCourseAggregateProgress(course.id);
-      return createRecommendationCard(course, {
-        source: 'review',
-        reason: `수강생 평균 진행률이 ${progress}%입니다. 보강 자료나 공지를 점검하기 좋습니다.`,
-        score: 100 - progress,
-        progress_percent: progress,
-        is_enrolled: false,
-      });
-    })
-    .sort((left, right) => left.progress_percent - right.progress_percent || right.score - left.score);
+  const ownedItems = ownedCourses.map((course) => {
+    const progress = getCourseAggregateProgress(course.id);
+    return createRecommendationCard(course, {
+      source: 'review',
+      reason: `수강생 평균 진행률이 ${progress}%입니다. 보강 자료나 공지를 점검하기 좋습니다.`,
+      score: 100 - progress,
+      progress_percent: progress,
+      is_enrolled: false,
+    });
+  });
+  const sortedOwnedItems = ownedItems.slice();
+  sortedOwnedItems.sort((left, right) => left.progress_percent - right.progress_percent || right.score - left.score);
 
   const relatedCandidates = demoCourses
     .filter((course) => course.instructor_id !== userId)
     .map((course) => ({
       course,
       score: getRelatedCourseScore(course, ownedCourses),
-    }))
-    .sort((left, right) => right.score - left.score || left.course.title.localeCompare(right.course.title))
+    }));
+  const sortedRelatedCandidates = relatedCandidates.slice();
+  sortedRelatedCandidates.sort((left, right) => right.score - left.score || left.course.title.localeCompare(right.course.title));
+  const relatedItems = sortedRelatedCandidates
     .slice(0, 2)
     .map(({ course, score }) =>
       createRecommendationCard(course, {
@@ -239,18 +270,18 @@ function buildInstructorRecommendations(userId: string, settings: AIUserSettings
       }),
     );
 
-  return sortRecommendations([...ownedItems, ...relatedCandidates], settings.recommendation_mode).slice(0, 4);
+  return sortRecommendations([...sortedOwnedItems, ...relatedItems], settings.recommendation_mode).slice(0, 4);
 }
 
 function buildAdminRecommendations(settings: AIUserSettings): AIRecommendationCard[] {
-  const reviewedCourses = demoCourses
-    .map((course) => ({
-      course,
-      progress: getCourseAggregateProgress(course.id),
-    }))
-    .sort((left, right) => left.progress - right.progress || right.course.title.localeCompare(left.course.title));
+  const reviewedCourses = demoCourses.map((course) => ({
+    course,
+    progress: getCourseAggregateProgress(course.id),
+  }));
+  const sortedReviewedCourses = reviewedCourses.slice();
+  sortedReviewedCourses.sort((left, right) => left.progress - right.progress || right.course.title.localeCompare(left.course.title));
 
-  const items = reviewedCourses.slice(0, 4).map(({ course, progress }) =>
+  const items = sortedReviewedCourses.slice(0, 4).map(({ course, progress }) =>
     createRecommendationCard(course, {
       source: 'management',
       reason: `전체 수강생 평균 진행률이 ${progress}%입니다. 운영 점검 대상으로 적합합니다.`,
@@ -294,12 +325,14 @@ function buildSuggestedActions(role: UserRole, settings: AIUserSettings): string
 export function getAIRecommendationsForUser(userId: string): AIRecommendationOverview {
   const role = getUserRole(userId);
   const settings = getAIUserSettings(userId);
-  const recommendations =
-    role === 'STUDENT'
-      ? buildStudentRecommendations(userId, settings)
-      : role === 'INSTRUCTOR'
-        ? buildInstructorRecommendations(userId, settings)
-        : buildAdminRecommendations(settings);
+  let recommendations: AIRecommendationCard[];
+  if (role === 'STUDENT') {
+    recommendations = buildStudentRecommendations(userId, settings);
+  } else if (role === 'INSTRUCTOR') {
+    recommendations = buildInstructorRecommendations(userId, settings);
+  } else {
+    recommendations = buildAdminRecommendations(settings);
+  }
 
   return {
     user_id: userId,
