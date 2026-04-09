@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import auth from './auth';
 import customCourses from './custom-courses';
 import aiInsights from './ai-insights';
+import aiLogs from './ai-logs';
 import aiRecommendations from './ai-recommendations';
 import aiProviders from './ai-providers';
 import aiRag from './ai-rag';
@@ -19,6 +20,7 @@ export function registerRoutes(app: Hono): void {
   app.route('/api/v1/health', health);
   app.route('/api/v1/auth', auth);
   app.route('/api/v1/ai/insights', aiInsights);
+  app.route('/api/v1/ai/logs', aiLogs);
   app.route('/api/v1/ai', aiRecommendations);
   app.route('/api/v1/ai/providers', aiProviders);
   app.route('/api/v1/ai/rag', aiRag);

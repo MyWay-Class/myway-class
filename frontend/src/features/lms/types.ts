@@ -1,4 +1,5 @@
 import type {
+  AILogOverview,
   AIInsights,
   AIProviderCatalog,
   AIRecommendationOverview,
@@ -47,6 +48,7 @@ export type LmsDashboardProps = {
   apiStatus: 'checking' | 'online' | 'offline';
   courseCards: CourseCard[];
   dashboard: Dashboard | null;
+  aiLogs: AILogOverview | null;
   demoUsers: AuthUser[];
   enrolledCourses: CourseCard[];
   getCurrentRoleLabel: (session: LoginResponse | null) => string;

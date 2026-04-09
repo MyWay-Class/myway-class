@@ -28,6 +28,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
         session={props.session}
         page={activePage}
         dashboard={props.dashboard}
+        aiLogs={props.aiLogs}
         enrolledCourses={props.enrolledCourses}
         highlightedLecture={props.highlightedLecture}
         recommendations={props.recommendations}

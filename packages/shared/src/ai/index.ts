@@ -1,4 +1,5 @@
 export * from './ai';
+export * from './ai-logs';
 export * from './ai-insights';
 export * from './ai-intent';
 export * from './ai-learning';

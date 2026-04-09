@@ -37,3 +37,34 @@ export type AIQuestionLog = {
   success: boolean;
   created_at: string;
 };
+
+export type AIUsageGroupStat = {
+  key: string;
+  label: string;
+  count: number;
+  success_rate: number;
+  avg_latency_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+};
+
+export type AILogSummary = {
+  total_requests: number;
+  success_rate: number;
+  avg_latency_ms: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  unique_users: number;
+  recent_window_days: number;
+  top_provider: string;
+  top_model: string;
+};
+
+export type AILogOverview = {
+  summary: AILogSummary;
+  provider_stats: AIUsageGroupStat[];
+  model_stats: AIUsageGroupStat[];
+  usage_logs: AIUsageLog[];
+  intent_logs: AIIntentLog[];
+  question_logs: AIQuestionLog[];
+};
