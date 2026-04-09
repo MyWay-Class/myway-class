@@ -20,7 +20,7 @@ import type { LmsDashboardProps, LmsPageId } from '../types';
 
 type RolePageRouterProps = Pick<
   LmsDashboardProps,
-  'dashboard' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onSelectCourse' | 'demoUsers'
+  'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onSelectCourse' | 'demoUsers'
 > & {
   session: LoginResponse;
   page: LmsPageId;
@@ -31,6 +31,7 @@ export function RolePageRouter({
   session,
   page,
   dashboard,
+  aiLogs,
   enrolledCourses,
   highlightedLecture,
   recommendations,
@@ -53,7 +54,7 @@ export function RolePageRouter({
       case 'admin-assign':
         return <AdminAssignPage users={demoUsers} courses={courseCards} />;
       case 'admin-stats':
-        return <AdminStatsPage dashboard={dashboard} courses={courseCards} users={demoUsers} insights={insights} />;
+        return <AdminStatsPage dashboard={dashboard} courses={courseCards} users={demoUsers} insights={insights} aiLogs={aiLogs} />;
       case 'admin-automation':
         return <AdminAutomationPage providerCatalog={providers} />;
       default:

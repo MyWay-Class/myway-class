@@ -3,6 +3,7 @@ import {
   canEnroll,
   canManageCourses,
   demoUsers,
+  type AILogOverview,
   type AIInsights,
   type AIProviderCatalog,
   type AIRecommendationOverview,
@@ -37,6 +38,7 @@ import { LmsDashboard } from './components/LmsDashboard';
 export default function App() {
   const [session, setSession] = useState<LoginResponse | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [aiLogs, setAILogs] = useState<AILogOverview | null>(null);
   const [insights, setInsights] = useState<AIInsights | null>(null);
   const [providers, setProviders] = useState<AIProviderCatalog | null>(null);
   const [recommendations, setRecommendations] = useState<AIRecommendationOverview | null>(null);
@@ -62,6 +64,7 @@ export default function App() {
     setCourseCards,
     setSelectedCourseId,
     setDashboard,
+    setAILogs,
     setInsights,
     setProviders,
     setRecommendations,
@@ -254,6 +257,7 @@ export default function App() {
       apiStatus={apiStatus}
       courseCards={courseCards}
       dashboard={dashboard}
+      aiLogs={aiLogs}
       demoUsers={demoUsers}
       enrolledCourses={enrolledCourses}
       getCurrentRoleLabel={getCurrentRoleLabel}

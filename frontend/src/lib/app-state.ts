@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type {
+  AILogOverview,
   AIInsights,
   AIProviderCatalog,
   AIRecommendationOverview,
@@ -8,12 +9,13 @@ import type {
   Dashboard,
   LoginResponse,
 } from '@myway/shared';
-import { loadAIInsights, loadAIProviders, loadAIRecommendations, loadAISettings, loadCourses, loadDashboard } from './api';
+import { loadAIInsights, loadAILogs, loadAIProviders, loadAIRecommendations, loadAISettings, loadCourses, loadDashboard } from './api';
 
 type RefreshLearningStateDeps = {
   setCourseCards: Dispatch<SetStateAction<CourseCard[]>>;
   setSelectedCourseId: Dispatch<SetStateAction<string>>;
   setDashboard: Dispatch<SetStateAction<Dashboard | null>>;
+  setAILogs: Dispatch<SetStateAction<AILogOverview | null>>;
   setInsights: Dispatch<SetStateAction<AIInsights | null>>;
   setProviders: Dispatch<SetStateAction<AIProviderCatalog | null>>;
   setRecommendations: Dispatch<SetStateAction<AIRecommendationOverview | null>>;
@@ -25,9 +27,10 @@ export async function refreshLearningState(
   deps: RefreshLearningStateDeps,
   activeSession: LoginResponse | null,
 ): Promise<void> {
-  const [courses, dashboardData, insightsData, providersData, recommendationsData, settingsData] = await Promise.all([
+  const [courses, dashboardData, aiLogsData, insightsData, providersData, recommendationsData, settingsData] = await Promise.all([
     loadCourses(activeSession?.session_token),
     activeSession ? loadDashboard(activeSession.session_token) : Promise.resolve(null),
+    activeSession ? loadAILogs(activeSession.session_token) : Promise.resolve(null),
     activeSession ? loadAIInsights(activeSession.session_token) : Promise.resolve(null),
     activeSession ? loadAIProviders(activeSession.session_token) : Promise.resolve(null),
     activeSession ? loadAIRecommendations(activeSession.session_token) : Promise.resolve(null),
@@ -42,6 +45,7 @@ export async function refreshLearningState(
 
   if (activeSession) {
     deps.setDashboard(dashboardData);
+    deps.setAILogs(aiLogsData);
     deps.setInsights(insightsData);
     deps.setProviders(providersData);
     deps.setRecommendations(recommendationsData);
@@ -49,6 +53,7 @@ export async function refreshLearningState(
     deps.setNotice(`${activeSession.user.name} 님, ${activeSession.user.role} 계정으로 로그인했습니다.`);
   } else {
     deps.setDashboard(null);
+    deps.setAILogs(null);
     deps.setInsights(null);
     deps.setProviders(null);
     deps.setRecommendations(null);
