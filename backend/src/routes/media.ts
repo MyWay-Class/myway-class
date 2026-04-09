@@ -16,6 +16,7 @@ import { getAuthenticatedUser, hasRole } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { getSTTProviderOverview } from '../lib/stt-provider';
 import { runTranscriptGeneration } from '../lib/stt-adapter';
+import type { RuntimeBindings } from '../lib/runtime-env';
 
 const media = new Hono();
 
@@ -40,14 +41,15 @@ media.post('/transcribe', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = runTranscriptGeneration(user.id, {
+  const result = await runTranscriptGeneration(user.id, {
     lecture_id: lectureId,
     text: body?.text?.trim(),
+    audio_url: body?.audio_url?.trim(),
     duration_ms: body?.duration_ms,
     language: body?.language ?? 'ko',
     stt_provider: body?.stt_provider?.trim(),
     stt_model: body?.stt_model?.trim(),
-  });
+  }, undefined, c.env as RuntimeBindings | undefined);
 
   if (!result.ok) {
     return jsonFailure('TRANSCRIPT_FAILED', '트랜스크립트를 생성할 수 없습니다.', 400);

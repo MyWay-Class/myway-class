@@ -32,7 +32,7 @@
 - 요약은 트랜스크립트가 생성된 이후에만 수행한다.
 
 ## 현재 구현
-- `POST /api/v1/media/transcribe`로 텍스트 기반 트랜스크립트를 생성한다.
+- `POST /api/v1/media/transcribe`로 텍스트 기반 트랜스크립트 또는 `audio_url` 기반 실제 STT 트랜스크립트를 생성한다.
 - `POST /api/v1/media/summarize`로 brief, detailed, timeline 요약 노트를 생성한다.
 - `POST /api/v1/media/extract-audio`로 오디오 추출 메타데이터를 기록한다.
 - `GET /api/v1/media/transcript/:lectureId`, `GET /api/v1/media/notes/:lectureId`, `GET /api/v1/media/audio-extractions/:lectureId`, `GET /api/v1/media/pipeline/:lectureId`로 상태와 산출물을 확인한다.
@@ -62,8 +62,9 @@
 ## Provider 계층
 - 현재 구현은 `demo` STT를 기본 경로로 유지한다.
 - 향후 운영 경로는 `Cloudflare AI -> Gemini -> demo` 순의 fallback 계층을 기본으로 둔다.
-- `POST /api/v1/media/transcribe`는 provider 메타데이터를 함께 기록하고, `GET /api/v1/media/providers`로 provider 계층을 조회할 수 있다.
-- STT 결과에는 `stt_provider`와 `stt_model`이 함께 남아야 한다.
+- `POST /api/v1/media/transcribe`는 provider 메타데이터를 함께 기록하고, `audio_url`이 주어지면 Cloudflare Workers AI 전사를 먼저 시도한다.
+- `GET /api/v1/media/providers`로 provider 계층을 조회할 수 있다.
+- STT 결과에는 `stt_provider`, `stt_model`, `segments`, `word_count`가 함께 남아야 한다.
 
 ## 검증 기준
 - 미디어 내용을 검색 가능한 트랜스크립트 데이터로 바꿀 수 있다.
