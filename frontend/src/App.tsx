@@ -240,15 +240,7 @@ export default function App() {
     refreshLearningState: (activeSession: LoginResponse | null) => refreshLearningState(learningDeps, activeSession),
     setInsights,
   };
-  const highlightedLecture =
-    selectedLecture ??
-    (selectedCourse?.lectures[0]
-      ? {
-          ...selectedCourse.lectures[0],
-          course_title: selectedCourse.title,
-          course_instructor: selectedCourse.instructor_name,
-        }
-      : null);
+  const highlightedLecture = selectedLecture ?? null;
   return (
     <LmsDashboard
       busy={busy}

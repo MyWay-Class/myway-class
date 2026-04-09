@@ -20,7 +20,7 @@ import type { LmsDashboardProps, LmsPageId } from '../types';
 
 type RolePageRouterProps = Pick<
   LmsDashboardProps,
-  'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onSelectCourse' | 'demoUsers' | 'selectedCourse'
+  'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onSelectCourse' | 'onSelectLecture' | 'demoUsers' | 'selectedCourse' | 'selectedLectureId'
 > & {
   session: LoginResponse;
   page: LmsPageId;
@@ -39,8 +39,10 @@ export function RolePageRouter({
   courseCards,
   insights,
   onSelectCourse,
+  onSelectLecture,
   demoUsers,
   selectedCourse,
+  selectedLectureId,
 }: RolePageRouterProps) {
   const sessionToken = session.session_token;
 
@@ -49,7 +51,16 @@ export function RolePageRouter({
       case 'dashboard':
         return <AdminDashboardPage dashboard={dashboard} users={demoUsers} courses={courseCards} insights={insights} />;
       case 'courses':
-        return <CoursesPage courses={courseCards} onSelectCourse={onSelectCourse} />;
+        return (
+          <CoursesPage
+            courses={courseCards}
+            selectedCourse={selectedCourse}
+            highlightedLecture={highlightedLecture}
+            selectedLectureId={selectedLectureId}
+            onSelectCourse={onSelectCourse}
+            onSelectLecture={onSelectLecture}
+          />
+        );
       case 'admin-users':
         return <AdminUsersPage users={demoUsers} />;
       case 'admin-instructors':
@@ -73,7 +84,16 @@ export function RolePageRouter({
 
   if (session.user.role === 'INSTRUCTOR') {
     if (page === 'courses') {
-      return <CoursesPage courses={courseCards} onSelectCourse={onSelectCourse} />;
+      return (
+        <CoursesPage
+          courses={courseCards}
+          selectedCourse={selectedCourse}
+          highlightedLecture={highlightedLecture}
+          selectedLectureId={selectedLectureId}
+          onSelectCourse={onSelectCourse}
+          onSelectLecture={onSelectLecture}
+        />
+      );
     }
 
     if (page === 'shortform') {
@@ -112,7 +132,16 @@ export function RolePageRouter({
   }
 
   if (page === 'courses') {
-    return <CoursesPage courses={courseCards} onSelectCourse={onSelectCourse} />;
+    return (
+      <CoursesPage
+        courses={courseCards}
+        selectedCourse={selectedCourse}
+        highlightedLecture={highlightedLecture}
+        selectedLectureId={selectedLectureId}
+        onSelectCourse={onSelectCourse}
+        onSelectLecture={onSelectLecture}
+      />
+    );
   }
 
   if (page === 'shortform') {

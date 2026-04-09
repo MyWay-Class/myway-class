@@ -1,6 +1,13 @@
 import { demoCourses, demoLectureProgress, demoLectures } from '../../data/demo-data';
 import type { CourseCard, CourseDetail, LectureDetail } from '../../types';
-import { createCourseCard, getCourseLectures, getLectureInstructorName } from './helpers';
+import {
+  createCourseCard,
+  getCourseLectures,
+  getLectureInstructorName,
+  getLectureKeywords,
+  getLectureTranscriptExcerpt,
+  getLectureVideoUrl,
+} from './helpers';
 import { getCourseMaterials } from './content';
 import { getCourseNotices } from './content';
 
@@ -41,5 +48,8 @@ export function getLectureDetail(lectureId: string, userId?: string): LectureDet
     is_completed: userId
       ? demoLectureProgress.some((progress) => progress.user_id === userId && progress.lecture_id === lectureId && progress.is_completed)
       : undefined,
+    video_url: getLectureVideoUrl(lecture.id),
+    transcript_excerpt: getLectureTranscriptExcerpt(lecture),
+    keywords: getLectureKeywords(lecture),
   };
 }

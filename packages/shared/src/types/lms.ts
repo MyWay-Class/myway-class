@@ -11,6 +11,8 @@ export type Course = {
   tags: string[];
 };
 
+export type CourseThumbnailPalette = 'indigo' | 'emerald' | 'violet' | 'amber';
+
 export type Lecture = {
   id: string;
   course_id: string;
@@ -164,6 +166,10 @@ export type CourseCard = Course & {
   enrolled: boolean;
   progress_percent: number;
   completed_lectures: number;
+  thumbnail_palette: CourseThumbnailPalette;
+  rating: number;
+  student_count: number;
+  total_duration_minutes: number;
 };
 
 export type CourseDetail = CourseCard & {
@@ -178,6 +184,9 @@ export type LectureDetail = Lecture & {
   previous_lecture_id?: string;
   next_lecture_id?: string;
   is_completed?: boolean;
+  video_url: string;
+  transcript_excerpt: string;
+  keywords: string[];
 };
 
 export type Dashboard = {
