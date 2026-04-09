@@ -8,11 +8,10 @@
 - `verify`는 dependency check, backend build, frontend typecheck를 한 번에 실행한다.
 - `docs/project/11-testing-and-verification.md`에 새 검증 명령을 정리했다.
 - `docs/project/20-status-and-next-steps.md`와 `docs/project/00-index.md`를 함께 갱신해 후속 작업 맥락을 연결했다.
-- frontend 전용 `vite.config.mjs`를 추가해 패키지 내부에서 설정을 유지하도록 정리했다.
+- frontend 스크립트는 워크스페이스 밖의 루트 Vite config를 사용하도록 맞춰 `frontend/` 내부에 JS 앱 파일이 남지 않게 했다.
 
 ## 검증
 - `npm run check:deps` 통과
 - `npm run verify` 통과
 - `npm run build:backend` 통과
 - `npm run build:frontend`는 현재 Windows 환경의 Vite `spawn EPERM` 이슈로 추가 확인이 필요하다
-
