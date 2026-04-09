@@ -60,9 +60,9 @@
 - 타임스탬프 정렬이 깨지는 경우
 
 ## Provider 계층
-- 현재 구현은 `demo` STT를 기본 경로로 유지한다.
-- 향후 운영 경로는 `Cloudflare AI -> Gemini -> demo` 순의 fallback 계층을 기본으로 둔다.
-- `POST /api/v1/media/transcribe`는 provider 메타데이터를 함께 기록하고, `audio_url`이 주어지면 Cloudflare Workers AI 전사를 먼저 시도한다.
+- 현재 구현은 `audio_url`이 있으면 `Cloudflare AI` 전사를 먼저 시도하고, 텍스트 전용이나 실패 시에는 `demo` STT로 되돌아간다.
+- 운영 경로는 `Cloudflare AI -> Gemini -> demo` 순의 fallback 계층을 기본으로 둔다.
+- `POST /api/v1/media/transcribe`는 provider 메타데이터를 함께 기록한다.
 - `GET /api/v1/media/providers`로 provider 계층을 조회할 수 있다.
 - STT 결과에는 `stt_provider`, `stt_model`, `segments`, `word_count`가 함께 남아야 한다.
 
