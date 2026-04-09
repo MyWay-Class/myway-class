@@ -40,6 +40,12 @@ export type RuntimeBindings = {
   OLLAMA_MODEL?: string;
   MYWAY_CLOUDFLARE_STT_MODEL?: string;
   CLOUDFLARE_STT_MODEL?: string;
+  MYWAY_MEDIA_PROCESSOR_URL?: string;
+  MEDIA_PROCESSOR_URL?: string;
+  MYWAY_MEDIA_PROCESSOR_TOKEN?: string;
+  MEDIA_PROCESSOR_TOKEN?: string;
+  MYWAY_MEDIA_CALLBACK_SECRET?: string;
+  MEDIA_CALLBACK_SECRET?: string;
 };
 
 function normalize(value: string | undefined): string | undefined {
@@ -75,5 +81,17 @@ export function getCloudflareSTTRuntimeSettings(env?: RuntimeBindings): {
         'MYWAY_CLOUDFLARE_STT_MODEL',
         getRuntimeValue(env, 'CLOUDFLARE_STT_MODEL', '@cf/openai/whisper-large-v3-turbo'),
       ) ?? '@cf/openai/whisper-large-v3-turbo',
+  };
+}
+
+export function getMediaProcessorRuntimeSettings(env?: RuntimeBindings): {
+  url?: string;
+  token?: string;
+  callback_secret?: string;
+} {
+  return {
+    url: getRuntimeValue(env, 'MYWAY_MEDIA_PROCESSOR_URL', getRuntimeValue(env, 'MEDIA_PROCESSOR_URL')),
+    token: getRuntimeValue(env, 'MYWAY_MEDIA_PROCESSOR_TOKEN', getRuntimeValue(env, 'MEDIA_PROCESSOR_TOKEN')),
+    callback_secret: getRuntimeValue(env, 'MYWAY_MEDIA_CALLBACK_SECRET', getRuntimeValue(env, 'MEDIA_CALLBACK_SECRET')),
   };
 }

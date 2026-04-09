@@ -165,6 +165,11 @@ export type AudioExtraction = {
   source_video_name?: string;
   source_content_type?: string;
   source_size_bytes?: number;
+  language?: string;
+  requested_stt_provider?: string;
+  requested_stt_model?: string;
+  processing_job_id?: string | null;
+  processing_error?: string | null;
   audio_url?: string | null;
   audio_format: string;
   audio_duration_ms: number;
@@ -174,6 +179,8 @@ export type AudioExtraction = {
   transcript_id: string | null;
   stt_status: TranscriptStatus;
   created_at: string;
+  processed_at?: string | null;
+  updated_at?: string;
 };
 
 export type LecturePipeline = {
@@ -216,6 +223,19 @@ export type AudioExtractionRequest = {
   language?: string;
   stt_provider?: string;
   stt_model?: string;
+};
+
+export type AudioExtractionCallbackRequest = {
+  extraction_id: string;
+  lecture_id: string;
+  status: MediaPipelineStatus;
+  audio_url?: string;
+  audio_format?: string;
+  audio_duration_ms?: number;
+  sample_rate?: number;
+  channels?: number;
+  processing_job_id?: string;
+  error_message?: string;
 };
 
 export type CourseCard = Course & {
