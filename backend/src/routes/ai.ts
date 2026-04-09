@@ -92,7 +92,7 @@ ai.post('/summary', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = runAISummary({
+  const result = await runAISummary({
     lecture_id: lectureId,
     style: body?.style ?? 'brief',
     language: body?.language ?? 'ko',
@@ -117,7 +117,7 @@ ai.post('/quiz', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = runAIQuiz({
+  const result = await runAIQuiz({
     lecture_id: lectureId,
     count: body?.count,
     difficulty: body?.difficulty,

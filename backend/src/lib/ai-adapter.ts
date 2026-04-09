@@ -1,9 +1,7 @@
 import {
   answerAIQuestion,
   classifyAIIntent,
-  generateAIQuiz,
   searchAIContent,
-  createAISummary,
   type AIAnswerRequest,
   type AIAnswerResult,
   type AIIntentRequest,
@@ -17,6 +15,7 @@ import {
   type AISummaryRequest,
   type AISummaryResult,
 } from '@myway/shared';
+import { runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine';
 import { getAIProviderSelection } from './ai-provider';
 
 export type AIAdapterResultMap = {
@@ -56,21 +55,27 @@ export function runAIAnswer(input: AIAnswerRequest, preferredProvider?: AIProvid
   return answerAIQuestion(input);
 }
 
-export function runAISummary(input: AISummaryRequest, preferredProvider?: AIProviderName): AISummaryResult | null {
-  void resolveProvider('summary', preferredProvider);
-  return createAISummary(input);
+export async function runAISummary(
+  input: AISummaryRequest,
+  preferredProvider?: AIProviderName,
+): Promise<AISummaryResult | null> {
+  resolveProvider('summary', preferredProvider);
+  return runAISummaryWithEngine(input, preferredProvider);
 }
 
-export function runAIQuiz(input: AIQuizRequest, preferredProvider?: AIProviderName): AIQuizResult | null {
-  void resolveProvider('quiz', preferredProvider);
-  return generateAIQuiz(input);
+export async function runAIQuiz(
+  input: AIQuizRequest,
+  preferredProvider?: AIProviderName,
+): Promise<AIQuizResult | null> {
+  resolveProvider('quiz', preferredProvider);
+  return runAIQuizWithEngine(input, preferredProvider);
 }
 
-export function runAIFeature<TFeature extends AIAdapterFeature>(
+export async function runAIFeature<TFeature extends AIAdapterFeature>(
   feature: TFeature,
   input: AIAdapterInputMap[TFeature],
   preferredProvider?: AIProviderName,
-): AIAdapterResultMap[TFeature] {
+): Promise<AIAdapterResultMap[TFeature]> {
   switch (feature) {
     case 'intent':
       return runAIIntent(input as AIIntentRequest, preferredProvider) as AIAdapterResultMap[TFeature];
@@ -79,8 +84,10 @@ export function runAIFeature<TFeature extends AIAdapterFeature>(
     case 'answer':
       return runAIAnswer(input as AIAnswerRequest, preferredProvider) as AIAdapterResultMap[TFeature];
     case 'summary':
-      return runAISummary(input as AISummaryRequest, preferredProvider) as AIAdapterResultMap[TFeature];
+      return (await runAISummary(input as AISummaryRequest, preferredProvider)) as AIAdapterResultMap[TFeature];
     case 'quiz':
-      return runAIQuiz(input as AIQuizRequest, preferredProvider) as AIAdapterResultMap[TFeature];
+      return (await runAIQuiz(input as AIQuizRequest, preferredProvider)) as AIAdapterResultMap[TFeature];
+    default:
+      throw new Error(`Unsupported AI feature: ${String(feature)}`);
   }
 }

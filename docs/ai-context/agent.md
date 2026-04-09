@@ -15,7 +15,8 @@
 ## 읽는 순서
 1. 루트 `agent.md`
 2. `docs/ai-context/harness-engineering.md`
-3. 필요한 경우 `docs/dev-logs/`와 관련 문서
+3. `docs/ai-context/ai-engine-provider-connection.md`
+4. 필요한 경우 `docs/dev-logs/`와 관련 문서
 
 ## 특화 규칙
 - 이 문서는 루트 규칙을 반복하지 않는다.
