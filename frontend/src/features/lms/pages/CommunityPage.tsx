@@ -1,54 +1,160 @@
-import type { AIRecommendationOverview, CourseCard } from '@myway/shared';
+import { useEffect, useMemo, useState } from 'react';
+import type { AIRecommendationOverview, CourseCard, ShortformCommunityItem } from '@myway/shared';
+import { loadShortformCommunity } from '../../../lib/api';
+import { ShortformCommunityCard } from '../components/ShortformCommunityCard';
+import { ShortformCommunityHero } from '../components/ShortformCommunityHero';
+import { ShortformPreviewModal } from '../components/ShortformPreviewModal';
 
 type CommunityPageProps = {
   courses: CourseCard[];
   recommendations: AIRecommendationOverview | null;
 };
 
-export function CommunityPage({ courses, recommendations }: CommunityPageProps) {
-  const items = recommendations?.recommendations.slice(0, 3).map((item) => ({
+function buildFallbackItems(
+  courses: CourseCard[],
+  recommendations: AIRecommendationOverview | null,
+): ShortformCommunityItem[] {
+  const fallback = recommendations?.recommendations.slice(0, 3).map((item) => ({
     id: item.id,
+    shortform_id: `shortform-${item.id}`,
+    user_id: item.id,
     title: item.title,
-    course: item.category,
-    author: item.instructor_name,
+    description: `${item.category} · ${item.instructor_name}`,
+    duration_ms: 0,
+    total_segments: 0,
+    course_id: item.id,
+    source_lecture_ids: [],
+    status: 'PUBLIC' as const,
+    video_url: '',
+    share_count: 0,
+    like_count: 12,
+    save_count: 0,
+    view_count: 0,
+    created_at: new Date().toISOString(),
+    clips: [],
+    shared_by_name: item.instructor_name,
+    course_title: item.category,
+    is_saved: false,
+    is_liked: false,
   })) ?? courses.slice(0, 3).map((course) => ({
     id: course.id,
+    shortform_id: `shortform-${course.id}`,
+    user_id: course.instructor_id,
     title: course.title,
-    course: course.category,
-    author: course.instructor_name,
+    description: course.description,
+    duration_ms: 0,
+    total_segments: 0,
+    course_id: course.id,
+    source_lecture_ids: [],
+    status: 'PUBLIC' as const,
+    video_url: '',
+    share_count: 0,
+    like_count: 12,
+    save_count: 0,
+    view_count: 0,
+    created_at: new Date().toISOString(),
+    clips: [],
+    shared_by_name: course.instructor_name,
+    course_title: course.category,
+    is_saved: false,
+    is_liked: false,
   }));
+
+  return fallback;
+}
+
+export function CommunityPage({ courses, recommendations }: CommunityPageProps) {
+  const [community, setCommunity] = useState<ShortformCommunityItem[]>([]);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void loadShortformCommunity().then((items) => {
+      if (!mounted) {
+        return;
+      }
+
+      setCommunity(items);
+      setActiveItemId((current) => current ?? items[0]?.id ?? null);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const items = useMemo(() => {
+    return community.length > 0 ? community : buildFallbackItems(courses, recommendations);
+  }, [community, courses, recommendations]);
+
+  const activeItem = items.find((item) => item.id === activeItemId) ?? items[0] ?? null;
+
+  const totalClips = items.reduce((sum, item) => sum + item.clips.length, 0);
+  const totalViews = items.reduce((sum, item) => sum + item.view_count, 0);
 
   return (
     <div className="space-y-5">
-      <section className="flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-5 py-5">
-        <div>
-          <h2 className="text-[15px] font-bold text-slate-900">숏폼 커뮤니티</h2>
-          <p className="mt-1 text-[12px] text-slate-500">인기 학습 클립과 재구성 콘텐츠를 둘러보는 커뮤니티 뷰입니다.</p>
-        </div>
-        <div className="flex gap-2">
-          <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">인기</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">최신</span>
-        </div>
-      </section>
+      <ShortformCommunityHero totalItems={items.length} totalClips={totalClips} totalViews={totalViews} />
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {items.map((item) => (
-          <article key={item.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-            <div className="aspect-video bg-[linear-gradient(135deg,#1e293b,#475569)]" />
-            <div className="px-5 py-4">
-              <div className="text-[14px] font-semibold text-slate-900">{item.title}</div>
-              <div className="mt-1 text-[12px] text-slate-500">{item.course}</div>
-              <div className="mt-4 flex items-center justify-between text-[12px] text-slate-400">
-                <span>{item.author}</span>
-                <span className="flex items-center gap-1">
-                  <i className="ri-heart-3-line" />
-                  12
-                </span>
-              </div>
-            </div>
-          </article>
+          <ShortformCommunityCard
+            key={item.id}
+            item={item}
+            active={activeItem?.id === item.id}
+            onOpen={(next) => setActiveItemId(next.id)}
+          />
         ))}
       </section>
+
+      {activeItem ? (
+        <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-[15px] font-bold text-slate-900">상세 미리보기</h3>
+              <p className="mt-1 text-[12px] text-slate-500">
+                {activeItem.course_title} · {activeItem.shared_by_name}
+              </p>
+              <p className="mt-3 text-[13px] leading-7 text-slate-600">
+                {activeItem.description || '숏폼 재구성 설명이 없습니다.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center lg:min-w-[240px]">
+              <div className="rounded-2xl bg-slate-50 px-3 py-3">
+                <div className="text-[18px] font-extrabold text-slate-900">{activeItem.clips.length}</div>
+                <div className="text-[11px] text-slate-500">클립</div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-3 py-3">
+                <div className="text-[18px] font-extrabold text-slate-900">
+                  {Math.max(1, Math.round(activeItem.duration_ms / 60000))}
+                </div>
+                <div className="text-[11px] text-slate-500">분</div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-3 py-3">
+                <div className="text-[18px] font-extrabold text-slate-900">{activeItem.view_count}</div>
+                <div className="text-[11px] text-slate-500">조회</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-950 px-5 py-5 text-white">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[13px] font-semibold">미리보기</div>
+              <div className="text-[11px] text-white/60">{activeItem.clips.length}개 클립</div>
+            </div>
+            <div className="mt-4 aspect-video rounded-2xl border border-white/10 bg-[linear-gradient(135deg,#111827,#334155)] flex items-center justify-center text-white/60">
+              <div className="text-center">
+                <i className="ri-film-line text-[34px]" />
+                <p className="mt-2 text-[13px]">숏폼 미리보기</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <ShortformPreviewModal item={activeItem} onClose={() => setActiveItemId(null)} />
     </div>
   );
 }
