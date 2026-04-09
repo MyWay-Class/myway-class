@@ -21,9 +21,18 @@ export function getCourseDetail(courseId: string, userId: string): CourseDetail 
     return undefined;
   }
 
+  const completedLectureIds = new Set(
+    demoLectureProgress
+      .filter((progress) => progress.user_id === userId && progress.is_completed)
+      .map((progress) => progress.lecture_id),
+  );
+
   return {
     ...createCourseCard(course, userId),
-    lectures: getCourseLectures(courseId),
+    lectures: getCourseLectures(courseId).map((lecture) => ({
+      ...lecture,
+      is_completed: completedLectureIds.has(lecture.id),
+    })),
     materials: getCourseMaterials(courseId),
     notices: getCourseNotices(courseId),
   };

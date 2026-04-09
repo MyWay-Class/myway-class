@@ -8,7 +8,21 @@ export function getLectureInstructorName(instructorId: string): string {
 export function getCourseLectures(courseId: string): Lecture[] {
   return demoLectures
     .filter((lecture) => lecture.course_id === courseId)
-    .sort((a, b) => a.order_index - b.order_index);
+    .sort((a, b) => {
+      const weekA = a.week_number ?? 0;
+      const weekB = b.week_number ?? 0;
+      if (weekA !== weekB) {
+        return weekA - weekB;
+      }
+
+      const sessionA = a.session_number ?? a.order_index + 1;
+      const sessionB = b.session_number ?? b.order_index + 1;
+      if (sessionA !== sessionB) {
+        return sessionA - sessionB;
+      }
+
+      return a.order_index - b.order_index;
+    });
 }
 
 export function isEnrolled(userId: string, courseId: string): boolean {
