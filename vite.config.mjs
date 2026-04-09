@@ -9,11 +9,13 @@ const frontendRoot = resolve(repoRoot, 'frontend');
 export default defineConfig({
   root: frontendRoot,
   plugins: [react()],
-  resolve: {
+   resolve: {
     alias: {
       '@myway/shared': resolve(repoRoot, 'packages/shared/src'),
     },
+    dedupe: ['react', 'react-dom'], 
   },
+  
   server: {
     port: 5173,
     host: '0.0.0.0',
