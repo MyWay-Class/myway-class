@@ -6,6 +6,12 @@ import {
   getAIInsightsForUser,
   getAIRecommendationsForUser,
   getAIUserSettings,
+  composeCustomCourse,
+  copyCustomCourse,
+  listCommunityCustomCourses,
+  listMyCustomCourses,
+  listMyShortformLibrary,
+  listShortformCommunity,
   enrollUser,
   getCourseDetail,
   getDashboard,
@@ -13,10 +19,20 @@ import {
   getLectureDetail,
   getPermissions,
   getRoleLabel,
+  saveShortformVideo,
+  shareCustomCourse,
+  shareShortformVideo,
+  toggleShortformLike,
   updateAIUserSettings,
   type Material,
   type MaterialCreateRequest,
   type ApiResponse,
+  type CustomCourseComposeRequest,
+  type CustomCourseCopyRequest,
+  type CustomCourseCommunityItem,
+  type CustomCourseDetail,
+  type CustomCourseLibraryItem,
+  type CustomCourseShareRequest,
   type AIInsights,
   type AILogOverview,
   type AIProviderCatalog,
@@ -30,6 +46,10 @@ import {
   type LoginResponse,
   type Notice,
   type NoticeCreateRequest,
+  type ShortformCommunityItem,
+  type ShortformLibraryItem,
+  type ShortformSaveRequest,
+  type ShortformShareRequest,
   type SmartChatRequest,
   type SmartChatResult,
 } from '@myway/shared';
@@ -230,6 +250,203 @@ export async function loadAISettings(sessionToken?: string | null): Promise<AIUs
   const userId = getFallbackUserId();
 
   return response?.success && response.data ? response.data : getAIUserSettings(userId);
+}
+
+export async function loadCustomCourseLibrary(sessionToken?: string | null): Promise<CustomCourseLibraryItem[]> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+
+  if (!token) {
+    return listMyCustomCourses(userId);
+  }
+
+  const response = await request<CustomCourseLibraryItem[]>('/api/v1/custom-courses/my', undefined, token);
+  return response?.success && response.data ? response.data : listMyCustomCourses(userId);
+}
+
+export async function loadCustomCourseCommunity(
+  courseId?: string | null,
+  sessionToken?: string | null,
+): Promise<CustomCourseCommunityItem[]> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+  const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
+
+  if (!token) {
+    return listCommunityCustomCourses(userId, courseId ?? undefined);
+  }
+
+  const response = await request<CustomCourseCommunityItem[]>(`/api/v1/custom-courses/community${query}`, undefined, token);
+  return response?.success && response.data ? response.data : listCommunityCustomCourses(userId, courseId ?? undefined);
+}
+
+export async function composeCustomCourseDraft(
+  input: CustomCourseComposeRequest,
+  sessionToken?: string | null,
+): Promise<CustomCourseDetail | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+
+  if (!token) {
+    return composeCustomCourse(userId, input);
+  }
+
+  const response = await request<CustomCourseDetail>(
+    '/api/v1/custom-courses/compose',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return response?.success && response.data ? response.data : composeCustomCourse(userId, input);
+}
+
+export async function copyCustomCourseDraft(
+  customCourseId: string,
+  input: CustomCourseCopyRequest,
+  sessionToken?: string | null,
+): Promise<CustomCourseDetail | null> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+
+  if (!token) {
+    return copyCustomCourse(userId, { ...input, custom_course_id: customCourseId });
+  }
+
+  const response = await request<CustomCourseDetail>(
+    `/api/v1/custom-courses/${encodeURIComponent(customCourseId)}/copy`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ ...input, custom_course_id: customCourseId }),
+    },
+    token,
+  );
+
+  return response?.success && response.data ? response.data : copyCustomCourse(userId, { ...input, custom_course_id: customCourseId });
+}
+
+export async function shareCustomCourseDraft(
+  customCourseId: string,
+  input: CustomCourseShareRequest,
+  sessionToken?: string | null,
+): Promise<boolean> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+
+  if (!token) {
+    return Boolean(shareCustomCourse(userId, customCourseId, input));
+  }
+
+  const response = await request(
+    `/api/v1/custom-courses/${encodeURIComponent(customCourseId)}/share`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return Boolean(response?.success) || Boolean(shareCustomCourse(userId, customCourseId, input));
+}
+
+export async function loadShortformLibrary(sessionToken?: string | null): Promise<ShortformLibraryItem[]> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+
+  if (!token) {
+    return listMyShortformLibrary(userId);
+  }
+
+  const response = await request<ShortformLibraryItem[]>('/api/v1/shortform/library', undefined, token);
+  return response?.success && response.data ? response.data : listMyShortformLibrary(userId);
+}
+
+export async function loadShortformCommunity(
+  courseId?: string | null,
+  sessionToken?: string | null,
+): Promise<ShortformCommunityItem[]> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+  const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
+
+  if (!token) {
+    return listShortformCommunity(userId, courseId ?? undefined);
+  }
+
+  const response = await request<ShortformCommunityItem[]>(`/api/v1/shortform/community${query}`, undefined, token);
+  return response?.success && response.data ? response.data : listShortformCommunity(userId, courseId ?? undefined);
+}
+
+export async function shareShortformDraft(
+  input: ShortformShareRequest,
+  sessionToken?: string | null,
+): Promise<boolean> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+
+  if (!token) {
+    return Boolean(shareShortformVideo(userId, input));
+  }
+
+  const response = await request(
+    '/api/v1/shortform/share',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return Boolean(response?.success) || Boolean(shareShortformVideo(userId, input));
+}
+
+export async function saveShortformDraft(
+  input: ShortformSaveRequest,
+  sessionToken?: string | null,
+): Promise<boolean> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+
+  if (!token) {
+    return Boolean(saveShortformVideo(userId, input));
+  }
+
+  const response = await request(
+    '/api/v1/shortform/save',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return Boolean(response?.success) || Boolean(saveShortformVideo(userId, input));
+}
+
+export async function toggleShortformLikeDraft(
+  videoId: string,
+  sessionToken?: string | null,
+): Promise<boolean> {
+  const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+  const input = { video_id: videoId };
+
+  if (!token) {
+    return Boolean(toggleShortformLike(userId, input));
+  }
+
+  const response = await request(
+    '/api/v1/shortform/like',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return Boolean(response?.success) || Boolean(toggleShortformLike(userId, input));
 }
 
 export async function loadAIProviders(sessionToken?: string | null): Promise<AIProviderCatalog | null> {

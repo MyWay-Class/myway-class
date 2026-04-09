@@ -37,6 +37,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
         providers={props.providers}
         onSelectCourse={props.onSelectCourse}
         demoUsers={props.demoUsers}
+        selectedCourse={props.selectedCourse}
       />
     </AppShell>
   );

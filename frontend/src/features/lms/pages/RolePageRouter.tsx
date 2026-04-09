@@ -20,7 +20,7 @@ import type { LmsDashboardProps, LmsPageId } from '../types';
 
 type RolePageRouterProps = Pick<
   LmsDashboardProps,
-  'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onSelectCourse' | 'demoUsers'
+  'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onSelectCourse' | 'demoUsers' | 'selectedCourse'
 > & {
   session: LoginResponse;
   page: LmsPageId;
@@ -40,7 +40,10 @@ export function RolePageRouter({
   insights,
   onSelectCourse,
   demoUsers,
+  selectedCourse,
 }: RolePageRouterProps) {
+  const sessionToken = session.session_token;
+
   if (session.user.role === 'ADMIN') {
     switch (page) {
       case 'dashboard':
@@ -74,7 +77,7 @@ export function RolePageRouter({
     }
 
     if (page === 'shortform') {
-      return <ShortformPage highlightedLecture={highlightedLecture} courses={courseCards} />;
+      return <ShortformPage highlightedLecture={highlightedLecture} selectedCourse={selectedCourse} courses={courseCards} sessionToken={sessionToken} />;
     }
 
     if (page === 'community') {
@@ -113,11 +116,11 @@ export function RolePageRouter({
   }
 
   if (page === 'shortform') {
-    return <ShortformPage highlightedLecture={highlightedLecture} courses={courseCards} />;
+    return <ShortformPage highlightedLecture={highlightedLecture} selectedCourse={selectedCourse} courses={courseCards} sessionToken={sessionToken} />;
   }
 
   if (page === 'my-shortforms') {
-    return <MyShortformsPage courses={courseCards} />;
+    return <MyShortformsPage courses={courseCards} selectedCourse={selectedCourse} sessionToken={sessionToken} />;
   }
 
   if (page === 'community') {
