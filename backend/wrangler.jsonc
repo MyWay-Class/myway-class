@@ -2,6 +2,30 @@
   "name": "myway-class-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-06",
-  "d1_databases": [],
-  "r2_buckets": []
+  "d1_databases": [
+    // Bind the Cloudflare D1 database here as `DB`.
+  ],
+  "r2_buckets": [
+    // Bind the Cloudflare R2 bucket here as `ASSETS`.
+  ],
+  "vars": {
+    "APP_ENV": "development",
+    "API_ORIGIN": "http://localhost:5173",
+    "MYWAY_OLLAMA_BASE_URL": "http://127.0.0.1:11434",
+    "MYWAY_OLLAMA_MODEL": "llama3.1"
+  },
+  "env": {
+    "staging": {
+      "vars": {
+        "APP_ENV": "staging",
+        "API_ORIGIN": "https://staging.mywayclass.pages.dev"
+      }
+    },
+    "production": {
+      "vars": {
+        "APP_ENV": "production",
+        "API_ORIGIN": "https://mywayclass.pages.dev"
+      }
+    }
+  }
 }
