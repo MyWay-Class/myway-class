@@ -11,8 +11,12 @@
     "dev": "npm run dev:frontend",
     "dev:frontend": "npm --workspace @myway/frontend run dev",
     "dev:backend": "npm --workspace @myway/backend run dev",
+    "check:frontend-deps": "npm ls --workspace @myway/frontend --depth=0",
+    "check:backend-deps": "npm ls --workspace @myway/backend --depth=0",
+    "check:deps": "npm run check:frontend-deps && npm run check:backend-deps",
     "build:frontend": "npm --workspace @myway/frontend run build",
     "build:backend": "npm --workspace @myway/backend run build",
-    "build": "npm run build:frontend && npm run build:backend"
+    "build": "npm run build:frontend && npm run build:backend",
+    "verify": "npm run check:deps && npm run build:backend && npm exec --workspace @myway/frontend -- tsc -p tsconfig.json --noEmit"
   }
 }
