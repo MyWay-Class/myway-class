@@ -42,3 +42,8 @@
 ## 검증 기준
 - AI 에이전트가 숨은 질문 없이 문서만으로 구현할 수 있다.
 - 데모 흐름이 끝까지 추적 가능하다.
+
+## 실행 명령
+- `npm run check:deps`
+- `npm run verify`
+- `npm run build`
