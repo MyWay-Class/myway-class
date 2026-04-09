@@ -1,6 +1,4 @@
 import {
-  answerAIQuestion,
-  classifyAIIntent,
   searchAIContent,
   type AIAnswerRequest,
   type AIAnswerResult,
@@ -15,7 +13,7 @@ import {
   type AISummaryRequest,
   type AISummaryResult,
 } from '@myway/shared';
-import { runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine';
+import { runAIAnswerWithEngine, runAIIntentWithEngine, runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine';
 import { getAIProviderSelection } from './ai-provider';
 import type { RuntimeBindings } from './runtime-env';
 
@@ -41,9 +39,13 @@ function resolveProvider(feature: AIProviderCapability, preferredProvider?: AIPr
   return getAIProviderSelection(feature, preferredProvider).current_provider;
 }
 
-export function runAIIntent(input: AIIntentRequest, preferredProvider?: AIProviderName): AIIntentResult {
-  void resolveProvider('intent', preferredProvider);
-  return classifyAIIntent(input);
+export async function runAIIntent(
+  input: AIIntentRequest,
+  preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
+): Promise<AIIntentResult> {
+  resolveProvider('intent', preferredProvider);
+  return runAIIntentWithEngine(input, preferredProvider, env);
 }
 
 export function runAISearch(input: AISearchRequest, preferredProvider?: AIProviderName): AISearchResult {
@@ -51,9 +53,13 @@ export function runAISearch(input: AISearchRequest, preferredProvider?: AIProvid
   return searchAIContent(input);
 }
 
-export function runAIAnswer(input: AIAnswerRequest, preferredProvider?: AIProviderName): AIAnswerResult {
-  void resolveProvider('answer', preferredProvider);
-  return answerAIQuestion(input);
+export async function runAIAnswer(
+  input: AIAnswerRequest,
+  preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
+): Promise<AIAnswerResult> {
+  resolveProvider('answer', preferredProvider);
+  return runAIAnswerWithEngine(input, preferredProvider, env);
 }
 
 export async function runAISummary(
@@ -82,11 +88,11 @@ export async function runAIFeature<TFeature extends AIAdapterFeature>(
 ): Promise<AIAdapterResultMap[TFeature]> {
   switch (feature) {
     case 'intent':
-      return runAIIntent(input as AIIntentRequest, preferredProvider) as AIAdapterResultMap[TFeature];
+      return (await runAIIntent(input as AIIntentRequest, preferredProvider, env)) as AIAdapterResultMap[TFeature];
     case 'search':
       return runAISearch(input as AISearchRequest, preferredProvider) as AIAdapterResultMap[TFeature];
     case 'answer':
-      return runAIAnswer(input as AIAnswerRequest, preferredProvider) as AIAdapterResultMap[TFeature];
+      return (await runAIAnswer(input as AIAnswerRequest, preferredProvider, env)) as AIAdapterResultMap[TFeature];
     case 'summary':
       return (await runAISummary(input as AISummaryRequest, preferredProvider, env)) as AIAdapterResultMap[TFeature];
     case 'quiz':

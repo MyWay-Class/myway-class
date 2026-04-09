@@ -51,6 +51,18 @@ function estimateLatencyMs(inputText: string, outputText: string): number {
   return Math.max(1, Math.round((inputText.length + outputText.length) * 2));
 }
 
+function getOllamaModel(env?: RuntimeBindings): string {
+  return env?.MYWAY_OLLAMA_MODEL ?? env?.OLLAMA_MODEL ?? 'llama3.1';
+}
+
+function buildResponseMetadata(feature: 'intent' | 'search' | 'answer' | 'summary' | 'quiz', env?: RuntimeBindings) {
+  if (feature === 'search') {
+    return { provider: 'demo', model: 'demo-search-v1' };
+  }
+
+  return { provider: getAIProviderSelection(feature).current_provider, model: getOllamaModel(env) };
+}
+
 function recordUsageLog(input: {
   user_id: string | null;
   feature: string;
@@ -83,24 +95,29 @@ ai.post('/intent', async (c) => {
     return jsonFailure('MESSAGE_REQUIRED', 'message가 필요합니다.');
   }
 
-  const result = runAIIntent({
-    message,
-    lecture_id: body?.lecture_id?.trim(),
-    context: body?.context,
-  });
+  const env = c.env as RuntimeBindings | undefined;
+  const metadata = buildResponseMetadata('intent', env);
+  const result = await runAIIntent(
+    {
+      message,
+      lecture_id: body?.lecture_id?.trim(),
+      context: body?.context,
+    },
+    undefined,
+    env,
+  );
 
   if (user) {
-    const provider = getAIProviderSelection('intent').current_provider;
+    const lectureSnapshot = getLectureSnapshot(result.lecture_id ?? body?.lecture_id?.trim());
     recordUsageLog({
       user_id: user.id,
       feature: 'intent',
-      provider,
-      model: 'demo-intent-v1',
+      provider: metadata.provider,
+      model: metadata.model,
       input_text: message,
       output_text: result.reason,
       success: true,
     });
-    const lectureSnapshot = getLectureSnapshot(result.lecture_id ?? body?.lecture_id?.trim());
     appendAIIntentLog({
       user_id: user.id,
       message,
@@ -114,7 +131,7 @@ ai.post('/intent', async (c) => {
     });
   }
 
-  return jsonSuccess(result, '인텐트가 분류되었습니다.');
+  return jsonSuccess({ ...result, provider: metadata.provider, model: metadata.model }, '인텐트가 분류되었습니다.');
 });
 
 ai.post('/search', async (c) => {
@@ -131,6 +148,8 @@ ai.post('/search', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
+  const env = c.env as RuntimeBindings | undefined;
+  const metadata = buildResponseMetadata('search', env);
   const result = runAISearch({
     query,
     lecture_id: lectureId,
@@ -138,19 +157,18 @@ ai.post('/search', async (c) => {
   });
 
   if (user) {
-    const provider = getAIProviderSelection('search').current_provider;
     recordUsageLog({
       user_id: user.id,
       feature: 'search',
-      provider,
-      model: 'demo-search-v1',
+      provider: metadata.provider,
+      model: metadata.model,
       input_text: query,
       output_text: JSON.stringify(result.hits),
       success: true,
     });
   }
 
-  return jsonSuccess(result, '검색 결과를 조회했습니다.');
+  return jsonSuccess({ ...result, provider: metadata.provider, model: metadata.model }, '검색 결과를 조회했습니다.');
 });
 
 ai.post('/answer', async (c) => {
@@ -167,21 +185,26 @@ ai.post('/answer', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = runAIAnswer({
-    question,
-    lecture_id: lectureId,
-    intent_hint: body?.intent_hint,
-    limit: body?.limit,
-  });
+  const env = c.env as RuntimeBindings | undefined;
+  const metadata = buildResponseMetadata('answer', env);
+  const result = await runAIAnswer(
+    {
+      question,
+      lecture_id: lectureId,
+      intent_hint: body?.intent_hint,
+      limit: body?.limit,
+    },
+    undefined,
+    env,
+  );
 
   if (user) {
-    const provider = getAIProviderSelection('answer').current_provider;
     const lectureSnapshot = getLectureSnapshot(result.lecture_id ?? lectureId);
     recordUsageLog({
       user_id: user.id,
       feature: 'answer',
-      provider,
-      model: 'demo-answer-v1',
+      provider: metadata.provider,
+      model: metadata.model,
       input_text: question,
       output_text: result.answer,
       success: true,
@@ -192,12 +215,12 @@ ai.post('/answer', async (c) => {
       course_id: lectureSnapshot.course_id ?? 'crs_unknown',
       question,
       answer: result.answer,
-      model: 'demo-answer-v1',
+      model: metadata.model,
       success: true,
     });
   }
 
-  return jsonSuccess(result, '답변을 생성했습니다.');
+  return jsonSuccess({ ...result, provider: metadata.provider, model: metadata.model }, '답변을 생성했습니다.');
 });
 
 ai.post('/summary', async (c) => {
@@ -214,6 +237,7 @@ ai.post('/summary', async (c) => {
   }
 
   const env = c.env as RuntimeBindings | undefined;
+  const metadata = buildResponseMetadata('summary', env);
   const result = await runAISummary(
     {
       lecture_id: lectureId,
@@ -229,19 +253,18 @@ ai.post('/summary', async (c) => {
   }
 
   if (user) {
-    const provider = getAIProviderSelection('summary').current_provider;
     recordUsageLog({
       user_id: user.id,
       feature: 'summary',
-      provider,
-      model: env?.MYWAY_OLLAMA_MODEL ?? env?.OLLAMA_MODEL ?? 'llama3.1',
+      provider: metadata.provider,
+      model: metadata.model,
       input_text: lectureId,
       output_text: result.content,
       success: true,
     });
   }
 
-  return jsonSuccess(result, '요약이 생성되었습니다.');
+  return jsonSuccess({ ...result, provider: metadata.provider, model: metadata.model }, '요약이 생성되었습니다.');
 });
 
 ai.post('/quiz', async (c) => {
@@ -258,6 +281,7 @@ ai.post('/quiz', async (c) => {
   }
 
   const env = c.env as RuntimeBindings | undefined;
+  const metadata = buildResponseMetadata('quiz', env);
   const result = await runAIQuiz(
     {
       lecture_id: lectureId,
@@ -273,19 +297,18 @@ ai.post('/quiz', async (c) => {
   }
 
   if (user) {
-    const provider = getAIProviderSelection('quiz').current_provider;
     recordUsageLog({
       user_id: user.id,
       feature: 'quiz',
-      provider,
-      model: env?.MYWAY_OLLAMA_MODEL ?? env?.OLLAMA_MODEL ?? 'llama3.1',
+      provider: metadata.provider,
+      model: metadata.model,
       input_text: lectureId,
       output_text: JSON.stringify(result.questions),
       success: true,
     });
   }
 
-  return jsonSuccess(result, '퀴즈가 생성되었습니다.');
+  return jsonSuccess({ ...result, provider: metadata.provider, model: metadata.model }, '퀴즈가 생성되었습니다.');
 });
 
 export default ai;

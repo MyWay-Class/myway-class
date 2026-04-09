@@ -10,6 +10,7 @@
 - AI 레이어
   - AI provider 카탈로그와 adapter 분리
   - 실제 엔진 연결 가이드 문서화
+  - 실제 Ollama provider 연결과 fallback / timeout 정책 고정
   - AI 요약, 퀴즈, 채팅, 인사이트 흐름 정리
 - STT / 미디어
   - STT provider adapter와 실제 Cloudflare 전사 경로 연결
@@ -37,7 +38,7 @@
 
 ## 앞으로 해야 할 기능
 - 실제 엔진 연결
-  - AI provider는 실제 호출과 fallback 전략을 계속 확장한다.
+  - AI provider는 Ollama 실제 호출 경로를 붙였고, 이후 Gemini / Cloudflare 확장을 검토한다.
   - STT provider는 실제 호출 경로를 붙였으니, 이후 다른 provider 확장을 검토한다.
 - 데이터 지속성
   - 데모 메모리 기반 append 구조를 유지하면서, DB나 영속 저장소 이관 시점을 검토한다.

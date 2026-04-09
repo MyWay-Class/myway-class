@@ -1,10 +1,18 @@
 import {
+  answerAIQuestion,
+  classifyAIIntent,
   createAISummary,
   generateAIQuiz,
   getLectureDetail,
   getLectureTranscript,
   listLectureNotes,
+  type AIAction,
+  type AIIntent,
   type AIProviderName,
+  type AIIntentRequest,
+  type AIIntentResult,
+  type AIAnswerRequest,
+  type AIAnswerResult,
   type AIQuizQuestion,
   type AIQuizRequest,
   type AIQuizResult,
@@ -16,6 +24,8 @@ import { runOllamaChat, type OllamaChatMessage } from './providers';
 import type { RuntimeBindings } from './runtime-env';
 
 type JsonObject = Record<string, unknown>;
+
+const OLLAMA_TIMEOUT_MS = 15_000;
 
 function normalizeText(value: string): string {
   return value.replaceAll(/\s+/g, ' ').trim();
@@ -78,6 +88,42 @@ function pickString(value: unknown, fallback: string): string {
 function pickDifficulty(value: unknown, fallback: AIQuizResult['difficulty']): AIQuizResult['difficulty'] {
   if (value === 'easy' || value === 'medium' || value === 'hard') {
     return value;
+  }
+
+  return fallback;
+}
+
+function pickIntent(value: unknown, fallback: AIIntent): AIIntent {
+  const allowed: AIIntent[] = [
+    'request_summary',
+    'generate_quiz',
+    'search_content',
+    'ask_concept',
+    'ask_recommendation',
+    'explain_deeper',
+    'translate',
+    'compare',
+    'create_shortform',
+    'extract_audio',
+    'analyze_progress',
+    'general_chat',
+    'clarify',
+  ];
+
+  return typeof value === 'string' && allowed.includes(value as AIIntent) ? (value as AIIntent) : fallback;
+}
+
+function pickAction(value: unknown, fallback: AIAction): AIAction {
+  if (value === 'SEARCH' || value === 'DIRECT_ANSWER' || value === 'CLARIFY' || value === 'DECOMPOSE') {
+    return value;
+  }
+
+  return fallback;
+}
+
+function pickConfidence(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0.35, Math.min(0.98, value));
   }
 
   return fallback;
@@ -216,9 +262,168 @@ function getLectureSourceText(lectureId: string): { lectureTitle: string; course
   };
 }
 
-function isRemoteFeatureEnabled(feature: 'summary' | 'quiz', preferredProvider?: AIProviderName): boolean {
+function getOllamaModel(env?: RuntimeBindings): string {
+  return env?.MYWAY_OLLAMA_MODEL ?? env?.OLLAMA_MODEL ?? 'llama3.1';
+}
+
+function isRemoteFeatureEnabled(feature: 'intent' | 'answer' | 'summary' | 'quiz', preferredProvider?: AIProviderName): boolean {
   const provider = getAIProviderSelection(feature, preferredProvider);
   return provider.current_provider === 'ollama';
+}
+
+function buildIntentPrompt(input: AIIntentRequest, fallback: AIIntentResult): OllamaChatMessage[] {
+  const lecture = input.lecture_id ? getLectureDetail(input.lecture_id) : undefined;
+
+  return [
+    {
+      role: 'system',
+      content:
+        'You are an AI intent classifier for a learning platform. Return valid JSON only. Do not wrap the response in markdown or prose.',
+    },
+    {
+      role: 'user',
+      content: [
+        `Message: ${input.message}`,
+        `Lecture title: ${lecture?.title ?? 'none'}`,
+        `Course title: ${lecture?.course_title ?? 'none'}`,
+        `Context: ${(input.context ?? []).join(' | ') || 'none'}`,
+        'Return JSON with the following shape:',
+        '{"intent":"request_summary|generate_quiz|search_content|ask_concept|ask_recommendation|explain_deeper|translate|compare|create_shortform|extract_audio|analyze_progress|general_chat|clarify","confidence":0.0,"action":"SEARCH|DIRECT_ANSWER|CLARIFY|DECOMPOSE","reason":"string","entities":["string"],"needs_clarification":true}',
+        'Rules:',
+        '- Keep the confidence between 0 and 1.',
+        '- Keep the action aligned with the intent.',
+        '- Use the lecture and context when it helps classification.',
+        '- Return a concise reason in Korean.',
+        '- entities should contain 2 to 6 short values.',
+        `Fallback intent: ${fallback.intent}`,
+        `Fallback action: ${fallback.action}`,
+      ].join('\n'),
+    },
+  ];
+}
+
+function buildAnswerPrompt(input: AIAnswerRequest, fallback: AIAnswerResult): OllamaChatMessage[] {
+  const lecture = input.lecture_id ? getLectureDetail(input.lecture_id) : undefined;
+  const references = fallback.references.slice(0, 3);
+
+  return [
+    {
+      role: 'system',
+      content:
+        'You are a grounded lecture assistant. Return valid JSON only. Do not wrap the response in markdown or prose.',
+    },
+    {
+      role: 'user',
+      content: [
+        `Question: ${input.question}`,
+        `Lecture title: ${lecture?.title ?? 'none'}`,
+        `Course title: ${lecture?.course_title ?? 'none'}`,
+        `Intent: ${fallback.intent.intent}`,
+        'Reference snippets:',
+        ...references.map((reference, index) => `${index + 1}. ${reference.title}: ${reference.excerpt}`),
+        'Return JSON with the following shape:',
+        '{"answer":"string","suggestions":["string","string"]}',
+        'Rules:',
+        '- Base the answer on the provided references and lecture context.',
+        '- Keep the answer short, direct, and natural in Korean.',
+        '- suggestions should contain 2 short follow-up questions.',
+        '- If the references are weak, acknowledge that briefly.',
+      ].join('\n'),
+    },
+  ];
+}
+
+async function runOllamaStructuredIntent(
+  input: AIIntentRequest,
+  preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
+): Promise<AIIntentResult> {
+  const fallback = classifyAIIntent(input);
+
+  if (!isRemoteFeatureEnabled('intent', preferredProvider)) {
+    return fallback;
+  }
+
+  const response = await runOllamaChat(buildIntentPrompt(input, fallback), env, {
+    model: getOllamaModel(env),
+    temperature: 0.1,
+    timeoutMs: OLLAMA_TIMEOUT_MS,
+  });
+
+  const parsed = parseJsonObject(response ?? '');
+  if (!parsed) {
+    return fallback;
+  }
+
+  const intent = pickIntent(parsed.intent, fallback.intent);
+  const confidence = pickConfidence(parsed.confidence, fallback.confidence);
+  const action = pickAction(parsed.action, fallback.action);
+  const entities = toStringArray(parsed.entities);
+  const reason = pickString(parsed.reason, fallback.reason);
+  const needsClarification =
+    typeof parsed.needs_clarification === 'boolean'
+      ? parsed.needs_clarification
+      : fallback.needs_clarification;
+
+  return {
+    ...fallback,
+    intent,
+    confidence,
+    action,
+    entities: entities.length > 0 ? entities.slice(0, 6) : fallback.entities,
+    reason,
+    needs_clarification: needsClarification,
+  };
+}
+
+async function runOllamaStructuredAnswer(
+  input: AIAnswerRequest,
+  preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
+): Promise<AIAnswerResult> {
+  const fallback = answerAIQuestion(input);
+
+  if (!isRemoteFeatureEnabled('answer', preferredProvider)) {
+    return fallback;
+  }
+
+  const response = await runOllamaChat(buildAnswerPrompt(input, fallback), env, {
+    model: getOllamaModel(env),
+    temperature: 0.2,
+    timeoutMs: OLLAMA_TIMEOUT_MS,
+  });
+
+  const parsed = parseJsonObject(response ?? '');
+  if (!parsed) {
+    return fallback;
+  }
+
+  const answer = pickString(parsed.answer, fallback.answer);
+  if (!answer) {
+    return fallback;
+  }
+
+  return {
+    ...fallback,
+    answer,
+    suggestions: toStringArray(parsed.suggestions).slice(0, 2).concat(fallback.suggestions).slice(0, 2),
+  };
+}
+
+export async function runAIIntentWithEngine(
+  input: AIIntentRequest,
+  preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
+): Promise<AIIntentResult> {
+  return runOllamaStructuredIntent(input, preferredProvider, env);
+}
+
+export async function runAIAnswerWithEngine(
+  input: AIAnswerRequest,
+  preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
+): Promise<AIAnswerResult> {
+  return runOllamaStructuredAnswer(input, preferredProvider, env);
 }
 
 export async function runAISummaryWithEngine(
@@ -238,7 +443,10 @@ export async function runAISummaryWithEngine(
   }
 
   const messages = buildSummaryPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input.style, input.language);
-  const response = await runOllamaChat(messages, env);
+  const response = await runOllamaChat(messages, env, {
+    model: getOllamaModel(env),
+    timeoutMs: OLLAMA_TIMEOUT_MS,
+  });
 
   if (!response) {
     return fallback;
@@ -285,7 +493,10 @@ export async function runAIQuizWithEngine(
   }
 
   const messages = buildQuizPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input);
-  const response = await runOllamaChat(messages, env);
+  const response = await runOllamaChat(messages, env, {
+    model: getOllamaModel(env),
+    timeoutMs: OLLAMA_TIMEOUT_MS,
+  });
 
   if (!response) {
     return fallback;

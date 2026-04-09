@@ -33,30 +33,41 @@ export async function runOllamaChat(
   options?: {
     model?: string;
     temperature?: number;
+    timeoutMs?: number;
   },
 ): Promise<string | null> {
   const baseUrl = env?.MYWAY_OLLAMA_BASE_URL ?? env?.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434';
   const model = options?.model ?? env?.MYWAY_OLLAMA_MODEL ?? env?.OLLAMA_MODEL ?? 'llama3.1';
+  const timeoutMs = options?.timeoutMs ?? 15_000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-  const response = await fetch(`${trimTrailingSlash(baseUrl)}/api/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: false,
-      options: {
-        temperature: options?.temperature ?? 0.2,
+  try {
+    const response = await fetch(`${trimTrailingSlash(baseUrl)}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    }),
-  });
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        options: {
+          temperature: options?.temperature ?? 0.2,
+        },
+      }),
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as unknown;
+    return extractChatContent(payload);
+  } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const payload = (await response.json()) as unknown;
-  return extractChatContent(payload);
 }
