@@ -8,6 +8,10 @@ import type { LmsDashboardProps, LmsPageId } from '../features/lms/types';
 
 export function LmsDashboard(props: LmsDashboardProps) {
   const [activePage, setActivePage] = useState<LmsPageId>(defaultPageForRole(props.session));
+  const activeNavKey =
+    activePage === 'courses' && props.selectedLectureId
+      ? 'lecture-watch'
+      : activePage;
 
   useEffect(() => {
     setActivePage(defaultPageForRole(props.session));
@@ -36,6 +40,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
     <AppShell
       session={props.session}
       activePage={activePage}
+      activeNavKey={activeNavKey}
       title={pageTitle(activePage, props.session.user.role)}
       onNavigate={setActivePage}
       onLogout={props.onLogout}

@@ -29,8 +29,11 @@ export type LmsPageId =
   | 'admin-stats'
   | 'admin-automation';
 
+export type LmsNavKey = LmsPageId | 'lecture-watch' | 'shortform-wizard' | 'admin-user-detail';
+
 export type LmsNavItem = {
   page: LmsPageId;
+  aliases?: LmsNavKey[];
   icon: string;
   label: string;
   badge?: string;
@@ -76,6 +79,7 @@ export type LmsDashboardProps = {
   selectedCourse: CourseDetail | null;
   selectedCourseId: string;
   selectedLectureId: string;
+  activeNavKey?: LmsNavKey;
   session: LoginResponse | null;
 };
 

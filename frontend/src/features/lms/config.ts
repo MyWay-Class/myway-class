@@ -1,5 +1,5 @@
 import type { AuthUser, LoginResponse, UserRole } from '@myway/shared';
-import type { LmsNavGroup, LmsPageId } from './types';
+import type { LmsNavGroup, LmsNavKey, LmsPageId } from './types';
 
 export function roleLabel(role: UserRole): string {
   if (role === 'ADMIN') return '운영자';
@@ -51,7 +51,7 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
       label: '주요 메뉴',
       items: [
         { page: 'dashboard', icon: 'ri-dashboard-line', label: '대시보드' },
-        { page: 'courses', icon: 'ri-book-2-line', label: '강의 목록' },
+        { page: 'courses', icon: 'ri-book-2-line', label: '강의 목록', aliases: ['lecture-watch'] },
       ],
     },
   ];
@@ -60,7 +60,7 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
     groups.push({
       label: '학습 도구',
       items: [
-        { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작' },
+        { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작', aliases: ['shortform-wizard'] },
         { page: 'community', icon: 'ri-group-line', label: '숏폼 커뮤니티' },
         { page: 'my-shortforms', icon: 'ri-folder-video-line', label: '내 숏폼' },
         { page: 'ai-chat', icon: 'ri-robot-line', label: 'AI 학습 챗' },
@@ -93,7 +93,7 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
     groups.push(
       {
         label: '운영 관리',
-        items: [{ page: 'admin-users', icon: 'ri-user-settings-line', label: '사용자 관리' }],
+        items: [{ page: 'admin-users', icon: 'ri-user-settings-line', label: '사용자 관리', aliases: ['admin-user-detail'] }],
       },
       {
         label: '강의 관리',
@@ -108,4 +108,8 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
   }
 
   return groups;
+}
+
+export function isNavItemActive(item: LmsNavGroup['items'][number], activeNavKey: LmsNavKey): boolean {
+  return item.page === activeNavKey || item.aliases?.includes(activeNavKey) === true;
 }

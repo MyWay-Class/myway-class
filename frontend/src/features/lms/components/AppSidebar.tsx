@@ -1,15 +1,16 @@
 import type { LoginResponse } from '@myway/shared';
-import { navGroupsForRole, roleLabel } from '../config';
-import type { LmsPageId } from '../types';
+import { isNavItemActive, navGroupsForRole, roleLabel } from '../config';
+import type { LmsNavKey, LmsPageId } from '../types';
 
 type AppSidebarProps = {
   session: LoginResponse;
   activePage: LmsPageId;
+  activeNavKey: LmsNavKey;
   onNavigate: (page: LmsPageId) => void;
   onLogout: () => void;
 };
 
-export function AppSidebar({ session, activePage, onNavigate, onLogout }: AppSidebarProps) {
+export function AppSidebar({ session, activePage, activeNavKey, onNavigate, onLogout }: AppSidebarProps) {
   const groups = navGroupsForRole(session.user.role);
   const avatarTone =
     session.user.role === 'ADMIN'
@@ -35,7 +36,7 @@ export function AppSidebar({ session, activePage, onNavigate, onLogout }: AppSid
             </div>
             <div className="space-y-0.5">
               {group.items.map((item) => {
-                const active = item.page === activePage;
+                const active = isNavItemActive(item, activeNavKey) || item.page === activePage;
                 return (
                   <button
                     key={item.page}
