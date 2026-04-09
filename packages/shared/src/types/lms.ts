@@ -161,6 +161,11 @@ export type AudioExtraction = {
   user_id: string;
   source_type: 'video' | 'audio';
   source_url: string;
+  source_video_key?: string;
+  source_video_name?: string;
+  source_content_type?: string;
+  source_size_bytes?: number;
+  audio_url?: string | null;
   audio_format: string;
   audio_duration_ms: number;
   sample_rate: number;
@@ -203,6 +208,14 @@ export type MediaSummaryRequest = {
 export type AudioExtractionRequest = {
   lecture_id: string;
   video_url?: string;
+  video_asset_key?: string;
+  source_file_name?: string;
+  source_content_type?: string;
+  source_size_bytes?: number;
+  audio_url?: string;
+  language?: string;
+  stt_provider?: string;
+  stt_model?: string;
 };
 
 export type CourseCard = Course & {

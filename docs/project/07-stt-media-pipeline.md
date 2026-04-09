@@ -32,11 +32,13 @@
 - 요약은 트랜스크립트가 생성된 이후에만 수행한다.
 
 ## 현재 구현
+- `POST /api/v1/media/upload-video`로 강의 영상을 R2에 업로드하고 asset key와 접근 URL을 받는다.
 - `POST /api/v1/media/transcribe`로 텍스트 기반 트랜스크립트 또는 `audio_url` 기반 실제 STT 트랜스크립트를 생성한다.
 - `POST /api/v1/media/summarize`로 brief, detailed, timeline 요약 노트를 생성한다.
-- `POST /api/v1/media/extract-audio`로 오디오 추출 메타데이터를 기록한다.
+- `POST /api/v1/media/extract-audio`로 영상 기반 오디오 추출 job과 필요 시 전사까지 연결한다.
 - `GET /api/v1/media/transcript/:lectureId`, `GET /api/v1/media/notes/:lectureId`, `GET /api/v1/media/audio-extractions/:lectureId`, `GET /api/v1/media/pipeline/:lectureId`로 상태와 산출물을 확인한다.
-- 데모 데이터는 `packages/shared/src/media.ts`와 `packages/shared/src/demo-data.ts`에서 관리한다.
+- `GET /api/v1/media/assets/:assetKey`로 R2 업로드 영상을 내려받는다.
+- 데모 데이터는 `packages/shared/src/data/media.ts`와 `packages/shared/src/demo-data.ts`에서 관리한다.
 
 ## 상태
 - `PENDING`

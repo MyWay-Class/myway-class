@@ -2,12 +2,38 @@ export type WorkersAI = {
   run: <TInput extends Record<string, unknown>, TOutput = unknown>(model: string, input: TInput) => Promise<TOutput>;
 };
 
-type RuntimeStringKey = Exclude<keyof RuntimeBindings, 'AI'>;
+export type R2BucketLike = {
+  put: (
+    key: string,
+    value: ArrayBuffer | ArrayBufferView | Blob | ReadableStream | string,
+    options?: {
+      httpMetadata?: {
+        contentType?: string;
+        contentDisposition?: string;
+      };
+    },
+  ) => Promise<unknown>;
+  get: (
+    key: string,
+  ) => Promise<
+    | {
+        body?: ReadableStream<Uint8Array> | null;
+        httpMetadata?: {
+          contentType?: string;
+          contentDisposition?: string;
+        };
+      }
+    | null
+  >;
+};
+
+type RuntimeStringKey = Exclude<keyof RuntimeBindings, 'AI' | 'ASSETS'>;
 
 export type RuntimeBindings = {
   APP_ENV?: 'development' | 'staging' | 'production';
   API_ORIGIN?: string;
   AI?: WorkersAI;
+  ASSETS?: R2BucketLike;
   MYWAY_OLLAMA_BASE_URL?: string;
   OLLAMA_BASE_URL?: string;
   MYWAY_OLLAMA_MODEL?: string;

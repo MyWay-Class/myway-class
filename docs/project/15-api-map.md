@@ -85,12 +85,15 @@
 - `POST /api/v1/media/transcribe`
   - 트랜스크립트 생성
   - `audio_url`이 있으면 Cloudflare Workers AI 전사 경로 우선
+- `POST /api/v1/media/upload-video`
+  - 강의 영상 업로드와 R2 asset key 생성
 - `GET /api/v1/media/providers`
   - STT provider 계층과 fallback 순서
 - `POST /api/v1/media/summarize`
   - 요약 노트 생성
 - `POST /api/v1/media/extract-audio`
-  - 오디오 추출 메타데이터 생성
+  - 영상 기반 오디오 추출 job 생성
+  - `audio_url`이 있으면 전사까지 함께 수행
 - `GET /api/v1/media/transcript/:lectureId`
   - 강의 트랜스크립트 조회
 - `GET /api/v1/media/notes/:lectureId`
@@ -99,6 +102,8 @@
   - 강의 오디오 추출 기록 조회
 - `GET /api/v1/media/pipeline/:lectureId`
   - 강의 미디어 파이프라인 상태 조회
+- `GET /api/v1/media/assets/:assetKey`
+  - 업로드된 미디어 asset 조회
 - `POST /api/v1/shortform/generate`
   - 숏폼 후보 생성
 - `PUT /api/v1/shortform/candidates/select`

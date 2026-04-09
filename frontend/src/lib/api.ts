@@ -36,4 +36,10 @@ export {
   canCurrentUserEnroll,
   getCurrentRoleLabel,
 } from './api-courses';
+export {
+  uploadLectureVideo,
+  createAudioExtraction,
+  loadMediaPipeline,
+  loadMediaProviders,
+} from './api-media';
 export { sendSmartChat } from './api-smart';

@@ -20,6 +20,7 @@ export type LmsPageId =
   | 'community'
   | 'my-shortforms'
   | 'ai-chat'
+  | 'media-pipeline'
   | 'quiz-gen'
   | 'ai-summary'
   | 'assignment-check'

@@ -28,6 +28,7 @@ export function pageTitle(page: LmsPageId, role: UserRole): string {
     community: '숏폼 커뮤니티',
     'my-shortforms': '내 숏폼',
     'ai-chat': 'AI 학습 챗',
+    'media-pipeline': '미디어 파이프라인',
     'quiz-gen': '시험·퀴즈 자동 생성',
     'ai-summary': 'AI 강의 요약',
     'assignment-check': '과제 검사',
@@ -72,12 +73,13 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
     groups.push(
       {
         label: '학습 도구',
-        items: [
-          { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작' },
-          { page: 'community', icon: 'ri-group-line', label: '숏폼 커뮤니티' },
-          { page: 'ai-chat', icon: 'ri-robot-line', label: 'AI 챗' },
-        ],
-      },
+      items: [
+        { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작' },
+        { page: 'community', icon: 'ri-group-line', label: '숏폼 커뮤니티' },
+        { page: 'ai-chat', icon: 'ri-robot-line', label: 'AI 챗' },
+        { page: 'media-pipeline', icon: 'ri-movie-2-line', label: '미디어 파이프라인' },
+      ],
+    },
       {
         label: '교강사 도구',
         items: [
@@ -93,7 +95,10 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
     groups.push(
       {
         label: '운영 관리',
-        items: [{ page: 'admin-users', icon: 'ri-user-settings-line', label: '사용자 관리', aliases: ['admin-user-detail'] }],
+        items: [
+          { page: 'admin-users', icon: 'ri-user-settings-line', label: '사용자 관리', aliases: ['admin-user-detail'] },
+          { page: 'media-pipeline', icon: 'ri-movie-2-line', label: '미디어 파이프라인' },
+        ],
       },
       {
         label: '강의 관리',
