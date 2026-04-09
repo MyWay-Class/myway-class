@@ -1,4 +1,6 @@
 import type { AIRecommendationOverview, CourseCard, Dashboard, LectureDetail } from '@myway/shared';
+import { DashboardStatsGrid } from '../components/DashboardStatsGrid';
+import { DashboardTimeline } from '../components/DashboardTimeline';
 
 type StudentDashboardPageProps = {
   dashboard: Dashboard | null;
@@ -17,25 +19,68 @@ export function StudentDashboardPage({
 }: StudentDashboardPageProps) {
   const averageProgress =
     dashboard?.average_progress ?? Math.round(courses.reduce((sum, course) => sum + course.progress_percent, 0) / Math.max(courses.length, 1));
+  const stats =
+    dashboard?.stats ?? [
+      {
+        id: 'courses',
+        label: '수강 중 강의',
+        value: String(courses.filter((course) => course.enrolled).length),
+        hint: '현재 활성화된 학습 코스',
+        icon: 'ri-book-open-line',
+        tone: 'indigo' as const,
+      },
+      {
+        id: 'completed',
+        label: '완료 강의',
+        value: String(courses.reduce((sum, course) => sum + course.completed_lectures, 0)),
+        hint: '누적 완료한 강의 수',
+        icon: 'ri-check-double-line',
+        tone: 'emerald' as const,
+      },
+      {
+        id: 'progress',
+        label: '평균 진도',
+        value: `${averageProgress}%`,
+        hint: '전체 코스 기준 평균 진도',
+        icon: 'ri-line-chart-line',
+        tone: 'violet' as const,
+      },
+      {
+        id: 'minutes',
+        label: '총 학습 시간',
+        value: `${Math.round(courses.reduce((sum, course) => sum + course.total_duration_minutes * (course.progress_percent / 100), 0))}분`,
+        hint: '진도 기준 예상 학습 시간',
+        icon: 'ri-time-line',
+        tone: 'amber' as const,
+      },
+    ];
+  const activities = dashboard?.recent_activities ?? [];
+  const nextAction = dashboard?.next_action ?? '로그인 후 개인 학습 흐름을 확인할 수 있습니다.';
 
   return (
     <div className="space-y-5">
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-[18px] text-indigo-600">
-            <i className="ri-book-open-line" />
+      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-6 text-white shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="text-[12px] font-semibold uppercase tracking-[0.2em] text-indigo-200">Dashboard</div>
+            <h2 className="mt-2 text-[24px] font-extrabold tracking-[-0.04em]">학습 흐름과 최근 활동을 한눈에 확인합니다.</h2>
+            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-300">{nextAction}</p>
           </div>
-          <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{courses.length}</div>
-          <div className="mt-1 text-[12px] text-slate-500">수강 중인 강의</div>
-        </article>
-        <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-[18px] text-emerald-600">
-            <i className="ri-check-double-line" />
+          <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
+            <div className="font-semibold text-white">{dashboard?.learner_name ?? '학습자'}</div>
+            <div className="mt-1">{dashboard?.role ?? 'STUDENT'}</div>
           </div>
-          <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{averageProgress}%</div>
-          <div className="mt-1 text-[12px] text-slate-500">평균 학습 진도</div>
-        </article>
+        </div>
       </section>
+
+      <DashboardStatsGrid stats={stats} />
+
+      <DashboardTimeline
+        title="최근 활동"
+        subtitle="수강 신청, 강의 완료, AI 요청을 시간순으로 확인합니다."
+        activities={activities}
+        emptyMessage="최근 활동이 아직 없습니다. 첫 수강 신청이나 강의 완료가 생기면 여기에 표시됩니다."
+      />
 
       <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
         <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">

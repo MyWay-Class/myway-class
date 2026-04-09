@@ -115,7 +115,7 @@ export function RolePageRouter({
     if (page === 'ai-summary' || page === 'dashboard') {
       return page === 'ai-summary'
         ? <AISummaryPage highlightedLecture={highlightedLecture} insights={insights} />
-        : <InstructorDashboardPage courses={courseCards} insights={insights} />;
+        : <InstructorDashboardPage dashboard={dashboard} courses={courseCards} insights={insights} />;
     }
 
     if (page === 'assignment-check') {

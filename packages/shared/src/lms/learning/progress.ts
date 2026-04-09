@@ -2,6 +2,10 @@ import { demoEnrollments, demoLectureProgress, demoLectures } from '../../data/d
 import type { Enrollment, LectureCompletionResult } from '../../types';
 import { getCourseLectures } from './helpers';
 
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
 export function completeLectureProgress(userId: string, lectureId: string): LectureCompletionResult {
   const lecture = demoLectures.find((item) => item.id === lectureId);
   if (!lecture) {
@@ -22,12 +26,17 @@ export function completeLectureProgress(userId: string, lectureId: string): Lect
 
   if (existingProgress) {
     existingProgress.is_completed = true;
+    existingProgress.completed_at = nowIso();
+    existingProgress.updated_at = existingProgress.completed_at;
   } else {
+    const completedAt = nowIso();
     demoLectureProgress.push({
       id: `prg_${String(demoLectureProgress.length + 1).padStart(3, '0')}`,
       user_id: userId,
       lecture_id: lectureId,
       is_completed: true,
+      completed_at: completedAt,
+      updated_at: completedAt,
     });
   }
 
@@ -69,6 +78,7 @@ export function enrollUser(userId: string, courseId: string): Enrollment {
     course_id: courseId,
     status: 'active',
     progress_percent: 0,
+    created_at: nowIso(),
   };
 
   demoEnrollments.push(enrollment);

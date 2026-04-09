@@ -30,6 +30,7 @@ export type Enrollment = {
   course_id: string;
   status: EnrollmentStatus;
   progress_percent: number;
+  created_at?: string;
 };
 
 export type LectureProgress = {
@@ -37,6 +38,8 @@ export type LectureProgress = {
   user_id: string;
   lecture_id: string;
   is_completed: boolean;
+  completed_at?: string;
+  updated_at?: string;
 };
 
 export type Material = {
@@ -47,6 +50,42 @@ export type Material = {
   file_name: string;
   uploaded_by: string;
   uploaded_at: string;
+};
+
+export type DashboardTone = 'indigo' | 'emerald' | 'violet' | 'amber' | 'slate';
+
+export type DashboardStat = {
+  id: string;
+  label: string;
+  value: string;
+  hint: string;
+  icon: string;
+  tone: DashboardTone;
+};
+
+export type DashboardActivityType =
+  | 'enrollment'
+  | 'lecture_complete'
+  | 'ai_chat'
+  | 'ai_summary'
+  | 'quiz'
+  | 'shortform'
+  | 'material'
+  | 'notice'
+  | 'insight';
+
+export type DashboardActivity = {
+  id: string;
+  type: DashboardActivityType;
+  title: string;
+  detail: string;
+  timestamp: string;
+  icon: string;
+  tone: DashboardTone;
+  course_id?: string;
+  course_title?: string;
+  lecture_id?: string;
+  lecture_title?: string;
 };
 
 export type Notice = {
@@ -196,6 +235,9 @@ export type Dashboard = {
   active_enrollments: number;
   average_progress: number;
   courses: CourseCard[];
+  stats: DashboardStat[];
+  recent_activities: DashboardActivity[];
+  next_action: string;
 };
 
 export type LectureCompletionResult =
