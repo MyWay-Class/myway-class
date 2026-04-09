@@ -19,7 +19,7 @@ export function AppSidebar({ session, activePage, onNavigate, onLogout }: AppSid
         : 'bg-indigo-600';
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 flex w-64 flex-col border-r border-slate-200 bg-white">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
       <div className="flex h-14 items-center gap-2.5 px-[18px]">
         <div className="flex h-[30px] w-[30px] items-center justify-center rounded-[8px] bg-indigo-600 text-[15px] text-white">
           <i className="ri-play-circle-fill" />

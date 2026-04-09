@@ -1,4 +1,5 @@
 import type { CourseCard, CourseDetail, LectureDetail } from '@myway/shared';
+import { StatePanel } from '../components/StatePanel';
 
 type CoursesPageProps = {
   courses: CourseCard[];
@@ -87,7 +88,7 @@ export function CoursesPage({
         </article>
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
-          {courses.map((course) => {
+          {courses.length > 0 ? courses.map((course) => {
             const palette = paletteClasses[course.thumbnail_palette];
             const selected = selectedCourse?.id === course.id;
 
@@ -141,7 +142,16 @@ export function CoursesPage({
                 </div>
               </button>
             );
-          })}
+          }) : (
+            <div className="md:col-span-2">
+              <StatePanel
+                icon="ri-book-open-line"
+                tone="indigo"
+                title="수강 가능한 강의가 아직 없습니다."
+                description="강의가 추가되면 카드형 목록, 평점, 러닝타임, 수강 현황이 함께 표시됩니다."
+              />
+            </div>
+          )}
         </section>
       </section>
 
@@ -207,7 +217,15 @@ export function CoursesPage({
               </div>
             </div>
           ) : (
-            <p className="mt-4 text-[13px] leading-6 text-slate-500">코스를 선택하면 상세 메타데이터가 여기에 표시됩니다.</p>
+            <div className="mt-4">
+              <StatePanel
+                compact
+                icon="ri-cursor-line"
+                tone="violet"
+                title="코스를 선택하세요."
+                description="선택한 코스의 메타데이터, 강의 목록, 태그를 오른쪽 패널에서 확인할 수 있습니다."
+              />
+            </div>
           )}
         </section>
 
@@ -277,7 +295,15 @@ export function CoursesPage({
               </div>
             </div>
           ) : (
-            <p className="mt-4 text-[13px] leading-6 text-slate-500">강의를 선택하면 transcript, keywords, video URL이 표시됩니다.</p>
+            <div className="mt-4">
+              <StatePanel
+                compact
+                icon="ri-play-circle-line"
+                tone="amber"
+                title="강의를 선택하면 상세가 펼쳐집니다."
+                description="transcript 미리보기, 비디오 URL, 키워드가 여기에 표시됩니다."
+              />
+            </div>
           )}
         </section>
 
