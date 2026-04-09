@@ -19,18 +19,31 @@
     "binding": "AI"
   },
   "env": {
+    "dev": {
+      "vars": {
+        "APP_ENV": "development",
+        "API_ORIGIN": "http://localhost:5173",
+        "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
+        "MYWAY_OLLAMA_BASE_URL": "http://127.0.0.1:11434",
+        "MYWAY_OLLAMA_MODEL": "llama3.1"
+      }
+    },
     "staging": {
       "vars": {
         "APP_ENV": "staging",
         "API_ORIGIN": "https://staging.mywayclass.pages.dev",
-        "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo"
+        "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
+        "MYWAY_OLLAMA_BASE_URL": "https://ollama.staging.mywayclass.com",
+        "MYWAY_OLLAMA_MODEL": "llama3.1"
       }
     },
     "production": {
       "vars": {
         "APP_ENV": "production",
         "API_ORIGIN": "https://mywayclass.pages.dev",
-        "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo"
+        "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
+        "MYWAY_OLLAMA_BASE_URL": "https://ollama.mywayclass.com",
+        "MYWAY_OLLAMA_MODEL": "llama3.1"
       }
     }
   }
