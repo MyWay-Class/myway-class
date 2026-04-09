@@ -1,6 +1,6 @@
 import { buildAIRAGOverview, type AIRagRequest, type AIRagResult, type ApiResponse } from '@myway/shared';
 
-const API_BASE_URL = 'http://127.0.0.1:8787';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '');
 const AUTH_STORAGE_KEY = 'mywayclass.auth';
 
 function readStoredAuth(): { session_token: string } | null {
