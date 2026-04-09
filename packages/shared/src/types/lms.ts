@@ -18,10 +18,13 @@ export type Lecture = {
   course_id: string;
   title: string;
   order_index: number;
+  week_number?: number;
+  session_number?: number;
   content_type: LectureContentType;
   content_text: string;
   duration_minutes: number;
   is_published: boolean;
+  is_completed?: boolean;
 };
 
 export type Enrollment = {
