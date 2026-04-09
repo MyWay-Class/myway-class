@@ -16,6 +16,8 @@
 - 로그는 `왜 바꿨는지`, `무엇을 바꿨는지`, `어떻게 검증했는지`만 짧게 적는다.
 
 ## 최신 로그
+- `2026-04-10-cloudflare-media-pipeline-upload.md`
+- `2026-04-10-stt-provider-cloudflare-available.md`
 - `2026-04-10-cloudflare-pages-deploy.md`
 - `2026-04-10-cloudflare-deploy-setup.md`
 - `2026-04-09-file-split-rule-cleanup.md`

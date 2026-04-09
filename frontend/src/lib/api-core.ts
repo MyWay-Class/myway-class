@@ -40,14 +40,20 @@ export function getFallbackUserId(userId?: string | null): string {
 
 export async function request<T>(path: string, init?: RequestInit, sessionToken?: string | null): Promise<ApiResponse<T> | null> {
   const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
+  const isFormData = init?.body instanceof FormData;
+  const headers = new Headers(init?.headers ?? undefined);
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  if (!isFormData) {
+    headers.set('Content-Type', headers.get('Content-Type') ?? 'application/json');
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(init?.headers ?? {}),
-      },
+      headers,
       ...init,
     });
 

@@ -15,15 +15,16 @@ export function getLecturePipeline(lectureId: string): LecturePipeline {
   const transcript = getLectureTranscript(lectureId);
   const notes = listLectureNotes(lectureId);
   const extractions = listAudioExtractions(lectureId);
+  const latestExtraction = extractions[0];
 
   return {
     lecture_id: lectureId,
     transcript_status: transcript ? 'COMPLETED' : 'PENDING',
     summary_status: notes.length > 0 ? 'COMPLETED' : 'PENDING',
-    audio_status: extractions.length > 0 ? 'COMPLETED' : 'PENDING',
+    audio_status: latestExtraction?.status ?? 'PENDING',
     transcript_id: transcript?.id ?? null,
     note_id: notes[0]?.id ?? null,
-    extraction_id: extractions[0]?.id ?? null,
+    extraction_id: latestExtraction?.id ?? null,
     updated_at: now(),
   };
 }

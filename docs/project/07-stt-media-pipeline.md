@@ -32,11 +32,13 @@
 - 요약은 트랜스크립트가 생성된 이후에만 수행한다.
 
 ## 현재 구현
+- `POST /api/v1/media/upload-video`로 강의 영상을 R2에 업로드하고 asset key와 접근 URL을 받는다.
 - `POST /api/v1/media/transcribe`로 텍스트 기반 트랜스크립트 또는 `audio_url` 기반 실제 STT 트랜스크립트를 생성한다.
 - `POST /api/v1/media/summarize`로 brief, detailed, timeline 요약 노트를 생성한다.
-- `POST /api/v1/media/extract-audio`로 오디오 추출 메타데이터를 기록한다.
+- `POST /api/v1/media/extract-audio`로 영상 기반 오디오 추출 job과 필요 시 전사까지 연결한다.
 - `GET /api/v1/media/transcript/:lectureId`, `GET /api/v1/media/notes/:lectureId`, `GET /api/v1/media/audio-extractions/:lectureId`, `GET /api/v1/media/pipeline/:lectureId`로 상태와 산출물을 확인한다.
-- 데모 데이터는 `packages/shared/src/media.ts`와 `packages/shared/src/demo-data.ts`에서 관리한다.
+- `GET /api/v1/media/assets/:assetKey`로 R2 업로드 영상을 내려받는다.
+- 데모 데이터는 `packages/shared/src/data/media.ts`와 `packages/shared/src/demo-data.ts`에서 관리한다.
 
 ## 상태
 - `PENDING`
@@ -60,9 +62,9 @@
 - 타임스탬프 정렬이 깨지는 경우
 
 ## Provider 계층
-- 현재 구현은 `demo` STT를 기본 경로로 유지한다.
-- 향후 운영 경로는 `Cloudflare AI -> Gemini -> demo` 순의 fallback 계층을 기본으로 둔다.
-- `POST /api/v1/media/transcribe`는 provider 메타데이터를 함께 기록하고, `audio_url`이 주어지면 Cloudflare Workers AI 전사를 먼저 시도한다.
+- 현재 구현은 `audio_url`이 있으면 `Cloudflare AI` 전사를 먼저 시도하고, 텍스트 전용이나 실패 시에는 `demo` STT로 되돌아간다.
+- 운영 경로는 `Cloudflare AI -> Gemini -> demo` 순의 fallback 계층을 기본으로 둔다.
+- `POST /api/v1/media/transcribe`는 provider 메타데이터를 함께 기록한다.
 - `GET /api/v1/media/providers`로 provider 계층을 조회할 수 있다.
 - STT 결과에는 `stt_provider`, `stt_model`, `segments`, `word_count`가 함께 남아야 한다.
 

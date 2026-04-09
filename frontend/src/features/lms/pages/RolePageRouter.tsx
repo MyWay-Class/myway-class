@@ -12,6 +12,7 @@ import { AssignmentCheckPage } from './AssignmentCheckPage';
 import { CommunityPage } from './CommunityPage';
 import { CoursesPage } from './CoursesPage';
 import { InstructorDashboardPage } from './InstructorDashboardPage';
+import { MediaPipelinePage } from './MediaPipelinePage';
 import { MyShortformsPage } from './MyShortformsPage';
 import { QuizGenPage } from './QuizGenPage';
 import { ShortformPage } from './ShortformPage';
@@ -94,6 +95,8 @@ export function RolePageRouter({
         return <AdminStatsPage dashboard={dashboard} courses={courseCards} users={demoUsers} insights={insights} aiLogs={aiLogs} />;
       case 'admin-automation':
         return <AdminAutomationPage providerCatalog={providers} />;
+      case 'media-pipeline':
+        return <MediaPipelinePage selectedCourse={selectedCourse} highlightedLecture={highlightedLecture} sessionToken={sessionToken} />;
       default:
         return (
           <RolePageFallback
@@ -129,6 +132,10 @@ export function RolePageRouter({
 
     if (page === 'ai-chat') {
       return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} />;
+    }
+
+    if (page === 'media-pipeline') {
+      return <MediaPipelinePage selectedCourse={selectedCourse} highlightedLecture={highlightedLecture} sessionToken={sessionToken} />;
     }
 
     if (page === 'quiz-gen') {
@@ -181,6 +188,10 @@ export function RolePageRouter({
 
   if (page === 'ai-chat') {
     return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} />;
+  }
+
+  if (page === 'media-pipeline') {
+    return <MediaPipelinePage selectedCourse={selectedCourse} highlightedLecture={highlightedLecture} sessionToken={sessionToken} />;
   }
 
   if (page === 'dashboard') {
