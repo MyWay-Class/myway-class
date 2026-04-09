@@ -16,6 +16,7 @@
 - 로그는 `왜 바꿨는지`, `무엇을 바꿨는지`, `어떻게 검증했는지`만 짧게 적는다.
 
 ## 최신 로그
+- `2026-04-10-cloudflare-deploy-setup.md`
 - `2026-04-09-file-split-rule-cleanup.md`
 - `2026-04-09-cloudflare-deployment-infra.md`
 - `2026-04-08-rebase-pull-policy.md`
