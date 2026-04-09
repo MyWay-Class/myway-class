@@ -74,7 +74,7 @@
 - Worker는 extraction id, lecture id, 원본 video URL, callback URL, callback secret을 media processor로 보낸다.
 - media processor는 오디오를 만들고 R2 또는 공개 저장소에 올린 뒤 `audio_url`을 callback에 전달한다.
 - callback이 성공하면 Worker가 `Cloudflare AI` STT를 다시 호출해 transcript를 이어서 만든다.
-- 로컬 개발용 구현은 `scripts/media-processor/server.mjs`에서 제공한다.
+- 로컬 개발용 구현은 `scripts/media-processor/server.ts`에서 제공한다.
 - 로컬 media processor는 `ffmpeg -i <video> -vn -acodec pcm_s16le -ar 16000 -ac 1 <audio.wav>` 형식으로 WAV를 만든다.
 
 ## 검증 기준

@@ -1,18 +1,18 @@
 import { spawn } from 'node:child_process';
 
-function collectOutput(child) {
+function collectOutput(child: ReturnType<typeof spawn>): () => string {
   let output = '';
-  child.stdout.on('data', (chunk) => {
+  child.stdout?.on('data', (chunk: Buffer | string) => {
     output += String(chunk);
   });
-  child.stderr.on('data', (chunk) => {
+  child.stderr?.on('data', (chunk: Buffer | string) => {
     output += String(chunk);
   });
   return () => output;
 }
 
-export async function extractAudioWithFfmpeg(ffmpegPath, videoPath, audioPath) {
-  await new Promise((resolve, reject) => {
+export async function extractAudioWithFfmpeg(ffmpegPath: string, videoPath: string, audioPath: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
     const child = spawn(ffmpegPath, [
       '-y',
       '-i',

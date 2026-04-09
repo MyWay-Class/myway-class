@@ -1,8 +1,15 @@
-export async function sendExtractionCallback(job, payload) {
-  if (!job.callbackUrl) {
-    throw new Error('callback URL이 없습니다.');
-  }
+import type { ProcessorJob } from './types';
 
+type CallbackPayload = {
+  status: 'COMPLETED' | 'FAILED';
+  audio_url?: string;
+  audio_format?: string;
+  sample_rate?: number;
+  channels?: number;
+  error_message?: string;
+};
+
+export async function sendExtractionCallback(job: ProcessorJob, payload: CallbackPayload): Promise<void> {
   const response = await fetch(job.callbackUrl, {
     method: 'POST',
     headers: {

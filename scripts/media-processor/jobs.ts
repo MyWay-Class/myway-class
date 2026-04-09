@@ -1,14 +1,16 @@
-export function createJobStore() {
-  const jobs = new Map();
+import type { AudioExtractionJobRequest, ProcessorJob } from './types';
 
-  function createJob(input) {
-    const job = {
+export function createJobStore() {
+  const jobs = new Map<string, ProcessorJob>();
+
+  function createJob(input: AudioExtractionJobRequest): ProcessorJob {
+    const job: ProcessorJob = {
       id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       extractionId: input.extraction_id,
       lectureId: input.lecture_id,
       sourceVideoUrl: input.source_video_url,
-      callbackUrl: input.callback?.url,
-      callbackSecret: input.callback?.secret ?? null,
+      callbackUrl: input.callback.url,
+      callbackSecret: input.callback.secret ?? null,
       status: 'PROCESSING',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -24,13 +26,13 @@ export function createJobStore() {
     return job;
   }
 
-  function updateJob(jobId, partial) {
+  function updateJob(jobId: string, partial: Partial<ProcessorJob>): ProcessorJob | null {
     const current = jobs.get(jobId);
     if (!current) {
       return null;
     }
 
-    const next = {
+    const next: ProcessorJob = {
       ...current,
       ...partial,
       files: {
@@ -44,11 +46,11 @@ export function createJobStore() {
     return next;
   }
 
-  function getJob(jobId) {
+  function getJob(jobId: string): ProcessorJob | null {
     return jobs.get(jobId) ?? null;
   }
 
-  function listJobs() {
+  function listJobs(): ProcessorJob[] {
     return [...jobs.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 

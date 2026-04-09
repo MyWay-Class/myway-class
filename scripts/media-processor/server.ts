@@ -1,26 +1,27 @@
 import fs from 'node:fs/promises';
-import http from 'node:http';
+import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
-import { getProcessorConfig } from './config.mjs';
-import { createJobStore } from './jobs.mjs';
-import { processAudioExtractionJob } from './service.mjs';
+import { getProcessorConfig } from './config';
+import { createJobStore } from './jobs';
+import { processAudioExtractionJob } from './service';
+import type { AudioExtractionJobRequest } from './types';
 
 const config = getProcessorConfig();
 const jobStore = createJobStore();
 
-function json(response, statusCode, payload) {
+function json(response: ServerResponse, statusCode: number, payload: unknown): void {
   response.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
   response.end(JSON.stringify(payload));
 }
 
-function unauthorized(response) {
+function unauthorized(response: ServerResponse): void {
   json(response, 401, { success: false, error: 'UNAUTHORIZED' });
 }
 
-function parseBody(request) {
+function parseBody(request: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let body = '';
-    request.on('data', (chunk) => {
+    request.on('data', (chunk: Buffer | string) => {
       body += String(chunk);
     });
     request.on('end', () => {
@@ -34,12 +35,12 @@ function parseBody(request) {
   });
 }
 
-function isAuthorized(request) {
+function isAuthorized(request: IncomingMessage): boolean {
   const header = request.headers.authorization ?? '';
   return header === `Bearer ${config.token}`;
 }
 
-async function serveAsset(response, fileName) {
+async function serveAsset(response: ServerResponse, fileName: string): Promise<void> {
   const filePath = path.join(config.workDir, 'output', fileName);
   try {
     const buffer = await fs.readFile(filePath);
@@ -48,6 +49,20 @@ async function serveAsset(response, fileName) {
   } catch {
     json(response, 404, { success: false, error: 'ASSET_NOT_FOUND' });
   }
+}
+
+function isAudioExtractionJobRequest(value: unknown): value is AudioExtractionJobRequest {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const payload = value as Partial<AudioExtractionJobRequest>;
+  return Boolean(
+    payload.extraction_id &&
+      payload.lecture_id &&
+      payload.source_video_url &&
+      payload.callback?.url,
+  );
 }
 
 const server = http.createServer(async (request, response) => {
@@ -89,19 +104,19 @@ const server = http.createServer(async (request, response) => {
       return unauthorized(response);
     }
 
-    let body;
+    let body: unknown;
     try {
       body = await parseBody(request);
     } catch {
       return json(response, 400, { success: false, error: 'INVALID_BODY' });
     }
 
-    if (!body?.extraction_id || !body?.lecture_id || !body?.source_video_url || !body?.callback?.url) {
+    if (!isAudioExtractionJobRequest(body)) {
       return json(response, 400, { success: false, error: 'INVALID_JOB_REQUEST' });
     }
 
     const job = jobStore.createJob(body);
-    processAudioExtractionJob(jobStore, config, job);
+    void processAudioExtractionJob(jobStore, config, job);
 
     return json(response, 202, {
       success: true,

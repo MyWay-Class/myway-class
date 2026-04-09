@@ -1,9 +1,17 @@
 import fs from 'node:fs/promises';
-import { sendExtractionCallback } from './callback.mjs';
-import { extractAudioWithFfmpeg } from './ffmpeg.mjs';
-import { buildJobPaths, downloadSourceVideo, ensureWorkDirs, fileExists } from './storage.mjs';
+import { sendExtractionCallback } from './callback';
+import { extractAudioWithFfmpeg } from './ffmpeg';
+import type { createJobStore } from './jobs';
+import { buildJobPaths, downloadSourceVideo, ensureWorkDirs, fileExists } from './storage';
+import type { ProcessorConfig, ProcessorJob } from './types';
 
-export async function processAudioExtractionJob(jobStore, config, job) {
+type JobStore = ReturnType<typeof createJobStore>;
+
+export async function processAudioExtractionJob(
+  jobStore: JobStore,
+  config: ProcessorConfig,
+  job: ProcessorJob,
+): Promise<void> {
   const paths = buildJobPaths(config.workDir, job.id);
   jobStore.updateJob(job.id, { files: paths, status: 'PROCESSING', errorMessage: null });
 
@@ -24,7 +32,12 @@ export async function processAudioExtractionJob(jobStore, config, job) {
       errorMessage: null,
     });
 
-    await sendExtractionCallback(jobStore.getJob(job.id), {
+    const completedJob = jobStore.getJob(job.id);
+    if (!completedJob) {
+      throw new Error('완료된 job 상태를 찾을 수 없습니다.');
+    }
+
+    await sendExtractionCallback(completedJob, {
       status: 'COMPLETED',
       audio_url: audioUrl,
       audio_format: 'wav',
@@ -40,14 +53,17 @@ export async function processAudioExtractionJob(jobStore, config, job) {
     });
 
     try {
-      await sendExtractionCallback(jobStore.getJob(job.id), {
-        status: 'FAILED',
-        error_message: message,
-      });
+      const failedJob = jobStore.getJob(job.id);
+      if (failedJob) {
+        await sendExtractionCallback(failedJob, {
+          status: 'FAILED',
+          error_message: message,
+        });
+      }
     } catch {
       // callback failure is reflected in the local job state; keep the original extraction error.
     }
   } finally {
-    await fs.rm(paths.videoPath, { force: true }).catch(() => {});
+    await fs.rm(paths.videoPath, { force: true }).catch(() => undefined);
   }
 }
