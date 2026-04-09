@@ -108,6 +108,7 @@ export const demoEnrollments: Enrollment[] = [
     course_id: 'crs_ai_001',
     status: 'active',
     progress_percent: 50,
+    created_at: '2026-04-06T09:10:00.000Z',
   },
   {
     id: 'enr_002',
@@ -115,12 +116,38 @@ export const demoEnrollments: Enrollment[] = [
     course_id: 'crs_llm_001',
     status: 'active',
     progress_percent: 20,
+    created_at: '2026-04-06T09:40:00.000Z',
   },
 ];
 
 export const demoLectureProgress: LectureProgress[] = [
-  { id: 'prg_001', user_id: 'usr_std_001', lecture_id: 'lec_ai_001', is_completed: true },
-  { id: 'prg_002', user_id: 'usr_std_001', lecture_id: 'lec_ai_002', is_completed: false },
-  { id: 'prg_003', user_id: 'usr_std_001', lecture_id: 'lec_llm_001', is_completed: false },
-  { id: 'prg_004', user_id: 'usr_std_001', lecture_id: 'lec_llm_002', is_completed: false },
+  {
+    id: 'prg_001',
+    user_id: 'usr_std_001',
+    lecture_id: 'lec_ai_001',
+    is_completed: true,
+    completed_at: '2026-04-08T07:40:00.000Z',
+    updated_at: '2026-04-08T07:40:00.000Z',
+  },
+  {
+    id: 'prg_002',
+    user_id: 'usr_std_001',
+    lecture_id: 'lec_ai_002',
+    is_completed: false,
+    updated_at: '2026-04-08T07:50:00.000Z',
+  },
+  {
+    id: 'prg_003',
+    user_id: 'usr_std_001',
+    lecture_id: 'lec_llm_001',
+    is_completed: false,
+    updated_at: '2026-04-08T08:10:00.000Z',
+  },
+  {
+    id: 'prg_004',
+    user_id: 'usr_std_001',
+    lecture_id: 'lec_llm_002',
+    is_completed: false,
+    updated_at: '2026-04-08T08:15:00.000Z',
+  },
 ];

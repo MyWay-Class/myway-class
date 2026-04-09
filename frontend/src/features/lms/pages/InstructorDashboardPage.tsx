@@ -1,6 +1,9 @@
-import type { AIInsights, CourseCard } from '@myway/shared';
+import type { AIInsights, CourseCard, Dashboard } from '@myway/shared';
+import { DashboardStatsGrid } from '../components/DashboardStatsGrid';
+import { DashboardTimeline } from '../components/DashboardTimeline';
 
 type InstructorDashboardPageProps = {
+  dashboard: Dashboard | null;
   courses: CourseCard[];
   insights: AIInsights | null;
 };
@@ -26,9 +29,70 @@ const tools = [
   },
 ];
 
-export function InstructorDashboardPage({ courses, insights }: InstructorDashboardPageProps) {
+export function InstructorDashboardPage({ dashboard, courses, insights }: InstructorDashboardPageProps) {
+  const stats =
+    dashboard?.stats ?? [
+      {
+        id: 'courses',
+        label: '개설 강의',
+        value: String(courses.length),
+        hint: '운영 중인 내 강의 수',
+        icon: 'ri-book-shelf-line',
+        tone: 'indigo' as const,
+      },
+      {
+        id: 'materials',
+        label: '자료 업로드',
+        value: String(courses.length * 2),
+        hint: '자료와 실습 콘텐츠를 확장하세요',
+        icon: 'ri-folder-3-line',
+        tone: 'emerald' as const,
+      },
+      {
+        id: 'progress',
+        label: '평균 진도',
+        value: `${Math.round(courses.reduce((sum, course) => sum + course.progress_percent, 0) / Math.max(courses.length, 1))}%`,
+        hint: '강의별 진도 평균',
+        icon: 'ri-line-chart-line',
+        tone: 'violet' as const,
+      },
+      {
+        id: 'ai',
+        label: 'AI 요청',
+        value: String(insights?.summary.total_requests ?? 0),
+        hint: '강의 보조 기능 사용량',
+        icon: 'ri-robot-line',
+        tone: 'amber' as const,
+      },
+    ];
+  const activities = dashboard?.recent_activities ?? [];
+  const nextAction = dashboard?.next_action ?? '최근 업로드 자료와 공지를 확인하고 학생 진도 변화를 살펴보세요.';
+
   return (
     <div className="space-y-5">
+      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-violet-950 px-6 py-6 text-white shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="text-[12px] font-semibold uppercase tracking-[0.2em] text-violet-200">Instructor Dashboard</div>
+            <h2 className="mt-2 text-[24px] font-extrabold tracking-[-0.04em]">강의 운영과 학습 반응을 빠르게 확인합니다.</h2>
+            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-300">{nextAction}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
+            <div className="font-semibold text-white">{dashboard?.learner_name ?? '강사'}</div>
+            <div className="mt-1">{dashboard?.role ?? 'INSTRUCTOR'}</div>
+          </div>
+        </div>
+      </section>
+
+      <DashboardStatsGrid stats={stats} />
+
+      <DashboardTimeline
+        title="최근 활동"
+        subtitle="자료 업로드, 공지, 수강자 진도와 AI 요청을 확인합니다."
+        activities={activities}
+        emptyMessage="아직 최근 활동이 없습니다. 자료 업로드나 공지 등록이 여기에 표시됩니다."
+      />
+
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {tools.map((tool) => (
           <article key={tool.title} className="rounded-3xl border border-slate-200 bg-white px-5 py-6">
