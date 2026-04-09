@@ -26,15 +26,29 @@ export function createLectureTranscript(
     return null;
   }
 
-  const durationMs = input.duration_ms ?? Math.max(lecture.duration_minutes * 60_000, fullText.length * 40, 180_000);
+  const fallbackDurationMs = Math.max(lecture.duration_minutes * 60_000, fullText.length * 40, 180_000);
+  const segments = input.segments?.length
+    ? input.segments.map((segment, index) => ({
+        index,
+        start_ms: Math.max(0, Math.round(segment.start_ms)),
+        end_ms: Math.max(Math.round(segment.start_ms), Math.round(segment.end_ms)),
+        text: normalizeText(segment.text),
+      }))
+    : splitIntoSegments(fullText, input.duration_ms ?? fallbackDurationMs);
+  const durationMs =
+    input.duration_ms ??
+    (segments.length > 0 ? segments[segments.length - 1]?.end_ms ?? fallbackDurationMs : fallbackDurationMs);
+  const wordCount =
+    input.word_count ??
+    fullText.split(/\s+/).filter(Boolean).length;
   const transcript: LectureTranscript = {
     id: createId('trs', demoLectureTranscripts.length),
     lecture_id: lecture.id,
     user_id: userId,
     language: input.language ?? 'ko',
     full_text: fullText,
-    segments: splitIntoSegments(fullText, durationMs),
-    word_count: fullText.split(/\s+/).filter(Boolean).length,
+    segments,
+    word_count: wordCount,
     duration_ms: durationMs,
     stt_provider: input.stt_provider ?? (input.text ? 'text-derived-stt' : 'demo-stt'),
     stt_model: input.stt_model ?? 'pseudo-stt-v1',

@@ -182,10 +182,13 @@ export type LecturePipeline = {
 export type TranscriptCreateRequest = {
   lecture_id: string;
   text?: string;
+  audio_url?: string;
   duration_ms?: number;
   language?: string;
   stt_provider?: string;
   stt_model?: string;
+  segments?: TranscriptSegment[];
+  word_count?: number;
 };
 
 export type MediaSummaryRequest = {

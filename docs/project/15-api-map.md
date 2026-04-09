@@ -84,6 +84,7 @@
   - 강의 완료와 진도 저장
 - `POST /api/v1/media/transcribe`
   - 트랜스크립트 생성
+  - `audio_url`이 있으면 Cloudflare Workers AI 전사 경로 우선
 - `GET /api/v1/media/providers`
   - STT provider 계층과 fallback 순서
 - `POST /api/v1/media/summarize`
