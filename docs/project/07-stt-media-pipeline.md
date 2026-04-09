@@ -35,7 +35,8 @@
 - `POST /api/v1/media/upload-video`로 강의 영상을 R2에 업로드하고 asset key와 접근 URL을 받는다.
 - `POST /api/v1/media/transcribe`로 텍스트 기반 트랜스크립트 또는 `audio_url` 기반 실제 STT 트랜스크립트를 생성한다.
 - `POST /api/v1/media/summarize`로 brief, detailed, timeline 요약 노트를 생성한다.
-- `POST /api/v1/media/extract-audio`로 영상 기반 오디오 추출 job과 필요 시 전사까지 연결한다.
+- `POST /api/v1/media/extract-audio`로 영상 기반 오디오 추출 job을 외부 media processor에 등록하고, 이미 `audio_url`이 있으면 전사까지 바로 연결한다.
+- `POST /api/v1/media/extract-audio/callback`으로 외부 media processor가 오디오 추출 완료 또는 실패 상태를 다시 전달한다.
 - `GET /api/v1/media/transcript/:lectureId`, `GET /api/v1/media/notes/:lectureId`, `GET /api/v1/media/audio-extractions/:lectureId`, `GET /api/v1/media/pipeline/:lectureId`로 상태와 산출물을 확인한다.
 - `GET /api/v1/media/assets/:assetKey`로 R2 업로드 영상을 내려받는다.
 - 데모 데이터는 `packages/shared/src/data/media.ts`와 `packages/shared/src/demo-data.ts`에서 관리한다.
@@ -67,6 +68,12 @@
 - `POST /api/v1/media/transcribe`는 provider 메타데이터를 함께 기록한다.
 - `GET /api/v1/media/providers`로 provider 계층을 조회할 수 있다.
 - STT 결과에는 `stt_provider`, `stt_model`, `segments`, `word_count`가 함께 남아야 한다.
+
+## 외부 오디오 추출 처리
+- 실제 `ffmpeg` 실행은 Workers가 아니라 외부 media processor 서비스가 맡는다.
+- Worker는 extraction id, lecture id, 원본 video URL, callback URL, callback secret을 media processor로 보낸다.
+- media processor는 오디오를 만들고 R2 또는 공개 저장소에 올린 뒤 `audio_url`을 callback에 전달한다.
+- callback이 성공하면 Worker가 `Cloudflare AI` STT를 다시 호출해 transcript를 이어서 만든다.
 
 ## 검증 기준
 - 미디어 내용을 검색 가능한 트랜스크립트 데이터로 바꿀 수 있다.

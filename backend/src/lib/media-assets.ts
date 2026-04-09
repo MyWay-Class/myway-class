@@ -30,14 +30,16 @@ function buildAssetKey(lectureId: string, fileName: string): string {
   return `media/${lectureId}/${stamp}-${baseName}`;
 }
 
-function buildAssetUrl(assetKey: string, env?: RuntimeBindings): string {
-  const origin = env?.API_ORIGIN?.replace(/\/$/, '');
+function buildAssetUrl(assetKey: string, requestUrl: string, env?: RuntimeBindings): string {
+  const requestOrigin = new URL(requestUrl).origin;
+  const origin = requestOrigin || env?.API_ORIGIN?.replace(/\/$/, '');
   return origin ? `${origin}/api/v1/media/assets/${encodeURIComponent(assetKey)}` : `/api/v1/media/assets/${encodeURIComponent(assetKey)}`;
 }
 
 export async function uploadLectureVideoAsset(
   lectureId: string,
   file: UploadableFile,
+  requestUrl: string,
   env?: RuntimeBindings,
 ): Promise<MediaUploadResult | null> {
   if (!env?.ASSETS) {
@@ -54,7 +56,7 @@ export async function uploadLectureVideoAsset(
 
   return {
     asset_key: assetKey,
-    video_url: buildAssetUrl(assetKey, env),
+    video_url: buildAssetUrl(assetKey, requestUrl, env),
     file_name: file.name,
     content_type: file.type || 'video/mp4',
     size_bytes: file.size,

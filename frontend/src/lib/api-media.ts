@@ -19,6 +19,9 @@ export type MediaExtractionResult = {
   channels: number;
   status: string;
   transcript_id: string | null;
+  audio_url?: string | null;
+  processing_job_id?: string | null;
+  processing_error?: string | null;
   pipeline: LecturePipeline;
 };
 

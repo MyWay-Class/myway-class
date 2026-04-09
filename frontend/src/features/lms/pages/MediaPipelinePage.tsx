@@ -24,7 +24,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState('');
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState('영상 파일을 업로드하면 R2 업로드와 전사 job 생성까지 한 번에 진행됩니다.');
+  const [notice, setNotice] = useState('영상 파일을 업로드하면 R2 업로드 후 외부 오디오 추출 서비스와 STT 파이프라인이 순서대로 연결됩니다.');
   const [pipeline, setPipeline] = useState<LecturePipeline | null>(null);
   const [providers, setProviders] = useState<STTProviderCatalog | null>(null);
   const [uploadResult, setUploadResult] = useState<MediaUploadResult | null>(null);
@@ -74,7 +74,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     }
 
     setBusy(true);
-    setNotice('영상 업로드와 추출 job을 생성하는 중입니다.');
+      setNotice('영상 업로드와 외부 오디오 추출 job을 생성하는 중입니다.');
 
     try {
       const upload = await uploadLectureVideo(lectureId, videoFile, sessionToken);
@@ -109,7 +109,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       setNotice(
         extraction.transcript_id
           ? '업로드, 추출, 전사까지 완료되었습니다.'
-          : '업로드와 추출 job이 등록되었습니다. 실제 오디오 URL이 준비되면 전사로 이어집니다.',
+          : '업로드와 추출 job이 등록되었습니다. 외부 처리 서비스 callback 이후 전사가 자동으로 이어집니다.',
       );
     } finally {
       setBusy(false);
@@ -173,7 +173,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
                   <input
                     value={audioUrl}
                     onChange={(event) => setAudioUrl(event.target.value)}
-                    placeholder="외부 추출 서비스가 만든 audio_url"
+                    placeholder="이미 추출된 audio_url이 있으면 바로 입력"
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400"
                   />
                 </label>
@@ -224,6 +224,13 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
                 <div className="rounded-2xl bg-slate-50 p-4">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">전사 결과</div>
                   <div className="mt-1 font-semibold text-slate-900">{extractionResult?.transcript_id ?? '아직 없음'}</div>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 서비스 job</div>
+                  <div className="mt-1 font-semibold text-slate-900">{extractionResult?.processing_job_id ?? '아직 없음'}</div>
+                  {extractionResult?.processing_error ? (
+                    <div className="mt-2 text-xs text-rose-600">{extractionResult.processing_error}</div>
+                  ) : null}
                 </div>
               </div>
             </div>

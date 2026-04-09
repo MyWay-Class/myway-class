@@ -94,6 +94,10 @@
 - `POST /api/v1/media/extract-audio`
   - 영상 기반 오디오 추출 job 생성
   - `audio_url`이 있으면 전사까지 함께 수행
+  - 외부 media processor에 전달된 `processing_job_id`를 함께 기록
+- `POST /api/v1/media/extract-audio/callback`
+  - 외부 media processor의 완료/실패 callback 수신
+  - `audio_url`이 오면 Cloudflare Workers AI STT까지 자동 연결
 - `GET /api/v1/media/transcript/:lectureId`
   - 강의 트랜스크립트 조회
 - `GET /api/v1/media/notes/:lectureId`
