@@ -42,8 +42,8 @@ const PROVIDERS: STTProviderDescriptor[] = [
   {
     name: 'cloudflare',
     label: 'Cloudflare AI',
-    description: '배포 환경에서 안정적으로 붙일 수 있는 STT 및 파이프라인 계층입니다.',
-    status: 'planned',
+    description: '배포 환경에서 실제 Workers AI 전사를 수행하는 STT 계층입니다.',
+    status: 'available',
     capabilities: ['transcribe', 'segment', 'pipeline'],
   },
   {
