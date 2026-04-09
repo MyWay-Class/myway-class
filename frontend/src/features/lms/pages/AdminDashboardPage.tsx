@@ -13,28 +13,12 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
   const stats =
     dashboard?.stats ?? [
       {
-        id: 'users',
-        label: '전체 사용자',
-        value: String(users.length),
-        hint: '운영 중인 학습자와 관리자',
-        icon: 'ri-team-line',
-        tone: 'indigo' as const,
-      },
-      {
-        id: 'courses',
-        label: '전체 강의',
-        value: String(courses.length),
-        hint: '시스템에 등록된 강의 수',
-        icon: 'ri-book-shelf-line',
-        tone: 'emerald' as const,
-      },
-      {
         id: 'enrollments',
         label: '활성 수강',
         value: String(dashboard?.active_enrollments ?? 0),
-        hint: '현재 활성 상태의 수강 등록',
+        hint: '현재 운영 중인 수강 등록',
         icon: 'ri-user-follow-line',
-        tone: 'violet' as const,
+        tone: 'emerald' as const,
       },
       {
         id: 'ai',
@@ -42,7 +26,23 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
         value: String(insights?.summary.total_requests ?? 0),
         hint: '최근 AI 사용량',
         icon: 'ri-robot-line',
+        tone: 'violet' as const,
+      },
+      {
+        id: 'courses',
+        label: '전체 강의',
+        value: String(courses.length),
+        hint: '시스템에 등록된 강의 수',
+        icon: 'ri-book-shelf-line',
         tone: 'amber' as const,
+      },
+      {
+        id: 'users',
+        label: '전체 사용자',
+        value: String(users.length),
+        hint: '운영 중인 학습자와 관리자',
+        icon: 'ri-team-line',
+        tone: 'indigo' as const,
       },
     ];
   const activities = dashboard?.recent_activities ?? [];
