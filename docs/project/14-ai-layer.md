@@ -81,6 +81,7 @@
 - `STT`와 `embedding`은 `Cloudflare AI`를 우선 고려하고, 텍스트 생성 계열은 `Ollama`를 우선 고려한다.
 - provider 선택과 fallback 순서는 `GET /api/v1/ai/providers`로 조회할 수 있다.
 - backend는 `summary`와 `quiz`에서 Ollama가 가능할 때 실제 JSON 생성 응답을 먼저 시도하고, 실패하면 기존 shared fallback으로 되돌아간다.
+- `POST /api/v1/media/transcribe`는 `audio_url`이 있을 때 Cloudflare Workers AI 전사를 먼저 시도하고, 실패하면 demo 경로로 되돌아간다.
 
 ## 현재 구현
 - `POST /api/v1/ai/intent`로 사용자 메시지의 의도를 분류한다.
