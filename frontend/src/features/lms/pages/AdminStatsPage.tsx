@@ -1,4 +1,5 @@
 import type { AILogOverview, AIInsights, AuthUser, CourseCard, Dashboard } from '@myway/shared';
+import { ComparisonCardGrid } from '../components/ComparisonCardGrid';
 
 type AdminStatsPageProps = {
   dashboard: Dashboard | null;
@@ -21,15 +22,102 @@ function formatTokenCount(value: number): string {
   return new Intl.NumberFormat('ko-KR').format(value);
 }
 
+function formatDelta(current: number, previous: number, suffix = ''): string {
+  if (previous === 0) {
+    if (current === 0) {
+      return '변화 없음';
+    }
+
+    return `+${formatTokenCount(current)}${suffix}`;
+  }
+
+  const delta = ((current - previous) / previous) * 100;
+  const prefix = delta >= 0 ? '+' : '';
+  return `${prefix}${Math.round(delta)}%`;
+}
+
+function buildHalfWindows<T>(items: T[]): { current: T[]; previous: T[] } {
+  const pivot = Math.max(1, Math.ceil(items.length / 2));
+  return {
+    current: items.slice(0, pivot),
+    previous: items.slice(pivot),
+  };
+}
+
+function getSuccessRate(logs: Array<{ success: number }>): number {
+  if (logs.length === 0) {
+    return 0;
+  }
+
+  return Math.round((logs.filter((log) => log.success === 1).length / logs.length) * 100);
+}
+
+function getAverageLatency(logs: Array<{ latency_ms: number }>): number {
+  if (logs.length === 0) {
+    return 0;
+  }
+
+  return Math.round(logs.reduce((sum, log) => sum + log.latency_ms, 0) / logs.length);
+}
+
+function getTokenTotal(logs: Array<{ input_tokens: number; output_tokens: number }>): number {
+  return logs.reduce((sum, log) => sum + log.input_tokens + log.output_tokens, 0);
+}
+
 export function AdminStatsPage({ dashboard, courses, users, insights, aiLogs }: AdminStatsPageProps) {
   const averageProgress =
     dashboard?.average_progress ?? Math.round(courses.reduce((sum, course) => sum + course.progress_percent, 0) / Math.max(courses.length, 1));
   const aiSummary = aiLogs?.summary;
   const providerStats = aiLogs?.provider_stats ?? [];
   const modelStats = aiLogs?.model_stats ?? [];
-  const usageLogs = aiLogs?.usage_logs.slice(0, 6) ?? [];
+  const allUsageLogs = aiLogs?.usage_logs ?? [];
+  const usageLogs = allUsageLogs.slice(0, 6);
   const intentLogs = aiLogs?.intent_logs.slice(0, 4) ?? [];
   const questionLogs = aiLogs?.question_logs.slice(0, 4) ?? [];
+  const comparisonWindows = buildHalfWindows(allUsageLogs);
+
+  const comparisonMetrics = [
+    {
+      title: 'AI 요청 수',
+      current_label: '최근 집계',
+      current_value: formatTokenCount(comparisonWindows.current.length),
+      previous_label: '이전 집계',
+      previous_value: formatTokenCount(comparisonWindows.previous.length),
+      delta_label: formatDelta(comparisonWindows.current.length, comparisonWindows.previous.length),
+      note: '최근 AI 호출량을 이전 집계와 비교합니다.',
+      tone: 'indigo' as const,
+    },
+    {
+      title: '성공률',
+      current_label: '최근 집계',
+      current_value: `${getSuccessRate(comparisonWindows.current)}%`,
+      previous_label: '이전 집계',
+      previous_value: `${getSuccessRate(comparisonWindows.previous)}%`,
+      delta_label: formatDelta(getSuccessRate(comparisonWindows.current), getSuccessRate(comparisonWindows.previous)),
+      note: '성공률이 오르는지 빠르게 파악합니다.',
+      tone: 'emerald' as const,
+    },
+    {
+      title: '평균 지연시간',
+      current_label: '최근 집계',
+      current_value: `${getAverageLatency(comparisonWindows.current)}ms`,
+      previous_label: '이전 집계',
+      previous_value: `${getAverageLatency(comparisonWindows.previous)}ms`,
+      delta_label: formatDelta(getAverageLatency(comparisonWindows.current), getAverageLatency(comparisonWindows.previous)),
+      note: '응답 속도 변화를 함께 확인합니다.',
+      tone: 'amber' as const,
+    },
+    {
+      title: '입출력 토큰',
+      current_label: '최근 집계',
+      current_value: formatTokenCount(getTokenTotal(comparisonWindows.current)),
+      previous_label: '이전 집계',
+      previous_value: formatTokenCount(getTokenTotal(comparisonWindows.previous)),
+      delta_label: formatDelta(getTokenTotal(comparisonWindows.current), getTokenTotal(comparisonWindows.previous)),
+      note: '추론 비용 추이를 함께 봅니다.',
+      tone: 'violet' as const,
+    },
+  ];
 
   return (
     <div className="space-y-5">
@@ -51,6 +139,12 @@ export function AdminStatsPage({ dashboard, courses, users, insights, aiLogs }: 
           <div className="mt-1 text-[12px] text-slate-500">AI 요청 수</div>
         </article>
       </section>
+
+      <ComparisonCardGrid
+        title="운영 비교"
+        subtitle="최근 집계와 이전 집계를 나란히 비교해 AI 사용 흐름을 빠르게 파악합니다."
+        metrics={comparisonMetrics}
+      />
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
