@@ -1,8 +1,4 @@
-type RuntimeLike = {
-  process?: {
-    env?: Record<string, string | undefined>;
-  };
-};
+import type { RuntimeBindings } from '../runtime-env';
 
 export type OllamaChatMessage = {
   role: 'system' | 'user' | 'assistant';
@@ -16,25 +12,8 @@ type OllamaChatResponse = {
   };
 };
 
-function readRuntimeEnv(key: string): string | undefined {
-  const runtime = globalThis as RuntimeLike;
-  return runtime.process?.env?.[key];
-}
-
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
-}
-
-function getOllamaBaseUrl(): string {
-  return (
-    readRuntimeEnv('MYWAY_OLLAMA_BASE_URL') ??
-    readRuntimeEnv('OLLAMA_BASE_URL') ??
-    'http://127.0.0.1:11434'
-  );
-}
-
-function getOllamaModel(): string {
-  return readRuntimeEnv('MYWAY_OLLAMA_MODEL') ?? readRuntimeEnv('OLLAMA_MODEL') ?? 'llama3.1';
 }
 
 function extractChatContent(payload: unknown): string | null {
@@ -50,18 +29,22 @@ function extractChatContent(payload: unknown): string | null {
 
 export async function runOllamaChat(
   messages: OllamaChatMessage[],
+  env?: RuntimeBindings,
   options?: {
     model?: string;
     temperature?: number;
   },
 ): Promise<string | null> {
-  const response = await fetch(`${trimTrailingSlash(getOllamaBaseUrl())}/api/chat`, {
+  const baseUrl = env?.MYWAY_OLLAMA_BASE_URL ?? env?.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434';
+  const model = options?.model ?? env?.MYWAY_OLLAMA_MODEL ?? env?.OLLAMA_MODEL ?? 'llama3.1';
+
+  const response = await fetch(`${trimTrailingSlash(baseUrl)}/api/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: options?.model ?? getOllamaModel(),
+      model,
       messages,
       stream: false,
       options: {

@@ -17,6 +17,7 @@ import {
 } from '@myway/shared';
 import { runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine';
 import { getAIProviderSelection } from './ai-provider';
+import type { RuntimeBindings } from './runtime-env';
 
 export type AIAdapterResultMap = {
   intent: AIIntentResult;
@@ -58,23 +59,26 @@ export function runAIAnswer(input: AIAnswerRequest, preferredProvider?: AIProvid
 export async function runAISummary(
   input: AISummaryRequest,
   preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
 ): Promise<AISummaryResult | null> {
   resolveProvider('summary', preferredProvider);
-  return runAISummaryWithEngine(input, preferredProvider);
+  return runAISummaryWithEngine(input, preferredProvider, env);
 }
 
 export async function runAIQuiz(
   input: AIQuizRequest,
   preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
 ): Promise<AIQuizResult | null> {
   resolveProvider('quiz', preferredProvider);
-  return runAIQuizWithEngine(input, preferredProvider);
+  return runAIQuizWithEngine(input, preferredProvider, env);
 }
 
 export async function runAIFeature<TFeature extends AIAdapterFeature>(
   feature: TFeature,
   input: AIAdapterInputMap[TFeature],
   preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
 ): Promise<AIAdapterResultMap[TFeature]> {
   switch (feature) {
     case 'intent':
@@ -84,9 +88,9 @@ export async function runAIFeature<TFeature extends AIAdapterFeature>(
     case 'answer':
       return runAIAnswer(input as AIAnswerRequest, preferredProvider) as AIAdapterResultMap[TFeature];
     case 'summary':
-      return (await runAISummary(input as AISummaryRequest, preferredProvider)) as AIAdapterResultMap[TFeature];
+      return (await runAISummary(input as AISummaryRequest, preferredProvider, env)) as AIAdapterResultMap[TFeature];
     case 'quiz':
-      return (await runAIQuiz(input as AIQuizRequest, preferredProvider)) as AIAdapterResultMap[TFeature];
+      return (await runAIQuiz(input as AIQuizRequest, preferredProvider, env)) as AIAdapterResultMap[TFeature];
     default:
       throw new Error(`Unsupported AI feature: ${String(feature)}`);
   }

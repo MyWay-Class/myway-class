@@ -13,6 +13,7 @@ import {
 } from '@myway/shared';
 import { getAIProviderSelection } from './ai-provider';
 import { runOllamaChat, type OllamaChatMessage } from './providers';
+import type { RuntimeBindings } from './runtime-env';
 
 type JsonObject = Record<string, unknown>;
 
@@ -223,6 +224,7 @@ function isRemoteFeatureEnabled(feature: 'summary' | 'quiz', preferredProvider?:
 export async function runAISummaryWithEngine(
   input: AISummaryRequest,
   preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
 ): Promise<AISummaryResult | null> {
   const fallback = createAISummary(input);
   if (!fallback) {
@@ -236,7 +238,7 @@ export async function runAISummaryWithEngine(
   }
 
   const messages = buildSummaryPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input.style, input.language);
-  const response = await runOllamaChat(messages);
+  const response = await runOllamaChat(messages, env);
 
   if (!response) {
     return fallback;
@@ -269,6 +271,7 @@ export async function runAISummaryWithEngine(
 export async function runAIQuizWithEngine(
   input: AIQuizRequest,
   preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
 ): Promise<AIQuizResult | null> {
   const fallback = generateAIQuiz(input);
   if (!fallback) {
@@ -282,7 +285,7 @@ export async function runAIQuizWithEngine(
   }
 
   const messages = buildQuizPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input);
-  const response = await runOllamaChat(messages);
+  const response = await runOllamaChat(messages, env);
 
   if (!response) {
     return fallback;

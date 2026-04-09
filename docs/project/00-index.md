@@ -36,3 +36,4 @@ MyWayClass의 기능, 기획, 구현 기준 문서를 한곳에서 찾기 쉽게
 18. `docs/project/16-custom-course-composer.md`
 19. `docs/project/17-smart-ai-chat.md`
 20. `docs/project/18-ai-insights-dashboard.md`
+21. `docs/project/19-deployment.md`

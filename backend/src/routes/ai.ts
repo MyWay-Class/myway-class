@@ -9,6 +9,7 @@ import {
 } from '@myway/shared';
 import { runAIAnswer, runAIIntent, runAIQuiz, runAISearch, runAISummary } from '../lib/ai-adapter';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
+import type { RuntimeBindings } from '../lib/runtime-env';
 
 const ai = new Hono();
 
@@ -92,11 +93,12 @@ ai.post('/summary', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
+  const env = c.env as RuntimeBindings | undefined;
   const result = await runAISummary({
     lecture_id: lectureId,
     style: body?.style ?? 'brief',
     language: body?.language ?? 'ko',
-  });
+  }, undefined, env);
 
   if (!result) {
     return jsonFailure('SUMMARY_FAILED', '요약을 생성할 수 없습니다.', 400);
@@ -117,11 +119,12 @@ ai.post('/quiz', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
+  const env = c.env as RuntimeBindings | undefined;
   const result = await runAIQuiz({
     lecture_id: lectureId,
     count: body?.count,
     difficulty: body?.difficulty,
-  });
+  }, undefined, env);
 
   if (!result) {
     return jsonFailure('QUIZ_FAILED', '퀴즈를 생성할 수 없습니다.', 400);
