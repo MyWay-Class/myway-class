@@ -77,3 +77,4 @@
 - `POST /api/v1/custom-courses/:customCourseId/share`로 같은 강의 커뮤니티에 공유한다.
 - `POST /api/v1/custom-courses/:customCourseId/copy`로 내 라이브러리에 담아간다.
 - 공통 로직은 `packages/shared/src/custom-course.ts`에 둔다.
+- 프론트 제작 화면은 `frontend/src/features/lms/components/ShortformWizard.tsx`에서 3단계 위자드로 정리한다.
