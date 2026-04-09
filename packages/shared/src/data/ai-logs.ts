@@ -195,3 +195,50 @@ export const demoAIQuestionLogs: AIQuestionLog[] = [
     created_at: '2026-04-08T09:06:00.000Z',
   },
 ];
+
+function createId(prefix: string, size: number): string {
+  return `${prefix}_${String(size + 1).padStart(3, '0')}`;
+}
+
+function now(): string {
+  return new Date().toISOString();
+}
+
+export function appendAIUsageLog(
+  input: Omit<AIUsageLog, 'id' | 'created_at'> & Partial<Pick<AIUsageLog, 'id' | 'created_at'>>,
+): AIUsageLog {
+  const log: AIUsageLog = {
+    ...input,
+    id: input.id ?? createId('aiu', demoAIUsageLogs.length),
+    created_at: input.created_at ?? now(),
+  };
+
+  demoAIUsageLogs.push(log);
+  return log;
+}
+
+export function appendAIIntentLog(
+  input: Omit<AIIntentLog, 'id' | 'created_at'> & Partial<Pick<AIIntentLog, 'id' | 'created_at'>>,
+): AIIntentLog {
+  const log: AIIntentLog = {
+    ...input,
+    id: input.id ?? createId('aint', demoAIIntentLogs.length),
+    created_at: input.created_at ?? now(),
+  };
+
+  demoAIIntentLogs.push(log);
+  return log;
+}
+
+export function appendAIQuestionLog(
+  input: Omit<AIQuestionLog, 'id' | 'created_at'> & Partial<Pick<AIQuestionLog, 'id' | 'created_at'>>,
+): AIQuestionLog {
+  const log: AIQuestionLog = {
+    ...input,
+    id: input.id ?? createId('aiq', demoAIQuestionLogs.length),
+    created_at: input.created_at ?? now(),
+  };
+
+  demoAIQuestionLogs.push(log);
+  return log;
+}
