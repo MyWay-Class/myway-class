@@ -16,9 +16,9 @@ export function AppShell({ session, activePage, title, onNavigate, onLogout, chi
   return (
     <div className="min-h-screen bg-[#f8f9fb]">
       <AppSidebar session={session} activePage={activePage} onNavigate={onNavigate} onLogout={onLogout} />
-      <div className="ml-64 min-h-screen">
+      <div className="min-h-screen lg:ml-64">
         <AppHeader title={title} />
-        <main className="max-w-[1320px] px-6 py-5">{children}</main>
+        <main className="mx-auto max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

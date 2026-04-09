@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { defaultPageForRole, pageTitle } from '../features/lms/config';
 import { AppShell } from '../features/lms/components/AppShell';
 import { LoginScreen } from '../features/lms/components/LoginScreen';
+import { StatePanel } from '../features/lms/components/StatePanel';
 import { RolePageRouter } from '../features/lms/pages/RolePageRouter';
 import type { LmsDashboardProps, LmsPageId } from '../features/lms/types';
 
@@ -11,6 +12,21 @@ export function LmsDashboard(props: LmsDashboardProps) {
   useEffect(() => {
     setActivePage(defaultPageForRole(props.session));
   }, [props.session]);
+
+  if (props.loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f9fb] px-4">
+        <div className="w-full max-w-2xl">
+          <StatePanel
+            icon="ri-loader-4-line animate-spin"
+            tone="indigo"
+            title="학습 화면을 불러오는 중입니다."
+            description="로그인 정보, 강의 목록, 대시보드 상태를 동기화하고 있습니다. 잠시만 기다려 주세요."
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (!props.session) {
     return <LoginScreen demoUsers={props.demoUsers} busy={props.busy} onLogin={props.onLogin} />;
@@ -24,9 +40,21 @@ export function LmsDashboard(props: LmsDashboardProps) {
       onNavigate={setActivePage}
       onLogout={props.onLogout}
     >
+      {props.apiStatus === 'offline' ? (
+        <div className="mb-5">
+          <StatePanel
+            compact
+            icon="ri-wifi-off-line"
+            tone="amber"
+            title="API 연결이 불안정합니다."
+            description="마지막으로 동기화된 데이터가 표시됩니다. 네트워크가 복구되면 자동으로 최신 상태를 다시 불러옵니다."
+          />
+        </div>
+      ) : null}
       <RolePageRouter
         session={props.session}
         page={activePage}
+        loading={props.loading}
         dashboard={props.dashboard}
         aiLogs={props.aiLogs}
         enrolledCourses={props.enrolledCourses}

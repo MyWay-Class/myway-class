@@ -20,7 +20,7 @@ import type { LmsDashboardProps, LmsPageId } from '../types';
 
 type RolePageRouterProps = Pick<
   LmsDashboardProps,
-  'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onSelectCourse' | 'onSelectLecture' | 'demoUsers' | 'selectedCourse' | 'selectedLectureId'
+  'loading' | 'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onSelectCourse' | 'onSelectLecture' | 'demoUsers' | 'selectedCourse' | 'selectedLectureId'
 > & {
   session: LoginResponse;
   page: LmsPageId;
@@ -43,8 +43,31 @@ export function RolePageRouter({
   demoUsers,
   selectedCourse,
   selectedLectureId,
+  loading,
 }: RolePageRouterProps) {
   const sessionToken = session.session_token;
+
+  if (loading) {
+    return (
+      <div className="space-y-5">
+        <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-6 text-white shadow-sm">
+          <div className="h-4 w-40 animate-pulse rounded-full bg-white/15" />
+          <div className="mt-4 h-7 w-2/3 animate-pulse rounded-full bg-white/15" />
+          <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-white/10" />
+        </section>
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
+              <div className="h-10 w-10 animate-pulse rounded-2xl bg-slate-100" />
+              <div className="mt-4 h-8 w-16 animate-pulse rounded-full bg-slate-100" />
+              <div className="mt-2 h-3 w-24 animate-pulse rounded-full bg-slate-100" />
+              <div className="mt-3 h-6 w-full animate-pulse rounded-full bg-slate-100" />
+            </div>
+          ))}
+        </section>
+      </div>
+    );
+  }
 
   if (session.user.role === 'ADMIN') {
     switch (page) {
