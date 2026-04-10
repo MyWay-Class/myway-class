@@ -8,6 +8,17 @@ export type AIProviderSelection = {
   fallback_chain: AIProviderName[];
 };
 
+export type AIProviderRuntimePlan = AIProviderSelection & {
+  steps: ReturnType<typeof getAIProviderPlan>['steps'];
+};
+
+export type AIProviderRuntimeOverview = {
+  generated_at: string;
+  runtime_policy: ReturnType<typeof getAIRuntimePolicy>;
+  providers: ReturnType<typeof getAIProviderCatalog>['providers'];
+  plans: AIProviderRuntimePlan[];
+};
+
 const DEFAULT_FALLBACK_ORDER: Record<AIProviderCapability, AIProviderName[]> = {
   intent: ['ollama', 'gemini', 'demo'],
   search: ['demo'],
@@ -67,6 +78,24 @@ export function getAIProviderSelectionForRuntime(
   };
 }
 
-export function getAIProviderOverview() {
-  return getAIProviderCatalog();
+export function getAIProviderRuntimeOverview(env?: RuntimeBindings): AIProviderRuntimeOverview {
+  const catalog = getAIProviderCatalog();
+  const runtime_policy = getAIRuntimePolicy(env);
+
+  return {
+    generated_at: catalog.generated_at,
+    runtime_policy,
+    providers: catalog.providers,
+    plans: catalog.plans.map((plan) => {
+      const selection = getAIProviderSelectionForRuntime(plan.feature, env);
+
+      return {
+        feature: selection.feature,
+        current_provider: selection.current_provider,
+        recommended_chain: selection.recommended_chain,
+        fallback_chain: selection.fallback_chain,
+        steps: plan.steps,
+      };
+    }),
+  };
 }
