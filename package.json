@@ -22,6 +22,7 @@
     "verify": "npm run check:deps && npm run check:media-processor && npm run build:backend && npm exec --workspace @myway/frontend -- tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@cspotcode/source-map-support": "^0.8.1",
     "tsx": "^4.21.0"
   }
 }

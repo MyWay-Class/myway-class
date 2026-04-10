@@ -104,6 +104,20 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     [extractions],
   );
 
+  const retrySource = useMemo(
+    () => ({
+      video_url:
+        uploadResult?.video_url ??
+        latestExtraction?.source_url ??
+        (highlightedLecture?.id === lectureId ? highlightedLecture.video_url : undefined),
+      video_asset_key: uploadResult?.asset_key ?? latestExtraction?.source_video_key,
+      source_file_name: uploadResult?.file_name ?? latestExtraction?.source_video_name,
+      source_content_type: uploadResult?.content_type ?? latestExtraction?.source_content_type,
+      source_size_bytes: uploadResult?.size_bytes ?? latestExtraction?.source_size_bytes,
+    }),
+    [highlightedLecture, latestExtraction, lectureId, uploadResult],
+  );
+
   useEffect(() => {
     if (!lectureId) {
       return;
@@ -125,6 +139,33 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
 
     return () => window.clearInterval(timer);
   }, [latestExtraction?.status, latestExtraction?.stt_status, lectureId, pipeline?.audio_status, pipeline?.transcript_status, refreshMediaState]);
+
+  async function submitExtraction(input: {
+    lecture_id: string;
+    video_url?: string;
+    video_asset_key?: string;
+    source_file_name?: string;
+    source_content_type?: string;
+    source_size_bytes?: number;
+    audio_url?: string;
+    language?: string;
+  }): Promise<boolean> {
+    const extraction = await createAudioExtraction(input, sessionToken);
+
+    if (!extraction) {
+      setNotice('오디오 추출 job 생성에 실패했습니다.');
+      return false;
+    }
+
+    await refreshMediaState(input.lecture_id);
+    setNotice(
+      extraction.transcript_id
+        ? '업로드, 추출, 전사까지 완료되었습니다.'
+        : '업로드와 추출 job이 등록되었습니다. 외부 처리 서비스 callback 이후 전사가 자동으로 이어집니다.',
+    );
+
+    return true;
+  }
 
   async function handleSubmit() {
     if (!lectureId) {
@@ -148,31 +189,41 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       }
 
       setUploadResult(upload);
-      const extraction = await createAudioExtraction(
-        {
-          lecture_id: lectureId,
-          video_url: upload.video_url,
-          video_asset_key: upload.asset_key,
-          source_file_name: upload.file_name,
-          source_content_type: upload.content_type,
-          source_size_bytes: upload.size_bytes,
-          audio_url: audioUrl.trim() || undefined,
-          language: 'ko',
-        },
-        sessionToken,
-      );
+      await submitExtraction({
+        lecture_id: lectureId,
+        video_url: upload.video_url,
+        video_asset_key: upload.asset_key,
+        source_file_name: upload.file_name,
+        source_content_type: upload.content_type,
+        source_size_bytes: upload.size_bytes,
+        audio_url: audioUrl.trim() || undefined,
+        language: 'ko',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
 
-      if (!extraction) {
-        setNotice('오디오 추출 job 생성에 실패했습니다.');
-        return;
-      }
+  async function handleRetryExtraction() {
+    if (!lectureId || !retrySource.video_url) {
+      setNotice('재시도를 위해 다시 업로드하거나 사용할 video URL이 필요합니다.');
+      return;
+    }
 
-      await refreshMediaState(lectureId);
-      setNotice(
-        extraction.transcript_id
-          ? '업로드, 추출, 전사까지 완료되었습니다.'
-          : '업로드와 추출 job이 등록되었습니다. 외부 처리 서비스 callback 이후 전사가 자동으로 이어집니다.',
-      );
+    setBusy(true);
+    setNotice('직전 추출 입력값으로 다시 요청하는 중입니다.');
+
+    try {
+      await submitExtraction({
+        lecture_id: lectureId,
+        video_url: retrySource.video_url,
+        video_asset_key: retrySource.video_asset_key,
+        source_file_name: retrySource.source_file_name,
+        source_content_type: retrySource.source_content_type,
+        source_size_bytes: retrySource.source_size_bytes,
+        audio_url: audioUrl.trim() || undefined,
+        language: latestExtraction?.language ?? 'ko',
+      });
     } finally {
       setBusy(false);
     }
@@ -298,13 +349,61 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
             </div>
           </section>
 
+          {latestExtraction?.status === 'FAILED' ? (
+            <StatePanel
+              compact
+              icon="ri-error-warning-line"
+              tone="rose"
+              title="오디오 추출이 실패했습니다."
+              description={latestExtraction.processing_error ?? '외부 처리 서비스 또는 callback 반영 과정에서 실패했습니다. 입력 경로를 확인한 뒤 다시 요청해 주세요.'}
+            />
+          ) : null}
+
+          {latestExtraction?.status === 'FAILED' ? (
+            <section className="rounded-3xl border border-rose-200 bg-rose-50/70 p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">실패 후 다음 단계</div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    영상 업로드 결과나 기존 source video URL이 남아 있으면 같은 입력으로 다시 추출을 요청할 수 있습니다.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRetryExtraction}
+                  disabled={busy || !retrySource.video_url}
+                  className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <i className={`${busy ? 'ri-loader-4-line animate-spin' : 'ri-refresh-line'}`} />
+                  추출 다시 시도
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-rose-100 bg-white/80 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">재시도 source video</div>
+                  <div className="mt-1 break-all text-sm text-slate-700">{retrySource.video_url ?? '없음'}</div>
+                </div>
+                <div className="rounded-2xl border border-rose-100 bg-white/80 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">재시도 전 확인</div>
+                  <div className="mt-1 text-sm text-slate-700">
+                    callback secret, media processor 연결 상태, 업로드 asset URL 접근 가능 여부를 먼저 확인하세요.
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
           <MediaPipelineStatusBoard
             selectedLecture={selectedLecture}
             pipeline={pipeline}
             providers={providers}
             uploadResult={uploadResult}
             extraction={latestExtraction}
+            recentExtractions={extractions}
             isRefreshing={isRefreshing}
+            onRefresh={() => {
+              void refreshMediaState(lectureId);
+            }}
           />
         </>
       )}
