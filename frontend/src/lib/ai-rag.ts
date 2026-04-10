@@ -42,7 +42,7 @@ export async function loadAIRAGOverview(
   const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
 
   if (!token) {
-    return buildAIRAGOverview(input);
+    return await buildAIRAGOverview(input);
   }
 
   const response = await request<AIRagResult>(
@@ -54,5 +54,5 @@ export async function loadAIRAGOverview(
     token,
   );
 
-  return response?.success && response.data ? response.data : buildAIRAGOverview(input);
+  return response?.success && response.data ? response.data : await buildAIRAGOverview(input);
 }

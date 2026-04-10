@@ -1,6 +1,7 @@
 import { demoCourses } from '../data/demo-data';
 import { getLectureDetail } from '../lms/learning';
 import { classifyAIIntent } from '../ai/ai-intent';
+import { memoryMediaRepository, type MediaRepository } from '../lms/media';
 import type {
   AIAnswerResult,
   AIIntentResult,
@@ -23,7 +24,7 @@ function resolveLabel(input: AIRagRequest): string {
   return '현재 강의';
 }
 
-function buildSearchResult(query: string, lectureId: string | null, chunks: ReturnType<typeof rankChunks>): AISearchResult {
+function buildSearchResult(query: string, lectureId: string | null, chunks: Awaited<ReturnType<typeof rankChunks>>): AISearchResult {
   return {
     query,
     lecture_id: lectureId,
@@ -35,7 +36,7 @@ function buildAnswerResult(
   query: string,
   lectureId: string | null,
   intent: AIIntentResult,
-  chunks: ReturnType<typeof rankChunks>,
+  chunks: Awaited<ReturnType<typeof rankChunks>>,
   label: string,
 ): AIAnswerResult {
   return {
@@ -48,14 +49,17 @@ function buildAnswerResult(
   };
 }
 
-export function buildAIRAGOverview(input: AIRagRequest): AIRagResult {
+export async function buildAIRAGOverview(
+  input: AIRagRequest,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<AIRagResult> {
   const query = input.query.replaceAll(/\s+/g, ' ').trim();
   const intent = classifyAIIntent({
     message: query,
     lecture_id: input.lecture_id,
     context: input.context,
   });
-  const chunks = rankChunks(query, buildCorpus(input), Math.max(1, Math.min(6, input.limit ?? 4)));
+  const chunks = await rankChunks(query, await buildCorpus(input, repository), Math.max(1, Math.min(6, input.limit ?? 4)));
   const label = resolveLabel(input);
 
   return {
@@ -71,16 +75,16 @@ export function buildAIRAGOverview(input: AIRagRequest): AIRagResult {
   };
 }
 
-export function collectAIRagChunks(input: AIRagRequest) {
-  return buildCorpus(input);
+export async function collectAIRagChunks(input: AIRagRequest, repository: MediaRepository = memoryMediaRepository) {
+  return await buildCorpus(input, repository);
 }
 
 export function collectAIRagEntities(input: AIRagRequest) {
   return extractEntities(input);
 }
 
-export function buildAIRagSearch(input: AIRagRequest): AISearchResult {
+export async function buildAIRagSearch(input: AIRagRequest, repository: MediaRepository = memoryMediaRepository): Promise<AISearchResult> {
   const query = input.query.replaceAll(/\s+/g, ' ').trim();
-  const chunks = rankChunks(query, buildCorpus(input), Math.max(1, Math.min(6, input.limit ?? 4)));
+  const chunks = await rankChunks(query, await buildCorpus(input, repository), Math.max(1, Math.min(6, input.limit ?? 4)));
   return buildSearchResult(query, input.lecture_id ?? null, chunks);
 }

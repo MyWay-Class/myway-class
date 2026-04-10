@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { getCourseDetail, getLectureDetail, type SmartChatRequest } from '@myway/shared';
 import { guardAiRequest } from '../lib/ai-controls';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
+import { createMediaRepository } from '../lib/media-repository';
 import { runSmartChat } from '../lib/smart-chat';
 import type { RuntimeBindings } from '../lib/runtime-env';
 
@@ -9,6 +10,10 @@ const smart = new Hono();
 
 function ensureLectureExists(lectureId: string): boolean {
   return Boolean(getLectureDetail(lectureId));
+}
+
+function getMediaRepository(env: RuntimeBindings | undefined) {
+  return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
 }
 
 smart.post('/chat', async (c) => {
@@ -42,7 +47,7 @@ smart.post('/chat', async (c) => {
     course_id: courseId,
     context: body?.context,
     language: body?.language ?? 'ko',
-  });
+  }, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
 
   return jsonSuccess(result, '스마트 AI 응답을 생성했습니다.');
 });

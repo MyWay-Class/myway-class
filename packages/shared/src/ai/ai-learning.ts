@@ -1,5 +1,5 @@
 import { getLectureDetail } from '../lms/learning';
-import { collectLectureReferences } from './ai-intent';
+import { collectLectureReferences } from './intent/corpus';
 import { getLectureTranscript, listLectureNotes } from '../lms/media';
 import type {
   AIQuizQuestion,
@@ -9,6 +9,7 @@ import type {
   AISummaryResult,
   MediaSummaryStyle,
 } from '../types';
+import { memoryMediaRepository, type MediaRepository } from '../lms/media/store';
 
 function normalizeText(text: string): string {
   return text.replaceAll(/\s+/g, ' ').trim();
@@ -54,8 +55,8 @@ function buildSummaryContent(text: string, style: MediaSummaryStyle): string {
   return sentences.slice(0, 2).join(' ');
 }
 
-function buildSummaryReferences(lectureId: string) {
-  return collectLectureReferences(lectureId).slice(0, 2);
+async function buildSummaryReferences(lectureId: string, repository: MediaRepository = memoryMediaRepository) {
+  return (await collectLectureReferences(lectureId, repository)).slice(0, 2);
 }
 
 function buildQuizChoices(concepts: string[], lectureTitle: string): string[] {
@@ -109,7 +110,7 @@ function buildQuizQuestion(
   courseTitle: string,
   sourceText: string,
   concepts: string[],
-  quizReferences: ReturnType<typeof buildSummaryReferences>,
+  quizReferences: Awaited<ReturnType<typeof buildSummaryReferences>>,
   index: number,
 ): AIQuizQuestion {
   const concept = concepts[index % Math.max(1, concepts.length)] ?? lectureTitle;
@@ -129,14 +130,17 @@ function buildQuizQuestion(
   };
 }
 
-export function createAISummary(input: AISummaryRequest): AISummaryResult | null {
+export async function createAISummary(
+  input: AISummaryRequest,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<AISummaryResult | null> {
   const lecture = getLectureDetail(input.lecture_id);
   if (!lecture) {
     return null;
   }
 
-  const transcript = getLectureTranscript(lecture.id);
-  const note = listLectureNotes(lecture.id)[0];
+  const transcript = await getLectureTranscript(lecture.id, repository);
+  const note = (await listLectureNotes(lecture.id, repository))[0];
   const sourceText = note?.content ?? transcript?.full_text ?? lecture.content_text;
   const style = input.style ?? 'brief';
   const titleSuffix =
@@ -157,18 +161,21 @@ export function createAISummary(input: AISummaryRequest): AISummaryResult | null
     language: input.language ?? 'ko',
     content: buildSummaryContent(sourceText, style),
     key_points: keyPoints,
-    references: buildSummaryReferences(lecture.id),
+    references: await buildSummaryReferences(lecture.id, repository),
   };
 }
 
-export function generateAIQuiz(input: AIQuizRequest): AIQuizResult | null {
+export async function generateAIQuiz(
+  input: AIQuizRequest,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<AIQuizResult | null> {
   const lecture = getLectureDetail(input.lecture_id);
   if (!lecture) {
     return null;
   }
 
-  const transcript = getLectureTranscript(lecture.id);
-  const note = listLectureNotes(lecture.id)[0];
+  const transcript = await getLectureTranscript(lecture.id, repository);
+  const note = (await listLectureNotes(lecture.id, repository))[0];
   const sourceText = note?.content ?? transcript?.full_text ?? lecture.content_text;
   const concepts = collectQuizConcepts(sourceText, lecture.title, lecture.course_title);
   let count = input.count ?? 4;
@@ -178,7 +185,7 @@ export function generateAIQuiz(input: AIQuizRequest): AIQuizResult | null {
     count = input.count ?? 3;
   }
   count = Math.max(1, Math.min(5, count));
-  const quizReferences = buildSummaryReferences(lecture.id);
+  const quizReferences = await buildSummaryReferences(lecture.id, repository);
   const questions: AIQuizQuestion[] = Array.from({ length: count }, (_, index) =>
     buildQuizQuestion(
       lecture.id,

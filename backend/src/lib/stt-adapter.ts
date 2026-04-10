@@ -1,4 +1,4 @@
-import { createLectureTranscript, type TranscriptCreateRequest, type LecturePipeline } from '@myway/shared';
+import { createLectureTranscript, type TranscriptCreateRequest, type LecturePipeline, type MediaRepository } from '@myway/shared';
 import { getSTTProviderSelection } from './stt-provider';
 import { runCloudflareTranscription } from './providers';
 import type { RuntimeBindings } from './runtime-env';
@@ -27,6 +27,7 @@ export async function runTranscriptGeneration(
   input: TranscriptCreateRequest,
   preferredProvider?: 'demo' | 'cloudflare' | 'gemini',
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<STTAdapterResult> {
   if (typeof input.duration_ms === 'number' && input.duration_ms > PUBLIC_STT_MAX_DURATION_MS) {
     return {
@@ -54,7 +55,7 @@ export async function runTranscriptGeneration(
         };
       }
 
-      const result = createLectureTranscript(userId, {
+      const result = await createLectureTranscript(userId, {
         ...input,
         text: cloudflareResult.text,
         duration_ms: input.duration_ms ?? cloudflareResult.duration_ms,
@@ -63,7 +64,7 @@ export async function runTranscriptGeneration(
         stt_model: cloudflareResult.model,
         segments: cloudflareResult.segments,
         word_count: cloudflareResult.word_count,
-      });
+      }, repository);
 
       if (!result) {
         return {
@@ -86,11 +87,11 @@ export async function runTranscriptGeneration(
     }
   }
 
-  const result = createLectureTranscript(userId, {
+  const result = await createLectureTranscript(userId, {
     ...input,
     stt_provider: provider.current_provider,
     stt_model: input.stt_model ?? 'pseudo-stt-v1',
-  });
+  }, repository);
 
   if (!result) {
     return {

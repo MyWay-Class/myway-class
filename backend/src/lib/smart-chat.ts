@@ -4,6 +4,7 @@ import {
   type SmartChatRequest,
   type SmartChatResult,
   type SmartChatRoute,
+  type MediaRepository,
 } from '@myway/shared';
 import { runAIAnswerWithExecution, runAIIntentWithExecution, runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine-runners';
 import type { RuntimeBindings } from './runtime-env';
@@ -42,6 +43,7 @@ function buildQuizSuggestions(): string[] {
 export async function runSmartChat(
   input: SmartChatRequest,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<SmartChatResult> {
   const message = input.message.trim();
   const lectureId = input.lecture_id?.trim() ?? null;
@@ -64,7 +66,7 @@ export async function runSmartChat(
   );
 
   const route = normalizeRoute(intentExecution.result.intent);
-  const baseFallback = buildSmartChatOverview(normalizedInput);
+  const baseFallback = await buildSmartChatOverview(normalizedInput);
   const sharedResult = attachMetadata(
     {
       ...baseFallback,
@@ -89,6 +91,7 @@ export async function runSmartChat(
       },
       undefined,
       env,
+      repository,
     );
 
     if (summaryExecution) {
@@ -121,6 +124,7 @@ export async function runSmartChat(
       },
       undefined,
       env,
+      repository,
     );
 
     if (quizExecution) {
@@ -153,6 +157,7 @@ export async function runSmartChat(
       },
       undefined,
       env,
+      repository,
     );
 
     return attachMetadata(

@@ -16,6 +16,7 @@ import { getAuthenticatedUser, hasRole } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { readLectureVideoAsset, uploadLectureVideoAsset } from '../lib/media-assets';
 import { completeMediaExtractionJob, createMediaExtractionJob } from '../lib/media-pipeline';
+import { createMediaRepository } from '../lib/media-repository';
 import { normalizeMediaCallbackPayload, verifyMediaCallbackSecret } from '../lib/media-processor';
 import { buildExtractionCallbackResponse, buildExtractionResponse } from '../lib/media-response';
 import { getSTTProviderOverview } from '../lib/stt-provider';
@@ -27,6 +28,10 @@ const media = new Hono();
 
 function ensureLectureExists(lectureId: string, userId: string): boolean {
   return Boolean(getLectureDetail(lectureId, userId));
+}
+
+function getMediaRepository(env: RuntimeBindings | undefined) {
+  return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
 }
 
 media.post('/upload-video', async (c) => {
@@ -106,7 +111,7 @@ media.post('/transcribe', async (c) => {
     language: body?.language ?? 'ko',
     stt_provider: body?.stt_provider?.trim(),
     stt_model: body?.stt_model?.trim(),
-  }, undefined, c.env as RuntimeBindings | undefined);
+  }, undefined, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
 
   if (!result.ok) {
     if (result.reason === 'input_too_large') {
@@ -167,11 +172,11 @@ media.post('/summarize', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = createLectureSummaryNote(user.id, {
+  const result = await createLectureSummaryNote(user.id, {
     lecture_id: lectureId,
     style: body?.style ?? 'brief',
     language: body?.language ?? 'ko',
-  });
+  }, getMediaRepository(c.env as RuntimeBindings | undefined));
 
   if (!result) {
     return jsonFailure('SUMMARY_FAILED', '요약을 생성할 수 없습니다.', 400);
@@ -219,7 +224,7 @@ media.post('/extract-audio', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = await createMediaExtractionJob(user.id, body, c.req.url, c.env as RuntimeBindings | undefined);
+  const result = await createMediaExtractionJob(user.id, body, c.req.url, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
   if (!result.ok) {
     const status =
       result.reason === 'processor_not_configured'
@@ -248,7 +253,7 @@ media.post('/extract-audio/callback', async (c) => {
     return jsonFailure('CALLBACK_INVALID', 'callback payload가 올바르지 않습니다.', 400);
   }
 
-  const result = await completeMediaExtractionJob('media-processor', payload, c.env as RuntimeBindings | undefined);
+  const result = await completeMediaExtractionJob('media-processor', payload, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
   if (!result.ok) {
     const status =
       result.reason === 'extraction_not_found'
@@ -265,7 +270,7 @@ media.post('/extract-audio/callback', async (c) => {
   );
 });
 
-media.get('/transcript/:lectureId', (c) => {
+media.get('/transcript/:lectureId', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
 
@@ -273,10 +278,10 @@ media.get('/transcript/:lectureId', (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  return jsonSuccess(listLectureTranscripts(lectureId)[0] ?? null);
+  return jsonSuccess((await listLectureTranscripts(lectureId, getMediaRepository(c.env as RuntimeBindings | undefined)))[0] ?? null);
 });
 
-media.get('/notes/:lectureId', (c) => {
+media.get('/notes/:lectureId', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
 
@@ -284,10 +289,10 @@ media.get('/notes/:lectureId', (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  return jsonSuccess(listLectureNotes(lectureId));
+  return jsonSuccess(await listLectureNotes(lectureId, getMediaRepository(c.env as RuntimeBindings | undefined)));
 });
 
-media.get('/audio-extractions/:lectureId', (c) => {
+media.get('/audio-extractions/:lectureId', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
 
@@ -295,10 +300,10 @@ media.get('/audio-extractions/:lectureId', (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  return jsonSuccess(listAudioExtractions(lectureId));
+  return jsonSuccess(await listAudioExtractions(lectureId, getMediaRepository(c.env as RuntimeBindings | undefined)));
 });
 
-media.get('/pipeline/:lectureId', (c) => {
+media.get('/pipeline/:lectureId', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
 
@@ -306,7 +311,7 @@ media.get('/pipeline/:lectureId', (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  return jsonSuccess(buildPipelineOverview(lectureId));
+  return jsonSuccess(await buildPipelineOverview(lectureId, getMediaRepository(c.env as RuntimeBindings | undefined)));
 });
 
 export default media;

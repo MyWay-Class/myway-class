@@ -9,6 +9,7 @@ import type {
   AISearchRequest,
   AISearchResult,
 } from '../../types';
+import { memoryMediaRepository, type MediaRepository } from '../../lms/media';
 import {
   buildAnswerFromReference,
   buildIntentEntities,
@@ -70,34 +71,40 @@ export function classifyAIIntent(input: AIIntentRequest): AIIntentResult {
   };
 }
 
-export function searchAIContent(input: AISearchRequest): AISearchResult {
+export async function searchAIContent(
+  input: AISearchRequest,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<AISearchResult> {
   const query = normalizeText(input.query);
   const limit = Math.max(1, Math.min(5, input.limit ?? 3));
-  const hits = scoreCandidates(query, buildSearchCandidates(input.lecture_id), limit);
+  const hits = scoreCandidates(query, await buildSearchCandidates(input.lecture_id, repository), limit);
 
   return buildSearchResult(query, input.lecture_id ?? null, hits);
 }
 
-export function answerAIQuestion(input: AIAnswerRequest): AIAnswerResult {
+export async function answerAIQuestion(
+  input: AIAnswerRequest,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<AIAnswerResult> {
   const intent = classifyAIIntent({
     message: input.question,
     lecture_id: input.lecture_id,
   });
-  const search = searchAIContent({
+  const search = await searchAIContent({
     query: input.question,
     lecture_id: input.lecture_id,
     limit: input.limit ?? 3,
-  });
+  }, repository);
   const references = search.hits;
   let summary = buildAnswerFromReference(references, input.lecture_id);
   const shouldSummarize = input.intent_hint === 'request_summary' || intent.intent === 'request_summary';
   if (shouldSummarize && input.lecture_id) {
     summary =
-      createAISummary({
+      (await createAISummary({
         lecture_id: input.lecture_id,
         style: 'brief',
         language: 'ko',
-      })?.content ?? summary;
+      }, repository))?.content ?? summary;
   }
 
   return {

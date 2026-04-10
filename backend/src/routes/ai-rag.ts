@@ -1,8 +1,14 @@
 import { Hono } from 'hono';
 import { getCourseLectures, getLectureDetail, type AIRagRequest, buildAIRAGOverview } from '@myway/shared';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
+import { createMediaRepository } from '../lib/media-repository';
+import type { RuntimeBindings } from '../lib/runtime-env';
 
 const rag = new Hono();
+
+function getMediaRepository(env: RuntimeBindings | undefined) {
+  return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
+}
 
 function ensureCourseExists(courseId: string): boolean {
   return getCourseLectures(courseId).length > 0;
@@ -27,14 +33,14 @@ rag.post('/', async (c) => {
   }
 
   return jsonSuccess(
-    buildAIRAGOverview({
+    await buildAIRAGOverview({
       query,
       lecture_id: lectureId,
       course_id: courseId,
       limit: body?.limit,
       context: body?.context,
       preferred_provider: body?.preferred_provider,
-    }),
+    }, getMediaRepository(c.env as RuntimeBindings | undefined)),
     'RAG 파이프라인이 생성되었습니다.',
   );
 });

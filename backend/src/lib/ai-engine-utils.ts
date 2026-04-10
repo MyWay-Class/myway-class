@@ -6,6 +6,7 @@ import {
   getLectureDetail,
   getLectureTranscript,
   listLectureNotes,
+  type MediaRepository,
   type AIAction,
   type AIIntent,
   type AIIntentRequest,
@@ -162,14 +163,17 @@ export function normalizeQuizQuestion(
   };
 }
 
-export function getLectureSourceText(lectureId: string): { lectureTitle: string; courseTitle: string; sourceText: string } | null {
+export async function getLectureSourceText(
+  lectureId: string,
+  repository?: MediaRepository,
+): Promise<{ lectureTitle: string; courseTitle: string; sourceText: string } | null> {
   const lecture = getLectureDetail(lectureId);
   if (!lecture) {
     return null;
   }
 
-  const transcript = getLectureTranscript(lecture.id);
-  const note = listLectureNotes(lecture.id)[0];
+  const transcript = await getLectureTranscript(lecture.id, repository);
+  const note = (await listLectureNotes(lecture.id, repository))[0];
   const sourceText = normalizeText(note?.content ?? transcript?.full_text ?? lecture.content_text);
 
   return {
@@ -196,14 +200,23 @@ export function getIntentFallback(input: AIIntentRequest): AIIntentResult {
   return classifyAIIntent(input);
 }
 
-export function getAnswerFallback(input: AIAnswerRequest): AIAnswerResult {
-  return answerAIQuestion(input);
+export async function getAnswerFallback(
+  input: AIAnswerRequest,
+  repository?: MediaRepository,
+): Promise<AIAnswerResult> {
+  return await answerAIQuestion(input, repository);
 }
 
-export function getSummaryFallback(input: AISummaryRequest): AISummaryResult | null {
-  return createAISummary(input);
+export async function getSummaryFallback(
+  input: AISummaryRequest,
+  repository?: MediaRepository,
+): Promise<AISummaryResult | null> {
+  return await createAISummary(input, repository);
 }
 
-export function getQuizFallback(input: AIQuizRequest): AIQuizResult | null {
-  return generateAIQuiz(input);
+export async function getQuizFallback(
+  input: AIQuizRequest,
+  repository?: MediaRepository,
+): Promise<AIQuizResult | null> {
+  return await generateAIQuiz(input, repository);
 }
