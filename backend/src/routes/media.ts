@@ -19,7 +19,8 @@ import { completeMediaExtractionJob, createMediaExtractionJob } from '../lib/med
 import { normalizeMediaCallbackPayload, verifyMediaCallbackSecret } from '../lib/media-processor';
 import { buildExtractionCallbackResponse, buildExtractionResponse } from '../lib/media-response';
 import { getSTTProviderOverview } from '../lib/stt-provider';
-import { runTranscriptGeneration } from '../lib/stt-adapter';
+import { PUBLIC_STT_MAX_DURATION_MS, runTranscriptGeneration } from '../lib/stt-adapter';
+import { guardAiRequest } from '../lib/ai-controls';
 import type { RuntimeBindings } from '../lib/runtime-env';
 
 const media = new Hono();
@@ -77,6 +78,11 @@ media.post('/transcribe', async (c) => {
     return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
   }
 
+  const access = await guardAiRequest(c.req.raw, c.env as RuntimeBindings | undefined, 'stt');
+  if (access instanceof Response) {
+    return access;
+  }
+
   const body = await readJsonBody<TranscriptCreateRequest>(c.req.raw);
   const lectureId = body?.lecture_id?.trim();
 
@@ -86,6 +92,10 @@ media.post('/transcribe', async (c) => {
 
   if (!ensureLectureExists(lectureId, user.id)) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
+  }
+
+  if (typeof body?.duration_ms === 'number' && body.duration_ms > PUBLIC_STT_MAX_DURATION_MS) {
+    return jsonFailure('STT_INPUT_TOO_LONG', '오디오 길이는 3분 이하만 허용됩니다.', 413);
   }
 
   const result = await runTranscriptGeneration(user.id, {
@@ -99,6 +109,10 @@ media.post('/transcribe', async (c) => {
   }, undefined, c.env as RuntimeBindings | undefined);
 
   if (!result.ok) {
+    if (result.reason === 'input_too_large') {
+      return jsonFailure('STT_INPUT_TOO_LONG', '오디오 길이는 3분 이하만 허용됩니다.', 413);
+    }
+
     return jsonFailure('TRANSCRIPT_FAILED', '트랜스크립트를 생성할 수 없습니다.', 400);
   }
 

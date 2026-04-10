@@ -11,10 +11,10 @@ import {
   type AISummaryRequest,
 } from '@myway/shared';
 import { runAIAnswer, runAIIntent, runAIQuiz, runAISearch, runAISummary } from '../lib/ai-adapter';
-import { getAIProviderSelection } from '../lib/ai-provider';
-import { getAuthenticatedUser } from '../lib/auth';
+import { getAIProviderSelectionForRuntime } from '../lib/ai-provider';
+import { guardAiRequest } from '../lib/ai-controls';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
-import type { RuntimeBindings } from '../lib/runtime-env';
+import { getGeminiRuntimeSettings, type RuntimeBindings } from '../lib/runtime-env';
 
 const ai = new Hono();
 
@@ -60,7 +60,15 @@ function buildResponseMetadata(feature: 'intent' | 'search' | 'answer' | 'summar
     return { provider: 'demo', model: 'demo-search-v1' };
   }
 
-  return { provider: getAIProviderSelection(feature).current_provider, model: getOllamaModel(env) };
+  const provider = getAIProviderSelectionForRuntime(feature, env).current_provider;
+  const model =
+    provider === 'gemini'
+      ? getGeminiRuntimeSettings(env).model ?? 'gemini-2.0-flash'
+      : provider === 'ollama'
+        ? getOllamaModel(env)
+        : `demo-${feature}-v1`;
+
+  return { provider, model };
 }
 
 function recordUsageLog(input: {
@@ -87,7 +95,12 @@ function recordUsageLog(input: {
 }
 
 ai.post('/intent', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
+  const access = await guardAiRequest(c.req.raw, c.env as RuntimeBindings | undefined, 'intent');
+  if (access instanceof Response) {
+    return access;
+  }
+
+  const { user } = access;
   const body = await readJsonBody<AIIntentRequest>(c.req.raw);
   const message = body?.message?.trim();
 
@@ -135,7 +148,12 @@ ai.post('/intent', async (c) => {
 });
 
 ai.post('/search', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
+  const access = await guardAiRequest(c.req.raw, c.env as RuntimeBindings | undefined, 'search');
+  if (access instanceof Response) {
+    return access;
+  }
+
+  const { user } = access;
   const body = await readJsonBody<AISearchRequest>(c.req.raw);
   const query = body?.query?.trim();
 
@@ -172,7 +190,12 @@ ai.post('/search', async (c) => {
 });
 
 ai.post('/answer', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
+  const access = await guardAiRequest(c.req.raw, c.env as RuntimeBindings | undefined, 'answer');
+  if (access instanceof Response) {
+    return access;
+  }
+
+  const { user } = access;
   const body = await readJsonBody<AIAnswerRequest>(c.req.raw);
   const question = body?.question?.trim();
 
@@ -224,7 +247,12 @@ ai.post('/answer', async (c) => {
 });
 
 ai.post('/summary', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
+  const access = await guardAiRequest(c.req.raw, c.env as RuntimeBindings | undefined, 'summary');
+  if (access instanceof Response) {
+    return access;
+  }
+
+  const { user } = access;
   const body = await readJsonBody<AISummaryRequest>(c.req.raw);
   const lectureId = body?.lecture_id?.trim();
 
@@ -270,7 +298,12 @@ ai.post('/summary', async (c) => {
 });
 
 ai.post('/quiz', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
+  const access = await guardAiRequest(c.req.raw, c.env as RuntimeBindings | undefined, 'quiz');
+  if (access instanceof Response) {
+    return access;
+  }
+
+  const { user } = access;
   const body = await readJsonBody<AIQuizRequest>(c.req.raw);
   const lectureId = body?.lecture_id?.trim();
 

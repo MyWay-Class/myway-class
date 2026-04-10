@@ -1,4 +1,5 @@
 import { getAIProviderCatalog, getAIProviderPlan, type AIProviderCapability, type AIProviderName } from '@myway/shared';
+import { getAIRuntimePolicy, type RuntimeBindings } from './runtime-env';
 
 export type AIProviderSelection = {
   feature: AIProviderCapability;
@@ -8,14 +9,14 @@ export type AIProviderSelection = {
 };
 
 const DEFAULT_FALLBACK_ORDER: Record<AIProviderCapability, AIProviderName[]> = {
-  intent: ['ollama', 'gemini', 'cloudflare', 'demo'],
-  search: ['ollama', 'gemini', 'cloudflare', 'demo'],
-  answer: ['ollama', 'gemini', 'cloudflare', 'demo'],
-  summary: ['ollama', 'gemini', 'cloudflare', 'demo'],
-  quiz: ['ollama', 'gemini', 'cloudflare', 'demo'],
-  smart: ['ollama', 'gemini', 'cloudflare', 'demo'],
-  insights: ['ollama', 'gemini', 'cloudflare', 'demo'],
-  recommendations: ['ollama', 'gemini', 'cloudflare', 'demo'],
+  intent: ['ollama', 'gemini', 'demo'],
+  search: ['demo'],
+  answer: ['ollama', 'gemini', 'demo'],
+  summary: ['ollama', 'gemini', 'demo'],
+  quiz: ['ollama', 'gemini', 'demo'],
+  smart: ['ollama', 'gemini', 'demo'],
+  insights: ['ollama', 'gemini', 'demo'],
+  recommendations: ['ollama', 'gemini', 'demo'],
   stt: ['cloudflare', 'gemini', 'demo'],
   embedding: ['cloudflare', 'ollama', 'demo'],
 };
@@ -35,6 +36,33 @@ export function getAIProviderSelection(feature: AIProviderCapability, preferredP
     feature: plan.feature,
     current_provider: preferredProvider ?? plan.current_provider,
     recommended_chain: plan.recommended_chain,
+    fallback_chain,
+  };
+}
+
+export function getAIProviderSelectionForRuntime(
+  feature: AIProviderCapability,
+  env?: RuntimeBindings,
+  preferredProvider?: AIProviderName,
+): AIProviderSelection {
+  const policy = getAIRuntimePolicy(env);
+  const baseChain: AIProviderName[] =
+    feature === 'search'
+      ? ['demo']
+      : policy.public_mode === 'dev'
+        ? ['ollama', 'gemini', 'demo']
+        : ['gemini', 'demo'];
+
+  const normalizedPreferred = preferredProvider && baseChain.includes(preferredProvider) ? preferredProvider : undefined;
+  const fallback_chain = uniqueProviders([
+    ...(normalizedPreferred ? [normalizedPreferred] : []),
+    ...baseChain,
+  ]);
+
+  return {
+    feature,
+    current_provider: normalizedPreferred ?? baseChain[0],
+    recommended_chain: baseChain,
     fallback_chain,
   };
 }

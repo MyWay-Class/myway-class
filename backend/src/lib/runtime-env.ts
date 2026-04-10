@@ -1,3 +1,5 @@
+import type { D1Database } from '@cloudflare/workers-types';
+
 export type WorkersAI = {
   run: <TInput extends Record<string, unknown>, TOutput = unknown>(model: string, input: TInput) => Promise<TOutput>;
 };
@@ -27,13 +29,25 @@ export type R2BucketLike = {
   >;
 };
 
-type RuntimeStringKey = Exclude<keyof RuntimeBindings, 'AI' | 'ASSETS'>;
+type RuntimeStringKey = Exclude<keyof RuntimeBindings, 'AI' | 'ASSETS' | 'DB'>;
 
 export type RuntimeBindings = {
   APP_ENV?: 'development' | 'staging' | 'production';
   API_ORIGIN?: string;
   AI?: WorkersAI;
+  DB?: D1Database;
   ASSETS?: R2BucketLike;
+  MYWAY_AI_PUBLIC_MODE?: 'dev' | 'free_test';
+  MYWAY_AI_REQUIRE_AUTH?: string;
+  MYWAY_AI_ENABLE_STT?: string;
+  MYWAY_AI_ENABLE_MEDIA_UPLOAD?: string;
+  MYWAY_AI_DAILY_LIMIT_SMART?: string;
+  MYWAY_AI_DAILY_LIMIT_SUMMARY?: string;
+  MYWAY_AI_DAILY_LIMIT_QUIZ?: string;
+  MYWAY_AI_DAILY_LIMIT_STT?: string;
+  MYWAY_AI_DAILY_LIMIT_ANSWER?: string;
+  MYWAY_AI_DAILY_LIMIT_GEMINI?: string;
+  MYWAY_AI_DAILY_LIMIT_TOTAL?: string;
   MYWAY_OLLAMA_BASE_URL?: string;
   OLLAMA_BASE_URL?: string;
   MYWAY_OLLAMA_MODEL?: string;
@@ -116,5 +130,46 @@ export function getMediaProcessorRuntimeSettings(env?: RuntimeBindings): {
     url: getRuntimeValue(env, 'MYWAY_MEDIA_PROCESSOR_URL', getRuntimeValue(env, 'MEDIA_PROCESSOR_URL')),
     token: getRuntimeValue(env, 'MYWAY_MEDIA_PROCESSOR_TOKEN', getRuntimeValue(env, 'MEDIA_PROCESSOR_TOKEN')),
     callback_secret: getRuntimeValue(env, 'MYWAY_MEDIA_CALLBACK_SECRET', getRuntimeValue(env, 'MEDIA_CALLBACK_SECRET')),
+  };
+}
+
+export function getAIRuntimePolicy(env?: RuntimeBindings): {
+  public_mode: 'dev' | 'free_test';
+  require_auth: boolean;
+  enable_stt: boolean;
+  enable_media_upload: boolean;
+  daily_limits: {
+    total?: number;
+    smart?: number;
+    summary?: number;
+    quiz?: number;
+    stt?: number;
+    answer?: number;
+    gemini?: number;
+  };
+} {
+  const parseLimit = (value: string | undefined): number | undefined => {
+    if (!value) {
+      return undefined;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  };
+
+  return {
+    public_mode: env?.MYWAY_AI_PUBLIC_MODE ?? 'dev',
+    require_auth: (env?.MYWAY_AI_REQUIRE_AUTH ?? 'false') === 'true',
+    enable_stt: (env?.MYWAY_AI_ENABLE_STT ?? 'true') === 'true',
+    enable_media_upload: (env?.MYWAY_AI_ENABLE_MEDIA_UPLOAD ?? 'true') === 'true',
+    daily_limits: {
+      smart: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_SMART),
+      summary: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_SUMMARY),
+      quiz: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_QUIZ),
+      stt: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_STT),
+      answer: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_ANSWER),
+      gemini: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_GEMINI),
+      total: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_TOTAL),
+    },
   };
 }

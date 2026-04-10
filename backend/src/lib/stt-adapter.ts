@@ -3,6 +3,8 @@ import { getSTTProviderSelection } from './stt-provider';
 import { runCloudflareTranscription } from './providers';
 import type { RuntimeBindings } from './runtime-env';
 
+export const PUBLIC_STT_MAX_DURATION_MS = 180_000;
+
 export type STTAdapterResult =
   | {
       ok: true;
@@ -17,7 +19,7 @@ export type STTAdapterResult =
     }
   | {
       ok: false;
-      reason: 'lecture_not_found' | 'transcript_failed';
+      reason: 'lecture_not_found' | 'transcript_failed' | 'input_too_large';
   };
 
 export async function runTranscriptGeneration(
@@ -26,6 +28,13 @@ export async function runTranscriptGeneration(
   preferredProvider?: 'demo' | 'cloudflare' | 'gemini',
   env?: RuntimeBindings,
 ): Promise<STTAdapterResult> {
+  if (typeof input.duration_ms === 'number' && input.duration_ms > PUBLIC_STT_MAX_DURATION_MS) {
+    return {
+      ok: false,
+      reason: 'input_too_large',
+    };
+  }
+
   const provider = getSTTProviderSelection('transcribe', preferredProvider);
 
   if (provider.current_provider === 'cloudflare' && input.audio_url) {
@@ -38,6 +47,13 @@ export async function runTranscriptGeneration(
     );
 
     if (cloudflareResult) {
+      if (typeof cloudflareResult.duration_ms === 'number' && cloudflareResult.duration_ms > PUBLIC_STT_MAX_DURATION_MS) {
+        return {
+          ok: false,
+          reason: 'input_too_large',
+        };
+      }
+
       const result = createLectureTranscript(userId, {
         ...input,
         text: cloudflareResult.text,
