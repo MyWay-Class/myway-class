@@ -72,6 +72,11 @@ type AdminAutomationPageProps = {
 
 export function AdminAutomationPage({ providerCatalog }: AdminAutomationPageProps) {
   const providerPlans = providerCatalog?.plans.slice(0, 4) ?? [];
+  const runtimePolicy = providerCatalog?.runtime_policy;
+  const runtimeModeLabel = runtimePolicy?.public_mode === 'free_test' ? '공개 테스트' : '개발';
+  const authLabel = runtimePolicy?.require_auth ? '로그인 필수' : '로그인 선택';
+  const sttLabel = runtimePolicy?.enable_stt ? 'STT 활성' : 'STT 비활성';
+  const uploadLabel = runtimePolicy?.enable_media_upload ? '업로드 허용' : '업로드 차단';
 
   return (
     <div className="space-y-5">
@@ -124,8 +129,29 @@ export function AdminAutomationPage({ providerCatalog }: AdminAutomationPageProp
           AI provider 계층
         </h3>
         <p className="mt-2 text-[12px] leading-6 text-slate-500">
-          현재는 demo 엔진으로 기본 동작을 유지하고, 앞으로는 Ollama, Gemini, Cloudflare AI 순으로 기능별 fallback을 적용합니다.
+          현재 화면은 runtime policy 기준으로 보여주며, dev는 Ollama, staging/production은 Gemini 중심, STT는 Cloudflare 우선으로 안내합니다.
         </p>
+
+        {runtimePolicy ? (
+          <div className="mt-4 grid gap-2 md:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">운영 모드</div>
+              <div className="mt-1 text-[13px] font-semibold text-slate-900">{runtimeModeLabel}</div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">AI 접근</div>
+              <div className="mt-1 text-[13px] font-semibold text-slate-900">{authLabel}</div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">STT</div>
+              <div className="mt-1 text-[13px] font-semibold text-slate-900">{sttLabel}</div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">미디어 업로드</div>
+              <div className="mt-1 text-[13px] font-semibold text-slate-900">{uploadLabel}</div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {providerPlans.map((plan) => (
@@ -133,7 +159,7 @@ export function AdminAutomationPage({ providerCatalog }: AdminAutomationPageProp
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-[13px] font-semibold text-slate-900">{plan.feature}</div>
-                  <div className="mt-1 text-[12px] text-slate-500">{plan.current_provider}가 현재 우선 제공자예요.</div>
+                  <div className="mt-1 text-[12px] text-slate-500">{plan.current_provider}가 현재 runtime policy 기준의 우선 제공자예요.</div>
                 </div>
                 <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
                   {plan.steps[0]?.status ?? 'planned'}
