@@ -13,7 +13,7 @@ import {
   type AISummaryRequest,
   type AISummaryResult,
 } from '@myway/shared';
-import { runAIAnswerWithEngine, runAIIntentWithEngine, runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine';
+import { type AIEngineExecution, runAIAnswerWithEngine, runAIIntentWithEngine, runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine';
 import { getAIProviderSelection } from './ai-provider';
 import type { RuntimeBindings } from './runtime-env';
 
@@ -66,7 +66,7 @@ export async function runAISummary(
   input: AISummaryRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
-): Promise<AISummaryResult | null> {
+): Promise<AIEngineExecution<AISummaryResult> | null> {
   resolveProvider('summary', preferredProvider);
   return runAISummaryWithEngine(input, preferredProvider, env);
 }
@@ -75,7 +75,7 @@ export async function runAIQuiz(
   input: AIQuizRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
-): Promise<AIQuizResult | null> {
+): Promise<AIEngineExecution<AIQuizResult> | null> {
   resolveProvider('quiz', preferredProvider);
   return runAIQuizWithEngine(input, preferredProvider, env);
 }

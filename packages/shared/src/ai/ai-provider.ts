@@ -53,14 +53,14 @@ const PROVIDER_DESCRIPTORS: AIProviderDescriptor[] = [
     name: 'ollama',
     label: 'Ollama',
     description: '로컬 또는 자가 호스팅 환경에서 무료로 사용할 수 있는 모델 계층입니다.',
-    status: 'planned',
+    status: 'available',
     capabilities: ['intent', 'search', 'answer', 'summary', 'quiz', 'smart', 'insights', 'recommendations', 'embedding'],
   },
   {
     name: 'gemini',
     label: 'Gemini',
     description: '무료 API 쿼터 기반으로 생성, 분류, 요약 보강에 활용할 수 있는 외부 모델 계층입니다.',
-    status: 'planned',
+    status: 'available',
     capabilities: ['intent', 'search', 'answer', 'summary', 'quiz', 'smart', 'insights', 'recommendations', 'stt'],
   },
   {
