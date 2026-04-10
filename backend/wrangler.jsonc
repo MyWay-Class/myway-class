@@ -7,6 +7,11 @@
       "binding": "DB",
       "database_name": "myway-class-quota",
       "database_id": "3ef1768f-347d-4e82-93ea-2c346f52630a"
+    },
+    {
+      "binding": "MEDIA_DB",
+      "database_name": "myway-class-data",
+      "database_id": "519993d1-b497-401d-a072-c7d777bc0ddb"
     }
   ],
   "r2_buckets": [
