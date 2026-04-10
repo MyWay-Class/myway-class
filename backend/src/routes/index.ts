@@ -13,6 +13,7 @@ import enrollments from './enrollments';
 import health from './health';
 import media from './media';
 import lectures from './lectures';
+import lectureDrafts from './lecture-drafts';
 import smart from './smart';
 import shortform from './shortform';
 
@@ -29,6 +30,7 @@ export function registerRoutes(app: Hono): void {
   app.route('/api/v1/dashboard', dashboard);
   app.route('/api/v1/courses', courses);
   app.route('/api/v1/lectures', lectures);
+  app.route('/api/v1/lecture-drafts', lectureDrafts);
   app.route('/api/v1/media', media);
   app.route('/api/v1/smart', smart);
   app.route('/api/v1/shortform', shortform);
