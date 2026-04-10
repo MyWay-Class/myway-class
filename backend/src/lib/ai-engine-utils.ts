@@ -19,7 +19,7 @@ import {
   type AISummaryResult,
   type AIProviderName,
 } from '@myway/shared';
-import { getAIProviderSelection } from './ai-provider';
+import { getAIProviderSelectionForRuntime } from './ai-provider';
 import type { RuntimeBindings } from './runtime-env';
 
 export type JsonObject = Record<string, unknown>;
@@ -187,8 +187,8 @@ export function getGeminiModel(env?: RuntimeBindings): string {
   return env?.MYWAY_GEMINI_MODEL ?? env?.GEMINI_MODEL ?? 'gemini-2.0-flash';
 }
 
-export function isRemoteFeatureEnabled(feature: 'intent' | 'answer' | 'summary' | 'quiz', preferredProvider?: AIProviderName): boolean {
-  const provider = getAIProviderSelection(feature, preferredProvider);
+export function isRemoteFeatureEnabled(feature: 'intent' | 'answer' | 'summary' | 'quiz', env?: RuntimeBindings, preferredProvider?: AIProviderName): boolean {
+  const provider = getAIProviderSelectionForRuntime(feature, env, preferredProvider);
   return provider.current_provider === 'ollama' || provider.current_provider === 'gemini';
 }
 

@@ -37,11 +37,10 @@
         "MYWAY_AI_DAILY_LIMIT_QUIZ": "999",
         "MYWAY_AI_DAILY_LIMIT_STT": "999",
         "MYWAY_AI_DAILY_LIMIT_ANSWER": "999",
+        "MYWAY_AI_DAILY_LIMIT_TOTAL": "999",
         "MYWAY_AI_DAILY_LIMIT_GEMINI": "999",
         "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
         "MYWAY_MEDIA_PROCESSOR_URL": "http://127.0.0.1:8788/jobs/audio-extraction",
-        "MYWAY_MEDIA_PROCESSOR_TOKEN": "local-media-processor-token",
-        "MYWAY_MEDIA_CALLBACK_SECRET": "local-media-callback-secret",
         "MYWAY_OLLAMA_BASE_URL": "http://127.0.0.1:11434",
         "MYWAY_OLLAMA_MODEL": "llama3.1:8b"
       }
@@ -59,11 +58,10 @@
         "MYWAY_AI_DAILY_LIMIT_QUIZ": "20",
         "MYWAY_AI_DAILY_LIMIT_STT": "10",
         "MYWAY_AI_DAILY_LIMIT_ANSWER": "40",
+        "MYWAY_AI_DAILY_LIMIT_TOTAL": "50",
         "MYWAY_AI_DAILY_LIMIT_GEMINI": "120",
         "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
         "MYWAY_MEDIA_PROCESSOR_URL": "https://media-processor.staging.mywayclass.com/jobs/audio-extraction",
-        "MYWAY_MEDIA_PROCESSOR_TOKEN": "replace-with-staging-token",
-        "MYWAY_MEDIA_CALLBACK_SECRET": "replace-with-staging-secret",
         "MYWAY_GEMINI_MODEL": "gemini-2.0-flash",
         "MYWAY_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta"
       }
@@ -81,11 +79,10 @@
         "MYWAY_AI_DAILY_LIMIT_QUIZ": "20",
         "MYWAY_AI_DAILY_LIMIT_STT": "10",
         "MYWAY_AI_DAILY_LIMIT_ANSWER": "40",
+        "MYWAY_AI_DAILY_LIMIT_TOTAL": "50",
         "MYWAY_AI_DAILY_LIMIT_GEMINI": "120",
         "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
         "MYWAY_MEDIA_PROCESSOR_URL": "https://media-processor.mywayclass.com/jobs/audio-extraction",
-        "MYWAY_MEDIA_PROCESSOR_TOKEN": "replace-with-production-token",
-        "MYWAY_MEDIA_CALLBACK_SECRET": "replace-with-production-secret",
         "MYWAY_GEMINI_MODEL": "gemini-2.0-flash",
         "MYWAY_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta"
       }

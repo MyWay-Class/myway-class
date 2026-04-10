@@ -9,7 +9,7 @@ import type {
   AISummaryResult,
   AIProviderName,
 } from '@myway/shared';
-import { getAIProviderSelection } from './ai-provider';
+import { getAIProviderSelectionForRuntime } from './ai-provider';
 import { runGeminiJsonPrompt, runOllamaChat } from './providers';
 import type { RuntimeBindings } from './runtime-env';
 import {
@@ -50,7 +50,7 @@ async function runStructuredJsonFallback(
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
 ): Promise<string | null> {
-  const providerPlan = getAIProviderSelection(feature, preferredProvider);
+  const providerPlan = getAIProviderSelectionForRuntime(feature, env, preferredProvider);
 
   for (const provider of providerPlan.fallback_chain) {
     if (provider === 'ollama') {
@@ -84,7 +84,8 @@ async function runOllamaStructuredIntent(
 ): Promise<AIEngineExecution<AIIntentResult>> {
   const fallback = getIntentFallback(input);
 
-  if (!isRemoteFeatureEnabled('intent', preferredProvider)) {
+  const providerPlan = getAIProviderSelectionForRuntime('intent', env, preferredProvider);
+  if (providerPlan.current_provider === 'demo') {
     return {
       result: fallback,
       provider: 'demo',
@@ -92,11 +93,32 @@ async function runOllamaStructuredIntent(
     };
   }
 
-  const response = await runOllamaChat(buildIntentPrompt(input, fallback), env, {
-    model: getOllamaModel(env),
-    temperature: 0.1,
-    timeoutMs: OLLAMA_TIMEOUT_MS,
-  });
+  const messages = buildIntentPrompt(input, fallback);
+  let response: string | null = null;
+  let responseProvider: AIProviderName | null = null;
+
+  for (const provider of providerPlan.fallback_chain) {
+    if (provider === 'ollama') {
+      response = await runOllamaChat(messages, env, {
+        model: getOllamaModel(env),
+        temperature: 0.1,
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      responseProvider = response ? 'ollama' : null;
+    }
+
+    if (!response && provider === 'gemini') {
+      response = await runGeminiJsonPrompt(messages, env, {
+        model: getGeminiModel(env),
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      responseProvider = response ? 'gemini' : responseProvider;
+    }
+
+    if (response) {
+      break;
+    }
+  }
 
   const parsed = parseJsonObject(response ?? '');
   if (!parsed) {
@@ -117,8 +139,8 @@ async function runOllamaStructuredIntent(
       reason: pickString(parsed.reason, fallback.reason),
       needs_clarification: typeof parsed.needs_clarification === 'boolean' ? parsed.needs_clarification : fallback.needs_clarification,
     },
-    provider: 'ollama',
-    model: getOllamaModel(env),
+    provider: responseProvider ?? 'demo',
+    model: responseProvider === 'gemini' ? getGeminiModel(env) : getOllamaModel(env),
   };
 }
 
@@ -129,7 +151,8 @@ async function runOllamaStructuredAnswer(
 ): Promise<AIEngineExecution<AIAnswerResult>> {
   const fallback = getAnswerFallback(input);
 
-  if (!isRemoteFeatureEnabled('answer', preferredProvider)) {
+  const providerPlan = getAIProviderSelectionForRuntime('answer', env, preferredProvider);
+  if (providerPlan.current_provider === 'demo') {
     return {
       result: fallback,
       provider: 'demo',
@@ -137,11 +160,32 @@ async function runOllamaStructuredAnswer(
     };
   }
 
-  const response = await runOllamaChat(buildAnswerPrompt(input, fallback), env, {
-    model: getOllamaModel(env),
-    temperature: 0.2,
-    timeoutMs: OLLAMA_TIMEOUT_MS,
-  });
+  const messages = buildAnswerPrompt(input, fallback);
+  let response: string | null = null;
+  let responseProvider: AIProviderName | null = null;
+
+  for (const provider of providerPlan.fallback_chain) {
+    if (provider === 'ollama') {
+      response = await runOllamaChat(messages, env, {
+        model: getOllamaModel(env),
+        temperature: 0.2,
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      responseProvider = response ? 'ollama' : null;
+    }
+
+    if (!response && provider === 'gemini') {
+      response = await runGeminiJsonPrompt(messages, env, {
+        model: getGeminiModel(env),
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      responseProvider = response ? 'gemini' : responseProvider;
+    }
+
+    if (response) {
+      break;
+    }
+  }
 
   const parsed = parseJsonObject(response ?? '');
   if (!parsed) {
@@ -167,8 +211,8 @@ async function runOllamaStructuredAnswer(
       answer,
       suggestions: toStringArray(parsed.suggestions).slice(0, 2).concat(fallback.suggestions).slice(0, 2),
     },
-    provider: 'ollama',
-    model: getOllamaModel(env),
+    provider: responseProvider ?? 'demo',
+    model: responseProvider === 'gemini' ? getGeminiModel(env) : getOllamaModel(env),
   };
 }
 
@@ -215,7 +259,7 @@ export async function runAISummaryWithEngine(
   }
 
   const source = getLectureSourceText(input.lecture_id);
-  if (!source || !isRemoteFeatureEnabled('summary', preferredProvider) || input.style === 'timeline') {
+  if (!source || !isRemoteFeatureEnabled('summary', env, preferredProvider) || input.style === 'timeline') {
     return {
       result: fallback,
       provider: 'demo',
@@ -224,7 +268,7 @@ export async function runAISummaryWithEngine(
   }
 
   const messages = buildSummaryPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input.style, input.language);
-  const providerPlan = getAIProviderSelection('summary', preferredProvider);
+  const providerPlan = getAIProviderSelectionForRuntime('summary', env, preferredProvider);
   let response: string | null = null;
   let responseProvider: AIProviderName | null = null;
 
@@ -305,7 +349,7 @@ export async function runAIQuizWithEngine(
   }
 
   const source = getLectureSourceText(input.lecture_id);
-  if (!source || !isRemoteFeatureEnabled('quiz', preferredProvider)) {
+  if (!source || !isRemoteFeatureEnabled('quiz', env, preferredProvider)) {
     return {
       result: fallback,
       provider: 'demo',
@@ -314,7 +358,7 @@ export async function runAIQuizWithEngine(
   }
 
   const messages = buildQuizPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input);
-  const providerPlan = getAIProviderSelection('quiz', preferredProvider);
+  const providerPlan = getAIProviderSelectionForRuntime('quiz', env, preferredProvider);
   let response: string | null = null;
   let responseProvider: AIProviderName | null = null;
 

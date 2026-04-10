@@ -14,7 +14,7 @@ import {
   type AISummaryResult,
 } from '@myway/shared';
 import { type AIEngineExecution, runAIAnswerWithEngine, runAIIntentWithEngine, runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine';
-import { getAIProviderSelection } from './ai-provider';
+import { getAIProviderSelectionForRuntime } from './ai-provider';
 import type { RuntimeBindings } from './runtime-env';
 
 export type AIAdapterResultMap = {
@@ -36,7 +36,7 @@ type AIAdapterInputMap = {
 };
 
 function resolveProvider(feature: AIProviderCapability, preferredProvider?: AIProviderName): AIProviderName {
-  return getAIProviderSelection(feature, preferredProvider).current_provider;
+  return getAIProviderSelectionForRuntime(feature, undefined, preferredProvider).current_provider;
 }
 
 export async function runAIIntent(

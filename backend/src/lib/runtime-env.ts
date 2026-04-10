@@ -47,6 +47,7 @@ export type RuntimeBindings = {
   MYWAY_AI_DAILY_LIMIT_STT?: string;
   MYWAY_AI_DAILY_LIMIT_ANSWER?: string;
   MYWAY_AI_DAILY_LIMIT_GEMINI?: string;
+  MYWAY_AI_DAILY_LIMIT_TOTAL?: string;
   MYWAY_OLLAMA_BASE_URL?: string;
   OLLAMA_BASE_URL?: string;
   MYWAY_OLLAMA_MODEL?: string;
@@ -138,6 +139,7 @@ export function getAIRuntimePolicy(env?: RuntimeBindings): {
   enable_stt: boolean;
   enable_media_upload: boolean;
   daily_limits: {
+    total?: number;
     smart?: number;
     summary?: number;
     quiz?: number;
@@ -167,6 +169,7 @@ export function getAIRuntimePolicy(env?: RuntimeBindings): {
       stt: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_STT),
       answer: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_ANSWER),
       gemini: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_GEMINI),
+      total: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_TOTAL),
     },
   };
 }

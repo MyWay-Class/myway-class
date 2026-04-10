@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { getCourseDetail, getLectureDetail, type SmartChatRequest } from '@myway/shared';
-import { getAuthenticatedUser } from '../lib/auth';
+import { guardAiRequest } from '../lib/ai-controls';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { runSmartChat } from '../lib/smart-chat';
+import type { RuntimeBindings } from '../lib/runtime-env';
 
 const smart = new Hono();
 
@@ -11,10 +12,12 @@ function ensureLectureExists(lectureId: string): boolean {
 }
 
 smart.post('/chat', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+  const access = await guardAiRequest(c.req.raw, c.env as RuntimeBindings | undefined, 'smart');
+  if (access instanceof Response) {
+    return access;
   }
+  const user = access.user;
+  const userId = user?.id ?? 'guest';
 
   const body = await readJsonBody<SmartChatRequest>(c.req.raw);
   const message = body?.message?.trim();
@@ -29,7 +32,7 @@ smart.post('/chat', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  if (courseId && !getCourseDetail(courseId, user.id)) {
+  if (courseId && !getCourseDetail(courseId, userId)) {
     return jsonFailure('COURSE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
