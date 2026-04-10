@@ -52,6 +52,9 @@
 - 긴 미디어는 R2에 저장하고, 메타데이터만 D1에 둔다.
 - 타임스탬프는 학습자가 화면에서 바로 점프할 수 있을 정도로 충분히 촘촘해야 한다.
 - 데모 모드와 운영 모드를 상태값으로 구분한다.
+- 공개 테스트에서는 `media/transcribe`를 로그인 필수 + 3분 이하 입력으로 제한한다.
+- 공개 테스트에서 `upload-video`와 `extract-audio`는 관리자 전용으로 유지한다.
+- `20분~1시간` 원본 영상은 운영자가 먼저 업로드하고 STT를 사전 생성한 뒤, 일반 사용자는 준비된 transcript와 짧은 체험만 사용한다.
 
 ## 예외 상황
 - 일부 강의는 텍스트만으로 구성된다.
@@ -64,7 +67,7 @@
 
 ## Provider 계층
 - 현재 구현은 `audio_url`이 있으면 `Cloudflare AI` 전사를 먼저 시도하고, 텍스트 전용이나 실패 시에는 `demo` STT로 되돌아간다.
-- 운영 경로는 `Cloudflare AI -> Gemini -> demo` 순의 fallback 계층을 기본으로 둔다.
+- 공개 테스트 운영 경로는 `Cloudflare AI -> demo`로 보고, `3분`을 넘는 입력은 사전에 차단한다.
 - `POST /api/v1/media/transcribe`는 provider 메타데이터를 함께 기록한다.
 - `GET /api/v1/media/providers`로 provider 계층을 조회할 수 있다.
 - STT 결과에는 `stt_provider`, `stt_model`, `segments`, `word_count`가 함께 남아야 한다.
