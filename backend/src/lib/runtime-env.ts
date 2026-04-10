@@ -29,13 +29,14 @@ export type R2BucketLike = {
   >;
 };
 
-type RuntimeStringKey = Exclude<keyof RuntimeBindings, 'AI' | 'ASSETS' | 'DB'>;
+type RuntimeStringKey = Exclude<keyof RuntimeBindings, 'AI' | 'ASSETS' | 'DB' | 'MEDIA_DB'>;
 
 export type RuntimeBindings = {
   APP_ENV?: 'development' | 'staging' | 'production';
   API_ORIGIN?: string;
   AI?: WorkersAI;
   DB?: D1Database;
+  MEDIA_DB?: D1Database;
   ASSETS?: R2BucketLike;
   MYWAY_AI_PUBLIC_MODE?: 'dev' | 'free_test';
   MYWAY_AI_REQUIRE_AUTH?: string;
