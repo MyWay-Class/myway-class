@@ -58,4 +58,3 @@
 - `2026-04-07-auth-permissions.md`
 - `2026-04-06-lms-core.md`
 - `2026-04-06-pr-devlogs.md`
-

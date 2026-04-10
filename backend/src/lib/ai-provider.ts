@@ -99,3 +99,7 @@ export function getAIProviderRuntimeOverview(env?: RuntimeBindings): AIProviderR
     }),
   };
 }
+
+export function getAIProviderOverview() {
+  return getAIProviderCatalog();
+}
