@@ -35,8 +35,25 @@ export type AIProviderPlan = {
   steps: AIProviderStep[];
 };
 
+export type AIRuntimePolicy = {
+  public_mode: 'dev' | 'free_test';
+  require_auth: boolean;
+  enable_stt: boolean;
+  enable_media_upload: boolean;
+  daily_limits: {
+    total?: number;
+    smart?: number;
+    summary?: number;
+    quiz?: number;
+    stt?: number;
+    answer?: number;
+    gemini?: number;
+  };
+};
+
 export type AIProviderCatalog = {
   generated_at: string;
+  runtime_policy?: AIRuntimePolicy;
   providers: AIProviderDescriptor[];
   plans: AIProviderPlan[];
 };
@@ -45,28 +62,28 @@ const PROVIDER_DESCRIPTORS: AIProviderDescriptor[] = [
   {
     name: 'demo',
     label: 'Demo Engine',
-    description: '현재 앱의 기본 동작을 보장하는 내장 데모 엔진입니다.',
+    description: '항상 동작하는 내장 안전망으로, 정책이나 네트워크가 막혀도 기본 동작을 보장합니다.',
     status: 'available',
     capabilities: ['intent', 'search', 'answer', 'summary', 'quiz', 'smart', 'insights', 'recommendations', 'stt', 'embedding'],
   },
   {
     name: 'ollama',
     label: 'Ollama',
-    description: '로컬 또는 자가 호스팅 환경에서 무료로 사용할 수 있는 모델 계층입니다.',
+    description: 'dev 로컬 개발 환경에서 사용하는 모델 계층입니다.',
     status: 'available',
     capabilities: ['intent', 'search', 'answer', 'summary', 'quiz', 'smart', 'insights', 'recommendations', 'embedding'],
   },
   {
     name: 'gemini',
     label: 'Gemini',
-    description: '무료 API 쿼터 기반으로 생성, 분류, 요약 보강에 활용할 수 있는 외부 모델 계층입니다.',
+    description: 'staging/production에서 텍스트 생성과 분류, 요약을 담당하는 외부 모델 계층입니다.',
     status: 'available',
     capabilities: ['intent', 'search', 'answer', 'summary', 'quiz', 'smart', 'insights', 'recommendations', 'stt'],
   },
   {
     name: 'cloudflare',
     label: 'Cloudflare AI',
-    description: 'Workers AI와 연계해 배포 환경에서 안정적으로 붙일 수 있는 인프라 계층입니다.',
+    description: '공개 테스트에서 STT 우선 경로로 쓰는 Workers AI 계층입니다.',
     status: 'planned',
     capabilities: ['stt', 'embedding', 'intent', 'search', 'answer', 'summary', 'quiz', 'smart', 'insights', 'recommendations'],
   },
@@ -88,16 +105,24 @@ const FEATURE_CHAIN: Record<AIProviderCapability, AIProviderName[]> = {
 function buildSteps(chain: AIProviderName[]): AIProviderStep[] {
   return chain.map((provider, index) => {
     const descriptor = PROVIDER_DESCRIPTORS.find((item) => item.name === provider);
+    const firstProvider = chain[0];
+    const reason =
+      index === 0
+        ? firstProvider === 'ollama'
+          ? 'dev 로컬 기본 경로'
+          : firstProvider === 'gemini'
+            ? 'staging/production 텍스트 기본 경로'
+            : firstProvider === 'cloudflare'
+              ? '공개 테스트 STT 우선 경로'
+              : '이 기능의 기본 경로'
+        : index === chain.length - 1
+          ? '최후의 안전망'
+          : '기본 경로가 실패할 때의 대체 경로';
 
     return {
       provider,
       status: descriptor?.status ?? 'planned',
-      reason:
-        index === 0
-          ? '이 기능의 기본 경로'
-          : index === chain.length - 1
-            ? '최후의 안전망'
-            : '기본 경로가 실패할 때의 대체 경로',
+      reason,
     };
   });
 }
