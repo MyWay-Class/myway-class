@@ -1,5 +1,5 @@
 import type { AudioExtraction, LecturePipeline, STTProviderCatalog } from '@myway/shared';
-import { getStoredAuth, request } from './api-core';
+import { getStoredAuth, request, type ApiRequestResult } from './api-core';
 
 export type MediaUploadResult = {
   lecture_id: string;
@@ -25,14 +25,44 @@ export type MediaExtractionResult = {
   pipeline: LecturePipeline;
 };
 
-export async function uploadLectureVideo(lectureId: string, file: File, sessionToken?: string | null): Promise<MediaUploadResult | null> {
+export async function uploadLectureVideoDetailed(
+  lectureId: string,
+  file: File,
+  sessionToken?: string | null,
+): Promise<ApiRequestResult<MediaUploadResult> | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   const formData = new FormData();
   formData.append('lecture_id', lectureId);
   formData.append('video_file', file);
 
-  const response = await request<MediaUploadResult>('/api/v1/media/upload-video', { method: 'POST', body: formData }, token);
+  return await request<MediaUploadResult>('/api/v1/media/upload-video', { method: 'POST', body: formData }, token);
+}
+
+export async function uploadLectureVideo(lectureId: string, file: File, sessionToken?: string | null): Promise<MediaUploadResult | null> {
+  const response = await uploadLectureVideoDetailed(lectureId, file, sessionToken);
   return response?.success && response.data ? response.data : null;
+}
+
+export async function createAudioExtractionDetailed(
+  input: {
+    lecture_id: string;
+    video_url?: string;
+    video_asset_key?: string;
+    source_file_name?: string;
+    source_content_type?: string;
+    source_size_bytes?: number;
+    audio_url?: string;
+    language?: string;
+    stt_provider?: string;
+    stt_model?: string;
+  },
+  sessionToken?: string | null,
+): Promise<ApiRequestResult<MediaExtractionResult> | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  return await request<MediaExtractionResult>('/api/v1/media/extract-audio', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }, token);
 }
 
 export async function createAudioExtraction(
@@ -50,12 +80,7 @@ export async function createAudioExtraction(
   },
   sessionToken?: string | null,
 ): Promise<MediaExtractionResult | null> {
-  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const response = await request<MediaExtractionResult>('/api/v1/media/extract-audio', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  }, token);
-
+  const response = await createAudioExtractionDetailed(input, sessionToken);
   return response?.success && response.data ? response.data : null;
 }
 

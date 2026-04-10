@@ -1,17 +1,17 @@
 import { type SmartChatRequest, type SmartChatResult } from '@myway/shared';
-import { getStoredAuth, request } from './api-core';
+import { getStoredAuth, request, type ApiRequestResult } from './api-core';
 
-export async function sendSmartChat(
+export async function sendSmartChatDetailed(
   input: SmartChatRequest,
   sessionToken?: string | null,
-): Promise<SmartChatResult | null> {
+): Promise<ApiRequestResult<SmartChatResult> | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
 
   if (!token) {
     return null;
   }
 
-  const response = await request<SmartChatResult>(
+  return await request<SmartChatResult>(
     '/api/v1/smart/chat',
     {
       method: 'POST',
@@ -19,6 +19,12 @@ export async function sendSmartChat(
     },
     token,
   );
+}
 
+export async function sendSmartChat(
+  input: SmartChatRequest,
+  sessionToken?: string | null,
+): Promise<SmartChatResult | null> {
+  const response = await sendSmartChatDetailed(input, sessionToken);
   return response?.success && response.data ? response.data : null;
 }

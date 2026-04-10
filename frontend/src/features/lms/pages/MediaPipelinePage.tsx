@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AudioExtraction, CourseDetail, LectureDetail, LecturePipeline, STTProviderCatalog } from '@myway/shared';
+import { AiNoticeBanner } from '../components/AiNoticeBanner';
 import { StatePanel } from '../components/StatePanel';
 import { MediaPipelineStatusBoard } from '../components/MediaPipelineStatusBoard';
-import { createAudioExtraction, loadAudioExtractions, loadMediaPipeline, loadMediaProviders, uploadLectureVideo, type MediaUploadResult } from '../../../lib/api-media';
+import {
+  createAudioExtractionDetailed,
+  loadAudioExtractions,
+  loadMediaPipeline,
+  loadMediaProviders,
+  uploadLectureVideoDetailed,
+  type MediaUploadResult,
+} from '../../../lib/api-media';
+import { getAiErrorMessage, getQuotaStatusText, getPublicTestPolicyText } from '../../../lib/ai-access';
 
 type MediaPipelinePageProps = {
   selectedCourse: CourseDetail | null;
@@ -24,6 +33,8 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   const [audioUrl, setAudioUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('영상 파일을 업로드하면 R2 업로드 후 외부 오디오 추출 서비스와 STT 파이프라인이 순서대로 연결됩니다.');
+  const [bannerDescription, setBannerDescription] = useState(getPublicTestPolicyText('media'));
+  const [bannerMeta, setBannerMeta] = useState<string | null>(null);
   const [pipeline, setPipeline] = useState<LecturePipeline | null>(null);
   const [providers, setProviders] = useState<STTProviderCatalog | null>(null);
   const [uploadResult, setUploadResult] = useState<MediaUploadResult | null>(null);
@@ -33,6 +44,11 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   useEffect(() => {
     setLectureId(defaultLectureId);
   }, [defaultLectureId]);
+
+  useEffect(() => {
+    setBannerDescription(getPublicTestPolicyText('media'));
+    setBannerMeta(null);
+  }, [lectureId, selectedCourse?.id]);
 
   const refreshMediaState = useCallback(
     async (targetLectureId: string, options?: { silent?: boolean }) => {
@@ -150,13 +166,18 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     audio_url?: string;
     language?: string;
   }): Promise<boolean> {
-    const extraction = await createAudioExtraction(input, sessionToken);
+    const extractionResult = await createAudioExtractionDetailed(input, sessionToken);
 
-    if (!extraction) {
-      setNotice('오디오 추출 job 생성에 실패했습니다.');
+    if (!extractionResult?.success || !extractionResult.data) {
+      setBannerDescription(getAiErrorMessage(extractionResult, '오디오 추출 job 생성에 실패했습니다.'));
+      setBannerMeta(getQuotaStatusText(extractionResult));
+      setNotice(getAiErrorMessage(extractionResult, '오디오 추출 job 생성에 실패했습니다.'));
       return false;
     }
 
+    const extraction = extractionResult.data;
+    setBannerDescription('미디어 처리가 시작되었습니다. 공개 테스트에서는 3분 이하 입력과 로그인 상태만 허용됩니다.');
+    setBannerMeta(getQuotaStatusText(extractionResult));
     await refreshMediaState(input.lecture_id);
     setNotice(
       extraction.transcript_id
@@ -182,13 +203,18 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     setNotice('영상 업로드와 외부 오디오 추출 job을 생성하는 중입니다.');
 
     try {
-      const upload = await uploadLectureVideo(lectureId, videoFile, sessionToken);
-      if (!upload) {
-        setNotice('영상 업로드에 실패했습니다. R2 binding과 권한을 확인해 주세요.');
+      const uploadResult = await uploadLectureVideoDetailed(lectureId, videoFile, sessionToken);
+      if (!uploadResult?.success || !uploadResult.data) {
+        setBannerDescription(getAiErrorMessage(uploadResult, '영상 업로드에 실패했습니다. R2 binding과 권한을 확인해 주세요.'));
+        setBannerMeta(getQuotaStatusText(uploadResult));
+        setNotice(getAiErrorMessage(uploadResult, '영상 업로드에 실패했습니다. R2 binding과 권한을 확인해 주세요.'));
         return;
       }
 
+      const upload = uploadResult.data;
       setUploadResult(upload);
+      setBannerDescription('공개 테스트에서는 관리자 전용 업로드만 허용됩니다. 짧은 STT만 체험해 주세요.');
+      setBannerMeta(getQuotaStatusText(uploadResult));
       await submitExtraction({
         lecture_id: lectureId,
         video_url: upload.video_url,
@@ -214,7 +240,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     setNotice('직전 추출 입력값으로 다시 요청하는 중입니다.');
 
     try {
-      await submitExtraction({
+      const retryResult = await createAudioExtractionDetailed({
         lecture_id: lectureId,
         video_url: retrySource.video_url,
         video_asset_key: retrySource.video_asset_key,
@@ -223,7 +249,18 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
         source_size_bytes: retrySource.source_size_bytes,
         audio_url: audioUrl.trim() || undefined,
         language: latestExtraction?.language ?? 'ko',
-      });
+      }, sessionToken);
+
+      if (!retryResult?.success || !retryResult.data) {
+        setBannerDescription(getAiErrorMessage(retryResult, '재추출 요청에 실패했습니다.'));
+        setBannerMeta(getQuotaStatusText(retryResult));
+        setNotice(getAiErrorMessage(retryResult, '재추출 요청에 실패했습니다.'));
+        return;
+      }
+
+      setBannerDescription('재추출 요청이 접수되었습니다. quota와 STT 길이 제한이 함께 적용됩니다.');
+      setBannerMeta(getQuotaStatusText(retryResult));
+      await refreshMediaState(lectureId);
     } finally {
       setBusy(false);
     }
@@ -240,6 +277,8 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
           강의 영상을 R2에 업로드하고, 오디오 추출 job과 STT 전사를 같은 화면에서 이어서 확인할 수 있습니다.
         </p>
       </section>
+
+      <AiNoticeBanner title="공개 테스트 안내" description={bannerDescription} tone="amber" meta={bannerMeta} />
 
       {!selectedCourse ? (
         <StatePanel
