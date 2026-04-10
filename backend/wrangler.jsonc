@@ -6,7 +6,7 @@
     {
       "binding": "DB",
       "database_name": "myway-class-quota",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+      "database_id": "3ef1768f-347d-4e82-93ea-2c346f52630a"
     }
   ],
   "r2_buckets": [
