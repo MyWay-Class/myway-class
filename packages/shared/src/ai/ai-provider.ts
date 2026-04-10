@@ -89,7 +89,7 @@ const PROVIDER_DESCRIPTORS: AIProviderDescriptor[] = [
   },
 ];
 
-const FEATURE_CHAIN: Record<AIProviderCapability, AIProviderName[]> = {
+const STATIC_FEATURE_CHAIN: Record<AIProviderCapability, AIProviderName[]> = {
   intent: ['ollama', 'gemini', 'cloudflare', 'demo'],
   search: ['ollama', 'gemini', 'cloudflare', 'demo'],
   answer: ['ollama', 'gemini', 'cloudflare', 'demo'],
@@ -101,6 +101,26 @@ const FEATURE_CHAIN: Record<AIProviderCapability, AIProviderName[]> = {
   stt: ['cloudflare', 'gemini', 'demo'],
   embedding: ['cloudflare', 'ollama', 'demo'],
 };
+
+function buildRuntimeFeatureChain(feature: AIProviderCapability, runtimePolicy?: AIRuntimePolicy): AIProviderName[] {
+  if (!runtimePolicy) {
+    return STATIC_FEATURE_CHAIN[feature];
+  }
+
+  if (feature === 'search') {
+    return ['demo'];
+  }
+
+  if (feature === 'stt') {
+    return runtimePolicy.public_mode === 'dev' ? ['cloudflare', 'gemini', 'demo'] : ['cloudflare', 'gemini', 'demo'];
+  }
+
+  if (runtimePolicy.public_mode === 'dev') {
+    return ['ollama', 'gemini', 'demo'];
+  }
+
+  return ['gemini', 'demo'];
+}
 
 function buildSteps(chain: AIProviderName[]): AIProviderStep[] {
   return chain.map((provider, index) => {
@@ -127,21 +147,29 @@ function buildSteps(chain: AIProviderName[]): AIProviderStep[] {
   });
 }
 
-export function getAIProviderCatalog(): AIProviderCatalog {
-  return {
-    generated_at: new Date().toISOString(),
-    providers: PROVIDER_DESCRIPTORS,
-    plans: Object.entries(FEATURE_CHAIN).map(([feature, chain]) => ({
-      feature: feature as AIProviderCapability,
+export function getAIProviderCatalog(runtimePolicy?: AIRuntimePolicy): AIProviderCatalog {
+  const plans = Object.keys(STATIC_FEATURE_CHAIN).map((feature) => {
+    const featureKey = feature as AIProviderCapability;
+    const chain = buildRuntimeFeatureChain(featureKey, runtimePolicy);
+
+    return {
+      feature: featureKey,
       current_provider: chain[0],
       recommended_chain: chain,
       steps: buildSteps(chain),
-    })),
+    };
+  });
+
+  return {
+    generated_at: new Date().toISOString(),
+    runtime_policy: runtimePolicy,
+    providers: PROVIDER_DESCRIPTORS,
+    plans,
   };
 }
 
-export function getAIProviderPlan(feature: AIProviderCapability): AIProviderPlan {
-  const chain = FEATURE_CHAIN[feature];
+export function getAIProviderPlan(feature: AIProviderCapability, runtimePolicy?: AIRuntimePolicy): AIProviderPlan {
+  const chain = buildRuntimeFeatureChain(feature, runtimePolicy);
   return {
     feature,
     current_provider: chain[0],

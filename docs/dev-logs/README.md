@@ -16,6 +16,7 @@
 - 로그는 `왜 바꿨는지`, `무엇을 바꿨는지`, `어떻게 검증했는지`만 짧게 적는다.
 
 ## 최신 로그
+- `2026-04-10-provider-catalog-runtime-aware-fallback.md`
 - `2026-04-10-admin-automation-provider-runtime-policy.md`
 - `2026-04-10-quota-rate-limit-ui-notice.md`
 - `2026-04-10-free-tier-docs-secret-d1.md`
