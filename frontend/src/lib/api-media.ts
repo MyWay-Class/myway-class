@@ -1,4 +1,4 @@
-import type { LecturePipeline, STTProviderCatalog } from '@myway/shared';
+import type { AudioExtraction, LecturePipeline, STTProviderCatalog } from '@myway/shared';
 import { getStoredAuth, request } from './api-core';
 
 export type MediaUploadResult = {
@@ -63,6 +63,12 @@ export async function loadMediaPipeline(lectureId: string, sessionToken?: string
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   const response = await request<LecturePipeline>(`/api/v1/media/pipeline/${encodeURIComponent(lectureId)}`, undefined, token);
   return response?.success && response.data ? response.data : null;
+}
+
+export async function loadAudioExtractions(lectureId: string, sessionToken?: string | null): Promise<AudioExtraction[]> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  const response = await request<AudioExtraction[]>(`/api/v1/media/audio-extractions/${encodeURIComponent(lectureId)}`, undefined, token);
+  return response?.success && response.data ? response.data : [];
 }
 
 export async function loadMediaProviders(sessionToken?: string | null): Promise<STTProviderCatalog | null> {
