@@ -2,6 +2,7 @@ import { demoCourses } from '../../data/demo-data';
 import { getCourseLectures } from '../../lms/learning';
 import { createAISummary, generateAIQuiz } from '../ai-learning';
 import { collectLectureReferences } from '../intent/corpus';
+import { memoryMediaRepository, type MediaRepository } from '../../lms/media';
 import { normalizeText as normalizeIntentText, scoreChunk, tokenize } from '../intent/helpers';
 import type {
   AIReference,
@@ -22,18 +23,20 @@ function listCourseLectureIds(courseId: string): string[] {
   return getCourseLectures(courseId).map((lecture) => lecture.id);
 }
 
-function collectCourseReferences(courseId: string): AIReference[] {
-  return listCourseLectureIds(courseId).flatMap((lectureId) => collectLectureReferences(lectureId));
+async function collectCourseReferences(courseId: string, repository: MediaRepository = memoryMediaRepository): Promise<AIReference[]> {
+  return Promise.all(listCourseLectureIds(courseId).map((lectureId) => collectLectureReferences(lectureId, repository))).then((items) => items.flat());
 }
 
-function searchCourseReferences(query: string, courseId: string, limit: number): AIReference[] {
+async function searchCourseReferences(query: string, courseId: string, limit: number, repository: MediaRepository = memoryMediaRepository): Promise<AIReference[]> {
   const queryTokens = tokenize(query);
-  const hits = listCourseLectureIds(courseId).flatMap((lectureId) =>
-    collectLectureReferences(lectureId).map((reference) => ({
-      ...reference,
-      similarity: scoreChunk(queryTokens, reference.excerpt, reference.title),
-    })),
-  );
+  const hits = await Promise.all(
+    listCourseLectureIds(courseId).map(async (lectureId) =>
+      (await collectLectureReferences(lectureId, repository)).map((reference) => ({
+        ...reference,
+        similarity: scoreChunk(queryTokens, reference.excerpt, reference.title),
+      })),
+    ),
+  ).then((items) => items.flat());
 
   const uniqueHits = new Map<string, AIReference>();
   for (const hit of hits) {
@@ -68,16 +71,17 @@ function buildSummaryFromLectureSummaries(summaries: AISummaryResult[], courseTi
   return `${courseTitle}의 강의 흐름을 묶어 보면 다음과 같습니다.\n\n${lines.join('\n\n')}`;
 }
 
-function buildCourseSummary(courseId: string, language: 'ko' | 'en'): {
+async function buildCourseSummary(courseId: string, language: 'ko' | 'en', repository: MediaRepository = memoryMediaRepository): Promise<{
   summary: AISummaryResult | null;
   answer: string;
   references: AIReference[];
-} {
+}> {
   const lectureIds = listCourseLectureIds(courseId);
-  const summaries = lectureIds
-    .slice(0, 3)
-    .map((lectureId) => createAISummary({ lecture_id: lectureId, style: 'brief', language }))
-    .filter((item): item is AISummaryResult => Boolean(item));
+  const summaries = (await Promise.all(
+      lectureIds
+      .slice(0, 3)
+      .map((lectureId) => createAISummary({ lecture_id: lectureId, style: 'brief', language }, repository)),
+  )).filter((item): item is AISummaryResult => Boolean(item));
 
   if (summaries.length === 0) {
     return { summary: null, answer: '요약할 강의를 찾을 수 없습니다.', references: [] };
@@ -90,16 +94,16 @@ function buildCourseSummary(courseId: string, language: 'ko' | 'en'): {
   };
 }
 
-function buildCourseQuiz(courseId: string, count?: number): AIQuizResult | null {
+async function buildCourseQuiz(courseId: string, count?: number, repository: MediaRepository = memoryMediaRepository): Promise<AIQuizResult | null> {
   const lectureId = listCourseLectureIds(courseId)[0];
   if (!lectureId) {
     return null;
   }
 
-  return generateAIQuiz({
+  return await generateAIQuiz({
     lecture_id: lectureId,
     count,
-  });
+  }, repository);
 }
 
 function extractTranslationTarget(message: string, language?: 'ko' | 'en'): 'ko' | 'en' {

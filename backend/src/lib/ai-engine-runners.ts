@@ -8,6 +8,7 @@ import type {
   AISummaryRequest,
   AISummaryResult,
   AIProviderName,
+  MediaRepository,
 } from '@myway/shared';
 import { getAIProviderSelectionForRuntime } from './ai-provider';
 import { runGeminiJsonPrompt, runOllamaChat } from './providers';
@@ -81,6 +82,7 @@ async function runOllamaStructuredIntent(
   input: AIIntentRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<AIEngineExecution<AIIntentResult>> {
   const fallback = getIntentFallback(input);
 
@@ -148,8 +150,9 @@ async function runOllamaStructuredAnswer(
   input: AIAnswerRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<AIEngineExecution<AIAnswerResult>> {
-  const fallback = getAnswerFallback(input);
+  const fallback = await getAnswerFallback(input, repository);
 
   const providerPlan = getAIProviderSelectionForRuntime('answer', env, preferredProvider);
   if (providerPlan.current_provider === 'demo') {
@@ -220,45 +223,50 @@ export async function runAIIntentWithExecution(
   input: AIIntentRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<AIEngineExecution<AIIntentResult>> {
-  return runOllamaStructuredIntent(input, preferredProvider, env);
+  return runOllamaStructuredIntent(input, preferredProvider, env, repository);
 }
 
 export async function runAIIntentWithEngine(
   input: AIIntentRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<AIIntentResult> {
-  return (await runAIIntentWithExecution(input, preferredProvider, env)).result;
+  return (await runAIIntentWithExecution(input, preferredProvider, env, repository)).result;
 }
 
 export async function runAIAnswerWithExecution(
   input: AIAnswerRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<AIEngineExecution<AIAnswerResult>> {
-  return runOllamaStructuredAnswer(input, preferredProvider, env);
+  return runOllamaStructuredAnswer(input, preferredProvider, env, repository);
 }
 
 export async function runAIAnswerWithEngine(
   input: AIAnswerRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<AIAnswerResult> {
-  return (await runAIAnswerWithExecution(input, preferredProvider, env)).result;
+  return (await runAIAnswerWithExecution(input, preferredProvider, env, repository)).result;
 }
 
 export async function runAISummaryWithEngine(
   input: AISummaryRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<AIEngineExecution<AISummaryResult> | null> {
-  const fallback = getSummaryFallback(input);
+  const fallback = await getSummaryFallback(input, repository);
   if (!fallback) {
     return null;
   }
 
-  const source = getLectureSourceText(input.lecture_id);
+  const source = await getLectureSourceText(input.lecture_id, repository);
   if (!source || !isRemoteFeatureEnabled('summary', env, preferredProvider) || input.style === 'timeline') {
     return {
       result: fallback,
@@ -342,13 +350,14 @@ export async function runAIQuizWithEngine(
   input: AIQuizRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<AIEngineExecution<AIQuizResult> | null> {
-  const fallback = getQuizFallback(input);
+  const fallback = await getQuizFallback(input, repository);
   if (!fallback) {
     return null;
   }
 
-  const source = getLectureSourceText(input.lecture_id);
+  const source = await getLectureSourceText(input.lecture_id, repository);
   if (!source || !isRemoteFeatureEnabled('quiz', env, preferredProvider)) {
     return {
       result: fallback,

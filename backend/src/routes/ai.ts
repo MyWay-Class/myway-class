@@ -14,6 +14,7 @@ import { runAIAnswer, runAIIntent, runAIQuiz, runAISearch, runAISummary } from '
 import { getAIProviderSelectionForRuntime } from '../lib/ai-provider';
 import { guardAiRequest } from '../lib/ai-controls';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
+import { createMediaRepository } from '../lib/media-repository';
 import { getGeminiRuntimeSettings, type RuntimeBindings } from '../lib/runtime-env';
 
 const ai = new Hono();
@@ -41,6 +42,10 @@ function getLectureSnapshot(lectureId?: string): AISnapshot {
     lecture_id: lecture.id,
     course_id: lecture.course_id,
   };
+}
+
+function getMediaRepository(env: RuntimeBindings | undefined) {
+  return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
 }
 
 function estimateTokens(text: string): number {
@@ -118,6 +123,7 @@ ai.post('/intent', async (c) => {
     },
     undefined,
     env,
+    getMediaRepository(env),
   );
 
   if (user) {
@@ -168,11 +174,11 @@ ai.post('/search', async (c) => {
 
   const env = c.env as RuntimeBindings | undefined;
   const metadata = buildResponseMetadata('search', env);
-  const result = runAISearch({
+  const result = await runAISearch({
     query,
     lecture_id: lectureId,
     limit: body?.limit,
-  });
+  }, undefined, getMediaRepository(env));
 
   if (user) {
     recordUsageLog({
@@ -219,6 +225,7 @@ ai.post('/answer', async (c) => {
     },
     undefined,
     env,
+    getMediaRepository(env),
   );
 
   if (user) {
@@ -273,6 +280,7 @@ ai.post('/summary', async (c) => {
     },
     undefined,
     env,
+    getMediaRepository(env),
   );
 
   if (!execution) {
@@ -324,6 +332,7 @@ ai.post('/quiz', async (c) => {
     },
     undefined,
     env,
+    getMediaRepository(env),
   );
 
   if (!execution) {

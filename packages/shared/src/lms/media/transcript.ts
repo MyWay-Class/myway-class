@@ -1,66 +1,24 @@
-import { demoLectureTranscripts } from '../../data/demo-data';
-import type { LectureTranscript, TranscriptCreateRequest } from '../../types';
-import { createId, findLecture, now, splitIntoSegments, upsertPipeline, normalizeText } from './helpers';
+import type { LecturePipeline, LectureTranscript, TranscriptCreateRequest } from '../../types';
+import { memoryMediaRepository, type MediaRepository } from './store';
 
-export function getLectureTranscript(lectureId: string): LectureTranscript | undefined {
-  return demoLectureTranscripts.find((item) => item.lecture_id === lectureId);
+export async function getLectureTranscript(
+  lectureId: string,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<LectureTranscript | undefined> {
+  return await repository.getLectureTranscript(lectureId);
 }
 
-export function listLectureTranscripts(lectureId: string): LectureTranscript[] {
-  return demoLectureTranscripts
-    .filter((item) => item.lecture_id === lectureId)
-    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+export async function listLectureTranscripts(
+  lectureId: string,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<LectureTranscript[]> {
+  return await repository.listLectureTranscripts(lectureId);
 }
 
-export function createLectureTranscript(
+export async function createLectureTranscript(
   userId: string,
   input: TranscriptCreateRequest,
-): { transcript: LectureTranscript; pipeline: ReturnType<typeof upsertPipeline> } | null {
-  const lecture = findLecture(input.lecture_id);
-  if (!lecture) {
-    return null;
-  }
-
-  const fullText = normalizeText(input.text || lecture.content_text || '');
-  if (!fullText) {
-    return null;
-  }
-
-  const fallbackDurationMs = Math.max(lecture.duration_minutes * 60_000, fullText.length * 40, 180_000);
-  const segments = input.segments?.length
-    ? input.segments.map((segment, index) => ({
-        index,
-        start_ms: Math.max(0, Math.round(segment.start_ms)),
-        end_ms: Math.max(Math.round(segment.start_ms), Math.round(segment.end_ms)),
-        text: normalizeText(segment.text),
-      }))
-    : splitIntoSegments(fullText, input.duration_ms ?? fallbackDurationMs);
-  const durationMs =
-    input.duration_ms ??
-    (segments.length > 0 ? segments[segments.length - 1]?.end_ms ?? fallbackDurationMs : fallbackDurationMs);
-  const wordCount =
-    input.word_count ??
-    fullText.split(/\s+/).filter(Boolean).length;
-  const transcript: LectureTranscript = {
-    id: createId('trs', demoLectureTranscripts.length),
-    lecture_id: lecture.id,
-    user_id: userId,
-    language: input.language ?? 'ko',
-    full_text: fullText,
-    segments,
-    word_count: wordCount,
-    duration_ms: durationMs,
-    stt_provider: input.stt_provider ?? (input.text ? 'text-derived-stt' : 'demo-stt'),
-    stt_model: input.stt_model ?? 'pseudo-stt-v1',
-    created_at: now(),
-  };
-
-  demoLectureTranscripts.push(transcript);
-  const pipeline = upsertPipeline({
-    lecture_id: lecture.id,
-    transcript_status: 'COMPLETED',
-    transcript_id: transcript.id,
-  });
-
-  return { transcript, pipeline };
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<{ transcript: LectureTranscript; pipeline: LecturePipeline } | null> {
+  return await repository.createLectureTranscript(userId, input);
 }

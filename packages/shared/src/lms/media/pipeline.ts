@@ -1,34 +1,16 @@
-import { demoLecturePipelines } from '../../data/demo-data';
 import type { LecturePipeline } from '../../types';
-import { getLectureTranscript } from './transcript';
-import { listAudioExtractions } from './audio';
-import { listLectureNotes } from './summary';
-import { now } from './helpers';
+import { memoryMediaRepository, type MediaRepository } from './store';
 
-export function getLecturePipeline(lectureId: string): LecturePipeline {
-  const existing = demoLecturePipelines.find((item) => item.lecture_id === lectureId);
-
-  if (existing) {
-    return existing;
-  }
-
-  const transcript = getLectureTranscript(lectureId);
-  const notes = listLectureNotes(lectureId);
-  const extractions = listAudioExtractions(lectureId);
-  const latestExtraction = extractions[0];
-
-  return {
-    lecture_id: lectureId,
-    transcript_status: transcript ? 'COMPLETED' : 'PENDING',
-    summary_status: notes.length > 0 ? 'COMPLETED' : 'PENDING',
-    audio_status: latestExtraction?.status ?? 'PENDING',
-    transcript_id: transcript?.id ?? null,
-    note_id: notes[0]?.id ?? null,
-    extraction_id: latestExtraction?.id ?? null,
-    updated_at: now(),
-  };
+export async function getLecturePipeline(
+  lectureId: string,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<LecturePipeline> {
+  return await repository.getLecturePipeline(lectureId);
 }
 
-export function buildPipelineOverview(lectureId: string): LecturePipeline {
-  return getLecturePipeline(lectureId);
+export async function buildPipelineOverview(
+  lectureId: string,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<LecturePipeline> {
+  return await repository.getLecturePipeline(lectureId);
 }

@@ -6,6 +6,7 @@ import {
   type AudioExtractionCallbackRequest,
   type AudioExtractionRequest,
   type LecturePipeline,
+  type MediaRepository,
 } from '@myway/shared';
 import { dispatchMediaProcessorJob } from './media-processor';
 import { runTranscriptGeneration, type STTAdapterResult } from './stt-adapter';
@@ -48,6 +49,7 @@ export async function createMediaExtractionJob(
   input: AudioExtractionRequest,
   requestUrl: string,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<MediaExtractionRequestResult> {
   let transcriptResult: STTAdapterResult | null = null;
 
@@ -63,6 +65,7 @@ export async function createMediaExtractionJob(
       },
       'cloudflare',
       env,
+      repository,
     );
 
     if (!transcriptResult.ok) {
@@ -74,7 +77,7 @@ export async function createMediaExtractionJob(
     }
   }
 
-  const extractionResult = createAudioExtraction(userId, {
+  const extractionResult = await createAudioExtraction(userId, {
     lecture_id: input.lecture_id,
     video_url: input.video_url?.trim(),
     video_asset_key: input.video_asset_key?.trim(),
@@ -85,7 +88,7 @@ export async function createMediaExtractionJob(
     language: input.language ?? 'ko',
     stt_provider: input.stt_provider?.trim(),
     stt_model: input.stt_model?.trim(),
-  });
+  }, repository);
 
   if (!extractionResult) {
     return {
@@ -114,12 +117,12 @@ export async function createMediaExtractionJob(
   );
 
   if (!dispatchResult.ok) {
-    updateAudioExtraction({
+    await updateAudioExtraction({
       extraction_id: extractionResult.extraction.id,
       lecture_id: extractionResult.extraction.lecture_id,
       status: 'FAILED',
       error_message: dispatchResult.message,
-    });
+    }, repository);
 
     return {
       ok: false,
@@ -128,12 +131,12 @@ export async function createMediaExtractionJob(
     };
   }
 
-  const updated = updateAudioExtraction({
+  const updated = await updateAudioExtraction({
     extraction_id: extractionResult.extraction.id,
     lecture_id: extractionResult.extraction.lecture_id,
     status: dispatchResult.status,
     processing_job_id: dispatchResult.job_id ?? undefined,
-  });
+  }, repository);
 
   return {
     ok: true,
@@ -148,8 +151,9 @@ export async function completeMediaExtractionJob(
   userId: string,
   payload: AudioExtractionCallbackRequest,
   env?: RuntimeBindings,
+  repository?: MediaRepository,
 ): Promise<MediaExtractionCallbackResult> {
-  const extraction = getAudioExtraction(payload.extraction_id);
+  const extraction = await getAudioExtraction(payload.extraction_id, repository);
   if (!extraction || extraction.lecture_id !== payload.lecture_id) {
     return {
       ok: false,
@@ -159,7 +163,7 @@ export async function completeMediaExtractionJob(
   }
 
   if (payload.status === 'FAILED') {
-    const failed = updateAudioExtraction(payload);
+    const failed = await updateAudioExtraction(payload, repository);
     if (!failed) {
       return {
         ok: false,
@@ -195,14 +199,15 @@ export async function completeMediaExtractionJob(
     },
     'cloudflare',
     env,
+    repository,
   );
 
   if (!transcriptResult.ok) {
-    const failed = updateAudioExtraction({
+    const failed = await updateAudioExtraction({
       ...payload,
       status: 'FAILED',
       error_message: '오디오 전사를 생성할 수 없습니다.',
-    });
+    }, repository);
 
     return {
       ok: false,
@@ -211,12 +216,12 @@ export async function completeMediaExtractionJob(
     };
   }
 
-  const completed = updateAudioExtraction({
+  const completed = await updateAudioExtraction({
     ...payload,
     status: 'COMPLETED',
     transcript_id: transcriptResult.transcript_id,
     stt_status: 'COMPLETED',
-  });
+  }, repository);
 
   if (!completed) {
     return {
