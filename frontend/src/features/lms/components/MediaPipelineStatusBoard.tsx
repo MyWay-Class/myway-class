@@ -7,7 +7,9 @@ type MediaPipelineStatusBoardProps = {
   providers: STTProviderCatalog | null;
   uploadResult: MediaUploadResult | null;
   extraction: AudioExtraction | null;
+  recentExtractions?: AudioExtraction[];
   isRefreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 function statusTone(status: string): string {
@@ -28,13 +30,19 @@ function statusLabel(status: string): string {
   return status;
 }
 
+function formatDateTime(value?: string | null): string {
+  return value ? new Date(value).toLocaleString('ko-KR') : '기록 없음';
+}
+
 export function MediaPipelineStatusBoard({
   selectedLecture,
   pipeline,
   providers,
   uploadResult,
   extraction,
+  recentExtractions = [],
   isRefreshing = false,
+  onRefresh,
 }: MediaPipelineStatusBoardProps) {
   return (
     <div className="space-y-4">
@@ -76,6 +84,16 @@ export function MediaPipelineStatusBoard({
               <div className="text-xs text-slate-500">영상 업로드, 오디오 추출, 전사 상태를 같이 확인합니다.</div>
             </div>
             <div className="flex items-center gap-2">
+              {onRefresh ? (
+                <button
+                  type="button"
+                  onClick={onRefresh}
+                  disabled={isRefreshing}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isRefreshing ? '갱신 중' : '상태 새로고침'}
+                </button>
+              ) : null}
               {isRefreshing ? (
                 <div className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">상태 새로고침 중</div>
               ) : null}
@@ -99,6 +117,48 @@ export function MediaPipelineStatusBoard({
                 <div className="mt-2 break-words text-sm font-semibold text-slate-900">{item.value}</div>
               </div>
             ))}
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <div className="text-sm font-semibold text-slate-900">최근 추출 이력</div>
+            {recentExtractions.length > 0 ? (
+              <div className="space-y-3">
+                {recentExtractions.slice(0, 3).map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{item.id}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          생성 {formatDateTime(item.created_at)} · 갱신 {formatDateTime(item.updated_at)}
+                        </div>
+                      </div>
+                      <div className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.status)}`}>
+                        {statusLabel(item.status)}
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">오디오 URL</div>
+                        <div className="mt-1 break-all text-sm text-slate-700">{item.audio_url ?? 'callback 대기 중'}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 서비스 job</div>
+                        <div className="mt-1 break-all text-sm text-slate-700">{item.processing_job_id ?? '아직 없음'}</div>
+                      </div>
+                    </div>
+                    {item.processing_error ? (
+                      <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                        {item.processing_error}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                아직 기록된 추출 이력이 없습니다.
+              </div>
+            )}
           </div>
 
           <div className="mt-5 space-y-3">
