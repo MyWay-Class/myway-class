@@ -16,6 +16,7 @@
 - 로그는 `왜 바꿨는지`, `무엇을 바꿨는지`, `어떻게 검증했는지`만 짧게 적는다.
 
 ## 최신 로그
+- `2026-04-10-quota-rate-limit-ui-notice.md`
 - `2026-04-10-free-tier-docs-secret-d1.md`
 - `2026-04-10-free-tier-public-test-policy-summary.md`
 - `2026-04-10-ai-provider-runtime-overview.md`

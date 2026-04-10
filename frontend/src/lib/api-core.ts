@@ -3,6 +3,12 @@ import type { LoginResponse, ApiResponse } from '@myway/shared';
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '');
 const AUTH_STORAGE_KEY = 'mywayclass.auth';
 
+export type ApiRequestResult<T> = ApiResponse<T> & {
+  ok: boolean;
+  status: number;
+  headers: Headers;
+};
+
 function readStoredAuth(): LoginResponse | null {
   try {
     const value = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -38,7 +44,20 @@ export function getFallbackUserId(userId?: string | null): string {
   return 'guest';
 }
 
-export async function request<T>(path: string, init?: RequestInit, sessionToken?: string | null): Promise<ApiResponse<T> | null> {
+function parseResponseBody<T>(bodyText: string): ApiResponse<T> | null {
+  const trimmed = bodyText.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed) as ApiResponse<T>;
+  } catch {
+    return null;
+  }
+}
+
+export async function request<T>(path: string, init?: RequestInit, sessionToken?: string | null): Promise<ApiRequestResult<T> | null> {
   const token = sessionToken ?? readStoredAuth()?.session_token ?? null;
   const isFormData = init?.body instanceof FormData;
   const headers = new Headers(init?.headers ?? undefined);
@@ -56,12 +75,39 @@ export async function request<T>(path: string, init?: RequestInit, sessionToken?
       headers,
       ...init,
     });
+    const bodyText = await response.text();
+    const parsed = parseResponseBody<T>(bodyText);
 
-    if (!response.ok) {
-      return null;
+    if (parsed) {
+      return {
+        ...parsed,
+        ok: response.ok,
+        status: response.status,
+        headers: response.headers,
+      };
     }
 
-    return (await response.json()) as ApiResponse<T>;
+    if (response.ok) {
+      return {
+        success: true,
+        message: response.statusText || undefined,
+        ok: true,
+        status: response.status,
+        headers: response.headers,
+      };
+    }
+
+    return {
+      success: false,
+      error: {
+        code: `HTTP_${response.status}`,
+        message: response.statusText || '요청에 실패했습니다.',
+      },
+      message: response.statusText || '요청에 실패했습니다.',
+      ok: false,
+      status: response.status,
+      headers: response.headers,
+    };
   } catch {
     return null;
   }

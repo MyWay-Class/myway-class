@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AIRagResult, AIInsights, LectureDetail, SmartChatResult } from '@myway/shared';
 import { loadAIRAGOverview } from '../../../lib/ai-rag';
-import { sendSmartChat } from '../../../lib/api';
+import { sendSmartChatDetailed } from '../../../lib/api';
+import { getAiErrorMessage, getPublicTestPolicyText, getQuotaStatusText } from '../../../lib/ai-access';
 import { AIChatComposer } from '../components/AIChatComposer';
+import { AiNoticeBanner } from '../components/AiNoticeBanner';
 import { AIChatSidebar } from '../components/AIChatSidebar';
 import { AIChatThread, type AIChatMessage } from '../components/AIChatThread';
 
@@ -40,6 +42,9 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [bannerTitle, setBannerTitle] = useState('공개 테스트 안내');
+  const [bannerDescription, setBannerDescription] = useState(getPublicTestPolicyText('chat'));
+  const [bannerMeta, setBannerMeta] = useState<string | null>(null);
 
   useEffect(() => {
     setMessages([createWelcomeMessage(highlightedLecture)]);
@@ -48,6 +53,9 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
 
   useEffect(() => {
     let alive = true;
+    setBannerTitle('공개 테스트 안내');
+    setBannerDescription(getPublicTestPolicyText('chat'));
+    setBannerMeta(null);
 
     if (!highlightedLecture) {
       setRagOverview(null);
@@ -99,30 +107,43 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
       },
     ]);
 
-    const result = await sendSmartChat(
-      {
-        message,
-        lecture_id: highlightedLecture?.id ?? undefined,
-        course_id: undefined,
-        context: highlightedLecture ? [highlightedLecture.title] : undefined,
-      },
-      undefined,
-    );
+    try {
+      const result = await sendSmartChatDetailed(
+        {
+          message,
+          lecture_id: highlightedLecture?.id ?? undefined,
+          course_id: undefined,
+          context: highlightedLecture ? [highlightedLecture.title] : undefined,
+        },
+        undefined,
+      );
 
-    setMessages((current) => [
-      ...current,
-      result
-        ? mapSmartChatResult(result)
-        : {
-            id: `fallback-${Date.now()}`,
-            role: 'assistant',
-            content: highlightedLecture
-              ? `${highlightedLecture.title} 기준으로 정리하면 핵심 개념부터 요약해볼 수 있습니다.`
-              : '질문을 다시 입력해보세요.',
-            suggestions: quickPrompts,
-          },
-    ]);
-    setSending(false);
+      if (result?.success && result.data) {
+        setBannerTitle('AI 요청 상태');
+        setBannerDescription('요청이 정상 처리되었습니다. 남은 사용량은 화면 우측 배너에서 확인할 수 있습니다.');
+        setBannerMeta(getQuotaStatusText(result) ?? '사용량 정보 없음');
+      } else {
+        setBannerTitle('요청 제한 안내');
+        setBannerDescription(getAiErrorMessage(result, 'AI 채팅을 처리할 수 없습니다.'));
+        setBannerMeta(getQuotaStatusText(result));
+      }
+
+      setMessages((current) => [
+        ...current,
+        result && result.success && result.data
+          ? mapSmartChatResult(result.data)
+          : {
+              id: `fallback-${Date.now()}`,
+              role: 'assistant',
+              content: highlightedLecture
+                ? `${highlightedLecture.title} 기준으로 정리하면 핵심 개념부터 요약해볼 수 있습니다.`
+                : '질문을 다시 입력해보세요.',
+              suggestions: quickPrompts,
+            },
+      ]);
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -145,6 +166,8 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
           </button>
         </div>
       </section>
+
+      <AiNoticeBanner title={bannerTitle} description={bannerDescription} tone="indigo" meta={bannerMeta} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">

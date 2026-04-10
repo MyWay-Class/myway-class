@@ -38,8 +38,10 @@ export {
 } from './api-courses';
 export {
   uploadLectureVideo,
+  uploadLectureVideoDetailed,
   createAudioExtraction,
+  createAudioExtractionDetailed,
   loadMediaPipeline,
   loadMediaProviders,
 } from './api-media';
-export { sendSmartChat } from './api-smart';
+export { sendSmartChat, sendSmartChatDetailed } from './api-smart';
