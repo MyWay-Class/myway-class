@@ -12,6 +12,7 @@ import { AssignmentCheckPage } from './AssignmentCheckPage';
 import { CommunityPage } from './CommunityPage';
 import { CoursesPage } from './CoursesPage';
 import { InstructorDashboardPage } from './InstructorDashboardPage';
+import { LectureStudioPage } from './LectureStudioPage';
 import { MediaPipelinePage } from './MediaPipelinePage';
 import { MyShortformsPage } from './MyShortformsPage';
 import { QuizGenPage } from './QuizGenPage';
@@ -124,6 +125,17 @@ export function RolePageRouter({
 
     if (page === 'shortform') {
       return <ShortformPage highlightedLecture={highlightedLecture} selectedCourse={selectedCourse} courses={courseCards} sessionToken={sessionToken} />;
+    }
+
+    if (page === 'lecture-studio') {
+      return (
+        <LectureStudioPage
+          courses={courseCards}
+          selectedCourse={selectedCourse}
+          highlightedLecture={highlightedLecture}
+          onSelectCourse={onSelectCourse}
+        />
+      );
     }
 
     if (page === 'community') {

@@ -16,7 +16,7 @@ export function userDescription(role: AuthUser['role']): string {
 export function defaultPageForRole(session: LoginResponse | null): LmsPageId {
   if (!session) return 'dashboard';
   if (session.user.role === 'ADMIN') return 'admin-automation';
-  if (session.user.role === 'INSTRUCTOR') return 'ai-summary';
+  if (session.user.role === 'INSTRUCTOR') return 'lecture-studio';
   return 'dashboard';
 }
 
@@ -24,6 +24,7 @@ export function pageTitle(page: LmsPageId, role: UserRole): string {
   const titles: Record<LmsPageId, string> = {
     dashboard: '대시보드',
     courses: '강의 목록',
+    'lecture-studio': '강의 제작 스튜디오',
     shortform: '숏폼 제작',
     community: '숏폼 커뮤니티',
     'my-shortforms': '내 숏폼',
@@ -72,16 +73,17 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
   if (role === 'INSTRUCTOR') {
     groups.push(
       {
-        label: '학습 도구',
-      items: [
-        { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작' },
-        { page: 'community', icon: 'ri-group-line', label: '숏폼 커뮤니티' },
-        { page: 'ai-chat', icon: 'ri-robot-line', label: 'AI 챗' },
-        { page: 'media-pipeline', icon: 'ri-movie-2-line', label: '미디어 파이프라인' },
-      ],
-    },
+        label: '제작 도구',
+        items: [
+          { page: 'lecture-studio', icon: 'ri-layout-masonry-line', label: '강의 제작 스튜디오', badge: 'NEW' },
+          { page: 'media-pipeline', icon: 'ri-movie-2-line', label: '미디어 파이프라인' },
+          { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작' },
+          { page: 'community', icon: 'ri-group-line', label: '숏폼 커뮤니티' },
+          { page: 'ai-chat', icon: 'ri-robot-line', label: 'AI 챗' },
+        ],
+      },
       {
-        label: '교강사 도구',
+        label: '학습 도구',
         items: [
           { page: 'quiz-gen', icon: 'ri-question-line', label: '시험·퀴즈 자동 생성' },
           { page: 'ai-summary', icon: 'ri-file-text-line', label: 'AI 강의 요약' },

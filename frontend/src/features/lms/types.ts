@@ -16,6 +16,7 @@ import type {
 export type LmsPageId =
   | 'dashboard'
   | 'courses'
+  | 'lecture-studio'
   | 'shortform'
   | 'community'
   | 'my-shortforms'
