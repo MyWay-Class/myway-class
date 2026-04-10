@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { getAIProviderOverview } from '../lib/ai-provider';
+import { getAIProviderRuntimeOverview } from '../lib/ai-provider';
 import { getAuthenticatedUser } from '../lib/auth';
 import { jsonFailure, jsonSuccess } from '../lib/http';
-import { getAIRuntimePolicy, type RuntimeBindings } from '../lib/runtime-env';
+import type { RuntimeBindings } from '../lib/runtime-env';
 
 const aiProviders = new Hono();
 
@@ -13,13 +13,10 @@ aiProviders.get('/', (c) => {
   }
 
   const env = c.env as RuntimeBindings | undefined;
-  const policy = getAIRuntimePolicy(env);
 
   return jsonSuccess(
     {
-      ...getAIProviderOverview(),
-      runtime_policy: policy,
-      active_provider: policy.public_mode === 'dev' ? 'ollama' : 'gemini',
+      ...getAIProviderRuntimeOverview(env),
       requested_by: user.role,
     },
     'AI provider 구성을 조회했습니다.',
