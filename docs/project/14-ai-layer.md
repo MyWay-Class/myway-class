@@ -89,8 +89,8 @@
 - `POST /api/v1/ai/answer`로 질문 응답과 근거 참조를 함께 돌려준다.
 - `POST /api/v1/ai/summary`로 강의 요약을 생성한다.
 - `POST /api/v1/ai/quiz`로 강의 기반 퀴즈를 생성한다.
+- `POST /api/v1/smart/chat`는 Ollama 기반 intent 분류 결과를 바탕으로 요약, 퀴즈, 답변을 실제 엔진 경로로 연결하고, 나머지 라우트는 shared fallback으로 유지한다.
 - `POST /api/v1/ai/summary`와 `POST /api/v1/ai/quiz`는 가능한 경우 Ollama 엔진 결과를 먼저 시도하고, 실패 시 Gemini JSON 응답을 한 번 더 시도한 뒤 shared fallback을 사용한다.
 - `GET /api/v1/ai/insights`로 AI 사용량과 역할별 인사이트를 조회한다.
 - `GET /api/v1/ai/providers`로 provider 계층과 fallback 순서를 조회한다.
-- `POST /api/v1/smart/chat`로 의도 분류와 응답 라우팅을 한 번에 처리한다.
 - 공통 로직은 `packages/shared/src/ai.ts`에서 관리한다.

@@ -22,6 +22,7 @@ import {
   getLectureSourceText,
   getOllamaModel,
   isRemoteFeatureEnabled,
+  OLLAMA_QUIZ_TIMEOUT_MS,
   normalizeQuizQuestion,
   parseJsonObject,
   pickAction,
@@ -40,6 +41,9 @@ export type AIEngineExecution<T> = {
   model: string;
 };
 
+const DEMO_INTENT_MODEL = 'demo-intent-v1';
+const DEMO_ANSWER_MODEL = 'demo-answer-v1';
+
 async function runStructuredJsonFallback(
   feature: 'summary' | 'quiz',
   messages: ReturnType<typeof buildSummaryPrompt> | ReturnType<typeof buildQuizPrompt>,
@@ -52,7 +56,7 @@ async function runStructuredJsonFallback(
     if (provider === 'ollama') {
       const response = await runOllamaChat(messages, env, {
         model: getOllamaModel(env),
-        timeoutMs: OLLAMA_TIMEOUT_MS,
+        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
       });
       if (response) {
         return response;
@@ -62,7 +66,7 @@ async function runStructuredJsonFallback(
     if (provider === 'gemini') {
       const response = await runGeminiJsonPrompt(messages, env, {
         model: getGeminiModel(env),
-        timeoutMs: OLLAMA_TIMEOUT_MS,
+        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
       });
       if (response) {
         return response;
@@ -77,11 +81,15 @@ async function runOllamaStructuredIntent(
   input: AIIntentRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
-): Promise<AIIntentResult> {
+): Promise<AIEngineExecution<AIIntentResult>> {
   const fallback = getIntentFallback(input);
 
   if (!isRemoteFeatureEnabled('intent', preferredProvider)) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: DEMO_INTENT_MODEL,
+    };
   }
 
   const response = await runOllamaChat(buildIntentPrompt(input, fallback), env, {
@@ -92,17 +100,25 @@ async function runOllamaStructuredIntent(
 
   const parsed = parseJsonObject(response ?? '');
   if (!parsed) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: DEMO_INTENT_MODEL,
+    };
   }
 
   return {
-    ...fallback,
-    intent: pickIntent(parsed.intent, fallback.intent),
-    confidence: pickConfidence(parsed.confidence, fallback.confidence),
-    action: pickAction(parsed.action, fallback.action),
-    entities: toStringArray(parsed.entities).slice(0, 6) || fallback.entities,
-    reason: pickString(parsed.reason, fallback.reason),
-    needs_clarification: typeof parsed.needs_clarification === 'boolean' ? parsed.needs_clarification : fallback.needs_clarification,
+    result: {
+      ...fallback,
+      intent: pickIntent(parsed.intent, fallback.intent),
+      confidence: pickConfidence(parsed.confidence, fallback.confidence),
+      action: pickAction(parsed.action, fallback.action),
+      entities: toStringArray(parsed.entities).slice(0, 6) || fallback.entities,
+      reason: pickString(parsed.reason, fallback.reason),
+      needs_clarification: typeof parsed.needs_clarification === 'boolean' ? parsed.needs_clarification : fallback.needs_clarification,
+    },
+    provider: 'ollama',
+    model: getOllamaModel(env),
   };
 }
 
@@ -110,11 +126,15 @@ async function runOllamaStructuredAnswer(
   input: AIAnswerRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
-): Promise<AIAnswerResult> {
+): Promise<AIEngineExecution<AIAnswerResult>> {
   const fallback = getAnswerFallback(input);
 
   if (!isRemoteFeatureEnabled('answer', preferredProvider)) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: DEMO_ANSWER_MODEL,
+    };
   }
 
   const response = await runOllamaChat(buildAnswerPrompt(input, fallback), env, {
@@ -125,19 +145,39 @@ async function runOllamaStructuredAnswer(
 
   const parsed = parseJsonObject(response ?? '');
   if (!parsed) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: DEMO_ANSWER_MODEL,
+    };
   }
 
   const answer = pickString(parsed.answer, fallback.answer);
   if (!answer) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: DEMO_ANSWER_MODEL,
+    };
   }
 
   return {
-    ...fallback,
-    answer,
-    suggestions: toStringArray(parsed.suggestions).slice(0, 2).concat(fallback.suggestions).slice(0, 2),
+    result: {
+      ...fallback,
+      answer,
+      suggestions: toStringArray(parsed.suggestions).slice(0, 2).concat(fallback.suggestions).slice(0, 2),
+    },
+    provider: 'ollama',
+    model: getOllamaModel(env),
   };
+}
+
+export async function runAIIntentWithExecution(
+  input: AIIntentRequest,
+  preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
+): Promise<AIEngineExecution<AIIntentResult>> {
+  return runOllamaStructuredIntent(input, preferredProvider, env);
 }
 
 export async function runAIIntentWithEngine(
@@ -145,7 +185,15 @@ export async function runAIIntentWithEngine(
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
 ): Promise<AIIntentResult> {
-  return runOllamaStructuredIntent(input, preferredProvider, env);
+  return (await runAIIntentWithExecution(input, preferredProvider, env)).result;
+}
+
+export async function runAIAnswerWithExecution(
+  input: AIAnswerRequest,
+  preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
+): Promise<AIEngineExecution<AIAnswerResult>> {
+  return runOllamaStructuredAnswer(input, preferredProvider, env);
 }
 
 export async function runAIAnswerWithEngine(
@@ -153,7 +201,7 @@ export async function runAIAnswerWithEngine(
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
 ): Promise<AIAnswerResult> {
-  return runOllamaStructuredAnswer(input, preferredProvider, env);
+  return (await runAIAnswerWithExecution(input, preferredProvider, env)).result;
 }
 
 export async function runAISummaryWithEngine(
@@ -179,25 +227,22 @@ export async function runAISummaryWithEngine(
   const providerPlan = getAIProviderSelection('summary', preferredProvider);
   let response: string | null = null;
   let responseProvider: AIProviderName | null = null;
-  let responseModel = 'demo-summary-v1';
 
   for (const provider of providerPlan.fallback_chain) {
     if (provider === 'ollama') {
       response = await runOllamaChat(messages, env, {
         model: getOllamaModel(env),
-        timeoutMs: OLLAMA_TIMEOUT_MS,
+        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
       });
       responseProvider = response ? 'ollama' : null;
-      responseModel = getOllamaModel(env);
     }
 
     if (!response && provider === 'gemini') {
       response = await runGeminiJsonPrompt(messages, env, {
         model: getGeminiModel(env),
-        timeoutMs: OLLAMA_TIMEOUT_MS,
+        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
       });
       responseProvider = response ? 'gemini' : responseProvider;
-      responseModel = getGeminiModel(env);
     }
 
     if (response) {
@@ -277,7 +322,7 @@ export async function runAIQuizWithEngine(
     if (provider === 'ollama') {
       response = await runOllamaChat(messages, env, {
         model: getOllamaModel(env),
-        timeoutMs: OLLAMA_TIMEOUT_MS,
+        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
       });
       responseProvider = response ? 'ollama' : null;
     }
@@ -285,7 +330,7 @@ export async function runAIQuizWithEngine(
     if (!response && provider === 'gemini') {
       response = await runGeminiJsonPrompt(messages, env, {
         model: getGeminiModel(env),
-        timeoutMs: OLLAMA_TIMEOUT_MS,
+        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
       });
       responseProvider = response ? 'gemini' : responseProvider;
     }
