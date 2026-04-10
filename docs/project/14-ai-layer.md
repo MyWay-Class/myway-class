@@ -56,6 +56,9 @@
 
 ## 기준값
 - STT는 미디어 입력이 있을 때만 수행한다.
+- 공개 테스트에서는 `AI/STT`를 로그인 필수로 두고, `transcribe`는 3분 이하의 짧은 입력만 허용한다.
+- 공개 테스트에서 `upload-video`와 `extract-audio`는 관리자 전용으로 유지한다.
+- 긴 영상(`20분~1시간`)은 운영자가 미리 업로드하고 미리 STT를 생성한 뒤, 일반 사용자는 준비된 데이터만 체험하게 한다.
 - 청킹은 RAG와 요약의 품질을 해치지 않을 정도의 크기로 나눈다.
 - 인텐트 confidence가 낮으면 확인 질문을 보낸다.
 - 요약과 숏폼은 원문 추적이 가능해야 한다.
@@ -77,11 +80,11 @@
 
 ## Provider 계층
 - 현재 구현은 `demo` 엔진을 기본 동작으로 유지한다.
-- 향후 운영 경로는 `Ollama -> Gemini -> Cloudflare AI -> demo` 순의 fallback 계층을 기본으로 둔다.
-- `STT`와 `embedding`은 `Cloudflare AI`를 우선 고려하고, 텍스트 생성 계열은 `Ollama`를 우선 고려한다.
+- 공개 테스트용 운영 경로는 `dev=Ollama`, `staging/production=Gemini -> demo`, `STT=Cloudflare AI`로 나눈다.
+- 공개 테스트에서는 `Ollama`를 배포 환경에서 사용하지 않고, `AI/STT`는 로그인과 quota 제한을 함께 적용한다.
 - provider 선택과 fallback 순서는 `GET /api/v1/ai/providers`로 조회할 수 있다.
-- backend는 `summary`와 `quiz`에서 `Ollama -> Gemini -> shared fallback` 순으로 실제 JSON 생성 응답을 시도한다.
-- `POST /api/v1/media/transcribe`는 `audio_url`이 있을 때 Cloudflare Workers AI 전사를 먼저 시도하고, 실패하면 demo 경로로 되돌아간다.
+- backend는 `summary`와 `quiz`에서 환경 정책에 따라 `Ollama -> Gemini -> demo` 또는 `Gemini -> demo` 순으로 실제 JSON 생성 응답을 시도한다.
+- `POST /api/v1/media/transcribe`는 `audio_url`이 있을 때 Cloudflare Workers AI 전사를 먼저 시도하고, 3분을 넘는 입력은 차단한다.
 
 ## 현재 구현
 - `POST /api/v1/ai/intent`로 사용자 메시지의 의도를 분류한다.
@@ -89,8 +92,9 @@
 - `POST /api/v1/ai/answer`로 질문 응답과 근거 참조를 함께 돌려준다.
 - `POST /api/v1/ai/summary`로 강의 요약을 생성한다.
 - `POST /api/v1/ai/quiz`로 강의 기반 퀴즈를 생성한다.
-- `POST /api/v1/smart/chat`는 Ollama 기반 intent 분류 결과를 바탕으로 요약, 퀴즈, 답변을 실제 엔진 경로로 연결하고, 나머지 라우트는 shared fallback으로 유지한다.
-- `POST /api/v1/ai/summary`와 `POST /api/v1/ai/quiz`는 가능한 경우 Ollama 엔진 결과를 먼저 시도하고, 실패 시 Gemini JSON 응답을 한 번 더 시도한 뒤 shared fallback을 사용한다.
+- `POST /api/v1/smart/chat`는 환경 정책에 따라 `Ollama` 또는 `Gemini` intent 분류 결과를 바탕으로 요약, 퀴즈, 답변을 실제 엔진 경로로 연결하고, 나머지 라우트는 shared fallback으로 유지한다.
+- `POST /api/v1/ai/summary`와 `POST /api/v1/ai/quiz`는 환경 정책에 따라 `Ollama -> Gemini -> shared fallback` 또는 `Gemini -> shared fallback`을 시도한다.
 - `GET /api/v1/ai/insights`로 AI 사용량과 역할별 인사이트를 조회한다.
 - `GET /api/v1/ai/providers`로 provider 계층과 fallback 순서를 조회한다.
+- 공개 테스트에서는 `AI/STT`가 로그인과 quota 보호를 거치도록 라우트 앞단을 막는다.
 - 공통 로직은 `packages/shared/src/ai.ts`에서 관리한다.
