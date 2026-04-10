@@ -9,9 +9,11 @@ import type {
   AISummaryResult,
   AIProviderName,
 } from '@myway/shared';
-import { runOllamaChat } from './providers';
+import { getAIProviderSelection } from './ai-provider';
+import { runGeminiJsonPrompt, runOllamaChat } from './providers';
 import type { RuntimeBindings } from './runtime-env';
 import {
+  getGeminiModel,
   OLLAMA_TIMEOUT_MS,
   getAnswerFallback,
   getIntentFallback,
@@ -31,6 +33,45 @@ import {
   truncate,
 } from './ai-engine-utils';
 import { buildAnswerPrompt, buildIntentPrompt, buildQuizPrompt, buildSummaryPrompt } from './ai-engine-prompts';
+
+export type AIEngineExecution<T> = {
+  result: T;
+  provider: AIProviderName | 'demo';
+  model: string;
+};
+
+async function runStructuredJsonFallback(
+  feature: 'summary' | 'quiz',
+  messages: ReturnType<typeof buildSummaryPrompt> | ReturnType<typeof buildQuizPrompt>,
+  preferredProvider?: AIProviderName,
+  env?: RuntimeBindings,
+): Promise<string | null> {
+  const providerPlan = getAIProviderSelection(feature, preferredProvider);
+
+  for (const provider of providerPlan.fallback_chain) {
+    if (provider === 'ollama') {
+      const response = await runOllamaChat(messages, env, {
+        model: getOllamaModel(env),
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      if (response) {
+        return response;
+      }
+    }
+
+    if (provider === 'gemini') {
+      const response = await runGeminiJsonPrompt(messages, env, {
+        model: getGeminiModel(env),
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      if (response) {
+        return response;
+      }
+    }
+  }
+
+  return null;
+}
 
 async function runOllamaStructuredIntent(
   input: AIIntentRequest,
@@ -119,7 +160,7 @@ export async function runAISummaryWithEngine(
   input: AISummaryRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
-): Promise<AISummaryResult | null> {
+): Promise<AIEngineExecution<AISummaryResult> | null> {
   const fallback = getSummaryFallback(input);
   if (!fallback) {
     return null;
@@ -127,22 +168,58 @@ export async function runAISummaryWithEngine(
 
   const source = getLectureSourceText(input.lecture_id);
   if (!source || !isRemoteFeatureEnabled('summary', preferredProvider) || input.style === 'timeline') {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: 'demo-summary-v1',
+    };
   }
 
   const messages = buildSummaryPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input.style, input.language);
-  const response = await runOllamaChat(messages, env, {
-    model: getOllamaModel(env),
-    timeoutMs: OLLAMA_TIMEOUT_MS,
-  });
+  const providerPlan = getAIProviderSelection('summary', preferredProvider);
+  let response: string | null = null;
+  let responseProvider: AIProviderName | null = null;
+  let responseModel = 'demo-summary-v1';
+
+  for (const provider of providerPlan.fallback_chain) {
+    if (provider === 'ollama') {
+      response = await runOllamaChat(messages, env, {
+        model: getOllamaModel(env),
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      responseProvider = response ? 'ollama' : null;
+      responseModel = getOllamaModel(env);
+    }
+
+    if (!response && provider === 'gemini') {
+      response = await runGeminiJsonPrompt(messages, env, {
+        model: getGeminiModel(env),
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      responseProvider = response ? 'gemini' : responseProvider;
+      responseModel = getGeminiModel(env);
+    }
+
+    if (response) {
+      break;
+    }
+  }
 
   if (!response) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: 'demo-summary-v1',
+    };
   }
 
   const parsed = parseJsonObject(response);
   if (!parsed) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: 'demo-summary-v1',
+    };
   }
 
   const title = pickString(parsed.title, fallback.title ?? `${source.lectureTitle} · 요약`);
@@ -150,17 +227,25 @@ export async function runAISummaryWithEngine(
   const keyPoints = toStringArray(parsed.key_points);
 
   if (!content) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: 'demo-summary-v1',
+    };
   }
 
   return {
-    lecture_id: input.lecture_id,
-    title,
-    style: input.style ?? 'brief',
-    language: input.language ?? 'ko',
-    content,
-    key_points: keyPoints.length > 0 ? keyPoints.slice(0, 5) : fallback.key_points,
-    references: fallback.references,
+    result: {
+      lecture_id: input.lecture_id,
+      title,
+      style: input.style ?? 'brief',
+      language: input.language ?? 'ko',
+      content,
+      key_points: keyPoints.length > 0 ? keyPoints.slice(0, 5) : fallback.key_points,
+      references: fallback.references,
+    },
+    provider: responseProvider ?? 'demo',
+    model: responseProvider === 'gemini' ? getGeminiModel(env) : getOllamaModel(env),
   };
 }
 
@@ -168,7 +253,7 @@ export async function runAIQuizWithEngine(
   input: AIQuizRequest,
   preferredProvider?: AIProviderName,
   env?: RuntimeBindings,
-): Promise<AIQuizResult | null> {
+): Promise<AIEngineExecution<AIQuizResult> | null> {
   const fallback = getQuizFallback(input);
   if (!fallback) {
     return null;
@@ -176,28 +261,65 @@ export async function runAIQuizWithEngine(
 
   const source = getLectureSourceText(input.lecture_id);
   if (!source || !isRemoteFeatureEnabled('quiz', preferredProvider)) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: 'demo-quiz-v1',
+    };
   }
 
   const messages = buildQuizPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input);
-  const response = await runOllamaChat(messages, env, {
-    model: getOllamaModel(env),
-    timeoutMs: OLLAMA_TIMEOUT_MS,
-  });
+  const providerPlan = getAIProviderSelection('quiz', preferredProvider);
+  let response: string | null = null;
+  let responseProvider: AIProviderName | null = null;
+
+  for (const provider of providerPlan.fallback_chain) {
+    if (provider === 'ollama') {
+      response = await runOllamaChat(messages, env, {
+        model: getOllamaModel(env),
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      responseProvider = response ? 'ollama' : null;
+    }
+
+    if (!response && provider === 'gemini') {
+      response = await runGeminiJsonPrompt(messages, env, {
+        model: getGeminiModel(env),
+        timeoutMs: OLLAMA_TIMEOUT_MS,
+      });
+      responseProvider = response ? 'gemini' : responseProvider;
+    }
+
+    if (response) {
+      break;
+    }
+  }
 
   if (!response) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: 'demo-quiz-v1',
+    };
   }
 
   const parsed = parseJsonObject(response);
   if (!parsed) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: 'demo-quiz-v1',
+    };
   }
 
   const fallbackQuestions = fallback.questions ?? [];
   const engineQuestions = Array.isArray(parsed.questions) ? parsed.questions : [];
   if (fallbackQuestions.length === 0 || engineQuestions.length === 0) {
-    return fallback;
+    return {
+      result: fallback,
+      provider: 'demo',
+      model: 'demo-quiz-v1',
+    };
   }
 
   const questions = fallbackQuestions.map((fallbackQuestion, index) =>
@@ -205,9 +327,13 @@ export async function runAIQuizWithEngine(
   );
 
   return {
-    lecture_id: input.lecture_id,
-    title: pickString(parsed.title, fallback.title),
-    difficulty: pickDifficulty(parsed.difficulty, fallback.difficulty),
-    questions,
+    result: {
+      lecture_id: input.lecture_id,
+      title: pickString(parsed.title, fallback.title),
+      difficulty: pickDifficulty(parsed.difficulty, fallback.difficulty),
+      questions,
+    },
+    provider: responseProvider ?? 'demo',
+    model: responseProvider === 'gemini' ? getGeminiModel(env) : getOllamaModel(env),
   };
 }

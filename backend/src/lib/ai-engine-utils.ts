@@ -182,9 +182,13 @@ export function getOllamaModel(env?: RuntimeBindings): string {
   return env?.MYWAY_OLLAMA_MODEL ?? env?.OLLAMA_MODEL ?? 'llama3.1';
 }
 
+export function getGeminiModel(env?: RuntimeBindings): string {
+  return env?.MYWAY_GEMINI_MODEL ?? env?.GEMINI_MODEL ?? 'gemini-2.0-flash';
+}
+
 export function isRemoteFeatureEnabled(feature: 'intent' | 'answer' | 'summary' | 'quiz', preferredProvider?: AIProviderName): boolean {
   const provider = getAIProviderSelection(feature, preferredProvider);
-  return provider.current_provider === 'ollama';
+  return provider.current_provider === 'ollama' || provider.current_provider === 'gemini';
 }
 
 export function getIntentFallback(input: AIIntentRequest): AIIntentResult {

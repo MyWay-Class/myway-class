@@ -80,7 +80,7 @@
 - 향후 운영 경로는 `Ollama -> Gemini -> Cloudflare AI -> demo` 순의 fallback 계층을 기본으로 둔다.
 - `STT`와 `embedding`은 `Cloudflare AI`를 우선 고려하고, 텍스트 생성 계열은 `Ollama`를 우선 고려한다.
 - provider 선택과 fallback 순서는 `GET /api/v1/ai/providers`로 조회할 수 있다.
-- backend는 `summary`와 `quiz`에서 Ollama가 가능할 때 실제 JSON 생성 응답을 먼저 시도하고, 실패하면 기존 shared fallback으로 되돌아간다.
+- backend는 `summary`와 `quiz`에서 `Ollama -> Gemini -> shared fallback` 순으로 실제 JSON 생성 응답을 시도한다.
 - `POST /api/v1/media/transcribe`는 `audio_url`이 있을 때 Cloudflare Workers AI 전사를 먼저 시도하고, 실패하면 demo 경로로 되돌아간다.
 
 ## 현재 구현
@@ -89,7 +89,7 @@
 - `POST /api/v1/ai/answer`로 질문 응답과 근거 참조를 함께 돌려준다.
 - `POST /api/v1/ai/summary`로 강의 요약을 생성한다.
 - `POST /api/v1/ai/quiz`로 강의 기반 퀴즈를 생성한다.
-- `POST /api/v1/ai/summary`와 `POST /api/v1/ai/quiz`는 가능한 경우 Ollama 엔진 결과를 우선 사용하고, 실패 시 shared fallback을 사용한다.
+- `POST /api/v1/ai/summary`와 `POST /api/v1/ai/quiz`는 가능한 경우 Ollama 엔진 결과를 먼저 시도하고, 실패 시 Gemini JSON 응답을 한 번 더 시도한 뒤 shared fallback을 사용한다.
 - `GET /api/v1/ai/insights`로 AI 사용량과 역할별 인사이트를 조회한다.
 - `GET /api/v1/ai/providers`로 provider 계층과 fallback 순서를 조회한다.
 - `POST /api/v1/smart/chat`로 의도 분류와 응답 라우팅을 한 번에 처리한다.

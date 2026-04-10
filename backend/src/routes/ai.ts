@@ -237,8 +237,7 @@ ai.post('/summary', async (c) => {
   }
 
   const env = c.env as RuntimeBindings | undefined;
-  const metadata = buildResponseMetadata('summary', env);
-  const result = await runAISummary(
+  const execution = await runAISummary(
     {
       lecture_id: lectureId,
       style: body?.style ?? 'brief',
@@ -248,9 +247,12 @@ ai.post('/summary', async (c) => {
     env,
   );
 
-  if (!result) {
+  if (!execution) {
     return jsonFailure('SUMMARY_FAILED', '요약을 생성할 수 없습니다.', 400);
   }
+
+  const metadata = { provider: execution.provider, model: execution.model };
+  const result = execution.result;
 
   if (user) {
     recordUsageLog({
@@ -281,8 +283,7 @@ ai.post('/quiz', async (c) => {
   }
 
   const env = c.env as RuntimeBindings | undefined;
-  const metadata = buildResponseMetadata('quiz', env);
-  const result = await runAIQuiz(
+  const execution = await runAIQuiz(
     {
       lecture_id: lectureId,
       count: body?.count,
@@ -292,9 +293,12 @@ ai.post('/quiz', async (c) => {
     env,
   );
 
-  if (!result) {
+  if (!execution) {
     return jsonFailure('QUIZ_FAILED', '퀴즈를 생성할 수 없습니다.', 400);
   }
+
+  const metadata = { provider: execution.provider, model: execution.model };
+  const result = execution.result;
 
   if (user) {
     recordUsageLog({

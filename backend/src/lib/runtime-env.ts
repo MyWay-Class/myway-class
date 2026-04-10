@@ -38,6 +38,12 @@ export type RuntimeBindings = {
   OLLAMA_BASE_URL?: string;
   MYWAY_OLLAMA_MODEL?: string;
   OLLAMA_MODEL?: string;
+  MYWAY_GEMINI_API_KEY?: string;
+  GEMINI_API_KEY?: string;
+  MYWAY_GEMINI_MODEL?: string;
+  GEMINI_MODEL?: string;
+  MYWAY_GEMINI_BASE_URL?: string;
+  GEMINI_BASE_URL?: string;
   MYWAY_CLOUDFLARE_STT_MODEL?: string;
   CLOUDFLARE_STT_MODEL?: string;
   MYWAY_MEDIA_PROCESSOR_URL?: string;
@@ -81,6 +87,23 @@ export function getCloudflareSTTRuntimeSettings(env?: RuntimeBindings): {
         'MYWAY_CLOUDFLARE_STT_MODEL',
         getRuntimeValue(env, 'CLOUDFLARE_STT_MODEL', '@cf/openai/whisper-large-v3-turbo'),
       ) ?? '@cf/openai/whisper-large-v3-turbo',
+  };
+}
+
+export function getGeminiRuntimeSettings(env?: RuntimeBindings): {
+  api_key?: string;
+  model?: string;
+  base_url: string;
+} {
+  return {
+    api_key: getRuntimeValue(env, 'MYWAY_GEMINI_API_KEY', getRuntimeValue(env, 'GEMINI_API_KEY')),
+    model: getRuntimeValue(env, 'MYWAY_GEMINI_MODEL', getRuntimeValue(env, 'GEMINI_MODEL', 'gemini-2.0-flash')),
+    base_url:
+      getRuntimeValue(
+        env,
+        'MYWAY_GEMINI_BASE_URL',
+        getRuntimeValue(env, 'GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+      ) ?? 'https://generativelanguage.googleapis.com/v1beta',
   };
 }
 
