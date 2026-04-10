@@ -3,21 +3,20 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-04-06",
   "d1_databases": [
-    // Bind the Cloudflare D1 database here as `DB`.
+    {
+      "binding": "DB",
+      "database_name": "myway-class-quota",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
   ],
   "r2_buckets": [
-    // Bind the Cloudflare R2 bucket here as `ASSETS`.
+    {
+      "binding": "ASSETS",
+      "bucket_name": "myway-class-assets"
+    }
   ],
   "vars": {
-    "APP_ENV": "development",
-    "API_ORIGIN": "http://localhost:5173",
     "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
-    "MYWAY_MEDIA_PROCESSOR_URL": "http://127.0.0.1:8788/jobs/audio-extraction",
-    "MYWAY_MEDIA_PROCESSOR_TOKEN": "local-media-processor-token",
-    "MYWAY_MEDIA_CALLBACK_SECRET": "local-media-callback-secret",
-    "MYWAY_OLLAMA_BASE_URL": "http://127.0.0.1:11434",
-    "MYWAY_OLLAMA_MODEL": "llama3.1:8b",
-    "MYWAY_GEMINI_API_KEY": "replace-with-local-gemini-key",
     "MYWAY_GEMINI_MODEL": "gemini-2.0-flash",
     "MYWAY_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta"
   },
@@ -29,28 +28,42 @@
       "vars": {
         "APP_ENV": "development",
         "API_ORIGIN": "http://localhost:5173",
+        "MYWAY_AI_PUBLIC_MODE": "dev",
+        "MYWAY_AI_REQUIRE_AUTH": "false",
+        "MYWAY_AI_ENABLE_STT": "true",
+        "MYWAY_AI_ENABLE_MEDIA_UPLOAD": "true",
+        "MYWAY_AI_DAILY_LIMIT_SMART": "999",
+        "MYWAY_AI_DAILY_LIMIT_SUMMARY": "999",
+        "MYWAY_AI_DAILY_LIMIT_QUIZ": "999",
+        "MYWAY_AI_DAILY_LIMIT_STT": "999",
+        "MYWAY_AI_DAILY_LIMIT_ANSWER": "999",
+        "MYWAY_AI_DAILY_LIMIT_GEMINI": "999",
         "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
         "MYWAY_MEDIA_PROCESSOR_URL": "http://127.0.0.1:8788/jobs/audio-extraction",
         "MYWAY_MEDIA_PROCESSOR_TOKEN": "local-media-processor-token",
         "MYWAY_MEDIA_CALLBACK_SECRET": "local-media-callback-secret",
         "MYWAY_OLLAMA_BASE_URL": "http://127.0.0.1:11434",
-        "MYWAY_OLLAMA_MODEL": "llama3.1:8b",
-        "MYWAY_GEMINI_API_KEY": "replace-with-local-gemini-key",
-        "MYWAY_GEMINI_MODEL": "gemini-2.0-flash",
-        "MYWAY_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta"
+        "MYWAY_OLLAMA_MODEL": "llama3.1:8b"
       }
     },
     "staging": {
       "vars": {
         "APP_ENV": "staging",
         "API_ORIGIN": "https://staging.mywayclass.pages.dev",
+        "MYWAY_AI_PUBLIC_MODE": "free_test",
+        "MYWAY_AI_REQUIRE_AUTH": "true",
+        "MYWAY_AI_ENABLE_STT": "true",
+        "MYWAY_AI_ENABLE_MEDIA_UPLOAD": "false",
+        "MYWAY_AI_DAILY_LIMIT_SMART": "25",
+        "MYWAY_AI_DAILY_LIMIT_SUMMARY": "30",
+        "MYWAY_AI_DAILY_LIMIT_QUIZ": "20",
+        "MYWAY_AI_DAILY_LIMIT_STT": "10",
+        "MYWAY_AI_DAILY_LIMIT_ANSWER": "40",
+        "MYWAY_AI_DAILY_LIMIT_GEMINI": "120",
         "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
         "MYWAY_MEDIA_PROCESSOR_URL": "https://media-processor.staging.mywayclass.com/jobs/audio-extraction",
         "MYWAY_MEDIA_PROCESSOR_TOKEN": "replace-with-staging-token",
         "MYWAY_MEDIA_CALLBACK_SECRET": "replace-with-staging-secret",
-        "MYWAY_OLLAMA_BASE_URL": "https://ollama.staging.mywayclass.com",
-        "MYWAY_OLLAMA_MODEL": "llama3.1",
-        "MYWAY_GEMINI_API_KEY": "replace-with-staging-gemini-key",
         "MYWAY_GEMINI_MODEL": "gemini-2.0-flash",
         "MYWAY_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta"
       }
@@ -59,13 +72,20 @@
       "vars": {
         "APP_ENV": "production",
         "API_ORIGIN": "https://mywayclass.pages.dev",
+        "MYWAY_AI_PUBLIC_MODE": "free_test",
+        "MYWAY_AI_REQUIRE_AUTH": "true",
+        "MYWAY_AI_ENABLE_STT": "true",
+        "MYWAY_AI_ENABLE_MEDIA_UPLOAD": "false",
+        "MYWAY_AI_DAILY_LIMIT_SMART": "25",
+        "MYWAY_AI_DAILY_LIMIT_SUMMARY": "30",
+        "MYWAY_AI_DAILY_LIMIT_QUIZ": "20",
+        "MYWAY_AI_DAILY_LIMIT_STT": "10",
+        "MYWAY_AI_DAILY_LIMIT_ANSWER": "40",
+        "MYWAY_AI_DAILY_LIMIT_GEMINI": "120",
         "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
         "MYWAY_MEDIA_PROCESSOR_URL": "https://media-processor.mywayclass.com/jobs/audio-extraction",
         "MYWAY_MEDIA_PROCESSOR_TOKEN": "replace-with-production-token",
         "MYWAY_MEDIA_CALLBACK_SECRET": "replace-with-production-secret",
-        "MYWAY_OLLAMA_BASE_URL": "https://ollama.mywayclass.com",
-        "MYWAY_OLLAMA_MODEL": "llama3.1",
-        "MYWAY_GEMINI_API_KEY": "replace-with-production-gemini-key",
         "MYWAY_GEMINI_MODEL": "gemini-2.0-flash",
         "MYWAY_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta"
       }

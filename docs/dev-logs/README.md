@@ -16,6 +16,7 @@
 - 로그는 `왜 바꿨는지`, `무엇을 바꿨는지`, `어떻게 검증했는지`만 짧게 적는다.
 
 ## 최신 로그
+- `2026-04-10-ai-runtime-policy-and-binding-setup.md`
 - `2026-04-10-ollama-smart-chat-integration.md`
 - `2026-04-10-gemini-fallback-summary-quiz.md`
 - `2026-04-10-media-pipeline-failure-retry.md`
