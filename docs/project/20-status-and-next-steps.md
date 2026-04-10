@@ -10,11 +10,12 @@
 - AI 레이어
   - AI provider 카탈로그와 adapter 분리
   - 실제 엔진 연결 가이드 문서화
-  - 실제 Ollama provider 연결과 fallback / timeout 정책 고정
+  - dev / staging / production별 runtime provider 정책 정리
   - AI 요약, 퀴즈, 채팅, 인사이트 흐름 정리
 - STT / 미디어
   - STT provider adapter와 실제 Cloudflare 전사 경로 연결
   - 강의 전사와 요약, 타임라인형 요약 데이터 구조 정리
+  - 공개 테스트용 미디어/STT 운영 범위와 3분 제한 정리
 - 커스텀 코스와 숏폼
   - 커스텀 코스 조립과 숏폼 라이브러리 흐름
   - 공유, 담아가기, 개인 라이브러리 분류
@@ -43,15 +44,20 @@
   - AI 로그 비교 카드를 넣어 최근 집계와 이전 집계를 함께 확인
 - 배포 / 인프라 문서
   - Cloudflare 배포 바인딩과 런타임 env 정리
+  - D1 quota와 provider runtime overview 정리
   - 작업 규칙, 폴더/파일 분리 기준, dev log 기준 문서화
+  - 무료 티어 공개 테스트 정책 문서화
 
 ## 앞으로 해야 할 기능
 - 실제 엔진 연결
-  - AI provider는 Ollama 실제 호출 경로를 붙였고, 이후 Gemini / Cloudflare 확장을 검토한다.
-  - STT provider는 실제 호출 경로를 붙였으니, 이후 다른 provider 확장을 검토한다.
+  - AI provider는 runtime policy 기반으로 dev는 Ollama, staging/production은 Gemini 중심으로 분기한다.
+  - STT provider는 Cloudflare 전사 경로를 유지하고, 공개 테스트용 길이 제한과 quota를 함께 적용한다.
 - 데이터 지속성
   - 데모 메모리 기반 append 구조를 유지하면서, DB나 영속 저장소 이관 시점을 검토한다.
   - 활동 타임라인과 AI 로그를 저장소 추상화로 분리할지 검토한다.
+- 공개 테스트 정책
+  - 긴 영상은 운영자가 사전 처리하고, 일반 사용자는 준비된 transcript와 짧은 STT만 사용한다.
+  - `upload-video`와 `extract-audio`는 관리자 전용을 유지한다.
 - 운영 도구 고도화
   - 운영자/강사 화면의 세부 비교 차트를 더 정교하게 다듬는다.
 - UX 다듬기
