@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { ShortformCommunityItem } from '@myway/shared';
 
 type ShortformPreviewModalProps = {
@@ -17,6 +18,21 @@ function formatDuration(ms: number): string {
 }
 
 export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalProps) {
+  useEffect(() => {
+    if (!item) {
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [item, onClose]);
+
   if (!item) {
     return null;
   }
@@ -24,8 +40,18 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
   const totalDuration = item.clips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.3)]">
+    <div
+      role="presentation"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={item.title}
+        className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.3)]"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Shortform Preview</div>
