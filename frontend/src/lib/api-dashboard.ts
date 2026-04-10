@@ -16,6 +16,25 @@ import {
 } from '@myway/shared';
 import { getFallbackUserId, getStoredAuth, request } from './api-core';
 
+const AI_PROVIDER_CATALOG_STORAGE_KEY = 'mywayclass.ai.providers';
+
+function readCachedAIProviderCatalog(): AIProviderCatalog | null {
+  try {
+    const value = localStorage.getItem(AI_PROVIDER_CATALOG_STORAGE_KEY);
+    return value ? (JSON.parse(value) as AIProviderCatalog) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeCachedAIProviderCatalog(catalog: AIProviderCatalog): void {
+  try {
+    localStorage.setItem(AI_PROVIDER_CATALOG_STORAGE_KEY, JSON.stringify(catalog));
+  } catch {
+    // Ignore storage failures and fall back to the in-memory response path.
+  }
+}
+
 export async function loadDashboard(sessionToken?: string | null): Promise<Dashboard | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
 
@@ -89,8 +108,17 @@ export async function loadAIProviders(sessionToken?: string | null): Promise<AIP
   }
 
   const response = await request<AIProviderCatalog>('/api/v1/ai/providers', undefined, token);
+  if (response?.success && response.data) {
+    storeCachedAIProviderCatalog(response.data);
+    return response.data;
+  }
 
-  return response?.success && response.data ? response.data : getAIProviderCatalog();
+  const cachedCatalog = readCachedAIProviderCatalog();
+  if (cachedCatalog) {
+    return getAIProviderCatalog(cachedCatalog.runtime_policy);
+  }
+
+  return getAIProviderCatalog();
 }
 
 export async function saveAISettings(
