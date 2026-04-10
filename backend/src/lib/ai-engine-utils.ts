@@ -24,7 +24,8 @@ import type { RuntimeBindings } from './runtime-env';
 
 export type JsonObject = Record<string, unknown>;
 
-export const OLLAMA_TIMEOUT_MS = 15_000;
+export const OLLAMA_TIMEOUT_MS = 60_000;
+export const OLLAMA_QUIZ_TIMEOUT_MS = 120_000;
 
 export function normalizeText(value: string): string {
   return value.replaceAll(/\s+/g, ' ').trim();

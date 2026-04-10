@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
-import { buildSmartChatOverview, getCourseDetail, getLectureDetail, type SmartChatRequest } from '@myway/shared';
+import { getCourseDetail, getLectureDetail, type SmartChatRequest } from '@myway/shared';
 import { getAuthenticatedUser } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
+import { runSmartChat } from '../lib/smart-chat';
 
 const smart = new Hono();
 
@@ -32,7 +33,7 @@ smart.post('/chat', async (c) => {
     return jsonFailure('COURSE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = buildSmartChatOverview({
+  const result = await runSmartChat({
     message,
     lecture_id: lectureId,
     course_id: courseId,

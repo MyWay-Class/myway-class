@@ -1,4 +1,5 @@
 import type { MediaSummaryStyle, SimilarChunk } from '../lms';
+import type { AIProviderName } from '../../ai/ai-provider';
 import type { AIIntent } from './intent';
 
 export type AIChunkSource = 'lecture' | 'transcript' | 'note';
@@ -118,4 +119,6 @@ export type SmartChatResult = {
   suggestions: string[];
   summary?: AISummaryResult | null;
   quiz?: AIQuizResult | null;
+  provider?: AIProviderName;
+  model?: string;
 };
