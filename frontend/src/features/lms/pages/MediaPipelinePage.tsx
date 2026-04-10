@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { CourseDetail, LectureDetail } from '@myway/shared';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { AudioExtraction, CourseDetail, LectureDetail, LecturePipeline, STTProviderCatalog } from '@myway/shared';
 import { StatePanel } from '../components/StatePanel';
 import { MediaPipelineStatusBoard } from '../components/MediaPipelineStatusBoard';
-import { createAudioExtraction, loadMediaPipeline, loadMediaProviders, uploadLectureVideo, type MediaExtractionResult, type MediaUploadResult } from '../../../lib/api-media';
-import type { STTProviderCatalog, LecturePipeline } from '@myway/shared';
+import { createAudioExtraction, loadAudioExtractions, loadMediaPipeline, loadMediaProviders, uploadLectureVideo, type MediaUploadResult } from '../../../lib/api-media';
 
 type MediaPipelinePageProps = {
   selectedCourse: CourseDetail | null;
@@ -28,28 +27,61 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   const [pipeline, setPipeline] = useState<LecturePipeline | null>(null);
   const [providers, setProviders] = useState<STTProviderCatalog | null>(null);
   const [uploadResult, setUploadResult] = useState<MediaUploadResult | null>(null);
-  const [extractionResult, setExtractionResult] = useState<MediaExtractionResult | null>(null);
+  const [extractions, setExtractions] = useState<AudioExtraction[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     setLectureId(defaultLectureId);
   }, [defaultLectureId]);
 
+  const refreshMediaState = useCallback(
+    async (targetLectureId: string, options?: { silent?: boolean }) => {
+      if (!targetLectureId) {
+        setPipeline(null);
+        setExtractions([]);
+        return;
+      }
+
+      if (!options?.silent) {
+        setIsRefreshing(true);
+      }
+
+      try {
+        const [nextPipeline, nextExtractions] = await Promise.all([
+          loadMediaPipeline(targetLectureId, sessionToken),
+          loadAudioExtractions(targetLectureId, sessionToken),
+        ]);
+        setPipeline(nextPipeline);
+        setExtractions(nextExtractions);
+      } finally {
+        if (!options?.silent) {
+          setIsRefreshing(false);
+        }
+      }
+    },
+    [sessionToken],
+  );
+
   useEffect(() => {
     if (!lectureId) {
       setPipeline(null);
+      setExtractions([]);
       return;
     }
 
     let active = true;
-    loadMediaPipeline(lectureId, sessionToken).then((result) => {
-      if (active) {
-        setPipeline(result);
+    Promise.all([
+      loadMediaProviders(sessionToken),
+      loadMediaPipeline(lectureId, sessionToken),
+      loadAudioExtractions(lectureId, sessionToken),
+    ]).then(([nextProviders, nextPipeline, nextExtractions]) => {
+      if (!active) {
+        return;
       }
-    });
-    loadMediaProviders(sessionToken).then((result) => {
-      if (active) {
-        setProviders(result);
-      }
+
+      setProviders(nextProviders);
+      setPipeline(nextPipeline);
+      setExtractions(nextExtractions);
     });
 
     return () => {
@@ -61,6 +93,38 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     () => lectureOptions.find((lecture) => lecture.id === lectureId) ?? highlightedLecture ?? null,
     [highlightedLecture, lectureId, lectureOptions],
   );
+
+  const latestExtraction = useMemo(
+    () =>
+      [...extractions].sort((left, right) => {
+        const leftKey = left.updated_at ?? left.created_at;
+        const rightKey = right.updated_at ?? right.created_at;
+        return rightKey.localeCompare(leftKey);
+      })[0] ?? null,
+    [extractions],
+  );
+
+  useEffect(() => {
+    if (!lectureId) {
+      return;
+    }
+
+    const needsPolling =
+      latestExtraction?.status === 'PROCESSING' ||
+      latestExtraction?.stt_status === 'PROCESSING' ||
+      pipeline?.audio_status === 'PROCESSING' ||
+      pipeline?.transcript_status === 'PROCESSING';
+
+    if (!needsPolling) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void refreshMediaState(lectureId, { silent: true });
+    }, 4000);
+
+    return () => window.clearInterval(timer);
+  }, [latestExtraction?.status, latestExtraction?.stt_status, lectureId, pipeline?.audio_status, pipeline?.transcript_status, refreshMediaState]);
 
   async function handleSubmit() {
     if (!lectureId) {
@@ -74,7 +138,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     }
 
     setBusy(true);
-      setNotice('영상 업로드와 외부 오디오 추출 job을 생성하는 중입니다.');
+    setNotice('영상 업로드와 외부 오디오 추출 job을 생성하는 중입니다.');
 
     try {
       const upload = await uploadLectureVideo(lectureId, videoFile, sessionToken);
@@ -103,9 +167,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
         return;
       }
 
-      setExtractionResult(extraction);
-      const latestPipeline = await loadMediaPipeline(lectureId, sessionToken);
-      setPipeline(latestPipeline);
+      await refreshMediaState(lectureId);
       setNotice(
         extraction.transcript_id
           ? '업로드, 추출, 전사까지 완료되었습니다.'
@@ -223,13 +285,13 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-4">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">전사 결과</div>
-                  <div className="mt-1 font-semibold text-slate-900">{extractionResult?.transcript_id ?? '아직 없음'}</div>
+                  <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.transcript_id ?? pipeline?.transcript_id ?? '아직 없음'}</div>
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-4">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 서비스 job</div>
-                  <div className="mt-1 font-semibold text-slate-900">{extractionResult?.processing_job_id ?? '아직 없음'}</div>
-                  {extractionResult?.processing_error ? (
-                    <div className="mt-2 text-xs text-rose-600">{extractionResult.processing_error}</div>
+                  <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.processing_job_id ?? '아직 없음'}</div>
+                  {latestExtraction?.processing_error ? (
+                    <div className="mt-2 text-xs text-rose-600">{latestExtraction.processing_error}</div>
                   ) : null}
                 </div>
               </div>
@@ -241,7 +303,8 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
             pipeline={pipeline}
             providers={providers}
             uploadResult={uploadResult}
-            extractionResult={extractionResult}
+            extraction={latestExtraction}
+            isRefreshing={isRefreshing}
           />
         </>
       )}

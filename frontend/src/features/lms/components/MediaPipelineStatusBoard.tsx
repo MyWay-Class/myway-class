@@ -1,12 +1,13 @@
-import type { LecturePipeline, STTProviderCatalog } from '@myway/shared';
-import type { MediaExtractionResult, MediaUploadResult } from '../../../lib/api-media';
+import type { AudioExtraction, LecturePipeline, STTProviderCatalog } from '@myway/shared';
+import type { MediaUploadResult } from '../../../lib/api-media';
 
 type MediaPipelineStatusBoardProps = {
   selectedLecture: { title: string; duration_minutes: number } | null;
   pipeline: LecturePipeline | null;
   providers: STTProviderCatalog | null;
   uploadResult: MediaUploadResult | null;
-  extractionResult: MediaExtractionResult | null;
+  extraction: AudioExtraction | null;
+  isRefreshing?: boolean;
 };
 
 function statusTone(status: string): string {
@@ -32,7 +33,8 @@ export function MediaPipelineStatusBoard({
   pipeline,
   providers,
   uploadResult,
-  extractionResult,
+  extraction,
+  isRefreshing = false,
 }: MediaPipelineStatusBoardProps) {
   return (
     <div className="space-y-4">
@@ -48,11 +50,11 @@ export function MediaPipelineStatusBoard({
         </div>
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">오디오 추출</div>
-          <div className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone(extractionResult?.status ?? pipeline?.audio_status ?? 'PENDING')}`}>
-            {statusLabel(extractionResult?.status ?? pipeline?.audio_status ?? 'PENDING')}
+          <div className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone(extraction?.status ?? pipeline?.audio_status ?? 'PENDING')}`}>
+            {statusLabel(extraction?.status ?? pipeline?.audio_status ?? 'PENDING')}
           </div>
           <p className="mt-4 text-sm text-slate-600">
-            {extractionResult ? `오디오 포맷 ${extractionResult.audio_format} · ${Math.max(1, Math.round(extractionResult.audio_duration_ms / 1000))}초` : '오디오 추출 job이 아직 없습니다.'}
+            {extraction ? `오디오 포맷 ${extraction.audio_format} · ${Math.max(1, Math.round(extraction.audio_duration_ms / 1000))}초` : '오디오 추출 job이 아직 없습니다.'}
           </p>
         </div>
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -73,16 +75,24 @@ export function MediaPipelineStatusBoard({
               <div className="text-sm font-semibold text-slate-900">파이프라인 상태</div>
               <div className="text-xs text-slate-500">영상 업로드, 오디오 추출, 전사 상태를 같이 확인합니다.</div>
             </div>
-            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              {pipeline?.updated_at ? new Date(pipeline.updated_at).toLocaleString('ko-KR') : '업데이트 전'}
+            <div className="flex items-center gap-2">
+              {isRefreshing ? (
+                <div className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">상태 새로고침 중</div>
+              ) : null}
+              <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {pipeline?.updated_at ? new Date(pipeline.updated_at).toLocaleString('ko-KR') : '업데이트 전'}
+              </div>
             </div>
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
               { label: '오디오 상태', value: pipeline?.audio_status ?? 'PENDING' },
+              { label: 'STT 상태', value: extraction?.stt_status ?? pipeline?.transcript_status ?? 'PENDING' },
               { label: '요약 상태', value: pipeline?.summary_status ?? 'PENDING' },
-              { label: '전사 ID', value: pipeline?.transcript_id ?? '없음' },
+              { label: '처리 서비스 job', value: extraction?.processing_job_id ?? '없음' },
+              { label: '전사 ID', value: extraction?.transcript_id ?? pipeline?.transcript_id ?? '없음' },
+              { label: '처리 완료 시각', value: extraction?.processed_at ? new Date(extraction.processed_at).toLocaleString('ko-KR') : '대기 중' },
             ].map((item) => (
               <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">{item.label}</div>
@@ -101,6 +111,36 @@ export function MediaPipelineStatusBoard({
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
                 아직 업로드된 영상이 없습니다.
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <div className="text-sm font-semibold text-slate-900">추출 진행 세부</div>
+            {extraction ? (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">오디오 URL</div>
+                    <div className="mt-1 break-all font-medium text-slate-900">{extraction.audio_url ?? 'callback 대기 중'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">요청 STT</div>
+                    <div className="mt-1 font-medium text-slate-900">
+                      {extraction.requested_stt_provider ?? '자동 선택'}
+                      {extraction.requested_stt_model ? ` · ${extraction.requested_stt_model}` : ''}
+                    </div>
+                  </div>
+                </div>
+                {extraction.processing_error ? (
+                  <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                    {extraction.processing_error}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                아직 생성된 추출 작업이 없습니다.
               </div>
             )}
           </div>
