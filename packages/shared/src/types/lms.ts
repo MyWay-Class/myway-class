@@ -113,6 +113,16 @@ export type NoticeCreateRequest = {
   pinned?: boolean;
 };
 
+export type CourseCreateRequest = {
+  title: string;
+  description: string;
+  category: string;
+  difficulty: CourseDifficulty;
+  tags?: string[];
+  is_published?: boolean;
+  lecture_titles: string[];
+};
+
 export type MediaPipelineStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
 export type TranscriptStatus = MediaPipelineStatus;

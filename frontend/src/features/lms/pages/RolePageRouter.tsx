@@ -10,6 +10,7 @@ import { AIChatPage } from './AIChatPage';
 import { AISummaryPage } from './AISummaryPage';
 import { AssignmentCheckPage } from './AssignmentCheckPage';
 import { CommunityPage } from './CommunityPage';
+import { CourseCreatePage } from './CourseCreatePage';
 import { CoursesPage } from './CoursesPage';
 import { InstructorDashboardPage } from './InstructorDashboardPage';
 import { LectureStudioPage } from './LectureStudioPage';
@@ -22,11 +23,12 @@ import type { LmsDashboardProps, LmsPageId } from '../types';
 
 type RolePageRouterProps = Pick<
   LmsDashboardProps,
-  'loading' | 'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onSelectCourse' | 'onSelectLecture' | 'demoUsers' | 'selectedCourse' | 'selectedLectureId'
+  'loading' | 'busy' | 'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onCreateCourse' | 'onSelectCourse' | 'onSelectLecture' | 'demoUsers' | 'selectedCourse' | 'selectedLectureId'
 > & {
   session: LoginResponse;
   page: LmsPageId;
   providers: LmsDashboardProps['providers'];
+  onNavigate: (page: LmsPageId) => void;
 };
 
 export function RolePageRouter({
@@ -42,10 +44,13 @@ export function RolePageRouter({
   insights,
   onSelectCourse,
   onSelectLecture,
+  onCreateCourse,
   demoUsers,
   selectedCourse,
   selectedLectureId,
   loading,
+  busy,
+  onNavigate,
 }: RolePageRouterProps) {
   const sessionToken = session.session_token;
 
@@ -82,8 +87,24 @@ export function RolePageRouter({
             selectedCourse={selectedCourse}
             highlightedLecture={highlightedLecture}
             selectedLectureId={selectedLectureId}
+            canManageCurrent={true}
+            busy={busy}
+            onCreateCourse={onCreateCourse}
+            onNavigate={onNavigate}
             onSelectCourse={onSelectCourse}
             onSelectLecture={onSelectLecture}
+          />
+        );
+      case 'course-create':
+        return (
+          <CourseCreatePage
+            courses={courseCards}
+            canManageCurrent={true}
+            busy={busy}
+            onCreateCourse={onCreateCourse}
+            onSelectCourse={onSelectCourse}
+            onSelectLecture={onSelectLecture}
+            onNavigate={onNavigate}
           />
         );
       case 'admin-users':
@@ -117,8 +138,26 @@ export function RolePageRouter({
           selectedCourse={selectedCourse}
           highlightedLecture={highlightedLecture}
           selectedLectureId={selectedLectureId}
+          canManageCurrent={true}
+          busy={busy}
+          onCreateCourse={onCreateCourse}
+          onNavigate={onNavigate}
           onSelectCourse={onSelectCourse}
           onSelectLecture={onSelectLecture}
+        />
+      );
+    }
+
+    if (page === 'course-create') {
+      return (
+        <CourseCreatePage
+          courses={courseCards}
+          canManageCurrent={true}
+          busy={busy}
+          onCreateCourse={onCreateCourse}
+          onSelectCourse={onSelectCourse}
+          onSelectLecture={onSelectLecture}
+          onNavigate={onNavigate}
         />
       );
     }
@@ -180,6 +219,10 @@ export function RolePageRouter({
         selectedCourse={selectedCourse}
         highlightedLecture={highlightedLecture}
         selectedLectureId={selectedLectureId}
+        canManageCurrent={false}
+        busy={busy}
+        onCreateCourse={onCreateCourse}
+        onNavigate={onNavigate}
         onSelectCourse={onSelectCourse}
         onSelectLecture={onSelectLecture}
       />

@@ -1,5 +1,6 @@
-import { demoCourses, demoLectureProgress, demoLectures } from '../../data/demo-data';
-import type { CourseCard, CourseDetail, LectureDetail } from '../../types';
+import { demoCourses, demoLectureProgress, demoLectures } from '../../data/courses';
+import { demoMaterials, demoNotices } from '../../data/media';
+import type { Course, CourseCard, CourseCreateRequest, CourseDetail, Lecture, LectureDetail, Material, Notice } from '../../types';
 import {
   createCourseCard,
   getCourseLectures,
@@ -60,5 +61,92 @@ export function getLectureDetail(lectureId: string, userId?: string): LectureDet
     video_url: getLectureVideoUrl(lecture.id),
     transcript_excerpt: getLectureTranscriptExcerpt(lecture),
     keywords: getLectureKeywords(lecture),
+  };
+}
+
+function createCourseId(): string {
+  return `crs_custom_${String(demoCourses.length + 1).padStart(3, '0')}`;
+}
+
+function splitLines(value?: string): string[] {
+  return value
+    ?.split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean) ?? [];
+}
+
+function buildDefaultLectureContent(course: Course, lectureTitle: string): string {
+  return `${course.title}의 ${lectureTitle} 차시에서는 ${course.description}`;
+}
+
+export function createCourseRecord(
+  instructorId: string,
+  input: CourseCreateRequest,
+): CourseDetail {
+  const title = input.title.trim();
+  const description = input.description.trim();
+  const category = input.category.trim();
+  const lectureTitles = splitLines(input.lecture_titles.join('\n'));
+  const normalizedLectureTitles = lectureTitles.length > 0 ? lectureTitles : [title];
+  const courseId = createCourseId();
+  const lectureBaseCount = demoLectures.length;
+
+  const course: Course = {
+    id: courseId,
+    instructor_id: instructorId,
+    title,
+    description,
+    category,
+    difficulty: input.difficulty,
+    is_published: input.is_published ?? true,
+    tags: input.tags?.length ? input.tags.map((tag) => tag.trim()).filter(Boolean) : [category],
+  };
+
+  const lectures: Lecture[] = normalizedLectureTitles.map((lectureTitle, index) => {
+    const lectureNumber = index + 1;
+    return {
+      id: `lec_custom_${String(lectureBaseCount + index + 1).padStart(3, '0')}`,
+      course_id: courseId,
+      title: lectureTitle,
+      order_index: lectureBaseCount + index,
+      week_number: lectureNumber,
+      session_number: lectureNumber,
+      content_type: 'video',
+      content_text: buildDefaultLectureContent(course, lectureTitle),
+      duration_minutes: 20 + index * 5,
+      is_published: course.is_published,
+    };
+  });
+
+  const material: Material = {
+    id: `mat_custom_${String(demoMaterials.length + 1).padStart(3, '0')}`,
+    course_id: courseId,
+    title: `${title} 개요 자료`,
+    summary: `${title} 강의의 기본 개요와 학습 포인트를 담은 자료입니다.`,
+    file_name: `${courseId}-overview.pdf`,
+    uploaded_by: instructorId,
+    uploaded_at: new Date().toISOString(),
+  };
+
+  const notice: Notice = {
+    id: `ntc_custom_${String(demoNotices.length + 1).padStart(3, '0')}`,
+    course_id: courseId,
+    title: `${title} 개설 안내`,
+    content: `${title} 강의가 개설되었습니다. 목차와 자료를 확인한 뒤 수업 준비를 진행해 주세요.`,
+    pinned: true,
+    author_id: instructorId,
+    created_at: new Date().toISOString(),
+  };
+
+  demoCourses.push(course);
+  demoLectures.push(...lectures);
+  demoMaterials.push(material);
+  demoNotices.push(notice);
+
+  return {
+    ...createCourseCard(course, instructorId),
+    lectures,
+    materials: [material],
+    notices: [notice],
   };
 }

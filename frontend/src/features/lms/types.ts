@@ -6,6 +6,7 @@ import type {
   AIUserSettings,
   AuthUser,
   CourseCard,
+  CourseCreateRequest,
   CourseDetail,
   Dashboard,
   LectureDetail,
@@ -16,6 +17,7 @@ import type {
 export type LmsPageId =
   | 'dashboard'
   | 'courses'
+  | 'course-create'
   | 'lecture-studio'
   | 'shortform'
   | 'community'
@@ -76,6 +78,7 @@ export type LmsDashboardProps = {
     auto_summary?: boolean;
     recommendation_mode?: 'progress' | 'discovery' | 'balanced';
   }) => Promise<boolean>;
+  onCreateCourse: (input: CourseCreateRequest) => Promise<CourseDetail | null>;
   onSelectCourse: (courseId: string) => void;
   onSelectLecture: (lectureId: string) => void;
   selectedCourse: CourseDetail | null;

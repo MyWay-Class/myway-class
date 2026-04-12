@@ -16,6 +16,7 @@ import {
 } from '@myway/shared';
 import {
   clearStoredAuth,
+  createCourse,
   enrollCourse,
   getCurrentRoleLabel,
   loadBackendHealth,
@@ -228,6 +229,47 @@ export default function App() {
     setBusy(false);
   }
 
+  async function handleCreateCourse(input: {
+    title: string;
+    description: string;
+    category: string;
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
+    tags?: string[];
+    is_published?: boolean;
+    lecture_titles: string[];
+  }) {
+    if (!session) {
+      setNotice('강의 개설은 로그인 후 사용할 수 있습니다.');
+      return null;
+    }
+
+    if (!canManageCurrent) {
+      setNotice('현재 계정은 강의를 개설할 권한이 없습니다.');
+      return null;
+    }
+
+    setBusy(true);
+
+    try {
+      const created = await createCourse(input, session.session_token);
+      if (!created) {
+        setNotice('새 강의 개설에 실패했습니다.');
+        return null;
+      }
+
+      await refreshLearningState(learningDeps, session);
+      setSelectedCourseId(created.id);
+      setSelectedCourse(created);
+      const firstLectureId = created.lectures[0]?.id ?? '';
+      setSelectedLectureId(firstLectureId);
+      setSelectedLecture(firstLectureId ? await loadLectureDetail(firstLectureId, session.session_token) : null);
+      setNotice(`${created.title} 강의를 개설했습니다.`);
+      return created;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const flowDeps = {
     session,
     selectedCourse,
@@ -263,6 +305,7 @@ export default function App() {
       onCompleteLecture={(lectureId) => void completeLectureFlow(flowDeps, lectureId)}
       onAddMaterial={(input) => addCourseMaterialFlow(flowDeps, input)}
       onAddNotice={(input) => addCourseNoticeFlow(flowDeps, input)}
+      onCreateCourse={handleCreateCourse}
       onEnroll={(courseId) => void handleEnroll(courseId)}
       onLogin={(userId) => void handleLogin(userId)}
       onLogout={() => void handleLogout()}
