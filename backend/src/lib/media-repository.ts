@@ -463,25 +463,26 @@ export function createMediaRepository(db: D1Database): MediaRepository {
       }
 
       const nextStatus = input.status;
+      const resolvedStatus = current.status === 'COMPLETED' && nextStatus === 'PROCESSING' ? current.status : nextStatus;
       const next: AudioExtraction = {
         ...current,
         processing_job_id: input.processing_job_id ?? current.processing_job_id ?? null,
-        processing_error: input.error_message ?? (nextStatus === 'FAILED' ? '오디오 추출에 실패했습니다.' : null),
+        processing_error: input.error_message ?? (resolvedStatus === 'FAILED' ? '오디오 추출에 실패했습니다.' : null),
         audio_url: input.audio_url ?? current.audio_url ?? null,
         audio_format: input.audio_format ?? (input.audio_url ? inferAudioFormat(input.audio_url) : current.audio_format),
         audio_duration_ms: input.audio_duration_ms ?? current.audio_duration_ms,
         sample_rate: input.sample_rate ?? current.sample_rate,
         channels: input.channels ?? current.channels,
-        status: nextStatus,
+        status: resolvedStatus,
         transcript_id: input.transcript_id ?? current.transcript_id,
         stt_status:
           input.stt_status ??
-          (nextStatus === 'FAILED'
+          (resolvedStatus === 'FAILED'
             ? 'FAILED'
             : input.transcript_id
               ? 'COMPLETED'
               : current.stt_status),
-        processed_at: nextStatus === 'COMPLETED' ? now() : current.processed_at ?? null,
+        processed_at: resolvedStatus === 'COMPLETED' ? current.processed_at ?? now() : current.processed_at ?? null,
         updated_at: now(),
       };
 
@@ -493,10 +494,10 @@ export function createMediaRepository(db: D1Database): MediaRepository {
           next.processing_error ?? null,
           next.audio_url ?? null,
           next.audio_format,
-          next.audio_duration_ms,
-          next.sample_rate,
-          next.channels,
-          next.status,
+        next.audio_duration_ms,
+        next.sample_rate,
+        next.channels,
+        next.status,
           next.transcript_id ?? null,
           next.stt_status,
           next.processed_at ?? null,

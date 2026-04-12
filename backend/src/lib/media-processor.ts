@@ -28,6 +28,10 @@ type MediaProcessorResponse = {
   status?: 'PENDING' | 'PROCESSING';
 };
 
+function getMediaProcessorOrigin(url: string): string {
+  return new URL(url).origin;
+}
+
 type MediaProcessorHealthResponse = {
   ok?: boolean;
   status?: string;
@@ -73,7 +77,7 @@ export async function dispatchMediaProcessorJob(
     };
   }
 
-  const response = await fetch(settings.url, {
+  const response = await fetch(`${getMediaProcessorOrigin(settings.url)}/jobs/audio-extraction`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -137,7 +141,7 @@ export async function loadMediaProcessorHealth(env?: RuntimeBindings): Promise<M
     return null;
   }
 
-  const response = await fetch(`${settings.url.replace(/\/+$/, '')}/health`, {
+  const response = await fetch(`${getMediaProcessorOrigin(settings.url)}/health`, {
     headers: {
       ...(settings.token ? { Authorization: `Bearer ${settings.token}` } : {}),
     },

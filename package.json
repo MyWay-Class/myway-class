@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev:frontend",
+    "dev": "cmd /c scripts\\dev.bat",
     "dev:frontend": "npm --workspace @myway/frontend run dev",
     "dev:backend": "npm --workspace @myway/backend run dev",
     "dev:media-processor": "tsx scripts/media-processor/server.ts",

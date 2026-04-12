@@ -15,6 +15,14 @@ type UploadableFile = Blob & {
   arrayBuffer: () => Promise<ArrayBuffer>;
 };
 
+type MemoryAsset = {
+  body: ArrayBuffer;
+  contentType: string;
+  contentDisposition: string;
+};
+
+const memoryAssets = new Map<string, MemoryAsset>();
+
 function sanitizeName(value: string): string {
   return value
     .trim()
@@ -42,30 +50,48 @@ export async function uploadLectureVideoAsset(
   requestUrl: string,
   env?: RuntimeBindings,
 ): Promise<MediaUploadResult | null> {
-  if (!env?.ASSETS) {
-    return null;
-  }
-
   const assetKey = buildAssetKey(lectureId, file.name);
-  await env.ASSETS.put(assetKey, await file.arrayBuffer(), {
-    httpMetadata: {
-      contentType: file.type || 'video/mp4',
-      contentDisposition: `inline; filename="${file.name.replace(/"/g, '')}"`,
-    },
-  });
+  const body = await file.arrayBuffer();
+  const contentType = file.type || 'video/mp4';
+  const contentDisposition = `inline; filename="${file.name.replace(/"/g, '')}"`;
+
+  if (!env?.ASSETS) {
+    memoryAssets.set(assetKey, {
+      body,
+      contentType,
+      contentDisposition,
+    });
+  } else {
+    await env.ASSETS.put(assetKey, body, {
+      httpMetadata: {
+        contentType,
+        contentDisposition,
+      },
+    });
+  }
 
   return {
     asset_key: assetKey,
     video_url: buildAssetUrl(assetKey, requestUrl, env),
     file_name: file.name,
-    content_type: file.type || 'video/mp4',
+    content_type: contentType,
     size_bytes: file.size,
   };
 }
 
 export async function readLectureVideoAsset(assetKey: string, env?: RuntimeBindings): Promise<Response | null> {
   if (!env?.ASSETS) {
-    return null;
+    const asset = memoryAssets.get(assetKey);
+    if (!asset) {
+      return null;
+    }
+
+    return new Response(asset.body, {
+      headers: {
+        'Content-Type': asset.contentType,
+        'Content-Disposition': asset.contentDisposition,
+      },
+    });
   }
 
   const asset = await env.ASSETS.get(assetKey);
