@@ -25,6 +25,12 @@ const tabList: Array<{ id: WorkspaceTab; label: string; hint: string; icon: stri
   { id: 'media', label: '미디어 파이프라인', hint: '영상 업로드와 STT 상태를 확인합니다.', icon: 'ri-movie-2-line' },
 ];
 
+const stepLabels: Record<WorkspaceTab, string> = {
+  create: '1. 강의 개설',
+  studio: '2. 제작 스튜디오',
+  media: '3. 미디어 파이프라인',
+};
+
 export function CourseCreatePage({
   courses,
   canManageCurrent,
@@ -165,8 +171,19 @@ export function CourseCreatePage({
         </div>
       </section>
 
-      {activeTab === 'create' ? (
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400">진행 단계</div>
+            <div className="mt-1 text-[14px] font-bold text-slate-900">{stepLabels[activeTab]}</div>
+          </div>
+          <div className="text-[12px] leading-6 text-slate-500">
+            입력한 정보는 탭을 옮겨도 유지되고, 개설이 끝나면 다음 단계로 바로 이어집니다.
+          </div>
+        </div>
+      </section>
+
+      <section hidden={activeTab !== 'create'} aria-hidden={activeTab !== 'create'} className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
           <div className="space-y-5">
             <CourseCreateCard
               canCreate={canManageCurrent}
@@ -250,19 +267,22 @@ export function CourseCreatePage({
               </div>
             </section>
           </aside>
-        </section>
-      ) : null}
+      </section>
 
-      {activeTab === 'studio' ? (
-        <section className="space-y-4">
+      <section hidden={activeTab !== 'studio'} aria-hidden={activeTab !== 'studio'} className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
             <div>
               <h2 className="text-[15px] font-bold text-slate-900">제작 스튜디오를 같은 흐름에서 이어가기</h2>
               <p className="mt-1 text-[12px] text-slate-500">강의 개설 직후 바로 제작 옵션과 발행 준비를 다듬을 수 있습니다.</p>
             </div>
-            <button type="button" onClick={() => setActiveTab('media')} className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500">
-              미디어 탭으로 이동
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setActiveTab('create')} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50">
+                이전: 개설
+              </button>
+              <button type="button" onClick={() => setActiveTab('media')} className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500">
+                미디어 탭으로 이동
+              </button>
+            </div>
           </div>
           <LectureStudioPage
             courses={courses}
@@ -270,23 +290,25 @@ export function CourseCreatePage({
             highlightedLecture={activeLecture}
             onSelectCourse={onSelectCourse}
           />
-        </section>
-      ) : null}
+      </section>
 
-      {activeTab === 'media' ? (
-        <section className="space-y-4">
+      <section hidden={activeTab !== 'media'} aria-hidden={activeTab !== 'media'} className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
             <div>
               <h2 className="text-[15px] font-bold text-slate-900">미디어 파이프라인을 같은 화면에서 확인하기</h2>
               <p className="mt-1 text-[12px] text-slate-500">업로드, 오디오 추출, STT, 타임스탬프 상태를 따로 이동하지 않고 바로 확인합니다.</p>
             </div>
-            <button type="button" onClick={() => setActiveTab('create')} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50">
-              개설 탭으로 돌아가기
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setActiveTab('studio')} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50">
+                이전: 스튜디오
+              </button>
+              <button type="button" onClick={() => setActiveTab('create')} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50">
+                처음으로
+              </button>
+            </div>
           </div>
           <MediaPipelinePage selectedCourse={activeCourse} highlightedLecture={highlightedLecture} sessionToken={sessionToken} />
-        </section>
-      ) : null}
+      </section>
     </div>
   );
 }

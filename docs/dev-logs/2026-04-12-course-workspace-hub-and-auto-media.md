@@ -8,6 +8,7 @@
 ## 변경 사항
 - [`frontend/src/features/lms/pages/CourseCreatePage.tsx`](C:/Users/ggg99/Desktop/내맘대로Class/myway-class/frontend/src/features/lms/pages/CourseCreatePage.tsx)
   - `강의 개설`, `제작 스튜디오`, `미디어 파이프라인` 탭을 한 페이지에 배치했다.
+  - 탭 전환 시 폼이 사라지지 않도록 숨김 방식으로 유지해 입력 상태가 이어지게 했다.
   - 첫 차시 영상 파일 입력과 자동 추출 토글을 추가했다.
   - 강의 개설 성공 시 영상이 선택되어 있으면 업로드와 추출을 자동 실행하고, 결과에 따라 스튜디오 또는 미디어 탭으로 넘긴다.
 - [`frontend/src/features/lms/pages/RolePageRouter.tsx`](C:/Users/ggg99/Desktop/내맘대로Class/myway-class/frontend/src/features/lms/pages/RolePageRouter.tsx)
