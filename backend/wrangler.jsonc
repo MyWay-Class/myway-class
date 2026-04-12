@@ -46,6 +46,8 @@
         "MYWAY_AI_DAILY_LIMIT_GEMINI": "999",
         "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
         "MYWAY_MEDIA_PROCESSOR_URL": "http://127.0.0.1:8788/jobs/audio-extraction",
+        "MYWAY_MEDIA_PROCESSOR_TOKEN": "local-media-processor-token",
+        "MYWAY_MEDIA_CALLBACK_SECRET": "local-media-callback-secret",
         "MYWAY_OLLAMA_BASE_URL": "http://127.0.0.1:11434",
         "MYWAY_OLLAMA_MODEL": "llama3.1:8b"
       }
