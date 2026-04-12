@@ -1,4 +1,10 @@
-import type { CourseDetail, Lecture, LectureDetail } from '@myway/shared';
+import type {
+  CourseDetail,
+  Lecture,
+  LectureDetail,
+  LectureStudioDraftInput,
+  LectureStudioDraftRecord,
+} from '@myway/shared';
 
 export type LectureStudioDeliveryMode = 'online' | 'offline' | 'hybrid';
 export type LectureStudioAudience = 'beginner' | 'intermediate' | 'advanced';
@@ -98,6 +104,79 @@ export function buildLectureStudioDraft(course: CourseDetail | null, highlighted
     aiTimestampEnabled: true,
     aiShortformEnabled: true,
     reviewState: course ? 'review' : 'draft',
+  };
+}
+
+export function buildLectureStudioDraftFromRecord(record: LectureStudioDraftRecord): LectureStudioDraft {
+  return {
+    courseId: record.course_id,
+    title: record.title,
+    subtitle: record.subtitle,
+    category: record.category,
+    difficulty: record.difficulty,
+    audience: record.audience,
+    deliveryMode: record.delivery_mode,
+    classSize: record.class_size,
+    classroom: record.classroom,
+    onlineRoom: record.online_room,
+    pace: record.pace,
+    learningGoal: record.learning_goal,
+    summary: record.summary,
+    prerequisites: record.prerequisites,
+    outlineText: record.outline.join('\n'),
+    materialsText: record.materials.join('\n'),
+    assignmentMode: record.assignment_mode,
+    assignmentDue: record.assignment_due,
+    assignmentWeight: record.assignment_weight,
+    assignmentNotes: record.assignment_notes,
+    examMode: record.exam_mode,
+    examScope: record.exam_scope,
+    quizMode: record.quiz_mode,
+    quizCount: record.quiz_count,
+    quizDifficulty: record.quiz_difficulty,
+    attendanceRequired: record.attendance_required,
+    recordingEnabled: record.recording_enabled,
+    officeHours: record.office_hours,
+    aiSummaryEnabled: record.ai_summary_enabled,
+    aiTimestampEnabled: record.ai_timestamp_enabled,
+    aiShortformEnabled: record.ai_shortform_enabled,
+    reviewState: record.status === 'PUBLISHED' ? 'ready' : record.status === 'REVIEW' ? 'review' : 'draft',
+  };
+}
+
+export function toLectureStudioDraftInput(draft: LectureStudioDraft, lectureId: string): LectureStudioDraftInput {
+  return {
+    lecture_id: lectureId,
+    title: draft.title,
+    subtitle: draft.subtitle,
+    category: draft.category,
+    difficulty: draft.difficulty,
+    audience: draft.audience,
+    delivery_mode: draft.deliveryMode,
+    class_size: draft.classSize,
+    classroom: draft.classroom,
+    online_room: draft.onlineRoom,
+    pace: draft.pace,
+    learning_goal: draft.learningGoal,
+    summary: draft.summary,
+    prerequisites: draft.prerequisites,
+    outline_text: draft.outlineText,
+    materials_text: draft.materialsText,
+    assignment_mode: draft.assignmentMode,
+    assignment_due: draft.assignmentDue,
+    assignment_weight: draft.assignmentWeight,
+    assignment_notes: draft.assignmentNotes,
+    exam_mode: draft.examMode,
+    exam_scope: draft.examScope,
+    quiz_mode: draft.quizMode,
+    quiz_count: draft.quizCount,
+    quiz_difficulty: draft.quizDifficulty,
+    attendance_required: draft.attendanceRequired,
+    recording_enabled: draft.recordingEnabled,
+    office_hours: draft.officeHours,
+    ai_summary_enabled: draft.aiSummaryEnabled,
+    ai_timestamp_enabled: draft.aiTimestampEnabled,
+    ai_shortform_enabled: draft.aiShortformEnabled,
   };
 }
 
