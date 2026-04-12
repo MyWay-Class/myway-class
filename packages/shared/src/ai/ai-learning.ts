@@ -1,6 +1,5 @@
 import { getLectureDetail } from '../lms/learning';
-import { collectLectureReferences } from './intent/corpus';
-import { getLectureTranscript, listLectureNotes } from '../lms/media';
+import { buildLectureSourceSnapshot, collectLectureReferences } from './intent/corpus';
 import type {
   AIQuizQuestion,
   AIQuizRequest,
@@ -139,9 +138,10 @@ export async function createAISummary(
     return null;
   }
 
-  const transcript = await getLectureTranscript(lecture.id, repository);
-  const note = (await listLectureNotes(lecture.id, repository))[0];
-  const sourceText = note?.content ?? transcript?.full_text ?? lecture.content_text;
+  const snapshot = await buildLectureSourceSnapshot(lecture.id, repository);
+  const transcript = snapshot?.transcript ?? null;
+  const note = snapshot?.note ?? null;
+  const sourceText = snapshot?.source_text ?? lecture.content_text;
   const style = input.style ?? 'brief';
   const titleSuffix =
     style === 'detailed'
@@ -174,9 +174,10 @@ export async function generateAIQuiz(
     return null;
   }
 
-  const transcript = await getLectureTranscript(lecture.id, repository);
-  const note = (await listLectureNotes(lecture.id, repository))[0];
-  const sourceText = note?.content ?? transcript?.full_text ?? lecture.content_text;
+  const snapshot = await buildLectureSourceSnapshot(lecture.id, repository);
+  const transcript = snapshot?.transcript ?? null;
+  const note = snapshot?.note ?? null;
+  const sourceText = snapshot?.source_text ?? lecture.content_text;
   const concepts = collectQuizConcepts(sourceText, lecture.title, lecture.course_title);
   let count = input.count ?? 4;
   if (input.difficulty === 'hard') {
