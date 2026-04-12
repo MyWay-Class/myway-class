@@ -187,7 +187,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     await refreshMediaState(input.lecture_id);
     setNotice(
       extraction.transcript_id
-        ? '업로드, 추출, 전사까지 완료되었습니다.'
+        ? '업로드, 추출, 전사, 자동 요약까지 완료되었습니다.'
         : '업로드와 추출 job이 등록되었습니다. 외부 처리 서비스 callback 이후 전사가 자동으로 이어집니다.',
     );
 

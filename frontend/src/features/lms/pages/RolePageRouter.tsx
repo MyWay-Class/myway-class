@@ -100,6 +100,7 @@ export function RolePageRouter({
             selectedLectureId={selectedLectureId}
             canManageCurrent={true}
             busy={busy}
+            sessionToken={sessionToken}
             onCreateCourse={onCreateCourse}
             onNavigate={onNavigate}
             onSelectCourse={onSelectCourse}
@@ -165,6 +166,7 @@ export function RolePageRouter({
           selectedLectureId={selectedLectureId}
           canManageCurrent={true}
           busy={busy}
+          sessionToken={sessionToken}
           onCreateCourse={onCreateCourse}
           onNavigate={onNavigate}
           onSelectCourse={onSelectCourse}
@@ -248,6 +250,7 @@ export function RolePageRouter({
         selectedLectureId={selectedLectureId}
         canManageCurrent={false}
         busy={busy}
+        sessionToken={sessionToken}
         onCreateCourse={onCreateCourse}
         onNavigate={onNavigate}
         onSelectCourse={onSelectCourse}
@@ -272,10 +275,6 @@ export function RolePageRouter({
     return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} />;
   }
 
-  if (page === 'media-pipeline') {
-    return <MediaPipelinePage selectedCourse={selectedCourse} highlightedLecture={highlightedLecture} sessionToken={sessionToken} />;
-  }
-
   if (page === 'dashboard') {
     return (
       <StudentDashboardPage
@@ -284,6 +283,17 @@ export function RolePageRouter({
         highlightedLecture={highlightedLecture}
         recommendations={recommendations}
         onSelectCourse={onSelectCourse}
+        onNavigate={onNavigate}
+      />
+    );
+  }
+
+  if (page === 'media-pipeline') {
+    return (
+      <RolePageFallback
+        icon="ri-lock-line"
+        title="업로드와 전사는 교강사 전용입니다."
+        description="학생은 강의 상세, 챗봇, 숏폼 제작만 사용할 수 있습니다. 영상 업로드와 자동 전사는 교수 또는 강사 계정에서만 가능합니다."
       />
     );
   }

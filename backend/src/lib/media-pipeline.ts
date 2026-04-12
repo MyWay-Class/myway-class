@@ -1,6 +1,8 @@
 import {
   createAudioExtraction,
+  createLectureSummaryNote,
   getAudioExtraction,
+  listLectureNotes,
   updateAudioExtraction,
   type AudioExtraction,
   type AudioExtractionCallbackRequest,
@@ -44,6 +46,27 @@ function buildCallbackUrl(requestUrl: string): string {
   return `${url.origin}/api/v1/media/extract-audio/callback`;
 }
 
+async function ensureAutoTimelineSummary(
+  userId: string,
+  lectureId: string,
+  repository?: MediaRepository,
+): Promise<void> {
+  const notes = await listLectureNotes(lectureId, repository);
+  if (notes.some((note) => note.note_type === 'ai_timeline')) {
+    return;
+  }
+
+  await createLectureSummaryNote(
+    userId,
+    {
+      lecture_id: lectureId,
+      style: 'timeline',
+      language: 'ko',
+    },
+    repository,
+  );
+}
+
 export async function createMediaExtractionJob(
   userId: string,
   input: AudioExtractionRequest,
@@ -75,6 +98,8 @@ export async function createMediaExtractionJob(
         message: '오디오 전사를 생성할 수 없습니다.',
       };
     }
+
+    await ensureAutoTimelineSummary(userId, input.lecture_id, repository);
   }
 
   const extractionResult = await createAudioExtraction(userId, {
@@ -215,6 +240,8 @@ export async function completeMediaExtractionJob(
       message: failed?.extraction.processing_error ?? '오디오 전사를 생성할 수 없습니다.',
     };
   }
+
+  await ensureAutoTimelineSummary(userId, extraction.lecture_id, repository);
 
   const completed = await updateAudioExtraction({
     ...payload,

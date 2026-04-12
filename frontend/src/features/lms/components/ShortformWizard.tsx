@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CourseCard, CourseDetail, LectureDetail, ShortformCommunityItem } from '@myway/shared';
-import { composeCustomCourseDraft, loadCourseDetail, loadShortformCommunity, shareCustomCourseDraft } from '../../../lib/api';
+import { composeCustomCourseDraft, loadCourseDetail, loadLectureTranscriptDetailed, loadShortformCommunity, shareCustomCourseDraft } from '../../../lib/api';
 import { ShortformWizardSidebar } from './ShortformWizardSidebar';
 import { ShortformWizardStep1 } from './ShortformWizardStep1';
 import { ShortformWizardStep2 } from './ShortformWizardStep2';
@@ -21,12 +21,52 @@ function formatDuration(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function buildClipSuggestions(course: CourseDetail | null): ClipSuggestion[] {
+function clipKey(clip: ClipSuggestion): string {
+  return `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
+}
+
+function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, segments: Array<{ start_ms: number; end_ms: number; text: string }>): ClipSuggestion[] {
+  const lecture = course.lectures.find((item) => item.id === lectureId);
+  if (!lecture || segments.length === 0) {
+    return [];
+  }
+
+  const validSegments = segments.filter((segment) => segment.text.trim().length > 0);
+  if (validSegments.length === 0) {
+    return [];
+  }
+
+  const clipCount = Math.min(3, validSegments.length);
+  const chunkSize = Math.ceil(validSegments.length / clipCount);
+
+  return Array.from({ length: clipCount }, (_, clipIndex) => {
+    const startIndex = clipIndex * chunkSize;
+    const chunk = validSegments.slice(startIndex, startIndex + chunkSize);
+    const start = chunk[0]?.start_ms ?? 0;
+    const end = chunk[chunk.length - 1]?.end_ms ?? start + 30_000;
+
+    return {
+      lecture_id: lecture.id,
+      lecture_title: lecture.title,
+      start_time_ms: start,
+      end_time_ms: Math.max(end, start + 1_000),
+      label: `${lecture.title} 전사 ${clipIndex + 1}`,
+      description: chunk.map((segment) => segment.text).join(' ').slice(0, 90) || `${lecture.title} 전사 구간`,
+    };
+  });
+}
+
+function buildClipSuggestions(course: CourseDetail | null, transcriptMap: Record<string, Array<{ start_ms: number; end_ms: number; text: string }> | null>): ClipSuggestion[] {
   if (!course) {
     return [];
   }
 
   return course.lectures.flatMap((lecture, lectureIndex) => {
+    const transcriptSegments = transcriptMap[lecture.id] ?? null;
+    if (transcriptSegments && transcriptSegments.length > 0) {
+      return buildTranscriptSuggestions(course, lecture.id, transcriptSegments);
+    }
+
     const totalMs = Math.max(lecture.duration_minutes, 1) * 60_000;
     const segment = Math.max(Math.round(totalMs / 3), 30_000);
 
@@ -51,12 +91,13 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   const [activeCourseId, setActiveCourseId] = useState<string | null>(selectedCourse?.id ?? courses[0]?.id ?? null);
   const [courseDetail, setCourseDetail] = useState<CourseDetail | null>(selectedCourse);
   const [lectureFilter, setLectureFilter] = useState<string>(highlightedLecture?.id ?? 'all');
-  const [selectedClipKeys, setSelectedClipKeys] = useState<string[]>([]);
+  const [selectedClips, setSelectedClips] = useState<ClipSuggestion[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('핵심 구간을 이어 붙여 학습용 개인 코스로 정리합니다.');
   const [status, setStatus] = useState('아직 조립된 개인 코스가 없습니다.');
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [communityItems, setCommunityItems] = useState<ShortformCommunityItem[]>([]);
+  const [transcriptMap, setTranscriptMap] = useState<Record<string, Array<{ start_ms: number; end_ms: number; text: string }> | null>>({});
 
   useEffect(() => {
     if (selectedCourse?.id) {
@@ -70,7 +111,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   }, [activeCourseId, highlightedLecture?.id]);
 
   useEffect(() => {
-    setSelectedClipKeys([]);
+    setSelectedClips([]);
     setLectureFilter('all');
     setCreatedCourseId(null);
     setStatus('아직 조립된 개인 코스가 없습니다.');
@@ -104,6 +145,32 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   useEffect(() => {
     let alive = true;
 
+    if (!courseDetail?.lectures.length) {
+      setTranscriptMap({});
+      return undefined;
+    }
+
+    Promise.all(
+      courseDetail.lectures.map(async (lecture) => {
+        const transcript = await loadLectureTranscriptDetailed(lecture.id, sessionToken);
+        return [lecture.id, transcript?.segments ?? null] as const;
+      }),
+    ).then((entries) => {
+      if (!alive) {
+        return;
+      }
+
+      setTranscriptMap(Object.fromEntries(entries));
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, [courseDetail?.id, courseDetail?.lectures, sessionToken]);
+
+  useEffect(() => {
+    let alive = true;
+
     loadShortformCommunity(activeCourseId, sessionToken).then((items) => {
       if (alive) {
         setCommunityItems(items.slice(0, 4));
@@ -115,7 +182,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
     };
   }, [activeCourseId, sessionToken]);
 
-  const clipSuggestions = useMemo(() => buildClipSuggestions(courseDetail), [courseDetail]);
+  const clipSuggestions = useMemo(() => buildClipSuggestions(courseDetail, transcriptMap), [courseDetail, transcriptMap]);
   const lectureTabs = useMemo(() => {
     if (!courseDetail) {
       return [];
@@ -136,13 +203,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
     return clipSuggestions.filter((clip) => clip.lecture_id === lectureFilter);
   }, [clipSuggestions, lectureFilter]);
 
-  const selectedClips = useMemo(
-    () =>
-      clipSuggestions.filter((clip) =>
-        selectedClipKeys.includes(`${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`),
-      ),
-    [clipSuggestions, selectedClipKeys],
-  );
+  const selectedClipKeys = useMemo(() => selectedClips.map((clip) => clipKey(clip)), [selectedClips]);
 
   const totalDurationMs = selectedClips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
   const totalDurationLabel = formatDuration(totalDurationMs);
@@ -194,12 +255,31 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   }
 
   function toggleClip(clip: ClipSuggestion) {
-    const key = `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
-    setSelectedClipKeys((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
+    const key = clipKey(clip);
+    setSelectedClips((current) => (current.some((item) => clipKey(item) === key) ? current.filter((item) => clipKey(item) !== key) : [...current, clip]));
   }
 
   function removeClip(key: string) {
-    setSelectedClipKeys((current) => current.filter((item) => item !== key));
+    setSelectedClips((current) => current.filter((item) => clipKey(item) !== key));
+  }
+
+  function updateClipTimes(key: string, startTimeMs: number, endTimeMs: number) {
+    setSelectedClips((current) =>
+      current.map((clip) => {
+        if (clipKey(clip) !== key) {
+          return clip;
+        }
+
+        const safeStart = Math.max(0, Math.min(startTimeMs, endTimeMs - 1_000));
+        const safeEnd = Math.max(safeStart + 1_000, endTimeMs);
+
+        return {
+          ...clip,
+          start_time_ms: safeStart,
+          end_time_ms: safeEnd,
+        };
+      }),
+    );
   }
 
   return (
@@ -289,6 +369,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
               onSave={() => void handleCompose()}
               onShare={() => void handleShare()}
               onRemoveClip={removeClip}
+              onUpdateClipTimes={updateClipTimes}
               onTitleChange={setTitle}
               onDescriptionChange={setDescription}
               formatDuration={formatDuration}
