@@ -71,7 +71,6 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
       .map(([tag]) => tag);
   }, [courseCards]);
 
-  const totalStudents = courseCards.reduce((sum, course) => sum + course.student_count, 0);
   const totalProgress = Math.round(
     courseCards.reduce((sum, course) => sum + course.progress_percent, 0) / Math.max(courseCards.length, 1),
   );
@@ -175,37 +174,6 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
               </div>
             </div>
           </div>
-        </section>
-
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-[20px] text-indigo-600">
-              <i className="ri-book-open-line" />
-            </div>
-            <div className="mt-4 text-[30px] font-extrabold tracking-[-0.03em] text-slate-900">{courseCards.length}</div>
-            <div className="mt-1 text-[12px] font-semibold text-slate-500">총 강의</div>
-          </article>
-          <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-[20px] text-violet-600">
-              <i className="ri-user-follow-line" />
-            </div>
-            <div className="mt-4 text-[30px] font-extrabold tracking-[-0.03em] text-slate-900">{totalStudents}</div>
-            <div className="mt-1 text-[12px] font-semibold text-slate-500">수강생</div>
-          </article>
-          <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-[20px] text-emerald-600">
-              <i className="ri-folder-2-line" />
-            </div>
-            <div className="mt-4 text-[30px] font-extrabold tracking-[-0.03em] text-slate-900">{categories.length}</div>
-            <div className="mt-1 text-[12px] font-semibold text-slate-500">카테고리</div>
-          </article>
-          <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-[20px] text-amber-700">
-              <i className="ri-robot-line" />
-            </div>
-            <div className="mt-4 text-[30px] font-extrabold tracking-[-0.03em] text-slate-900">활성</div>
-            <div className="mt-1 text-[12px] font-semibold text-slate-500">AI 기능</div>
-          </article>
         </section>
 
         <CourseExploreFilters
