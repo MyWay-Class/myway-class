@@ -16,6 +16,7 @@ export type ProcessorConfig = {
   publicBaseUrl: string;
   workDir: string;
   token: string;
+  callbackSecret: string | null;
   ffmpegPath: string;
 };
 
@@ -27,10 +28,15 @@ export type ProcessorJob = {
   callbackUrl: string;
   callbackSecret: string | null;
   status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  stage: 'queued' | 'downloading' | 'extracting' | 'callback' | 'completed' | 'failed';
+  step: string;
   createdAt: string;
   updatedAt: string;
+  completedAt: string | null;
   audioUrl: string | null;
   errorMessage: string | null;
+  ffmpegOutput: string | null;
+  callbackStatus: number | null;
   files: {
     videoPath: string | null;
     audioPath: string | null;

@@ -22,6 +22,7 @@ export function getProcessorConfig(): ProcessorConfig {
     publicBaseUrl,
     workDir: process.env.MEDIA_PROCESSOR_WORK_DIR || path.join(os.tmpdir(), 'mywayclass-media-processor'),
     token: process.env.MYWAY_MEDIA_PROCESSOR_TOKEN || process.env.MEDIA_PROCESSOR_TOKEN || 'local-media-processor-token',
+    callbackSecret: process.env.MYWAY_MEDIA_CALLBACK_SECRET || process.env.MEDIA_CALLBACK_SECRET || null,
     ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',
   };
 }

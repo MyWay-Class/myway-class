@@ -17,7 +17,7 @@ import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { readLectureVideoAsset, uploadLectureVideoAsset } from '../lib/media-assets';
 import { completeMediaExtractionJob, createMediaExtractionJob } from '../lib/media-pipeline';
 import { createMediaRepository } from '../lib/media-repository';
-import { normalizeMediaCallbackPayload, verifyMediaCallbackSecret } from '../lib/media-processor';
+import { loadMediaProcessorHealth, normalizeMediaCallbackPayload, verifyMediaCallbackSecret } from '../lib/media-processor';
 import { buildExtractionCallbackResponse, buildExtractionResponse } from '../lib/media-response';
 import { getSTTProviderOverview } from '../lib/stt-provider';
 import { PUBLIC_STT_MAX_DURATION_MS, runTranscriptGeneration } from '../lib/stt-adapter';
@@ -138,6 +138,20 @@ media.post('/transcribe', async (c) => {
 });
 
 media.get('/providers', (c) => jsonSuccess(getSTTProviderOverview() satisfies STTProviderCatalog, 'STT provider 계층을 조회했습니다.'));
+
+media.get('/processor-health', async (c) => {
+  const user = getAuthenticatedUser(c.req.raw);
+  if (!user) {
+    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+  }
+
+  const health = await loadMediaProcessorHealth(c.env as RuntimeBindings | undefined);
+  if (!health) {
+    return jsonFailure('MEDIA_PROCESSOR_UNAVAILABLE', '미디어 처리 서비스 상태를 가져올 수 없습니다.', 503);
+  }
+
+  return jsonSuccess(health, '미디어 처리 서비스 상태를 조회했습니다.');
+});
 
 media.get('/assets/:assetKey', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);

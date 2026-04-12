@@ -3,6 +3,7 @@ import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
 import { getProcessorConfig } from './config';
 import { createJobStore } from './jobs';
+import { probeFfmpeg } from './ffmpeg';
 import { processAudioExtractionJob } from './service';
 import type { AudioExtractionJobRequest } from './types';
 
@@ -40,6 +41,46 @@ function isAuthorized(request: IncomingMessage): boolean {
   return header === `Bearer ${config.token}`;
 }
 
+async function buildHealthPayload(): Promise<Record<string, unknown>> {
+  const jobs = jobStore.listJobs();
+  const ffmpeg = await probeFfmpeg(config.ffmpegPath);
+  const recentJobs = jobs.slice(0, 5).map((job) => ({
+    id: job.id,
+    lecture_id: job.lectureId,
+    status: job.status,
+    created_at: job.createdAt,
+    updated_at: job.updatedAt,
+    audio_url: job.audioUrl,
+    error_message: job.errorMessage,
+    stage: job.stage,
+    step: job.step,
+    callback_status: job.callbackStatus,
+  }));
+
+  return {
+    ok: true,
+    status: 'ok',
+    public_base_url: config.publicBaseUrl,
+    work_dir: config.workDir,
+    token_configured: Boolean(config.token),
+    callback_secret_configured: Boolean(config.callbackSecret),
+    ffmpeg: {
+      available: ffmpeg.available,
+      path: config.ffmpegPath,
+      version: ffmpeg.version,
+      output: ffmpeg.output,
+    },
+    jobs: {
+      total: jobs.length,
+      processing: jobs.filter((job) => job.status === 'PROCESSING').length,
+      completed: jobs.filter((job) => job.status === 'COMPLETED').length,
+      failed: jobs.filter((job) => job.status === 'FAILED').length,
+    },
+    recent_jobs: recentJobs,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 async function serveAsset(response: ServerResponse, fileName: string): Promise<void> {
   const filePath = path.join(config.workDir, 'output', fileName);
   try {
@@ -69,7 +110,7 @@ const server = http.createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', config.publicBaseUrl);
 
   if (request.method === 'GET' && url.pathname === '/health') {
-    return json(response, 200, { success: true, status: 'ok' });
+    return json(response, 200, await buildHealthPayload());
   }
 
   if (request.method === 'GET' && url.pathname === '/jobs') {

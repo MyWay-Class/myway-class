@@ -1,10 +1,11 @@
-import type { AudioExtraction, LecturePipeline, STTProviderCatalog } from '@myway/shared';
+import type { AudioExtraction, LecturePipeline, MediaProcessorHealth, STTProviderCatalog } from '@myway/shared';
 import type { MediaUploadResult } from '../../../lib/api-media';
 
 type MediaPipelineStatusBoardProps = {
   selectedLecture: { title: string; duration_minutes: number } | null;
   pipeline: LecturePipeline | null;
   providers: STTProviderCatalog | null;
+  processorHealth: MediaProcessorHealth | null;
   uploadResult: MediaUploadResult | null;
   extraction: AudioExtraction | null;
   recentExtractions?: AudioExtraction[];
@@ -38,6 +39,7 @@ export function MediaPipelineStatusBoard({
   selectedLecture,
   pipeline,
   providers,
+  processorHealth,
   uploadResult,
   extraction,
   recentExtractions = [],
@@ -46,6 +48,43 @@ export function MediaPipelineStatusBoard({
 }: MediaPipelineStatusBoardProps) {
   return (
     <div className="space-y-4">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">FFmpeg 실행 환경</div>
+          <div className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone(processorHealth?.ffmpeg.available ? 'available' : 'disabled')}`}>
+            {statusLabel(processorHealth?.ffmpeg.available ? 'available' : 'disabled')}
+          </div>
+          <p className="mt-4 text-sm text-slate-600">
+            {processorHealth?.ffmpeg.version ?? processorHealth?.ffmpeg.path ?? 'FFmpeg 버전 정보가 없습니다.'}
+          </p>
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">콜백 보안</div>
+          <div className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone(processorHealth?.callback_secret_configured ? 'available' : 'disabled')}`}>
+            {statusLabel(processorHealth?.callback_secret_configured ? 'available' : 'disabled')}
+          </div>
+          <p className="mt-4 text-sm text-slate-600">
+            {processorHealth?.callback_secret_configured ? 'callback secret이 설정되어 있습니다.' : 'callback secret이 비어 있습니다.'}
+          </p>
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 job</div>
+          <div className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone((processorHealth?.jobs.processing ?? 0) > 0 ? 'PROCESSING' : 'COMPLETED')}`}>
+            {(processorHealth?.jobs.processing ?? 0) > 0 ? statusLabel('PROCESSING') : statusLabel('COMPLETED')}
+          </div>
+          <p className="mt-4 text-sm text-slate-600">
+            총 {processorHealth?.jobs.total ?? 0}건 · 처리 중 {processorHealth?.jobs.processing ?? 0}건 · 실패 {processorHealth?.jobs.failed ?? 0}건
+          </p>
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">작업 디렉터리</div>
+          <div className="mt-3 break-all text-sm font-semibold text-slate-900">{processorHealth?.work_dir ?? '미확인'}</div>
+          <p className="mt-4 text-sm text-slate-600">
+            {processorHealth?.public_base_url ?? 'processor URL 미확인'}
+          </p>
+        </div>
+      </section>
+
       <section className="grid gap-3 md:grid-cols-3">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">영상 업로드</div>
@@ -157,6 +196,58 @@ export function MediaPipelineStatusBoard({
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
                 아직 기록된 추출 이력이 없습니다.
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <div className="text-sm font-semibold text-slate-900">최근 processor job</div>
+            {processorHealth?.recent_jobs?.length ? (
+              <div className="space-y-3">
+                {processorHealth.recent_jobs.slice(0, 3).map((job) => (
+                  <div key={job.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{job.lecture_id}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          생성 {formatDateTime(job.created_at)} · 갱신 {formatDateTime(job.updated_at)}
+                        </div>
+                      </div>
+                      <div className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(job.status)}`}>
+                        {statusLabel(job.status)}
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">단계</div>
+                        <div className="mt-1 text-sm text-slate-700">{job.stage}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">세부</div>
+                        <div className="mt-1 text-sm text-slate-700">{job.step}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">오디오 URL</div>
+                        <div className="mt-1 break-all text-sm text-slate-700">{job.audio_url ?? 'callback 대기 중'}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">callback 상태</div>
+                        <div className="mt-1 text-sm text-slate-700">{job.callback_status ?? '없음'}</div>
+                      </div>
+                    </div>
+                    {job.error_message ? (
+                      <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                        {job.error_message}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                processor job 이력이 없습니다.
               </div>
             )}
           </div>

@@ -13,11 +13,21 @@ export async function processAudioExtractionJob(
   job: ProcessorJob,
 ): Promise<void> {
   const paths = buildJobPaths(config.workDir, job.id);
-  jobStore.updateJob(job.id, { files: paths, status: 'PROCESSING', errorMessage: null });
+  jobStore.updateJob(job.id, {
+    files: paths,
+    status: 'PROCESSING',
+    stage: 'downloading',
+    step: '원본 영상을 내려받는 중',
+    errorMessage: null,
+  });
 
   try {
     await ensureWorkDirs(config.workDir);
     await downloadSourceVideo(job.sourceVideoUrl, paths.videoPath);
+    jobStore.updateJob(job.id, {
+      stage: 'extracting',
+      step: 'FFmpeg로 오디오를 추출하는 중',
+    });
     await extractAudioWithFfmpeg(config.ffmpegPath, paths.videoPath, paths.audioPath);
 
     if (!(await fileExists(paths.audioPath))) {
@@ -26,7 +36,8 @@ export async function processAudioExtractionJob(
 
     const audioUrl = `${config.publicBaseUrl}/assets/${job.id}.wav`;
     jobStore.updateJob(job.id, {
-      status: 'COMPLETED',
+      stage: 'callback',
+      step: 'callback으로 결과를 전달하는 중',
       audioUrl,
       files: paths,
       errorMessage: null,
@@ -44,12 +55,23 @@ export async function processAudioExtractionJob(
       sample_rate: 16000,
       channels: 1,
     });
+
+    jobStore.updateJob(job.id, {
+      status: 'COMPLETED',
+      stage: 'completed',
+      step: '오디오 추출과 callback이 완료됨',
+      callbackStatus: 200,
+      completedAt: new Date().toISOString(),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : '오디오 추출에 실패했습니다.';
     jobStore.updateJob(job.id, {
       status: 'FAILED',
+      stage: 'failed',
+      step: '실패',
       errorMessage: message,
       files: paths,
+      completedAt: new Date().toISOString(),
     });
 
     try {
@@ -59,9 +81,16 @@ export async function processAudioExtractionJob(
           status: 'FAILED',
           error_message: message,
         });
+        jobStore.updateJob(job.id, {
+          callbackStatus: 200,
+        });
       }
     } catch {
       // callback failure is reflected in the local job state; keep the original extraction error.
+      jobStore.updateJob(job.id, {
+        callbackStatus: 500,
+        step: 'callback 전달 실패',
+      });
     }
   } finally {
     await fs.rm(paths.videoPath, { force: true }).catch(() => undefined);
