@@ -211,9 +211,12 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     try {
       const uploadResult = await uploadLectureVideoDetailed(lectureId, videoFile, sessionToken);
       if (!uploadResult?.success || !uploadResult.data) {
-        setBannerDescription(getAiErrorMessage(uploadResult, '영상 업로드에 실패했습니다. R2 binding과 권한을 확인해 주세요.'));
+        const fallbackMessage = uploadResult
+          ? '영상 업로드에 실패했습니다. R2 binding, 권한, 또는 저장소 상태를 확인해 주세요.'
+          : '백엔드에 연결할 수 없습니다. `npm run dev`로 backend와 media processor가 실행 중인지 확인해 주세요.';
+        setBannerDescription(getAiErrorMessage(uploadResult, fallbackMessage));
         setBannerMeta(getQuotaStatusText(uploadResult));
-        setNotice(getAiErrorMessage(uploadResult, '영상 업로드에 실패했습니다. R2 binding과 권한을 확인해 주세요.'));
+        setNotice(getAiErrorMessage(uploadResult, fallbackMessage));
         return;
       }
 
