@@ -95,6 +95,7 @@ media.post('/transcribe', async (c) => {
 
   const body = await readJsonBody<TranscriptCreateRequest>(c.req.raw);
   const lectureId = body?.lecture_id?.trim();
+  const language = body?.language === 'en' ? 'en' : 'ko';
 
   if (!lectureId) {
     return jsonFailure('LECTURE_ID_REQUIRED', 'lecture_id가 필요합니다.');
@@ -113,7 +114,7 @@ media.post('/transcribe', async (c) => {
     text: body?.text?.trim(),
     audio_url: body?.audio_url?.trim(),
     duration_ms: body?.duration_ms,
-    language: body?.language ?? 'ko',
+    language,
     stt_provider: body?.stt_provider?.trim(),
     stt_model: body?.stt_model?.trim(),
   }, undefined, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
@@ -125,6 +126,16 @@ media.post('/transcribe', async (c) => {
 
     return jsonFailure('TRANSCRIPT_FAILED', '트랜스크립트를 생성할 수 없습니다.', 400);
   }
+
+  await createLectureSummaryNote(
+    user.id,
+    {
+      lecture_id: lectureId,
+      style: 'timeline',
+      language,
+    },
+    getMediaRepository(c.env as RuntimeBindings | undefined),
+  );
 
   return jsonSuccess(
     {

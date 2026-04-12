@@ -174,7 +174,7 @@ export async function getLectureSourceText(
 
   const transcript = await getLectureTranscript(lecture.id, repository);
   const note = (await listLectureNotes(lecture.id, repository))[0];
-  const sourceText = normalizeText(note?.content ?? transcript?.full_text ?? lecture.content_text);
+  const sourceText = normalizeText(transcript?.full_text ?? note?.content ?? lecture.content_text);
 
   return {
     lectureTitle: lecture.title,

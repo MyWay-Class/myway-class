@@ -1,4 +1,5 @@
 import { createAISummary } from '../ai-learning';
+import { getLectureDetail } from '../../lms/learning';
 import type {
   AIAction,
   AIAnswerRequest,
@@ -41,6 +42,10 @@ function scoreCandidates(query: string, hits: AISearchResult['hits'], limit: num
     .filter((hit) => hit.similarity > 0 || queryTokens.length === 0);
   rankedHits.sort((left, right) => right.similarity - left.similarity || left.title.localeCompare(right.title));
   return rankedHits.slice(0, limit);
+}
+
+function isInstructorMetaQuestion(message: string): boolean {
+  return /교수|교수님|강사|담당|누가|이름/.test(message);
 }
 
 export function classifyAIIntent(input: AIIntentRequest): AIIntentResult {
@@ -86,6 +91,25 @@ export async function answerAIQuestion(
   input: AIAnswerRequest,
   repository: MediaRepository = memoryMediaRepository,
 ): Promise<AIAnswerResult> {
+  const normalizedQuestion = normalizeText(input.question);
+  const lecture = input.lecture_id ? getLectureDetail(input.lecture_id) : undefined;
+  if (lecture && isInstructorMetaQuestion(normalizedQuestion)) {
+    return {
+      question: input.question,
+      lecture_id: input.lecture_id ?? null,
+      intent: classifyAIIntent({
+        message: input.question,
+        lecture_id: input.lecture_id,
+      }),
+      answer: `${lecture.course_title}의 담당 강사는 ${lecture.course_instructor}입니다.`,
+      references: [],
+      suggestions: [
+        `${lecture.course_instructor} 강사의 다른 강의도 보여줘.`,
+        `${lecture.course_title}의 핵심 내용을 요약해줘.`,
+      ],
+    };
+  }
+
   const intent = classifyAIIntent({
     message: input.question,
     lecture_id: input.lecture_id,

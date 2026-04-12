@@ -4,6 +4,7 @@ import { CourseExploreCard } from '../components/CourseExploreCard';
 import { CourseExploreDetailPanel } from '../components/CourseExploreDetailPanel';
 import { CourseExploreFilters } from '../components/CourseExploreFilters';
 import { CourseExploreHero } from '../components/CourseExploreHero';
+import { LectureSideChatPanel } from '../components/LectureSideChatPanel';
 import type { LmsPageId } from '../types';
 
 type CoursesPageProps = {
@@ -13,6 +14,7 @@ type CoursesPageProps = {
   selectedLectureId: string;
   canManageCurrent: boolean;
   busy: boolean;
+  sessionToken?: string | null;
   onCreateCourse: (input: import('@myway/shared').CourseCreateRequest) => Promise<import('@myway/shared').CourseDetail | null>;
   onNavigate: (page: LmsPageId) => void;
   onSelectCourse: (courseId: string) => void;
@@ -43,6 +45,7 @@ export function CoursesPage({
   highlightedLecture,
   selectedLectureId,
   canManageCurrent,
+  sessionToken,
   onNavigate,
   onSelectCourse,
   onSelectLecture,
@@ -130,40 +133,68 @@ export function CoursesPage({
         resultCount={filteredCourses.length}
       />
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
-          {filteredCourses.length > 0 ? (
-            filteredCourses.map((item) => (
-              <CourseExploreCard key={item.id} course={item} selected={selectedCourse?.id === item.id} onSelect={onSelectCourse} />
-            ))
-          ) : (
-            <div className="md:col-span-2">
-              <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[26px] text-slate-400 shadow-sm">
-                    <i className="ri-search-line" />
+      <section className="space-y-5">
+        <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-[15px] font-bold text-slate-900">선택한 강의 작업 공간</h3>
+              <p className="mt-1 text-[12px] text-slate-500">
+                강의 상세, 영상 시청, 우측 챗봇, 숏폼 만들기를 한 곳에 모아두었습니다.
+              </p>
+            </div>
+            {course ? (
+              <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
+                현재 선택: {course.title}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+            <CourseExploreDetailPanel
+              course={course}
+              highlightedLecture={detailLecture}
+              selectedLectureId={selectedLectureId}
+              activeTab={activeTab}
+              canManageCurrent={canManageCurrent}
+              onSelectLecture={onSelectLecture}
+              onTabChange={setActiveTab}
+              onNavigate={onNavigate}
+            />
+            <LectureSideChatPanel highlightedLecture={detailLecture} sessionToken={sessionToken} />
+          </div>
+        </div>
+
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-[15px] font-bold text-slate-900">다른 강의 둘러보기</h3>
+              <p className="mt-1 text-[12px] text-slate-500">선택한 강의를 보면서 아래 카드로 다른 강의도 빠르게 바꿀 수 있습니다.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
+            {filteredCourses.length > 0 ? (
+              filteredCourses.map((item) => (
+                <CourseExploreCard key={item.id} course={item} selected={selectedCourse?.id === item.id} onSelect={onSelectCourse} />
+              ))
+            ) : (
+              <div className="md:col-span-2">
+                <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[26px] text-slate-400 shadow-sm">
+                      <i className="ri-search-line" />
+                    </div>
+                    <h3 className="mt-4 text-center text-[16px] font-bold text-slate-900">검색 결과가 없습니다.</h3>
+                    <p className="mx-auto mt-2 max-w-md text-center text-[13px] leading-6 text-slate-500">
+                      검색어, 카테고리, 수강 상태를 조금 바꾸면 원하는 강의를 다시 찾을 수 있습니다.
+                    </p>
                   </div>
-                  <h3 className="mt-4 text-center text-[16px] font-bold text-slate-900">검색 결과가 없습니다.</h3>
-                  <p className="mx-auto mt-2 max-w-md text-center text-[13px] leading-6 text-slate-500">
-                    검색어, 카테고리, 수강 상태를 조금 바꾸면 원하는 강의를 다시 찾을 수 있습니다.
-                  </p>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </section>
-
-        <aside className="space-y-5">
-          <CourseExploreDetailPanel
-            course={course}
-            highlightedLecture={detailLecture}
-            selectedLectureId={selectedLectureId}
-            activeTab={activeTab}
-            onSelectLecture={onSelectLecture}
-            onTabChange={setActiveTab}
-          />
-        </aside>
-      </div>
+      </section>
     </div>
   );
 }

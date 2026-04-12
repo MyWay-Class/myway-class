@@ -7,12 +7,19 @@ import {
   type MediaRepository,
 } from '@myway/shared';
 import { runAIAnswerWithExecution, runAIIntentWithExecution, runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine-runners';
-import type { RuntimeBindings } from './runtime-env';
+import { getAIRuntimePolicy, type RuntimeBindings } from './runtime-env';
 
 type SmartChatMetadata = {
   provider: AIProviderName;
   model: string;
 };
+
+const DEMO_SMART_MODEL = 'demo-smart-v1';
+
+function logSmartChatTiming(stage: string, startedAt: number, details: Record<string, unknown>): void {
+  const elapsedMs = Math.round(performance.now() - startedAt);
+  console.info('[smart-chat]', JSON.stringify({ stage, elapsed_ms: elapsedMs, ...details }));
+}
 
 function normalizeRoute(intent: SmartChatResult['intent']['intent']): SmartChatRoute {
   if (intent === 'request_summary') return 'summary';
@@ -45,6 +52,7 @@ export async function runSmartChat(
   env?: RuntimeBindings,
   repository?: MediaRepository,
 ): Promise<SmartChatResult> {
+  const startedAt = performance.now();
   const message = input.message.trim();
   const lectureId = input.lecture_id?.trim() ?? null;
   const courseId = input.course_id?.trim() ?? null;
@@ -54,7 +62,43 @@ export async function runSmartChat(
     lecture_id: lectureId ?? undefined,
     course_id: courseId ?? undefined,
   };
+  const policy = getAIRuntimePolicy(env);
 
+  const fallbackStartedAt = performance.now();
+  const baseFallback = await buildSmartChatOverview(normalizedInput);
+  logSmartChatTiming('base_fallback', fallbackStartedAt, {
+    route: baseFallback.route,
+    intent: baseFallback.intent.intent,
+    lecture_id: lectureId,
+    course_id: courseId,
+  });
+
+  if (policy.public_mode === 'dev') {
+    logSmartChatTiming('complete', startedAt, {
+      mode: 'dev',
+      route: baseFallback.route,
+      intent: baseFallback.intent.intent,
+      provider: 'demo',
+      model: DEMO_SMART_MODEL,
+    });
+
+    return attachMetadata(
+      {
+        ...baseFallback,
+        message,
+        lecture_id: lectureId,
+        course_id: courseId,
+        route: baseFallback.route,
+        intent: baseFallback.intent,
+      },
+      {
+        provider: 'demo',
+        model: DEMO_SMART_MODEL,
+      },
+    );
+  }
+
+  const intentStartedAt = performance.now();
   const intentExecution = await runAIIntentWithExecution(
     {
       message,
@@ -64,9 +108,14 @@ export async function runSmartChat(
     undefined,
     env,
   );
+  logSmartChatTiming('intent', intentStartedAt, {
+    provider: intentExecution.provider,
+    model: intentExecution.model,
+    intent: intentExecution.result.intent,
+    route: normalizeRoute(intentExecution.result.intent),
+  });
 
   const route = normalizeRoute(intentExecution.result.intent);
-  const baseFallback = await buildSmartChatOverview(normalizedInput);
   const sharedResult = attachMetadata(
     {
       ...baseFallback,
@@ -83,6 +132,7 @@ export async function runSmartChat(
   );
 
   if (route === 'summary' && lectureId) {
+    const summaryStartedAt = performance.now();
     const summaryExecution = await runAISummaryWithEngine(
       {
         lecture_id: lectureId,
@@ -93,8 +143,21 @@ export async function runSmartChat(
       env,
       repository,
     );
+    logSmartChatTiming('summary', summaryStartedAt, {
+      provider: summaryExecution?.provider ?? 'demo',
+      model: summaryExecution?.model ?? 'demo-summary-v1',
+      has_result: Boolean(summaryExecution),
+    });
 
     if (summaryExecution) {
+      logSmartChatTiming('complete', startedAt, {
+        mode: policy.public_mode,
+        route,
+        intent: intentExecution.result.intent,
+        provider: summaryExecution.provider,
+        model: summaryExecution.model,
+      });
+
       return attachMetadata(
         {
           message,
@@ -116,6 +179,7 @@ export async function runSmartChat(
   }
 
   if (route === 'quiz' && lectureId) {
+    const quizStartedAt = performance.now();
     const quizExecution = await runAIQuizWithEngine(
       {
         lecture_id: lectureId,
@@ -126,8 +190,21 @@ export async function runSmartChat(
       env,
       repository,
     );
+    logSmartChatTiming('quiz', quizStartedAt, {
+      provider: quizExecution?.provider ?? 'demo',
+      model: quizExecution?.model ?? 'demo-quiz-v1',
+      has_result: Boolean(quizExecution),
+    });
 
     if (quizExecution) {
+      logSmartChatTiming('complete', startedAt, {
+        mode: policy.public_mode,
+        route,
+        intent: intentExecution.result.intent,
+        provider: quizExecution.provider,
+        model: quizExecution.model,
+      });
+
       return attachMetadata(
         {
           message,
@@ -149,6 +226,7 @@ export async function runSmartChat(
   }
 
   if (route === 'answer') {
+    const answerStartedAt = performance.now();
     const answerExecution = await runAIAnswerWithExecution(
       {
         question: message,
@@ -159,6 +237,17 @@ export async function runSmartChat(
       env,
       repository,
     );
+    logSmartChatTiming('answer', answerStartedAt, {
+      provider: answerExecution.provider,
+      model: answerExecution.model,
+    });
+    logSmartChatTiming('complete', startedAt, {
+      mode: policy.public_mode,
+      route,
+      intent: intentExecution.result.intent,
+      provider: answerExecution.provider,
+      model: answerExecution.model,
+    });
 
     return attachMetadata(
       {
@@ -177,6 +266,14 @@ export async function runSmartChat(
       },
     );
   }
+
+  logSmartChatTiming('complete', startedAt, {
+    mode: policy.public_mode,
+    route,
+    intent: intentExecution.result.intent,
+    provider: sharedResult.provider,
+    model: sharedResult.model,
+  });
 
   return sharedResult;
 }

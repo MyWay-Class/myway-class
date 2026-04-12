@@ -134,6 +134,12 @@ export function buildAnswerFromReference(hits: AISearchHit[], lectureId?: string
   }
 
   const topHit = hits[0];
+  if (topHit.similarity < 0.25) {
+    return lectureId
+      ? '강의 근거와 질문의 연결이 약합니다. 질문을 조금 더 구체적으로 바꿔 주세요.'
+      : '근거와 질문의 연결이 약합니다. 강의 식별자나 키워드를 더 구체적으로 알려 주세요.';
+  }
+
   const nextHit = hits[1];
   const lead = topHit.source_type === 'note' ? '요약 노트를 기준으로 보면' : '강의 근거를 기준으로 보면';
   const nextSentence = nextHit ? ` 추가로 ${nextHit.excerpt.slice(0, 80)}.` : '';

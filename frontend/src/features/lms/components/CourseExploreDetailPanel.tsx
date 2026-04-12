@@ -7,8 +7,10 @@ type CourseExploreDetailPanelProps = {
   highlightedLecture: LectureDetail | null;
   selectedLectureId: string;
   activeTab: '강의' | '공지' | '자료' | 'Q&A';
+  canManageCurrent: boolean;
   onSelectLecture: (lectureId: string) => void;
   onTabChange: (tab: '강의' | '공지' | '자료' | 'Q&A') => void;
+  onNavigate: (page: 'courses' | 'shortform' | 'ai-chat' | 'course-create' | 'lecture-studio' | 'media-pipeline') => void;
 };
 
 const courseTabs: { key: '강의' | '공지' | '자료' | 'Q&A'; label: string; icon: string }[] = [
@@ -115,8 +117,10 @@ export function CourseExploreDetailPanel({
   highlightedLecture,
   selectedLectureId,
   activeTab,
+  canManageCurrent,
   onSelectLecture,
   onTabChange,
+  onNavigate,
 }: CourseExploreDetailPanelProps) {
   const detailLecture = highlightedLecture;
 
@@ -243,6 +247,36 @@ export function CourseExploreDetailPanel({
                         </div>
                       </div>
                       <p className="mt-4 text-[13px] leading-7 text-slate-600">{detailLecture.transcript_excerpt}</p>
+                      {detailLecture.video_url ? (
+                        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-black">
+                          <video className="h-auto w-full max-h-[240px]" controls preload="metadata" src={detailLecture.video_url} />
+                        </div>
+                      ) : null}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('ai-chat')}
+                          className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                        >
+                          챗봇으로 질문
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('shortform')}
+                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                        >
+                          숏폼 만들기
+                        </button>
+                        {canManageCurrent ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('media-pipeline')}
+                            className="rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-[12px] font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                          >
+                            업로드/전사 관리
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   ) : null}
                 </div>

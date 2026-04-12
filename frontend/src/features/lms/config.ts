@@ -14,15 +14,12 @@ export function userDescription(role: AuthUser['role']): string {
 }
 
 export function defaultPageForRole(session: LoginResponse | null): LmsPageId {
-  if (!session) return 'dashboard';
-  if (session.user.role === 'ADMIN') return 'admin-automation';
-  if (session.user.role === 'INSTRUCTOR') return 'my-courses';
   return 'dashboard';
 }
 
 export function pageTitle(page: LmsPageId, role: UserRole): string {
   const titles: Record<LmsPageId, string> = {
-    dashboard: '대시보드',
+    dashboard: '홈',
     courses: '강의 목록',
     'my-courses': '내 강의 관리',
     'course-create': '강의 워크스페이스',
@@ -43,7 +40,7 @@ export function pageTitle(page: LmsPageId, role: UserRole): string {
   };
 
   if (page === 'dashboard' && role === 'INSTRUCTOR') {
-    return '강의 대시보드';
+    return '강의 홈';
   }
 
   return titles[page];
@@ -54,7 +51,7 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
     {
       label: '주요 메뉴',
       items: [
-        { page: 'dashboard', icon: 'ri-dashboard-line', label: '대시보드' },
+        { page: 'dashboard', icon: 'ri-home-4-line', label: '홈' },
         { page: 'courses', icon: 'ri-book-2-line', label: '강의 목록', aliases: ['lecture-watch'] },
       ],
     },

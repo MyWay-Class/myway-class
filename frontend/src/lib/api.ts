@@ -50,6 +50,7 @@ export {
   uploadLectureVideoDetailed,
   createAudioExtraction,
   createAudioExtractionDetailed,
+  loadLectureTranscriptDetailed,
   loadMediaPipeline,
   loadMediaProcessorHealth,
   loadMediaProviders,

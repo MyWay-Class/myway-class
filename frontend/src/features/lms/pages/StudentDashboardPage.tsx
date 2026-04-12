@@ -8,6 +8,7 @@ type StudentDashboardPageProps = {
   highlightedLecture: LectureDetail | null;
   recommendations: AIRecommendationOverview | null;
   onSelectCourse: (courseId: string) => void;
+  onNavigate: (page: 'dashboard' | 'courses' | 'shortform' | 'community' | 'my-shortforms' | 'ai-chat') => void;
 };
 
 export function StudentDashboardPage({
@@ -16,6 +17,7 @@ export function StudentDashboardPage({
   highlightedLecture,
   recommendations,
   onSelectCourse,
+  onNavigate,
 }: StudentDashboardPageProps) {
   const averageProgress =
     dashboard?.average_progress ?? Math.round(courses.reduce((sum, course) => sum + course.progress_percent, 0) / Math.max(courses.length, 1));
@@ -122,6 +124,32 @@ export function StudentDashboardPage({
             <div className="text-[14px] font-semibold text-slate-900">{highlightedLecture.title}</div>
             <div className="mt-1 text-[12px] text-slate-500">
               {highlightedLecture.course_title} · {highlightedLecture.course_instructor}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectCourse(highlightedLecture.course_id);
+                  onNavigate('courses');
+                }}
+                className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+              >
+                강의 상세 열기
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('ai-chat')}
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                챗봇으로 질문
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('shortform')}
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                숏폼 만들기
+              </button>
             </div>
           </div>
         </section>

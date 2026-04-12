@@ -11,10 +11,46 @@ type ShortformWizardStep3Props = {
   onSave: () => void;
   onShare: () => void;
   onRemoveClip: (key: string) => void;
+  onUpdateClipTimes: (key: string, startTimeMs: number, endTimeMs: number) => void;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   formatDuration: (ms: number) => string;
 };
+
+function formatTimestampInput(ms: number): string {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function parseTimestampInput(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parts = trimmed.split(':').map((part) => Number(part));
+  if (parts.some((part) => Number.isNaN(part))) {
+    return null;
+  }
+
+  if (parts.length === 1) {
+    return Math.max(0, Math.round(parts[0] * 1000));
+  }
+
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts;
+    return Math.max(0, Math.round((minutes * 60 + seconds) * 1000));
+  }
+
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts;
+    return Math.max(0, Math.round((hours * 3600 + minutes * 60 + seconds) * 1000));
+  }
+
+  return null;
+}
 
 export function ShortformWizardStep3({
   courseTitle,
@@ -27,6 +63,7 @@ export function ShortformWizardStep3({
   onSave,
   onShare,
   onRemoveClip,
+  onUpdateClipTimes,
   onTitleChange,
   onDescriptionChange,
   formatDuration,
@@ -66,17 +103,53 @@ export function ShortformWizardStep3({
           {selectedClips.map((clip, index) => {
             const key = `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
             return (
-              <div key={key} className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs">
-                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-indigo-100 text-[10px] font-bold text-indigo-600">
-                  {index + 1}
-                </span>
-                <span className="min-w-0 flex-1 truncate">
-                  {clip.lecture_title} - {clip.label}
-                </span>
-                <span className="text-white/60">{formatDuration(clip.end_time_ms - clip.start_time_ms)}</span>
-                <button type="button" onClick={() => onRemoveClip(key)} className="text-white/35 hover:text-white">
-                  <i className="ri-close-line" />
-                </button>
+              <div key={key} className="space-y-3 rounded-2xl bg-white/5 px-3 py-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-indigo-100 text-[10px] font-bold text-indigo-600">
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {clip.lecture_title} - {clip.label}
+                  </span>
+                  <span className="text-white/60">{formatDuration(clip.end_time_ms - clip.start_time_ms)}</span>
+                  <button type="button" onClick={() => onRemoveClip(key)} className="text-white/35 hover:text-white">
+                    <i className="ri-close-line" />
+                  </button>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="space-y-1">
+                    <span className="text-[10px] uppercase tracking-[0.08em] text-white/45">시작 시각</span>
+                    <input
+                      value={formatTimestampInput(clip.start_time_ms)}
+                      onChange={(event) => {
+                        const nextStart = parseTimestampInput(event.target.value);
+                        if (nextStart === null) {
+                          return;
+                        }
+
+                        onUpdateClipTimes(key, nextStart, clip.end_time_ms);
+                      }}
+                      placeholder="00:00"
+                      className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[12px] text-white outline-none transition focus:border-indigo-300"
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-[10px] uppercase tracking-[0.08em] text-white/45">끝 시각</span>
+                    <input
+                      value={formatTimestampInput(clip.end_time_ms)}
+                      onChange={(event) => {
+                        const nextEnd = parseTimestampInput(event.target.value);
+                        if (nextEnd === null) {
+                          return;
+                        }
+
+                        onUpdateClipTimes(key, clip.start_time_ms, nextEnd);
+                      }}
+                      placeholder="00:30"
+                      className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[12px] text-white outline-none transition focus:border-indigo-300"
+                    />
+                  </label>
+                </div>
               </div>
             );
           })}
