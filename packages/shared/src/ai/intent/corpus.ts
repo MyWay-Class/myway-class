@@ -4,6 +4,13 @@ import { getLectureTranscript, listLectureNotes, type MediaRepository, memoryMed
 import type { AIChunkSource, AIReference, AISearchHit, AIRagChunk, AIRagRequest } from '../../types';
 import { buildChunkText as buildChunkTextFromText, scoreChunk as scoreChunkFromText } from './helpers';
 
+export type LectureSourceSnapshot = {
+  lecture: NonNullable<ReturnType<typeof getLectureDetail>>;
+  transcript: Awaited<ReturnType<typeof getLectureTranscript>> | null;
+  note: Awaited<ReturnType<typeof listLectureNotes>>[number] | null;
+  source_text: string;
+};
+
 function listTargetLectureIds(lectureId?: string): string[] {
   if (lectureId) {
     return [lectureId];
@@ -18,6 +25,26 @@ export function buildChunkText(text: string, maxChunks = 3): string[] {
 
 export function scoreChunk(queryTokens: string[], candidateText: string, title: string): number {
   return scoreChunkFromText(queryTokens, candidateText, title);
+}
+
+export async function buildLectureSourceSnapshot(
+  lectureId: string,
+  repository: MediaRepository = memoryMediaRepository,
+): Promise<LectureSourceSnapshot | null> {
+  const lecture = getLectureDetail(lectureId);
+  if (!lecture) {
+    return null;
+  }
+
+  const transcript = await getLectureTranscript(lecture.id, repository);
+  const note = (await listLectureNotes(lecture.id, repository))[0] ?? null;
+
+  return {
+    lecture,
+    transcript,
+    note,
+    source_text: [transcript?.full_text, note?.content, lecture.content_text].filter(Boolean).join('\n\n'),
+  };
 }
 
 function countTokens(text: string): number {
@@ -54,29 +81,14 @@ export async function collectLectureReferences(
   lectureId: string,
   repository: MediaRepository = memoryMediaRepository,
 ): Promise<AIReference[]> {
-  const lecture = getLectureDetail(lectureId);
-  if (!lecture) {
+  const snapshot = await buildLectureSourceSnapshot(lectureId, repository);
+  if (!snapshot) {
     return [];
   }
 
+  const { lecture, transcript, note } = snapshot;
   const references: AIReference[] = [];
   const lectureChunks = buildChunkText(`${lecture.title}. ${lecture.content_text}`, 2);
-
-  lectureChunks.forEach((chunk, index) => {
-    references.push(
-      createReference(
-        lecture.id,
-        'lecture',
-        lecture.id,
-        `${lecture.course_title} · ${lecture.title} · 강의 본문`,
-        chunk,
-        index,
-        0.82 - index * 0.05,
-      ),
-    );
-  });
-
-  const transcript = await getLectureTranscript(lecture.id, repository);
   transcript?.segments.slice(0, 2).forEach((segment, index) => {
     references.push(
       createReference(
@@ -91,7 +103,6 @@ export async function collectLectureReferences(
     );
   });
 
-  const note = (await listLectureNotes(lecture.id, repository))[0];
   if (note) {
     const noteChunks = buildChunkText(`${note.title}. ${note.content}`, 2);
     noteChunks.slice(0, 2).forEach((chunk, index) => {
@@ -109,6 +120,20 @@ export async function collectLectureReferences(
     });
   }
 
+  lectureChunks.forEach((chunk, index) => {
+    references.push(
+      createReference(
+        lecture.id,
+        'lecture',
+        lecture.id,
+        `${lecture.course_title} · ${lecture.title} · 강의 본문`,
+        chunk,
+        index,
+        0.82 - index * 0.05,
+      ),
+    );
+  });
+
   return references;
 }
 
@@ -123,31 +148,13 @@ export async function buildCorpusForLecture(
   lectureId: string,
   repository: MediaRepository = memoryMediaRepository,
 ): Promise<AIRagChunk[]> {
-  const lecture = getLectureDetail(lectureId);
-  if (!lecture) {
+  const snapshot = await buildLectureSourceSnapshot(lectureId, repository);
+  if (!snapshot) {
     return [];
   }
 
-  const transcript = await getLectureTranscript(lectureId, repository);
-  const note = (await listLectureNotes(lectureId, repository))[0];
+  const { lecture, transcript, note } = snapshot;
   const chunks: AIRagChunk[] = [];
-
-  const lectureChunks = buildChunkText(`${lecture.title}. ${lecture.content_text}`, 2);
-  lectureChunks.forEach((chunk, index) => {
-    chunks.push({
-      id: `lecture_${lecture.id}_${String(index + 1).padStart(2, '0')}`,
-      lecture_id: lecture.id,
-      source_type: 'lecture',
-      source_id: lecture.id,
-      title: `${lecture.course_title} · ${lecture.title} · 강의 본문`,
-      content: chunk.slice(0, 240),
-      excerpt: chunk.slice(0, 240),
-      similarity: 0,
-      chunk_index: index,
-      source_scope: 'lecture',
-      token_count: countTokens(chunk),
-    });
-  });
 
   transcript?.segments.forEach((segment) => {
     const content = segment.text.trim();
@@ -190,6 +197,23 @@ export async function buildCorpusForLecture(
       });
     });
   }
+
+  const lectureChunks = buildChunkText(`${lecture.title}. ${lecture.content_text}`, 2);
+  lectureChunks.forEach((chunk, index) => {
+    chunks.push({
+      id: `lecture_${lecture.id}_${String(index + 1).padStart(2, '0')}`,
+      lecture_id: lecture.id,
+      source_type: 'lecture',
+      source_id: lecture.id,
+      title: `${lecture.course_title} · ${lecture.title} · 강의 본문`,
+      content: chunk.slice(0, 240),
+      excerpt: chunk.slice(0, 240),
+      similarity: 0,
+      chunk_index: index,
+      source_scope: 'lecture',
+      token_count: countTokens(chunk),
+    });
+  });
 
   return chunks;
 }
