@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { defaultPageForRole, pageTitle } from '../features/lms/config';
 import { AppShell } from '../features/lms/components/AppShell';
-import { LoginScreen } from '../features/lms/components/LoginScreen';
 import { StatePanel } from '../features/lms/components/StatePanel';
 import { RolePageRouter } from '../features/lms/pages/RolePageRouter';
+import { PublicHomePage } from '../features/lms/pages/PublicHomePage';
 import type { LmsDashboardProps, LmsPageId } from '../features/lms/types';
 
 export function LmsDashboard(props: LmsDashboardProps) {
@@ -33,7 +33,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
   }
 
   if (!props.session) {
-    return <LoginScreen demoUsers={props.demoUsers} busy={props.busy} onLogin={props.onLogin} />;
+    return <PublicHomePage courseCards={props.courseCards} demoUsers={props.demoUsers} busy={props.busy} onLogin={props.onLogin} />;
   }
 
   return (
