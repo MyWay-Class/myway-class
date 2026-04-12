@@ -95,8 +95,8 @@ export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: Cours
           </p>
         </div>
         <div className="rounded-2xl border border-indigo-100 bg-white/80 px-4 py-3 text-[12px] text-slate-500">
-          <div className="font-semibold text-slate-900">생성 후 자동 연결</div>
-          <div className="mt-1 leading-6">강의 목록 · 상세 · 스튜디오 · 미디어 파이프라인</div>
+          <div className="font-semibold text-slate-900">생성 후 다음 단계</div>
+          <div className="mt-1 leading-6">개설 워크스페이스 · 제작 스튜디오 · 미디어 파이프라인</div>
         </div>
       </div>
 
@@ -168,9 +168,9 @@ export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: Cours
         </label>
 
         <div className="xl:col-span-2">
-        <div className="rounded-2xl border border-dashed border-indigo-200 bg-white px-4 py-4 text-[12px] leading-6 text-slate-600">
-          {message}
-        </div>
+          <div className="rounded-2xl border border-dashed border-indigo-200 bg-white px-4 py-4 text-[12px] leading-6 text-slate-600">
+            {message}
+          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-[12px] leading-6 text-slate-600 xl:col-span-2">

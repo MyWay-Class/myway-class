@@ -16,7 +16,7 @@ export function userDescription(role: AuthUser['role']): string {
 export function defaultPageForRole(session: LoginResponse | null): LmsPageId {
   if (!session) return 'dashboard';
   if (session.user.role === 'ADMIN') return 'admin-automation';
-  if (session.user.role === 'INSTRUCTOR') return 'lecture-studio';
+  if (session.user.role === 'INSTRUCTOR') return 'course-create';
   return 'dashboard';
 }
 
@@ -24,7 +24,7 @@ export function pageTitle(page: LmsPageId, role: UserRole): string {
   const titles: Record<LmsPageId, string> = {
     dashboard: '대시보드',
     courses: '강의 목록',
-    'course-create': '강의 개설',
+    'course-create': '강의 워크스페이스',
     'lecture-studio': '강의 제작 스튜디오',
     shortform: '숏폼 제작',
     community: '숏폼 커뮤니티',
@@ -76,7 +76,7 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
       {
         label: '제작 도구',
         items: [
-          { page: 'course-create', icon: 'ri-add-circle-line', label: '강의 개설', badge: 'NEW' },
+          { page: 'course-create', icon: 'ri-add-circle-line', label: '강의 워크스페이스', badge: 'NEW' },
           { page: 'lecture-studio', icon: 'ri-layout-masonry-line', label: '강의 제작 스튜디오', badge: 'NEW' },
           { page: 'media-pipeline', icon: 'ri-movie-2-line', label: '미디어 파이프라인' },
           { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작' },
@@ -107,7 +107,7 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
       {
         label: '강의 관리',
         items: [
-          { page: 'course-create', icon: 'ri-add-circle-line', label: '강의 개설' },
+          { page: 'course-create', icon: 'ri-add-circle-line', label: '강의 워크스페이스' },
           { page: 'admin-instructors', icon: 'ri-user-star-line', label: '강사 관리' },
           { page: 'admin-assign', icon: 'ri-links-line', label: '강사·수강생 배정' },
           { page: 'admin-stats', icon: 'ri-bar-chart-box-line', label: '통계 현황' },

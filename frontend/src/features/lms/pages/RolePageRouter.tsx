@@ -101,10 +101,12 @@ export function RolePageRouter({
             courses={courseCards}
             canManageCurrent={true}
             busy={busy}
+            sessionToken={sessionToken}
+            selectedCourse={selectedCourse}
+            highlightedLecture={highlightedLecture}
             onCreateCourse={onCreateCourse}
             onSelectCourse={onSelectCourse}
             onSelectLecture={onSelectLecture}
-            onNavigate={onNavigate}
           />
         );
       case 'admin-users':
@@ -154,10 +156,12 @@ export function RolePageRouter({
           courses={courseCards}
           canManageCurrent={true}
           busy={busy}
+          sessionToken={sessionToken}
+          selectedCourse={selectedCourse}
+          highlightedLecture={highlightedLecture}
           onCreateCourse={onCreateCourse}
           onSelectCourse={onSelectCourse}
           onSelectLecture={onSelectLecture}
-          onNavigate={onNavigate}
         />
       );
     }
