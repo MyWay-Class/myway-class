@@ -57,6 +57,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
         </div>
       ) : null}
       <RolePageRouter
+        busy={props.busy}
         session={props.session}
         page={activePage}
         loading={props.loading}
@@ -68,11 +69,13 @@ export function LmsDashboard(props: LmsDashboardProps) {
         courseCards={props.courseCards}
         insights={props.insights}
         providers={props.providers}
+        onCreateCourse={props.onCreateCourse}
         onSelectCourse={props.onSelectCourse}
         onSelectLecture={props.onSelectLecture}
         demoUsers={props.demoUsers}
         selectedCourse={props.selectedCourse}
         selectedLectureId={props.selectedLectureId}
+        onNavigate={setActivePage}
       />
     </AppShell>
   );

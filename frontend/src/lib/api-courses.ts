@@ -1,4 +1,5 @@
 import {
+  createCourseRecord,
   canEnroll,
   completeLectureProgress,
   enrollUser,
@@ -6,6 +7,7 @@ import {
   getDashboard,
   getLectureDetail,
   getRoleLabel,
+  type CourseCreateRequest,
   type CourseCard,
   type CourseDetail,
   type LectureDetail,
@@ -29,6 +31,29 @@ export async function loadCourses(sessionToken?: string | null): Promise<CourseC
   const userId = getFallbackUserId();
   const response = await request<CourseCard[]>(`/api/v1/courses?userId=${encodeURIComponent(userId)}`, undefined, token);
   return unwrap(response, () => getDashboard(userId).courses);
+}
+
+export async function createCourse(
+  input: CourseCreateRequest,
+  sessionToken?: string | null,
+): Promise<CourseDetail | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  const userId = getStoredAuth()?.user.id ?? getFallbackUserId();
+
+  if (!token) {
+    return createCourseRecord(userId, input);
+  }
+
+  const response = await request<CourseDetail>(
+    '/api/v1/courses',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return response?.success && response.data ? response.data : createCourseRecord(userId, input);
 }
 
 export async function loadCourseDetail(courseId: string, sessionToken?: string | null): Promise<CourseDetail | null> {
