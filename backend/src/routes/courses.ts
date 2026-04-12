@@ -74,6 +74,20 @@ courses.get('/', (c) => {
   return jsonSuccess(listCourseCards(userId));
 });
 
+courses.get('/manage', (c) => {
+  const user = getAuthenticatedUser(c.req.raw);
+  if (!user) {
+    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+  }
+
+  if (!canManageCourses(user.role)) {
+    return jsonFailure('FORBIDDEN', '강의 관리 페이지를 사용할 권한이 없습니다.', 403);
+  }
+
+  const managedCourses = listCourseCards(user.id).filter((course) => user.role === 'ADMIN' || course.instructor_id === user.id);
+  return jsonSuccess(managedCourses, '내 강의 목록을 조회했습니다.');
+});
+
 courses.get('/:courseId', (c) => {
   const userId = getAuthenticatedUser(c.req.raw)?.id ?? 'guest';
   const courseId = c.req.param('courseId');

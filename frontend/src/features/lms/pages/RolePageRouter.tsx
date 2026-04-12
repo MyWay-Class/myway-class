@@ -14,6 +14,7 @@ import { CourseCreatePage } from './CourseCreatePage';
 import { CoursesPage } from './CoursesPage';
 import { InstructorDashboardPage } from './InstructorDashboardPage';
 import { LectureStudioPage } from './LectureStudioPage';
+import { MyCoursesPage } from './MyCoursesPage';
 import { MediaPipelinePage } from './MediaPipelinePage';
 import { MyShortformsPage } from './MyShortformsPage';
 import { QuizGenPage } from './QuizGenPage';
@@ -80,6 +81,16 @@ export function RolePageRouter({
     switch (page) {
       case 'dashboard':
         return <AdminDashboardPage dashboard={dashboard} users={demoUsers} courses={courseCards} insights={insights} />;
+      case 'my-courses':
+        return (
+          <MyCoursesPage
+            session={session}
+            courses={courseCards}
+            selectedCourse={selectedCourse}
+            onSelectCourse={onSelectCourse}
+            onNavigate={onNavigate}
+          />
+        );
       case 'courses':
         return (
           <CoursesPage
@@ -101,10 +112,12 @@ export function RolePageRouter({
             courses={courseCards}
             canManageCurrent={true}
             busy={busy}
+            sessionToken={sessionToken}
+            selectedCourse={selectedCourse}
+            highlightedLecture={highlightedLecture}
             onCreateCourse={onCreateCourse}
             onSelectCourse={onSelectCourse}
             onSelectLecture={onSelectLecture}
-            onNavigate={onNavigate}
           />
         );
       case 'admin-users':
@@ -131,6 +144,18 @@ export function RolePageRouter({
   }
 
   if (session.user.role === 'INSTRUCTOR') {
+    if (page === 'my-courses') {
+      return (
+        <MyCoursesPage
+          session={session}
+          courses={courseCards}
+          selectedCourse={selectedCourse}
+          onSelectCourse={onSelectCourse}
+          onNavigate={onNavigate}
+        />
+      );
+    }
+
     if (page === 'courses') {
       return (
         <CoursesPage
@@ -154,10 +179,12 @@ export function RolePageRouter({
           courses={courseCards}
           canManageCurrent={true}
           busy={busy}
+          sessionToken={sessionToken}
+          selectedCourse={selectedCourse}
+          highlightedLecture={highlightedLecture}
           onCreateCourse={onCreateCourse}
           onSelectCourse={onSelectCourse}
           onSelectLecture={onSelectLecture}
-          onNavigate={onNavigate}
         />
       );
     }

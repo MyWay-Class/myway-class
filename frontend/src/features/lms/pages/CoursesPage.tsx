@@ -96,18 +96,27 @@ export function CoursesPage({
                 <i className="ri-add-circle-line" />
                 강의 개설 바로가기
               </div>
-              <h3 className="mt-3 text-[16px] font-extrabold tracking-[-0.03em] text-slate-900">새 강의는 전용 페이지에서 바로 만들 수 있습니다.</h3>
+              <h3 className="mt-3 text-[16px] font-extrabold tracking-[-0.03em] text-slate-900">새 강의와 내 강의 관리를 전용 페이지에서 바로 열 수 있습니다.</h3>
               <p className="mt-2 text-[12px] leading-6 text-slate-500">
-                교수, 강사, 운영자 권한은 강의 목록에서 바로 개설 페이지로 이동해 기본 정보와 차시를 입력하면 됩니다.
+                교수, 강사, 운영자 권한은 강의 목록에서 바로 개설 페이지나 관리 페이지로 이동해 필요한 작업을 이어가면 됩니다.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('course-create')}
-              className="rounded-full bg-indigo-600 px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-indigo-500"
-            >
-              강의 개설 페이지 열기
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => onNavigate('my-courses')}
+                className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                내 강의 관리
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('course-create')}
+                className="rounded-full bg-indigo-600 px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-indigo-500"
+              >
+                강의 개설 페이지 열기
+              </button>
+            </div>
           </div>
         </section>
       ) : null}

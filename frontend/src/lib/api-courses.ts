@@ -1,6 +1,7 @@
 import {
   createCourseRecord,
   canEnroll,
+  canManageCourses,
   completeLectureProgress,
   enrollUser,
   getCourseDetail,
@@ -31,6 +32,27 @@ export async function loadCourses(sessionToken?: string | null): Promise<CourseC
   const userId = getFallbackUserId();
   const response = await request<CourseCard[]>(`/api/v1/courses?userId=${encodeURIComponent(userId)}`, undefined, token);
   return unwrap(response, () => getDashboard(userId).courses);
+}
+
+export async function loadManagedCourses(sessionToken?: string | null): Promise<CourseCard[]> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  const storedAuth = getStoredAuth();
+
+  if (!storedAuth) {
+    return [];
+  }
+
+  const response = await request<CourseCard[]>('/api/v1/courses/manage', undefined, token);
+  if (response?.success && response.data) {
+    return response.data;
+  }
+
+  const fallbackCourses = await loadCourses(token);
+  if (!canManageCourses(storedAuth.user.role)) {
+    return [];
+  }
+
+  return fallbackCourses.filter((course) => storedAuth.user.role === 'ADMIN' || course.instructor_id === storedAuth.user.id);
 }
 
 export async function createCourse(

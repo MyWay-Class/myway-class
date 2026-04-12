@@ -32,6 +32,7 @@ export {
 } from './api-shortforms';
 export {
   loadCourses,
+  loadManagedCourses,
   createCourse,
   loadCourseDetail,
   loadLectureDetail,
