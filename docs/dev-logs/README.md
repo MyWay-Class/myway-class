@@ -16,6 +16,7 @@
 - 로그는 `왜 바꿨는지`, `무엇을 바꿨는지`, `어떻게 검증했는지`만 짧게 적는다.
 
 ## 최신 로그
+- `2026-04-12-course-management-workspace-and-stepflow.md`
 - `2026-04-12-course-workspace-hub-and-auto-media.md`
 - `2026-04-12-dev-launcher-media-pipeline-fix.md`
 - `2026-04-12-media-processor-dev-launcher-stability.md`

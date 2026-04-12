@@ -4,7 +4,10 @@ import type { CourseCreateRequest, CourseDetail } from '@myway/shared';
 type CourseCreateCardProps = {
   canCreate: boolean;
   busy: boolean;
+  submitLabel?: string;
+  submitMode?: 'create' | 'prepare';
   onCreate: (input: CourseCreateRequest) => Promise<CourseDetail | null>;
+  onPrepare?: (input: CourseCreateRequest) => void;
   onCreated?: (course: CourseDetail) => void;
 };
 
@@ -33,9 +36,13 @@ function splitLectureTitles(value: string): string[] {
     .filter(Boolean);
 }
 
-export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: CourseCreateCardProps) {
+export function CourseCreateCard({ canCreate, busy, submitLabel, submitMode = 'create', onCreate, onPrepare, onCreated }: CourseCreateCardProps) {
   const [form, setForm] = useState<FormState>(defaultState);
-  const [message, setMessage] = useState('기본 정보만 채우면 강의를 바로 만들 수 있습니다.');
+  const [message, setMessage] = useState(
+    submitMode === 'prepare'
+      ? '기본 정보를 입력한 뒤 다음 단계로 이동해 주세요.'
+      : '기본 정보만 채우면 강의를 바로 만들 수 있습니다.',
+  );
   const lectureCount = splitLectureTitles(form.lectureTitlesText).length;
 
   if (!canCreate) {
@@ -62,14 +69,22 @@ export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: Cours
       return;
     }
 
-    const result = await onCreate({
+    const input: CourseCreateRequest = {
       title: form.title.trim(),
       description: form.description.trim(),
       category: form.category.trim(),
       difficulty: form.difficulty,
       is_published: form.isPublished,
       lecture_titles: splitLectureTitles(form.lectureTitlesText),
-    });
+    };
+
+    if (submitMode === 'prepare') {
+      onPrepare?.(input);
+      setMessage('기본 정보를 저장했습니다. 다음 단계에서 강의 개설을 완료해 주세요.');
+      return;
+    }
+
+    const result = await onCreate(input);
 
     if (!result) {
       setMessage('새 강의 개설에 실패했습니다. 다시 시도해 주세요.');
@@ -96,7 +111,7 @@ export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: Cours
         </div>
         <div className="rounded-2xl border border-indigo-100 bg-white/80 px-4 py-3 text-[12px] text-slate-500">
           <div className="font-semibold text-slate-900">생성 후 다음 단계</div>
-          <div className="mt-1 leading-6">개설 워크스페이스 · 제작 스튜디오 · 미디어 파이프라인</div>
+          <div className="mt-1 leading-6">개설 워크스페이스 · 제작 스튜디오</div>
         </div>
       </div>
 
@@ -187,13 +202,13 @@ export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: Cours
         </div>
 
         <div className="flex flex-wrap gap-3 xl:col-span-2">
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-full bg-indigo-600 px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {busy ? '개설 중...' : '강의 만들기'}
-          </button>
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-full bg-indigo-600 px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busy ? '진행 중...' : submitLabel ?? (submitMode === 'prepare' ? '다음' : '강의 만들기')}
+        </button>
           <div className="rounded-full bg-slate-100 px-4 py-2.5 text-[12px] font-semibold text-slate-600">
             생성 후 기본 자료와 공지 초안이 함께 들어갑니다.
           </div>
