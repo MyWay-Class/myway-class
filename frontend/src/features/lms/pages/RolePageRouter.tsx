@@ -132,7 +132,14 @@ export function RolePageRouter({
       case 'admin-automation':
         return <AdminAutomationPage providerCatalog={providers} />;
       case 'media-pipeline':
-        return <MediaPipelinePage selectedCourse={selectedCourse} highlightedLecture={highlightedLecture} sessionToken={sessionToken} />;
+        return (
+          <MediaPipelinePage
+            selectedCourse={selectedCourse}
+            highlightedLecture={highlightedLecture}
+            sessionToken={sessionToken}
+            viewerRole={session.user.role}
+          />
+        );
       default:
         return (
           <RolePageFallback
@@ -215,7 +222,14 @@ export function RolePageRouter({
     }
 
     if (page === 'media-pipeline') {
-      return <MediaPipelinePage selectedCourse={selectedCourse} highlightedLecture={highlightedLecture} sessionToken={sessionToken} />;
+      return (
+        <MediaPipelinePage
+          selectedCourse={selectedCourse}
+          highlightedLecture={highlightedLecture}
+          sessionToken={sessionToken}
+          viewerRole={session.user.role}
+        />
+      );
     }
 
     if (page === 'quiz-gen') {

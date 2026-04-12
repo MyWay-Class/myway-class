@@ -4,6 +4,7 @@ import { AiNoticeBanner } from '../components/AiNoticeBanner';
 import { StatePanel } from '../components/StatePanel';
 import { MediaPipelineStatusBoard } from '../components/MediaPipelineStatusBoard';
 import { TranscriptTimelineWorkspace } from '../components/TranscriptTimelineWorkspace';
+import { MediaPipelineSummaryPanel } from '../components/MediaPipelineSummaryPanel';
 import {
   createAudioExtractionDetailed,
   loadAudioExtractions,
@@ -20,6 +21,7 @@ type MediaPipelinePageProps = {
   selectedCourse: CourseDetail | null;
   highlightedLecture: LectureDetail | null;
   sessionToken: string;
+  viewerRole: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
 };
 
 function formatBytes(value: number): string {
@@ -28,7 +30,7 @@ function formatBytes(value: number): string {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionToken }: MediaPipelinePageProps) {
+export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionToken, viewerRole }: MediaPipelinePageProps) {
   const lectureOptions = selectedCourse?.lectures ?? [];
   const defaultLectureId = highlightedLecture?.id ?? lectureOptions[0]?.id ?? '';
   const [lectureId, setLectureId] = useState(defaultLectureId);
@@ -308,6 +310,14 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
         />
       ) : (
         <>
+          <MediaPipelineSummaryPanel
+            selectedLecture={selectedLecture}
+            pipeline={pipeline}
+            uploadResult={uploadResult}
+            extraction={latestExtraction}
+            notice={notice}
+          />
+
           <section className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
@@ -450,24 +460,33 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
             </section>
           ) : null}
 
-          <section className="grid gap-5 xl:grid-cols-[0.86fr_1.14fr]">
-            <MediaPipelineStatusBoard
+          {viewerRole === 'STUDENT' ? (
+            <StatePanel
               compact
-              selectedLecture={selectedLecture}
-              pipeline={pipeline}
-              providers={providers}
-              processorHealth={processorHealth}
-              uploadResult={uploadResult}
-              extraction={latestExtraction}
-              recentExtractions={extractions}
-              isRefreshing={isRefreshing}
-              onRefresh={() => {
-                void refreshMediaState(lectureId);
-              }}
+              icon="ri-lock-line"
+              tone="slate"
+              title="세부 상태는 관리자 전용입니다."
+              description="일반 사용자는 업로드 결과와 전사 완료 여부만 볼 수 있습니다. 내부 FFmpeg, processor job, callback 상세는 운영자 화면에서 확인합니다."
             />
+          ) : (
+            <section className="grid gap-5 xl:grid-cols-[0.86fr_1.14fr]">
+              <MediaPipelineStatusBoard
+                selectedLecture={selectedLecture}
+                pipeline={pipeline}
+                providers={providers}
+                processorHealth={processorHealth}
+                uploadResult={uploadResult}
+                extraction={latestExtraction}
+                recentExtractions={extractions}
+                isRefreshing={isRefreshing}
+                onRefresh={() => {
+                  void refreshMediaState(lectureId);
+                }}
+              />
 
-            <TranscriptTimelineWorkspace selectedLecture={selectedLecture} transcript={transcript} />
-          </section>
+              <TranscriptTimelineWorkspace selectedLecture={selectedLecture} transcript={transcript} />
+            </section>
+          )}
         </>
       )}
     </div>
