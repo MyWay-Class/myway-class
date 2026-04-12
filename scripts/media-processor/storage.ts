@@ -19,8 +19,14 @@ export function buildJobPaths(workDir: string, jobId: string): {
   };
 }
 
-export async function downloadSourceVideo(sourceUrl: string, targetPath: string): Promise<void> {
-  const response = await fetch(sourceUrl);
+export async function downloadSourceVideo(
+  sourceUrl: string,
+  targetPath: string,
+  headers?: Record<string, string>,
+): Promise<void> {
+  const response = await fetch(sourceUrl, {
+    headers,
+  });
   if (!response.ok || !response.body) {
     throw new Error(`영상 다운로드에 실패했습니다. (${response.status})`);
   }

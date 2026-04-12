@@ -35,7 +35,8 @@ function splitLectureTitles(value: string): string[] {
 
 export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: CourseCreateCardProps) {
   const [form, setForm] = useState<FormState>(defaultState);
-  const [message, setMessage] = useState('새 강의를 만들면 목록과 스튜디오가 바로 연결됩니다.');
+  const [message, setMessage] = useState('기본 정보만 채우면 강의를 바로 만들 수 있습니다.');
+  const lectureCount = splitLectureTitles(form.lectureTitlesText).length;
 
   if (!canCreate) {
     return (
@@ -88,9 +89,9 @@ export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: Cours
             <i className="ri-add-circle-line" />
             강의 개설
           </div>
-          <h3 className="mt-3 text-[18px] font-extrabold tracking-[-0.03em] text-slate-900">새 강의를 바로 만들고 스튜디오로 이어가기</h3>
+          <h3 className="mt-3 text-[18px] font-extrabold tracking-[-0.03em] text-slate-900">기본 정보만 넣고 바로 강의 만들기</h3>
           <p className="mt-2 text-[12px] leading-6 text-slate-600">
-            제목, 설명, 카테고리, 난이도, 차시 제목을 입력하면 기본 자료와 공지가 함께 생성되고, 배포 버전에서도 같은 흐름으로 사용할 수 있습니다.
+            제목, 소개, 분류, 난이도, 차시 제목만 입력하면 기본 자료와 공지가 함께 생성되고, 만들자마자 제작 스튜디오로 이어집니다.
           </p>
         </div>
         <div className="rounded-2xl border border-indigo-100 bg-white/80 px-4 py-3 text-[12px] text-slate-500">
@@ -147,8 +148,9 @@ export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: Cours
             onChange={(event) => setForm((current) => ({ ...current, lectureTitlesText: event.target.value }))}
             rows={4}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[13px] leading-6 outline-none transition focus:border-indigo-400"
-            placeholder="한 줄에 하나씩 입력하세요."
+            placeholder="한 줄에 하나씩 입력하세요. 예: 1주차 개요 / 2주차 핵심 / 3주차 실습"
           />
+          <div className="text-[11px] leading-5 text-slate-500">빈 줄은 자동으로 제외되고, 입력한 순서대로 차시가 만들어집니다.</div>
         </label>
         <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 xl:col-span-2">
           <div>
@@ -166,8 +168,21 @@ export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: Cours
         </label>
 
         <div className="xl:col-span-2">
-          <div className="rounded-2xl border border-dashed border-indigo-200 bg-white px-4 py-4 text-[12px] leading-6 text-slate-600">
-            {message}
+        <div className="rounded-2xl border border-dashed border-indigo-200 bg-white px-4 py-4 text-[12px] leading-6 text-slate-600">
+          {message}
+        </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-[12px] leading-6 text-slate-600 xl:col-span-2">
+          <div className="font-semibold text-slate-900">지금 생성될 내용</div>
+          <div className="mt-1 grid gap-2 sm:grid-cols-2">
+            <div>• 강의명: {form.title.trim() || '아직 입력되지 않음'}</div>
+            <div>• 분류: {form.category.trim() || '아직 입력되지 않음'}</div>
+            <div>• 난이도: {form.difficulty}</div>
+            <div>• 차시: {lectureCount}개</div>
+          </div>
+          <div className="mt-2 text-slate-500">
+            입력한 차시는 순서대로 등록되고, 기본 안내 자료와 공지가 같이 붙습니다.
           </div>
         </div>
 
@@ -177,7 +192,7 @@ export function CourseCreateCard({ canCreate, busy, onCreate, onCreated }: Cours
             disabled={busy}
             className="rounded-full bg-indigo-600 px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {busy ? '개설 중...' : '새 강의 개설'}
+            {busy ? '개설 중...' : '강의 만들기'}
           </button>
           <div className="rounded-full bg-slate-100 px-4 py-2.5 text-[12px] font-semibold text-slate-600">
             생성 후 기본 자료와 공지 초안이 함께 들어갑니다.

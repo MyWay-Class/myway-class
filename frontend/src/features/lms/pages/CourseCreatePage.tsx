@@ -32,7 +32,7 @@ export function CourseCreatePage({
               <i className="ri-add-circle-line" />
               강의 개설 워크스페이스
             </div>
-            <h1 className="mt-4 text-[28px] font-extrabold tracking-[-0.05em]">새 강의를 만들고 바로 제작 흐름으로 넘기기</h1>
+            <h1 className="mt-4 text-[28px] font-extrabold tracking-[-0.05em]">새 강의를 쉽게 만들고 바로 제작 흐름으로 넘기기</h1>
             <p className="mt-2 text-[13px] leading-7 text-white/75">
               교수, 강사, 운영자가 배포 환경에서도 새 강의를 직접 개설하고, 첫 차시와 기본 자료/공지 초안을 함께 만들 수 있는 진입점입니다.
             </p>
@@ -69,12 +69,12 @@ export function CourseCreatePage({
 
         <aside className="space-y-5">
           <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
-            <h2 className="text-[15px] font-bold text-slate-900">생성 이후 흐름</h2>
+            <h2 className="text-[15px] font-bold text-slate-900">처음 만들 때 안내</h2>
             <div className="mt-4 space-y-3 text-[12px] leading-6 text-slate-600">
-              <div className="rounded-2xl bg-slate-50 px-4 py-3">1. 새 강의 레코드와 첫 차시가 생성됩니다.</div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-3">2. 기본 자료와 공지 초안이 함께 들어갑니다.</div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-3">3. 생성 직후 강의 제작 스튜디오로 이동합니다.</div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-3">4. 이후 미디어 업로드와 STT 자동화 이슈로 이어집니다.</div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-3">1. 제목과 소개만 먼저 넣어도 바로 시작할 수 있습니다.</div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-3">2. 차시는 한 줄씩 적으면 입력한 순서대로 등록됩니다.</div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-3">3. 만들고 나면 강의 스튜디오로 곧바로 이어집니다.</div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-3">4. 이후 영상 업로드와 STT 자동화까지 연결됩니다.</div>
             </div>
           </section>
 

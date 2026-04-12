@@ -23,7 +23,9 @@ export async function processAudioExtractionJob(
 
   try {
     await ensureWorkDirs(config.workDir);
-    await downloadSourceVideo(job.sourceVideoUrl, paths.videoPath);
+    await downloadSourceVideo(job.sourceVideoUrl, paths.videoPath, {
+      Authorization: `Bearer ${config.token}`,
+    });
     jobStore.updateJob(job.id, {
       stage: 'extracting',
       step: 'FFmpeg로 오디오를 추출하는 중',

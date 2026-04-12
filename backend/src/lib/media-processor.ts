@@ -64,6 +64,17 @@ export function verifyMediaCallbackSecret(request: Request, env?: RuntimeBinding
   return request.headers.get('x-myway-media-callback-secret') === callback_secret;
 }
 
+export function verifyMediaProcessorToken(request: Request, env?: RuntimeBindings): boolean {
+  const { token } = getMediaProcessorRuntimeSettings(env);
+  if (!token) {
+    return false;
+  }
+
+  const authorization = request.headers.get('authorization');
+  const customToken = request.headers.get('x-myway-media-processor-token');
+  return authorization === `Bearer ${token}` || customToken === token;
+}
+
 export async function dispatchMediaProcessorJob(
   input: MediaProcessorDispatchInput,
   env?: RuntimeBindings,
