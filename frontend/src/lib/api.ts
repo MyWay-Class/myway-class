@@ -17,6 +17,13 @@ export {
   shareCustomCourseDraft,
 } from './api-custom-courses';
 export {
+  loadLectureStudioDrafts,
+  loadLectureStudioDraft,
+  saveLectureStudioDraft,
+  updateLectureStudioDraft,
+  publishLectureStudioDraft,
+} from './api-lecture-drafts';
+export {
   loadShortformLibrary,
   loadShortformCommunity,
   shareShortformDraft,

@@ -1,8 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { CourseCard, CourseDetail, Lecture, LectureDetail } from '@myway/shared';
+import type { CourseCard, CourseDetail, Lecture, LectureDetail, LectureStudioDraftSummary } from '@myway/shared';
+import {
+  loadLectureStudioDraft,
+  loadLectureStudioDrafts,
+  publishLectureStudioDraft,
+  saveLectureStudioDraft,
+  updateLectureStudioDraft,
+} from '../../../lib/api';
 import { LectureStudioEditor } from '../components/lecture-studio/LectureStudioEditor';
 import { LectureStudioPreview } from '../components/lecture-studio/LectureStudioPreview';
-import { buildLectureStudioDraft, type LectureStudioDraft } from '../components/lecture-studio/types';
+import {
+  buildLectureStudioDraft,
+  buildLectureStudioDraftFromRecord,
+  toLectureStudioDraftInput,
+  type LectureStudioDraft,
+} from '../components/lecture-studio/types';
 
 type LectureStudioPageProps = {
   courses: CourseCard[];
@@ -14,24 +26,113 @@ type LectureStudioPageProps = {
 export function LectureStudioPage({ courses, selectedCourse, highlightedLecture, onSelectCourse }: LectureStudioPageProps) {
   const [draft, setDraft] = useState<LectureStudioDraft>(() => buildLectureStudioDraft(selectedCourse, highlightedLecture));
   const [statusNote, setStatusNote] = useState('수강 인원, 강의실, 평가 방식, AI 보조 옵션을 단계적으로 채워보세요.');
-
-  useEffect(() => {
-    setDraft(buildLectureStudioDraft(selectedCourse, highlightedLecture));
-    setStatusNote(selectedCourse ? `${selectedCourse.title} 기준 강의 제작 초안을 불러왔습니다.` : '강의를 선택하면 세부 옵션이 자동으로 채워집니다.');
-  }, [selectedCourse?.id, highlightedLecture?.id]);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftSummaries, setDraftSummaries] = useState<LectureStudioDraftSummary[]>([]);
 
   const previewLecture = useMemo(() => highlightedLecture ?? selectedCourse?.lectures[0] ?? null, [highlightedLecture, selectedCourse]);
   const outlineCount = draft.outlineText.split(/\r?\n/).filter(Boolean).length;
   const materialCount = draft.materialsText.split(/\r?\n/).filter(Boolean).length;
 
+  useEffect(() => {
+    let alive = true;
+    const baseDraft = buildLectureStudioDraft(selectedCourse, highlightedLecture);
+
+    setDraft(baseDraft);
+    setDraftId(null);
+
+    if (!selectedCourse) {
+      setDraftSummaries([]);
+      setStatusNote('강의를 선택하면 세부 옵션이 자동으로 채워집니다.');
+      return () => {
+        alive = false;
+      };
+    }
+
+    const lectureId = previewLecture?.id ?? selectedCourse.lectures[0]?.id ?? null;
+    setStatusNote(`${selectedCourse.title} 기준 강의 제작 초안을 불러오는 중입니다.`);
+
+    loadLectureStudioDrafts(selectedCourse.id).then(async (summaries) => {
+      if (!alive) {
+        return;
+      }
+
+      setDraftSummaries(summaries);
+
+      const matchedSummary = lectureId ? summaries.find((item) => item.lecture_id === lectureId) ?? null : null;
+      if (!matchedSummary) {
+        setStatusNote(
+          summaries.length > 0
+            ? `${selectedCourse.title}에 초안 ${summaries.length}개가 있습니다. 새 초안을 바로 시작할 수 있습니다.`
+            : `${selectedCourse.title} 기준 새 초안을 시작합니다.`,
+        );
+        return;
+      }
+
+      const record = await loadLectureStudioDraft(selectedCourse.id, matchedSummary.id);
+      if (!alive || !record) {
+        return;
+      }
+
+      setDraft(buildLectureStudioDraftFromRecord(record));
+      setDraftId(record.id);
+      setStatusNote(`${record.lecture_title} 초안을 불러왔습니다. 저장이나 발행 준비를 이어갈 수 있습니다.`);
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, [selectedCourse?.id, highlightedLecture?.id]);
+
+  async function persistDraft() {
+    if (!selectedCourse || !previewLecture) {
+      setStatusNote('저장할 강의와 차시를 먼저 선택해 주세요.');
+      return null;
+    }
+
+    const input = toLectureStudioDraftInput(draft, previewLecture.id);
+    const record = draftId
+      ? await updateLectureStudioDraft(selectedCourse, draftId, previewLecture, input)
+      : await saveLectureStudioDraft(selectedCourse, previewLecture, input);
+
+    if (!record) {
+      setStatusNote('초안 저장에 실패했습니다. 다시 시도해 주세요.');
+      return null;
+    }
+
+    setDraftId(record.id);
+    setDraft(buildLectureStudioDraftFromRecord(record));
+    return record;
+  }
+
   const handleSaveDraft = () => {
-    setDraft((current) => ({ ...current, reviewState: 'review' }));
-    setStatusNote('초안 저장 검토 상태로 전환했습니다. 실제 저장 API는 다음 이슈에서 연결됩니다.');
+    void (async () => {
+      const record = await persistDraft();
+      if (!record) {
+        return;
+      }
+
+      setDraft((current) => ({ ...current, reviewState: 'review' }));
+      setStatusNote(`${record.title} 초안을 저장하고 검토 상태로 전환했습니다.`);
+    })();
   };
 
   const handleMarkReady = () => {
-    setDraft((current) => ({ ...current, reviewState: 'ready' }));
-    setStatusNote('발행 준비 상태로 전환했습니다. 공개 전 검수 항목을 다시 확인해 주세요.');
+    void (async () => {
+      const record = await persistDraft();
+      if (!record) {
+        return;
+      }
+
+      const published = await publishLectureStudioDraft(record.course_id, record.id);
+      if (!published) {
+        setStatusNote('발행 준비 상태로 전환하지 못했습니다. 다시 시도해 주세요.');
+        return;
+      }
+
+      setDraftId(published.id);
+      setDraft(buildLectureStudioDraftFromRecord(published));
+      setStatusNote(`${published.title} 초안을 발행 준비 상태로 전환했습니다.`);
+    })();
   };
 
   return (
@@ -53,6 +154,7 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
             <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
               <div className="font-semibold text-white">목차 / 자료</div>
               <div className="mt-1">{outlineCount}개 · {materialCount}개</div>
+              <div className="mt-1 text-slate-300">초안 {draftSummaries.length}개</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
               <div className="font-semibold text-white">현재 상태</div>

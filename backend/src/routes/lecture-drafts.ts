@@ -37,6 +37,30 @@ lectureDrafts.get('/course/:courseId', (c) => {
   return jsonSuccess(listLectureStudioDrafts(courseId));
 });
 
+lectureDrafts.get('/course/:courseId/:draftId', (c) => {
+  const user = getAuthenticatedUser(c.req.raw);
+  if (!user) {
+    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+  }
+
+  const courseId = c.req.param('courseId');
+  const detail = getCourseDetail(courseId, user.id);
+  if (!detail) {
+    return jsonFailure('COURSE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
+  }
+
+  if (!lectureStudioRequiresInstructor(user.role) && user.id !== detail.instructor_id) {
+    return jsonFailure('FORBIDDEN', '강의 초안을 조회할 권한이 없습니다.', 403);
+  }
+
+  const draft = getLectureStudioDraft(c.req.param('draftId'));
+  if (!draft || draft.course_id !== courseId) {
+    return jsonFailure('LECTURE_DRAFT_NOT_FOUND', '강의 초안을 찾을 수 없습니다.', 404);
+  }
+
+  return jsonSuccess(draft);
+});
+
 lectureDrafts.post('/course/:courseId', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   if (!user) {

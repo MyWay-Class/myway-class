@@ -50,7 +50,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   const [step, setStep] = useState<WizardStep>(1);
   const [activeCourseId, setActiveCourseId] = useState<string | null>(selectedCourse?.id ?? courses[0]?.id ?? null);
   const [courseDetail, setCourseDetail] = useState<CourseDetail | null>(selectedCourse);
-  const [lectureFilter, setLectureFilter] = useState<string>('all');
+  const [lectureFilter, setLectureFilter] = useState<string>(highlightedLecture?.id ?? 'all');
   const [selectedClipKeys, setSelectedClipKeys] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('핵심 구간을 이어 붙여 학습용 개인 코스로 정리합니다.');
@@ -64,6 +64,10 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
       setCourseDetail(selectedCourse);
     }
   }, [selectedCourse?.id, selectedCourse]);
+
+  useEffect(() => {
+    setLectureFilter(highlightedLecture?.id ?? 'all');
+  }, [activeCourseId, highlightedLecture?.id]);
 
   useEffect(() => {
     setSelectedClipKeys([]);
@@ -247,7 +251,14 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
               courses={courses}
               activeCourseId={activeCourseId}
               courseTitle={courseDetail?.title ?? null}
+              highlightedLecture={highlightedLecture}
               onSelectCourse={(courseId) => setActiveCourseId(courseId)}
+              onUseHighlightedLecture={() => {
+                if (highlightedLecture?.id) {
+                  setLectureFilter(highlightedLecture.id);
+                }
+                setStep(2);
+              }}
               onNext={() => setStep(2)}
               canContinue={Boolean(courseDetail?.lectures.length)}
             />
