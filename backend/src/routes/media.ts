@@ -17,7 +17,12 @@ import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { readLectureVideoAsset, uploadLectureVideoAsset } from '../lib/media-assets';
 import { completeMediaExtractionJob, createMediaExtractionJob } from '../lib/media-pipeline';
 import { createMediaRepository } from '../lib/media-repository';
-import { loadMediaProcessorHealth, normalizeMediaCallbackPayload, verifyMediaCallbackSecret } from '../lib/media-processor';
+import {
+  loadMediaProcessorHealth,
+  normalizeMediaCallbackPayload,
+  verifyMediaCallbackSecret,
+  verifyMediaProcessorToken,
+} from '../lib/media-processor';
 import { buildExtractionCallbackResponse, buildExtractionResponse } from '../lib/media-response';
 import { getSTTProviderOverview } from '../lib/stt-provider';
 import { PUBLIC_STT_MAX_DURATION_MS, runTranscriptGeneration } from '../lib/stt-adapter';
@@ -157,7 +162,7 @@ media.get('/assets/:assetKey', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   const assetKey = c.req.param('assetKey');
 
-  if (!user) {
+  if (!user && !verifyMediaProcessorToken(c.req.raw, c.env as RuntimeBindings | undefined)) {
     return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
   }
 
