@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { defaultPageForRole, pageTitle } from '../features/lms/config';
 import { AppShell } from '../features/lms/components/AppShell';
 import { StatePanel } from '../features/lms/components/StatePanel';
+import { LoginScreen } from '../features/lms/components/LoginScreen';
 import { RolePageRouter } from '../features/lms/pages/RolePageRouter';
 import { PublicHomePage } from '../features/lms/pages/PublicHomePage';
 import type { LmsDashboardProps, LmsPageId } from '../features/lms/types';
 
 export function LmsDashboard(props: LmsDashboardProps) {
   const [activePage, setActivePage] = useState<LmsPageId>(defaultPageForRole(props.session));
+  const [showAuthPage, setShowAuthPage] = useState(false);
   const activeNavKey =
     activePage === 'courses' && props.selectedLectureId
       ? 'lecture-watch'
@@ -15,6 +17,12 @@ export function LmsDashboard(props: LmsDashboardProps) {
 
   useEffect(() => {
     setActivePage(defaultPageForRole(props.session));
+  }, [props.session]);
+
+  useEffect(() => {
+    if (props.session) {
+      setShowAuthPage(false);
+    }
   }, [props.session]);
 
   if (props.loading) {
@@ -33,7 +41,20 @@ export function LmsDashboard(props: LmsDashboardProps) {
   }
 
   if (!props.session) {
-    return <PublicHomePage courseCards={props.courseCards} demoUsers={props.demoUsers} busy={props.busy} onLogin={props.onLogin} />;
+    return showAuthPage ? (
+      <LoginScreen
+        demoUsers={props.demoUsers}
+        busy={props.busy}
+        onLogin={props.onLogin}
+        onBackToHome={() => setShowAuthPage(false)}
+      />
+    ) : (
+      <PublicHomePage
+        courseCards={props.courseCards}
+        busy={props.busy}
+        onOpenLogin={() => setShowAuthPage(true)}
+      />
+    );
   }
 
   return (

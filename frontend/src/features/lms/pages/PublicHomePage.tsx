@@ -1,15 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
-import type { AuthUser, CourseCard } from '@myway/shared';
+import type { CourseCard } from '@myway/shared';
 import { AiNoticeBanner } from '../components/AiNoticeBanner';
 import { CourseExploreCard } from '../components/CourseExploreCard';
 import { CourseExploreFilters } from '../components/CourseExploreFilters';
-import type { RoleTone } from '../types';
 
 type PublicHomePageProps = {
   courseCards: CourseCard[];
-  demoUsers: AuthUser[];
   busy: boolean;
-  onLogin: (userId: string) => void;
+  onOpenLogin: () => void;
 };
 
 const navItems = [
@@ -19,18 +17,6 @@ const navItems = [
   { label: '로드맵', icon: 'ri-route-line' },
 ];
 
-const roleLabel: Record<RoleTone, string> = {
-  student: '수강생',
-  instructor: '교강사',
-  admin: '운영자',
-};
-
-const roleBadge: Record<RoleTone, string> = {
-  student: 'bg-indigo-50 text-indigo-600',
-  instructor: 'bg-violet-50 text-violet-600',
-  admin: 'bg-emerald-50 text-emerald-600',
-};
-
 function countUnique(values: string[]): number {
   return new Set(values).size;
 }
@@ -39,8 +25,7 @@ function scrollToElement(element: HTMLElement | null) {
   element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-export function PublicHomePage({ courseCards, demoUsers, busy, onLogin }: PublicHomePageProps) {
-  const authRef = useRef<HTMLElement | null>(null);
+export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePageProps) {
   const coursesRef = useRef<HTMLElement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
@@ -122,14 +107,14 @@ export function PublicHomePage({ courseCards, demoUsers, busy, onLogin }: Public
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => scrollToElement(authRef.current)}
+              onClick={onOpenLogin}
               className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               로그인
             </button>
             <button
               type="button"
-              onClick={() => scrollToElement(authRef.current)}
+              onClick={onOpenLogin}
               className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
             >
               회원가입
@@ -139,7 +124,7 @@ export function PublicHomePage({ courseCards, demoUsers, busy, onLogin }: Public
       </header>
 
       <main className="mx-auto max-w-[1320px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_380px]">
+        <section className="grid gap-5">
           <div className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#6d62ef_0%,#4f46e5_46%,#7c3aed_100%)] px-7 py-8 text-white shadow-[0_30px_70px_rgba(79,70,229,0.16)] lg:px-8 lg:py-9">
             <div className="pointer-events-none absolute -right-8 top-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-cyan-300/10 blur-3xl" />
@@ -168,7 +153,7 @@ export function PublicHomePage({ courseCards, demoUsers, busy, onLogin }: Public
                 </button>
                 <button
                   type="button"
-                  onClick={() => scrollToElement(authRef.current)}
+                  onClick={onOpenLogin}
                   className="rounded-full border border-white/30 bg-white/10 px-5 py-3 text-[13px] font-semibold text-white backdrop-blur transition hover:bg-white/15"
                 >
                   무료로 시작하기
@@ -190,67 +175,6 @@ export function PublicHomePage({ courseCards, demoUsers, busy, onLogin }: Public
               </div>
             </div>
           </div>
-
-          <section
-            ref={authRef}
-            className="rounded-[32px] border border-slate-200 bg-white px-6 py-6 shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
-                  바로 로그인
-                </div>
-                <h2 className="mt-3 text-[1.2rem] font-extrabold tracking-[-0.03em] text-slate-900">체험 계정으로 시작</h2>
-                <p className="mt-1 text-[13px] leading-6 text-slate-500">
-                  로그인 후에는 강의 상세, 영상 보기, 우측 챗봇, 숏폼 만들기까지 이어집니다.
-                </p>
-              </div>
-              <div className="rounded-2xl bg-slate-50 px-3 py-2 text-right">
-                <div className="text-[12px] font-semibold text-slate-900">{courseCards.length}개 강의</div>
-                <div className="text-[11px] text-slate-500">{categories.length}개 카테고리</div>
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-2.5">
-              {demoUsers.map((user) => {
-                const tone = user.role === 'ADMIN' ? 'admin' : user.role === 'INSTRUCTOR' ? 'instructor' : 'student';
-                return (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => onLogin(user.id)}
-                    disabled={busy}
-                    className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left transition hover:border-indigo-200 hover:bg-indigo-50/50 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-base text-white ${
-                        tone === 'admin' ? 'bg-emerald-600' : tone === 'instructor' ? 'bg-violet-600' : 'bg-indigo-600'
-                      }`}
-                    >
-                      <i className={tone === 'admin' ? 'ri-settings-3-line' : tone === 'instructor' ? 'ri-presentation-line' : 'ri-user-line'} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 text-[14px] font-semibold text-slate-900">
-                        {user.name}
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${roleBadge[tone]}`}>{roleLabel[tone]}</span>
-                      </div>
-                      <div className="mt-0.5 truncate text-[12px] text-slate-500">{user.role === 'ADMIN' ? '운영 화면 체험' : user.role === 'INSTRUCTOR' ? '교강사 워크플로우 체험' : '수강생 학습 흐름 체험'}</div>
-                    </div>
-                    <i className="ri-arrow-right-s-line text-lg text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-indigo-600" />
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4">
-              <div className="text-[12px] font-semibold text-slate-900">사용 흐름</div>
-              <div className="mt-2 space-y-1 text-[12px] leading-6 text-slate-500">
-                <div>1. 로그인 전: 강의 탐색과 체험</div>
-                <div>2. 로그인 후: 홈 대시보드 진입</div>
-                <div>3. 강의 상세, 챗봇, 숏폼, 전사 기능으로 연결</div>
-              </div>
-            </div>
-          </section>
         </section>
 
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -308,7 +232,7 @@ export function PublicHomePage({ courseCards, demoUsers, busy, onLogin }: Public
             </div>
             <button
               type="button"
-              onClick={() => scrollToElement(authRef.current)}
+              onClick={onOpenLogin}
               className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               로그인 후 계속
@@ -324,7 +248,7 @@ export function PublicHomePage({ courseCards, demoUsers, busy, onLogin }: Public
                   selected={false}
                   onSelect={() => {
                     setNotice('로그인 후에는 강의 상세, 영상 보기, 우측 챗봇, 숏폼 만들기를 사용할 수 있습니다.');
-                    scrollToElement(authRef.current);
+                    onOpenLogin();
                   }}
                 />
               ))
