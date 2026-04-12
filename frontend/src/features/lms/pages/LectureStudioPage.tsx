@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CourseCard, CourseDetail, Lecture, LectureDetail, LectureStudioDraftSummary } from '@myway/shared';
 import {
+  createAudioExtractionDetailed,
   loadLectureStudioDraft,
   loadLectureStudioDrafts,
   publishLectureStudioDraft,
@@ -104,6 +105,32 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
     return record;
   }
 
+  async function startMediaPipelineAfterPublish(publishedTitle: string, lecture: LectureDetail | Lecture | null) {
+    if (!lecture || !('video_url' in lecture) || !lecture.video_url) {
+      setStatusNote(`${publishedTitle}은 발행 준비까지 완료했습니다. 영상 소스가 없어 미디어 파이프라인 자동 시작은 건너뜁니다.`);
+      return;
+    }
+
+    setStatusNote(`${publishedTitle} 발행 후 영상 기반 미디어 파이프라인을 자동 시작합니다.`);
+
+    const extraction = await createAudioExtractionDetailed(
+      {
+        lecture_id: lecture.id,
+        video_url: lecture.video_url,
+        source_file_name: `${lecture.title}.mp4`,
+        source_content_type: 'video/mp4',
+        language: 'ko',
+      },
+    );
+
+    if (!extraction?.success) {
+      setStatusNote(`${publishedTitle} 발행은 완료했지만 미디어 파이프라인 자동 시작은 실패했습니다. 제작 스튜디오에서 다시 시도할 수 있습니다.`);
+      return;
+    }
+
+    setStatusNote(`${publishedTitle} 발행 후 미디어 파이프라인을 자동 시작했습니다.`);
+  }
+
   const handleSaveDraft = () => {
     void (async () => {
       const record = await persistDraft();
@@ -132,6 +159,7 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
       setDraftId(published.id);
       setDraft(buildLectureStudioDraftFromRecord(published));
       setStatusNote(`${published.title} 초안을 발행 준비 상태로 전환했습니다.`);
+      void startMediaPipelineAfterPublish(published.title, previewLecture);
     })();
   };
 
