@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AudioExtraction, CourseDetail, LectureDetail, LecturePipeline, MediaProcessorHealth, STTProviderCatalog } from '@myway/shared';
+import type { AudioExtraction, CourseDetail, LectureDetail, LecturePipeline, LectureTranscript, MediaProcessorHealth, STTProviderCatalog } from '@myway/shared';
 import { AiNoticeBanner } from '../components/AiNoticeBanner';
 import { StatePanel } from '../components/StatePanel';
 import { MediaPipelineStatusBoard } from '../components/MediaPipelineStatusBoard';
+import { TranscriptTimelineWorkspace } from '../components/TranscriptTimelineWorkspace';
 import {
   createAudioExtractionDetailed,
   loadAudioExtractions,
+  loadLectureTranscriptDetailed,
   loadMediaPipeline,
   loadMediaProcessorHealth,
   loadMediaProviders,
@@ -37,6 +39,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   const [bannerDescription, setBannerDescription] = useState(getPublicTestPolicyText('media'));
   const [bannerMeta, setBannerMeta] = useState<string | null>(null);
   const [pipeline, setPipeline] = useState<LecturePipeline | null>(null);
+  const [transcript, setTranscript] = useState<LectureTranscript | null>(null);
   const [providers, setProviders] = useState<STTProviderCatalog | null>(null);
   const [processorHealth, setProcessorHealth] = useState<MediaProcessorHealth | null>(null);
   const [uploadResult, setUploadResult] = useState<MediaUploadResult | null>(null);
@@ -57,6 +60,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       if (!targetLectureId) {
         setPipeline(null);
         setExtractions([]);
+        setTranscript(null);
         return;
       }
 
@@ -65,14 +69,16 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       }
 
       try {
-        const [nextPipeline, nextExtractions, nextProcessorHealth] = await Promise.all([
+        const [nextPipeline, nextExtractions, nextProcessorHealth, nextTranscript] = await Promise.all([
           loadMediaPipeline(targetLectureId, sessionToken),
           loadAudioExtractions(targetLectureId, sessionToken),
           loadMediaProcessorHealth(sessionToken),
+          loadLectureTranscriptDetailed(targetLectureId, sessionToken),
         ]);
         setPipeline(nextPipeline);
         setExtractions(nextExtractions);
         setProcessorHealth(nextProcessorHealth);
+        setTranscript(nextTranscript);
       } finally {
         if (!options?.silent) {
           setIsRefreshing(false);
@@ -86,6 +92,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     if (!lectureId) {
       setPipeline(null);
       setExtractions([]);
+      setTranscript(null);
       return;
     }
 
@@ -95,7 +102,8 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       loadMediaPipeline(lectureId, sessionToken),
       loadAudioExtractions(lectureId, sessionToken),
       loadMediaProcessorHealth(sessionToken),
-    ]).then(([nextProviders, nextPipeline, nextExtractions, nextProcessorHealth]) => {
+      loadLectureTranscriptDetailed(lectureId, sessionToken),
+    ]).then(([nextProviders, nextPipeline, nextExtractions, nextProcessorHealth, nextTranscript]) => {
       if (!active) {
         return;
       }
@@ -104,6 +112,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       setPipeline(nextPipeline);
       setExtractions(nextExtractions);
       setProcessorHealth(nextProcessorHealth);
+      setTranscript(nextTranscript);
     });
 
     return () => {
@@ -441,19 +450,24 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
             </section>
           ) : null}
 
-          <MediaPipelineStatusBoard
-            selectedLecture={selectedLecture}
-            pipeline={pipeline}
-            providers={providers}
-            processorHealth={processorHealth}
-            uploadResult={uploadResult}
-            extraction={latestExtraction}
-            recentExtractions={extractions}
-            isRefreshing={isRefreshing}
-            onRefresh={() => {
-              void refreshMediaState(lectureId);
-            }}
-          />
+          <section className="grid gap-5 xl:grid-cols-[0.86fr_1.14fr]">
+            <MediaPipelineStatusBoard
+              compact
+              selectedLecture={selectedLecture}
+              pipeline={pipeline}
+              providers={providers}
+              processorHealth={processorHealth}
+              uploadResult={uploadResult}
+              extraction={latestExtraction}
+              recentExtractions={extractions}
+              isRefreshing={isRefreshing}
+              onRefresh={() => {
+                void refreshMediaState(lectureId);
+              }}
+            />
+
+            <TranscriptTimelineWorkspace selectedLecture={selectedLecture} transcript={transcript} />
+          </section>
         </>
       )}
     </div>

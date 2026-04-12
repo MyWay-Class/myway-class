@@ -2,6 +2,7 @@ import type { AudioExtraction, LecturePipeline, MediaProcessorHealth, STTProvide
 import type { MediaUploadResult } from '../../../lib/api-media';
 
 type MediaPipelineStatusBoardProps = {
+  compact?: boolean;
   selectedLecture: { title: string; duration_minutes: number } | null;
   pipeline: LecturePipeline | null;
   providers: STTProviderCatalog | null;
@@ -36,6 +37,7 @@ function formatDateTime(value?: string | null): string {
 }
 
 export function MediaPipelineStatusBoard({
+  compact = false,
   selectedLecture,
   pipeline,
   providers,
@@ -115,7 +117,8 @@ export function MediaPipelineStatusBoard({
         </div>
       </section>
 
-      <section className="grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+      {compact ? null : (
+        <section className="grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -319,7 +322,8 @@ export function MediaPipelineStatusBoard({
             )}
           </div>
         </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }
