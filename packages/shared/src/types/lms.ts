@@ -170,6 +170,8 @@ export type AudioExtraction = {
   requested_stt_model?: string;
   processing_job_id?: string | null;
   processing_error?: string | null;
+  processing_stage?: 'queued' | 'downloading' | 'extracting' | 'uploading' | 'callback' | 'completed' | 'failed' | null;
+  processing_step?: string | null;
   audio_url?: string | null;
   audio_format: string;
   audio_duration_ms: number;
@@ -235,7 +237,44 @@ export type AudioExtractionCallbackRequest = {
   sample_rate?: number;
   channels?: number;
   processing_job_id?: string;
+  processing_stage?: AudioExtraction['processing_stage'];
+  processing_step?: string;
   error_message?: string;
+};
+
+export type MediaProcessorJobSummary = {
+  id: string;
+  lecture_id: string;
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  created_at: string;
+  updated_at: string;
+  audio_url: string | null;
+  error_message: string | null;
+  stage: 'queued' | 'downloading' | 'extracting' | 'uploading' | 'callback' | 'completed' | 'failed';
+  step: string;
+  callback_status: number | null;
+};
+
+export type MediaProcessorHealth = {
+  ok: boolean;
+  public_base_url: string;
+  work_dir: string;
+  token_configured: boolean;
+  callback_secret_configured: boolean;
+  ffmpeg: {
+    available: boolean;
+    path: string;
+    version?: string;
+    output?: string;
+  };
+  jobs: {
+    total: number;
+    processing: number;
+    completed: number;
+    failed: number;
+  };
+  recent_jobs: MediaProcessorJobSummary[];
+  updated_at: string;
 };
 
 export type CourseCard = Course & {

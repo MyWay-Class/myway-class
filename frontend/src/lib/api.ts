@@ -49,6 +49,7 @@ export {
   createAudioExtraction,
   createAudioExtractionDetailed,
   loadMediaPipeline,
+  loadMediaProcessorHealth,
   loadMediaProviders,
 } from './api-media';
 export { sendSmartChat, sendSmartChatDetailed } from './api-smart';

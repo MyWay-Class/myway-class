@@ -1,4 +1,9 @@
-import type { AudioExtraction, AudioExtractionCallbackRequest } from '@myway/shared';
+import type {
+  AudioExtraction,
+  AudioExtractionCallbackRequest,
+  MediaProcessorHealth,
+  MediaProcessorJobSummary,
+} from '@myway/shared';
 import { getMediaProcessorRuntimeSettings, type RuntimeBindings } from './runtime-env';
 
 type MediaProcessorDispatchInput = {
@@ -21,6 +26,29 @@ type MediaProcessorDispatchResult =
 type MediaProcessorResponse = {
   job_id?: string;
   status?: 'PENDING' | 'PROCESSING';
+};
+
+type MediaProcessorHealthResponse = {
+  ok?: boolean;
+  status?: string;
+  public_base_url?: string;
+  work_dir?: string;
+  token_configured?: boolean;
+  callback_secret_configured?: boolean;
+  ffmpeg?: {
+    available?: boolean;
+    path?: string;
+    version?: string;
+    output?: string;
+  };
+  jobs?: {
+    total?: number;
+    processing?: number;
+    completed?: number;
+    failed?: number;
+  };
+  recent_jobs?: MediaProcessorJobSummary[];
+  updated_at?: string;
 };
 
 export function verifyMediaCallbackSecret(request: Request, env?: RuntimeBindings): boolean {
@@ -97,6 +125,52 @@ export function normalizeMediaCallbackPayload(body: AudioExtractionCallbackReque
     sample_rate: body.sample_rate,
     channels: body.channels,
     processing_job_id: body.processing_job_id?.trim(),
+    processing_stage: body.processing_stage,
+    processing_step: body.processing_step?.trim(),
     error_message: body.error_message?.trim(),
+  };
+}
+
+export async function loadMediaProcessorHealth(env?: RuntimeBindings): Promise<MediaProcessorHealth | null> {
+  const settings = getMediaProcessorRuntimeSettings(env);
+  if (!settings.url) {
+    return null;
+  }
+
+  const response = await fetch(`${settings.url.replace(/\/+$/, '')}/health`, {
+    headers: {
+      ...(settings.token ? { Authorization: `Bearer ${settings.token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = (await response.json().catch(() => null)) as MediaProcessorHealthResponse | null;
+  if (!payload) {
+    return null;
+  }
+
+  return {
+    ok: Boolean(payload.ok ?? true),
+    public_base_url: payload.public_base_url ?? settings.url,
+    work_dir: payload.work_dir ?? 'unknown',
+    token_configured: Boolean(payload.token_configured),
+    callback_secret_configured: Boolean(payload.callback_secret_configured),
+    ffmpeg: {
+      available: Boolean(payload.ffmpeg?.available),
+      path: payload.ffmpeg?.path ?? 'ffmpeg',
+      version: payload.ffmpeg?.version,
+      output: payload.ffmpeg?.output,
+    },
+    jobs: {
+      total: Number(payload.jobs?.total ?? 0),
+      processing: Number(payload.jobs?.processing ?? 0),
+      completed: Number(payload.jobs?.completed ?? 0),
+      failed: Number(payload.jobs?.failed ?? 0),
+    },
+    recent_jobs: payload.recent_jobs ?? [],
+    updated_at: payload.updated_at ?? new Date().toISOString(),
   };
 }

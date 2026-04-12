@@ -41,3 +41,33 @@ export async function extractAudioWithFfmpeg(ffmpegPath: string, videoPath: stri
     });
   });
 }
+
+export async function probeFfmpeg(ffmpegPath: string): Promise<{
+  available: boolean;
+  version?: string;
+  output?: string;
+}> {
+  return await new Promise((resolve) => {
+    const child = spawn(ffmpegPath, ['-version']);
+    const getOutput = collectOutput(child);
+    child.on('error', () => {
+      resolve({ available: false });
+    });
+    child.on('close', (code) => {
+      const output = getOutput().trim();
+      if (code === 0) {
+        resolve({
+          available: true,
+          version: output.split('\n')[0]?.trim(),
+          output,
+        });
+        return;
+      }
+
+      resolve({
+        available: false,
+        output,
+      });
+    });
+  });
+}

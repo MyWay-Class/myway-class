@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AudioExtraction, CourseDetail, LectureDetail, LecturePipeline, STTProviderCatalog } from '@myway/shared';
+import type { AudioExtraction, CourseDetail, LectureDetail, LecturePipeline, MediaProcessorHealth, STTProviderCatalog } from '@myway/shared';
 import { AiNoticeBanner } from '../components/AiNoticeBanner';
 import { StatePanel } from '../components/StatePanel';
 import { MediaPipelineStatusBoard } from '../components/MediaPipelineStatusBoard';
@@ -7,6 +7,7 @@ import {
   createAudioExtractionDetailed,
   loadAudioExtractions,
   loadMediaPipeline,
+  loadMediaProcessorHealth,
   loadMediaProviders,
   uploadLectureVideoDetailed,
   type MediaUploadResult,
@@ -37,6 +38,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   const [bannerMeta, setBannerMeta] = useState<string | null>(null);
   const [pipeline, setPipeline] = useState<LecturePipeline | null>(null);
   const [providers, setProviders] = useState<STTProviderCatalog | null>(null);
+  const [processorHealth, setProcessorHealth] = useState<MediaProcessorHealth | null>(null);
   const [uploadResult, setUploadResult] = useState<MediaUploadResult | null>(null);
   const [extractions, setExtractions] = useState<AudioExtraction[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -63,12 +65,14 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       }
 
       try {
-        const [nextPipeline, nextExtractions] = await Promise.all([
+        const [nextPipeline, nextExtractions, nextProcessorHealth] = await Promise.all([
           loadMediaPipeline(targetLectureId, sessionToken),
           loadAudioExtractions(targetLectureId, sessionToken),
+          loadMediaProcessorHealth(sessionToken),
         ]);
         setPipeline(nextPipeline);
         setExtractions(nextExtractions);
+        setProcessorHealth(nextProcessorHealth);
       } finally {
         if (!options?.silent) {
           setIsRefreshing(false);
@@ -90,7 +94,8 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       loadMediaProviders(sessionToken),
       loadMediaPipeline(lectureId, sessionToken),
       loadAudioExtractions(lectureId, sessionToken),
-    ]).then(([nextProviders, nextPipeline, nextExtractions]) => {
+      loadMediaProcessorHealth(sessionToken),
+    ]).then(([nextProviders, nextPipeline, nextExtractions, nextProcessorHealth]) => {
       if (!active) {
         return;
       }
@@ -98,6 +103,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       setProviders(nextProviders);
       setPipeline(nextPipeline);
       setExtractions(nextExtractions);
+      setProcessorHealth(nextProcessorHealth);
     });
 
     return () => {
@@ -436,6 +442,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
             selectedLecture={selectedLecture}
             pipeline={pipeline}
             providers={providers}
+            processorHealth={processorHealth}
             uploadResult={uploadResult}
             extraction={latestExtraction}
             recentExtractions={extractions}
