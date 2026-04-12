@@ -11,7 +11,7 @@
     "dev": "cmd /c scripts\\dev.bat",
     "dev:frontend": "npm --workspace @myway/frontend run dev",
     "dev:backend": "npm --workspace @myway/backend run dev",
-    "dev:media-processor": "tsx scripts/media-processor/server.ts",
+    "dev:media-processor": "npx esbuild scripts/media-processor/server.ts --bundle --platform=node --format=esm --outfile=dist/media-processor.bundle.mjs && node dist/media-processor.bundle.mjs",
     "check:media-processor": "tsc -p scripts/media-processor/tsconfig.json --noEmit",
     "check:frontend-deps": "npm ls --workspace @myway/frontend --depth=0",
     "check:backend-deps": "npm ls --workspace @myway/backend --depth=0",
@@ -22,7 +22,6 @@
     "verify": "npm run check:deps && npm run check:media-processor && npm run build:backend && npm exec --workspace @myway/frontend -- tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@cspotcode/source-map-support": "^0.8.1",
-    "tsx": "^4.21.0"
+    "@cspotcode/source-map-support": "^0.8.1"
   }
 }
