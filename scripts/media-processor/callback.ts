@@ -29,3 +29,31 @@ export async function sendExtractionCallback(job: ProcessorJob, payload: Callbac
     throw new Error(`callback 요청에 실패했습니다. (${response.status}) ${text}`.trim());
   }
 }
+
+type ShortformCallbackPayload = {
+  status: 'COMPLETED' | 'FAILED';
+  video_url?: string;
+  error_message?: string;
+  failure_reason?: string;
+};
+
+export async function sendShortformExportCallback(job: ProcessorJob, payload: ShortformCallbackPayload): Promise<void> {
+  const response = await fetch(job.callbackUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(job.callbackSecret ? { 'x-myway-media-callback-secret': job.callbackSecret } : {} ),
+    },
+    body: JSON.stringify({
+      shortform_id: job.shortformId,
+      video_id: job.shortformId,
+      processing_job_id: job.id,
+      ...payload,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`callback 요청에 실패했습니다. (${response.status}) ${text}`.trim());
+  }
+}

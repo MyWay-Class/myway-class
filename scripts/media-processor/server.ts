@@ -4,8 +4,8 @@ import path from 'node:path';
 import { getProcessorConfig } from './config';
 import { createJobStore } from './jobs';
 import { probeFfmpeg } from './ffmpeg';
-import { processAudioExtractionJob } from './service';
-import type { AudioExtractionJobRequest } from './types';
+import { processAudioExtractionJob, processShortformExportJob } from './service';
+import type { AudioExtractionJobRequest, ShortformExportJobRequest } from './types';
 
 const config = getProcessorConfig();
 const jobStore = createJobStore();
@@ -46,11 +46,13 @@ async function buildHealthPayload(): Promise<Record<string, unknown>> {
   const ffmpeg = await probeFfmpeg(config.ffmpegPath);
   const recentJobs = jobs.slice(0, 5).map((job) => ({
     id: job.id,
+    kind: job.kind,
     lecture_id: job.lectureId,
     status: job.status,
     created_at: job.createdAt,
     updated_at: job.updatedAt,
     audio_url: job.audioUrl,
+    video_url: job.videoUrl,
     error_message: job.errorMessage,
     stage: job.stage,
     step: job.step,
@@ -85,7 +87,8 @@ async function serveAsset(response: ServerResponse, fileName: string): Promise<v
   const filePath = path.join(config.workDir, 'output', fileName);
   try {
     const buffer = await fs.readFile(filePath);
-    response.writeHead(200, { 'Content-Type': 'audio/wav' });
+    const contentType = fileName.endsWith('.mp4') ? 'video/mp4' : 'audio/wav';
+    response.writeHead(200, { 'Content-Type': contentType });
     response.end(buffer);
   } catch {
     json(response, 404, { success: false, error: 'ASSET_NOT_FOUND' });
@@ -102,6 +105,22 @@ function isAudioExtractionJobRequest(value: unknown): value is AudioExtractionJo
     payload.extraction_id &&
       payload.lecture_id &&
       payload.source_video_url &&
+      payload.callback?.url,
+  );
+}
+
+function isShortformExportJobRequest(value: unknown): value is ShortformExportJobRequest {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const payload = value as Partial<ShortformExportJobRequest>;
+  return Boolean(
+    payload.shortform_id &&
+      payload.course_id &&
+      payload.title &&
+      Array.isArray(payload.clips) &&
+      payload.clips.length > 0 &&
       payload.callback?.url,
   );
 }
@@ -158,6 +177,32 @@ const server = http.createServer(async (request, response) => {
 
     const job = jobStore.createJob(body);
     void processAudioExtractionJob(jobStore, config, job);
+
+    return json(response, 202, {
+      success: true,
+      job_id: job.id,
+      status: job.status,
+    });
+  }
+
+  if (request.method === 'POST' && url.pathname === '/jobs/shortform-export') {
+    if (!isAuthorized(request)) {
+      return unauthorized(response);
+    }
+
+    let body: unknown;
+    try {
+      body = await parseBody(request);
+    } catch {
+      return json(response, 400, { success: false, error: 'INVALID_BODY' });
+    }
+
+    if (!isShortformExportJobRequest(body)) {
+      return json(response, 400, { success: false, error: 'INVALID_JOB_REQUEST' });
+    }
+
+    const job = jobStore.createShortformExportJob(body);
+    void processShortformExportJob(jobStore, config, job);
 
     return json(response, 202, {
       success: true,

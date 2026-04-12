@@ -108,3 +108,24 @@ export async function toggleShortformLikeDraft(
 
   return Boolean(response?.success) || Boolean(toggleShortformLike(userId, input));
 }
+
+export async function retryShortformExportDraft(
+  videoId: string,
+  sessionToken?: string | null,
+): Promise<boolean> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return false;
+  }
+
+  const response = await request(
+    `/api/v1/shortform/${encodeURIComponent(videoId)}/export/retry`,
+    {
+      method: 'POST',
+    },
+    token,
+  );
+
+  return Boolean(response?.success);
+}

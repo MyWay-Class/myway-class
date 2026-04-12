@@ -1,14 +1,15 @@
 import { Hono } from 'hono';
 import {
   composeShortformVideo,
+  getShortformVideoDetail,
   generateShortformExtraction,
   getShortformExtractionById,
-  getShortformVideoDetail,
   listMyShortformLibrary,
   listMyShortformVideos,
   listShortformCommunity,
   saveShortformVideo,
   shareShortformVideo,
+  updateVideoExport,
   toggleShortformCandidateSelection,
   toggleShortformLike,
   type ShortformComposeRequest,
@@ -20,6 +21,26 @@ import {
 } from '@myway/shared';
 import { getAuthenticatedUser } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
+import { dispatchShortformExportJob } from '../lib/shortform-export';
+import { verifyMediaCallbackSecret } from '../lib/media-processor';
+import type { RuntimeBindings } from '../lib/runtime-env';
+
+type ShortformExportCallbackRequest = {
+  shortform_id: string;
+  video_id?: string;
+  status: 'COMPLETED' | 'FAILED';
+  video_url?: string;
+  error_message?: string;
+  failure_reason?: string;
+  processing_job_id?: string;
+  processing_stage?: string;
+  processing_step?: string;
+};
+
+function buildExportCallbackUrl(requestUrl: string): string {
+  const url = new URL(requestUrl);
+  return `${url.origin}/api/v1/shortform/export/callback`;
+}
 
 const shortform = new Hono();
 
@@ -102,7 +123,150 @@ shortform.post('/compose', async (c) => {
     return jsonFailure('SHORTFORM_COMPOSE_FAILED', '숏폼을 생성할 수 없습니다.', 400);
   }
 
-  return jsonSuccess(video, '숏폼이 생성되었습니다.', 201);
+  const detail = getShortformVideoDetail(video.id);
+  if (!detail) {
+    return jsonSuccess(video, '숏폼이 생성되었습니다.', 201);
+  }
+
+  updateVideoExport(video.id, {
+    export_status: 'PROCESSING',
+    export_error_message: null,
+    export_failure_reason: null,
+    export_result_url: null,
+    export_job_id: null,
+    export_retry_count: 0,
+  });
+
+  const exportResult = await dispatchShortformExportJob(
+    {
+      shortform: detail,
+      clips: detail.clips,
+      source_base_url: c.req.url,
+      callback_url: buildExportCallbackUrl(c.req.url),
+    },
+    c.env as RuntimeBindings | undefined,
+  );
+
+  if (!exportResult.ok) {
+    updateVideoExport(video.id, {
+      export_status: 'FAILED',
+      export_error_message: exportResult.message,
+      export_failure_reason: exportResult.reason,
+      export_result_url: null,
+      export_job_id: null,
+    });
+
+    return jsonSuccess(
+      updateVideoExport(video.id, {
+        export_status: 'FAILED',
+        export_error_message: exportResult.message,
+        export_failure_reason: exportResult.reason,
+      }),
+      '숏폼은 생성되었지만 export job을 시작하지 못했습니다.',
+      201,
+    );
+  }
+
+  const updated = updateVideoExport(video.id, {
+    export_status: exportResult.status,
+    export_job_id: exportResult.job_id,
+    export_error_message: null,
+    export_failure_reason: null,
+  });
+
+  return jsonSuccess(updated ?? video, '숏폼 export job이 시작되었습니다.', 201);
+});
+
+shortform.post('/export/callback', async (c) => {
+  if (!verifyMediaCallbackSecret(c.req.raw, c.env as RuntimeBindings | undefined)) {
+    return jsonFailure('FORBIDDEN', '유효한 callback secret이 필요합니다.', 403);
+  }
+
+  const body = await readJsonBody<ShortformExportCallbackRequest>(c.req.raw);
+  if (!body) {
+    return jsonFailure('INVALID_BODY', '요청 본문이 올바르지 않습니다.', 400);
+  }
+
+  const videoId = body.video_id?.trim() || body.shortform_id?.trim();
+  if (!videoId) {
+    return jsonFailure('SHORTFORM_ID_REQUIRED', 'shortform_id가 필요합니다.', 400);
+  }
+
+  const current = getShortformVideoDetail(videoId);
+  if (!current) {
+    return jsonFailure('SHORTFORM_NOT_FOUND', '숏폼을 찾을 수 없습니다.', 404);
+  }
+
+  const next = updateVideoExport(current.id, {
+    export_status: body.status === 'FAILED' ? 'FAILED' : 'COMPLETED',
+    export_result_url: body.video_url?.trim() ?? current.export_result_url,
+    export_error_message: body.error_message?.trim() ?? null,
+    export_failure_reason: body.failure_reason?.trim() ?? null,
+    export_job_id: body.processing_job_id?.trim() ?? current.export_job_id,
+    video_url: body.status === 'COMPLETED' && body.video_url?.trim() ? body.video_url.trim() : current.video_url,
+  });
+
+  if (!next) {
+    return jsonFailure('SHORTFORM_NOT_FOUND', '숏폼을 찾을 수 없습니다.', 404);
+  }
+
+  return jsonSuccess(next, body.status === 'FAILED' ? '숏폼 export가 실패했습니다.' : '숏폼 export가 완료되었습니다.');
+});
+
+shortform.post('/:shortformId/export/retry', async (c) => {
+  const user = getAuthenticatedUser(c.req.raw);
+  if (!user) {
+    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+  }
+
+  const shortformId = c.req.param('shortformId');
+  const current = getShortformVideoDetail(shortformId);
+  if (!current) {
+    return jsonFailure('SHORTFORM_NOT_FOUND', '숏폼을 찾을 수 없습니다.', 404);
+  }
+
+  if (current.user_id !== user.id) {
+    return jsonFailure('FORBIDDEN', '본인 숏폼만 다시 내보낼 수 있습니다.', 403);
+  }
+
+  const retried = updateVideoExport(shortformId, {
+    export_status: 'PROCESSING',
+    export_retry_count: current.export_retry_count + 1,
+    export_error_message: null,
+    export_failure_reason: null,
+  });
+
+  const detail = getShortformVideoDetail(shortformId);
+  if (!detail || !retried) {
+    return jsonFailure('SHORTFORM_NOT_FOUND', '숏폼을 찾을 수 없습니다.', 404);
+  }
+
+  const exportResult = await dispatchShortformExportJob(
+    {
+      shortform: detail,
+      clips: detail.clips,
+      source_base_url: c.req.url,
+      callback_url: buildExportCallbackUrl(c.req.url),
+    },
+    c.env as RuntimeBindings | undefined,
+  );
+
+  if (!exportResult.ok) {
+    updateVideoExport(shortformId, {
+      export_status: 'FAILED',
+      export_error_message: exportResult.message,
+      export_failure_reason: exportResult.reason,
+    });
+
+    return jsonFailure('SHORTFORM_EXPORT_FAILED', exportResult.message, exportResult.reason === 'not_configured' ? 503 : 502);
+  }
+
+  const updated = updateVideoExport(shortformId, {
+    export_status: exportResult.status,
+    export_job_id: exportResult.job_id,
+  });
+
+  return jsonSuccess(updated ?? retried, '숏폼 export job이 다시 시작되었습니다.', 202);
 });
 
 shortform.get('/videos/my', (c) => {
