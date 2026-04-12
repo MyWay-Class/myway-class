@@ -29,6 +29,7 @@ export {
   shareShortformDraft,
   saveShortformDraft,
   toggleShortformLikeDraft,
+  retryShortformExportDraft,
 } from './api-shortforms';
 export {
   loadCourses,

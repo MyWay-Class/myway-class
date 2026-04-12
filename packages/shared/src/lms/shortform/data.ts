@@ -67,6 +67,41 @@ export function getVideo(videoId: string): ShortformVideo | undefined {
   return demoShortformVideos.find((item) => item.id === videoId);
 }
 
+export function updateVideoExport(
+  videoId: string,
+  partial: Partial<
+    Pick<
+      ShortformVideo,
+      | 'export_status'
+      | 'export_job_id'
+      | 'export_result_url'
+      | 'export_failure_reason'
+      | 'export_error_message'
+      | 'export_retry_count'
+      | 'video_url'
+      | 'updated_at'
+    >
+  >,
+): ShortformVideo | null {
+  const current = getVideo(videoId);
+  if (!current) {
+    return null;
+  }
+
+  const next: ShortformVideo = {
+    ...current,
+    ...partial,
+    updated_at: partial.updated_at ?? now(),
+  };
+
+  const index = demoShortformVideos.findIndex((item) => item.id === videoId);
+  if (index >= 0) {
+    demoShortformVideos[index] = next;
+  }
+
+  return next;
+}
+
 export function buildVideoDetail(video: ShortformVideo): ShortformVideoDetail {
   return {
     ...video,

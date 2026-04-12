@@ -2,6 +2,8 @@ export type ShortformStyle = 'highlight' | 'exam_prep' | 'quick_review' | 'deep_
 
 export type ShortformStatus = 'DRAFT' | 'GENERATED' | 'REVIEWED' | 'PUBLIC' | 'ARCHIVED';
 
+export type ShortformExportStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
 export type ShortformCandidate = {
   id: string;
   extraction_id: string;
@@ -58,6 +60,13 @@ export type ShortformVideo = {
   source_lecture_ids: string[];
   status: ShortformStatus;
   video_url: string;
+  export_status: ShortformExportStatus;
+  export_job_id: string | null;
+  export_result_url: string | null;
+  export_failure_reason: string | null;
+  export_error_message: string | null;
+  export_retry_count: number;
+  updated_at: string;
   share_count: number;
   like_count: number;
   save_count: number;

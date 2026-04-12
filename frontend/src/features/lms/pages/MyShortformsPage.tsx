@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CourseCard, CourseDetail, CustomCourseLibraryItem, ShortformLibraryItem } from '@myway/shared';
-import { copyCustomCourseDraft, loadCustomCourseLibrary, loadShortformLibrary, saveShortformDraft, shareCustomCourseDraft, shareShortformDraft, toggleShortformLikeDraft } from '../../../lib/api';
+import { copyCustomCourseDraft, loadCustomCourseLibrary, loadShortformLibrary, retryShortformExportDraft, saveShortformDraft, shareCustomCourseDraft, shareShortformDraft, toggleShortformLikeDraft } from '../../../lib/api';
 
 type MyShortformsPageProps = {
   courses: CourseCard[];
@@ -59,6 +59,12 @@ export function MyShortformsPage({ courses, selectedCourse, sessionToken }: MySh
   async function handleLikeShortform(videoId: string) {
     const ok = await toggleShortformLikeDraft(videoId, sessionToken);
     setStatus(ok ? '좋아요 상태를 반영했습니다.' : '좋아요 처리에 실패했습니다.');
+    await refreshLibrary();
+  }
+
+  async function handleRetryExport(videoId: string) {
+    const ok = await retryShortformExportDraft(videoId, sessionToken);
+    setStatus(ok ? '숏폼 export를 다시 시작했습니다.' : '숏폼 export 재시도에 실패했습니다.');
     await refreshLibrary();
   }
 
@@ -158,6 +164,18 @@ export function MyShortformsPage({ courses, selectedCourse, sessionToken }: MySh
                       </div>
                       <div className="mt-2 text-[14px] font-bold text-slate-900">{video.title}</div>
                       <p className="mt-1 text-[12px] leading-6 text-slate-500">{video.description}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${video.export_status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : video.export_status === 'FAILED' ? 'bg-rose-100 text-rose-700' : video.export_status === 'PROCESSING' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                          export {video.export_status}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                          retry {video.export_retry_count}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-[11px] leading-5 text-slate-400">
+                        {video.export_result_url ?? video.video_url}
+                      </div>
+                      {video.export_error_message ? <p className="mt-1 text-[11px] leading-5 text-rose-600">{video.export_error_message}</p> : null}
                     </div>
                     <div className="text-right text-[11px] text-slate-400">
                       <div>{video.view_count} 조회</div>
@@ -174,6 +192,11 @@ export function MyShortformsPage({ courses, selectedCourse, sessionToken }: MySh
                     <button type="button" onClick={() => void handleShareShortform(video.id, video.course_id)} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600">
                       공유
                     </button>
+                    {video.export_status === 'FAILED' ? (
+                      <button type="button" onClick={() => void handleRetryExport(video.id)} className="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-600">
+                        export 재시도
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ))

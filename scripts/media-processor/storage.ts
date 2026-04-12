@@ -7,15 +7,20 @@ import { Readable } from 'node:stream';
 export async function ensureWorkDirs(workDir: string): Promise<void> {
   await fs.mkdir(path.join(workDir, 'input'), { recursive: true });
   await fs.mkdir(path.join(workDir, 'output'), { recursive: true });
+  await fs.mkdir(path.join(workDir, 'tmp'), { recursive: true });
 }
 
 export function buildJobPaths(workDir: string, jobId: string): {
   videoPath: string;
   audioPath: string;
+  outputPath: string;
+  tempDir: string;
 } {
   return {
     videoPath: path.join(workDir, 'input', `${jobId}.video`),
     audioPath: path.join(workDir, 'output', `${jobId}.wav`),
+    outputPath: path.join(workDir, 'output', `${jobId}.mp4`),
+    tempDir: path.join(workDir, 'tmp', jobId),
   };
 }
 
