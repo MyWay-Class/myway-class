@@ -274,7 +274,16 @@ export function StudentDashboardPage({
             </div>
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               {courses.slice(0, 4).map((course) => (
-                <CourseExploreCard key={course.id} course={course} selected={false} onSelect={onSelectCourse} />
+                <CourseExploreCard
+                  key={course.id}
+                  course={course}
+                  selected={false}
+                  onSelect={onSelectCourse}
+                  onOpen={(courseId) => {
+                    onSelectCourse(courseId);
+                    onNavigate('courses');
+                  }}
+                />
               ))}
             </div>
           </div>

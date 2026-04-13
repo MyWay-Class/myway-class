@@ -218,6 +218,7 @@ export async function completeMediaExtractionJob(
     {
       lecture_id: extraction.lecture_id,
       audio_url: payload.audio_url.trim(),
+      duration_ms: payload.audio_duration_ms ?? extraction.audio_duration_ms,
       language: extraction.language ?? 'ko',
       stt_provider: extraction.requested_stt_provider,
       stt_model: extraction.requested_stt_model,

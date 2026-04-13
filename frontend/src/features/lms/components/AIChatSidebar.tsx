@@ -10,6 +10,11 @@ type AIChatSidebarProps = {
   onCloseMobile: () => void;
 };
 
+function sanitizeDisplayText(value: string): string {
+  const collapsed = value.replace(/\uFFFD/g, '').replace(/\?{3,}/g, '…').trim();
+  return collapsed.length > 0 ? collapsed : '내용을 불러오지 못했습니다.';
+}
+
 export function AIChatSidebar({
   highlightedLecture,
   insights,
@@ -34,7 +39,7 @@ export function AIChatSidebar({
         <div className="mt-4 flex flex-wrap gap-2">
           {['핵심 개념 요약', '시험 대비 문제', '이전 강의와 연결', '숏폼으로 복습'].map((chip) => (
             <span key={chip} className="rounded-full border border-slate-200 px-3 py-1.5 text-[12px] text-slate-500">
-              {chip}
+              {sanitizeDisplayText(chip)}
             </span>
           ))}
         </div>
@@ -51,12 +56,12 @@ export function AIChatSidebar({
             <div>
               <div className="text-[12px] font-semibold text-slate-500">RAG 파이프라인</div>
               <div className="mt-1 text-[14px] font-bold text-slate-900">
-                {highlightedLecture ? highlightedLecture.title : '강의를 선택하면 파이프라인이 표시됩니다.'}
+                {highlightedLecture ? sanitizeDisplayText(highlightedLecture.title) : '강의를 선택하면 파이프라인이 표시됩니다.'}
               </div>
             </div>
             {ragOverview ? (
               <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
-                {ragOverview.provider.search_provider}
+                {sanitizeDisplayText(ragOverview.provider.search_provider)}
               </span>
             ) : null}
           </div>
@@ -69,15 +74,15 @@ export function AIChatSidebar({
             </div>
           ) : ragOverview ? (
             <>
-              <p className="mt-4 text-[12px] leading-5 text-slate-600">{ragOverview.answer.answer}</p>
+              <p className="mt-4 text-[12px] leading-5 text-slate-600">{sanitizeDisplayText(ragOverview.answer.answer)}</p>
               <div className="mt-4 space-y-2">
                 {ragOverview.chunks.slice(0, 2).map((chunk) => (
                   <div key={chunk.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-[11px] font-semibold text-indigo-600">{chunk.title}</div>
+                      <div className="text-[11px] font-semibold text-indigo-600">{sanitizeDisplayText(chunk.title)}</div>
                       <div className="text-[11px] text-slate-400">{Math.round(chunk.similarity * 100)}%</div>
                     </div>
-                    <p className="mt-1 text-[12px] leading-5 text-slate-600">{chunk.excerpt}</p>
+                    <p className="mt-1 text-[12px] leading-5 text-slate-600">{sanitizeDisplayText(chunk.excerpt)}</p>
                   </div>
                 ))}
               </div>
@@ -87,7 +92,7 @@ export function AIChatSidebar({
                     key={`${entity.kind}-${entity.value}`}
                     className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-500"
                   >
-                    {entity.label}: {entity.value}
+                    {sanitizeDisplayText(entity.label)}: {sanitizeDisplayText(entity.value)}
                   </span>
                 ))}
               </div>
