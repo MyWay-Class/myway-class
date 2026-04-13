@@ -2,12 +2,13 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { demoLectures } from '@myway/shared';
 import app from './index';
 import type { R2BucketLike } from './lib/runtime-env';
 
 const port = Number(process.env.PORT ?? '8787');
 const host = process.env.HOST ?? '127.0.0.1';
-const assetDir = process.env.MYWAY_MEDIA_ASSET_DIR ?? path.join(process.cwd(), 'tmp', 'media-assets');
+const assetDir = process.env.MYWAY_MEDIA_ASSET_DIR ?? path.resolve(process.cwd(), '..', 'tmp', 'media-assets');
 
 function encodeAssetKey(assetKey: string): string {
   return Buffer.from(assetKey, 'utf8').toString('base64url');
@@ -84,6 +85,39 @@ const runtimeEnv = {
   ASSETS: createFileAssetBucket(),
 };
 
+async function seedDemoLectureVideoAssets(): Promise<void> {
+  if (!runtimeEnv.ASSETS) {
+    return;
+  }
+
+  const samplePath = path.resolve(process.cwd(), '..', 'temp-sample-10s.mp4');
+  try {
+    const sampleVideo = await fs.readFile(samplePath);
+    let seededCount = 0;
+
+    for (const lecture of demoLectures) {
+      if (!lecture.video_asset_key) {
+        continue;
+      }
+
+      await runtimeEnv.ASSETS.put(lecture.video_asset_key, sampleVideo, {
+        httpMetadata: {
+          contentType: 'video/mp4',
+          contentDisposition: `inline; filename="${lecture.id}.mp4"`,
+        },
+      });
+      seededCount += 1;
+    }
+
+    console.log(`Seeded ${seededCount} demo lecture video assets from ${samplePath}`);
+  } catch (error) {
+    console.warn(
+      'Failed to seed demo lecture video assets:',
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
+
 function buildRequestUrl(req: http.IncomingMessage): string {
   const hostHeader = req.headers.host ?? `${host}:${port}`;
   return `http://${hostHeader}${req.url ?? '/'}`;
@@ -146,8 +180,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(port, host, () => {
-  console.log(`Backend dev server listening on http://${host}:${port}`);
+seedDemoLectureVideoAssets().finally(() => {
+  server.listen(port, host, () => {
+    console.log(`Backend dev server listening on http://${host}:${port}`);
+  });
 });
 
 process.on('SIGINT', () => {

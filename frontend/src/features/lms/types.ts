@@ -35,7 +35,7 @@ export type LmsPageId =
   | 'admin-stats'
   | 'admin-automation';
 
-export type LmsNavKey = LmsPageId | 'lecture-watch' | 'shortform-wizard' | 'admin-user-detail';
+export type LmsNavKey = LmsPageId | 'lecture-watch' | 'shortform-wizard' | 'admin-user-detail' | 'my-courses';
 
 export type LmsNavItem = {
   page: LmsPageId;

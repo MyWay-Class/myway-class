@@ -58,6 +58,28 @@ export async function buildSmartChatOverview(input: SmartChatRequest, repository
   const courseTitle = courseId ? getCourseTitle(courseId) : '현재 강의';
 
   if (route === 'clarify') {
+    if (lectureId) {
+      const directAnswer = await answerAIQuestion(
+        {
+          question: message,
+          lecture_id: lectureId,
+          limit: 4,
+        },
+        repository,
+      );
+
+      return {
+        message,
+        lecture_id: lectureId,
+        course_id: courseId,
+        route: 'answer',
+        intent,
+        answer: directAnswer.answer,
+        references: directAnswer.references,
+        suggestions: directAnswer.suggestions,
+      };
+    }
+
     return {
       message,
       lecture_id: lectureId,
