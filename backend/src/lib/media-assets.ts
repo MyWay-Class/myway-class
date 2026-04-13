@@ -38,6 +38,32 @@ function buildAssetKey(lectureId: string, fileName: string): string {
   return `media/${lectureId}/${stamp}-${baseName}`;
 }
 
+function buildContentDisposition(fileName: string): string {
+  const safeName = sanitizeName(fileName) || 'lecture-video.mp4';
+  return `inline; filename="${safeName}"`;
+}
+
+function normalizeContentDisposition(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return /^[\x20-\x7E]+$/.test(value) ? value : undefined;
+}
+
+function buildAssetResponseHeaders(contentType?: string, contentDisposition?: string | null): HeadersInit {
+  const headers: Record<string, string> = {
+    'Content-Type': contentType ?? 'application/octet-stream',
+  };
+
+  const normalizedContentDisposition = normalizeContentDisposition(contentDisposition ?? undefined);
+  if (normalizedContentDisposition) {
+    headers['Content-Disposition'] = normalizedContentDisposition;
+  }
+
+  return headers;
+}
+
 function buildAssetUrl(assetKey: string, requestUrl: string, env?: RuntimeBindings): string {
   const requestOrigin = new URL(requestUrl).origin;
   const origin = requestOrigin || env?.API_ORIGIN?.replace(/\/$/, '');
@@ -53,7 +79,7 @@ export async function uploadLectureVideoAsset(
   const assetKey = buildAssetKey(lectureId, file.name);
   const body = await file.arrayBuffer();
   const contentType = file.type || 'video/mp4';
-  const contentDisposition = `inline; filename="${file.name.replace(/"/g, '')}"`;
+  const contentDisposition = buildContentDisposition(file.name);
 
   if (!env?.ASSETS) {
     memoryAssets.set(assetKey, {
@@ -87,10 +113,7 @@ export async function readLectureVideoAsset(assetKey: string, env?: RuntimeBindi
     }
 
     return new Response(asset.body, {
-      headers: {
-        'Content-Type': asset.contentType,
-        'Content-Disposition': asset.contentDisposition,
-      },
+      headers: buildAssetResponseHeaders(asset.contentType, asset.contentDisposition),
     });
   }
 
@@ -100,9 +123,6 @@ export async function readLectureVideoAsset(assetKey: string, env?: RuntimeBindi
   }
 
   return new Response(asset.body, {
-    headers: {
-      'Content-Type': asset.httpMetadata?.contentType ?? 'application/octet-stream',
-      ...(asset.httpMetadata?.contentDisposition ? { 'Content-Disposition': asset.httpMetadata.contentDisposition } : {}),
-    },
+    headers: buildAssetResponseHeaders(asset.httpMetadata?.contentType, asset.httpMetadata?.contentDisposition),
   });
 }

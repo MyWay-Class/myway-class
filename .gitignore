@@ -6,4 +6,8 @@ build
 *.log
 .env
 .env.*
+backend/tmp/
+tmp/
+frontend.zip
+temp-sample-10s.mp4
 

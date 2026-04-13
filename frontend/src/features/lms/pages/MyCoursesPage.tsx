@@ -9,7 +9,7 @@ type MyCoursesPageProps = {
   courses: CourseCard[];
   selectedCourse: CourseDetail | null;
   onSelectCourse: (courseId: string) => void;
-  onNavigate: (page: 'my-courses' | 'course-create' | 'lecture-studio' | 'courses' | 'lecture-watch') => void;
+  onNavigate: (page: 'my-courses' | 'course-create' | 'lecture-studio' | 'courses' | 'lecture-watch' | 'dashboard') => void;
 };
 
 type ViewMode = 'grid' | 'list';

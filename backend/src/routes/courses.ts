@@ -12,6 +12,8 @@ import {
 } from '@myway/shared';
 import { getAuthenticatedUser } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
+import { persistCourseDetail } from '../lib/learning-store';
+import type { RuntimeBindings } from '../lib/runtime-env';
 
 type MaterialInput = {
   title?: string;
@@ -65,6 +67,8 @@ courses.post('/', async (c) => {
     is_published: body?.is_published ?? true,
     lecture_titles: lectureTitles.length > 0 ? lectureTitles : [title],
   });
+
+  await persistCourseDetail(result, c.env as RuntimeBindings | undefined);
 
   return jsonSuccess(result, '새 강의가 개설되었습니다.', 201);
 });
@@ -155,6 +159,11 @@ courses.post('/:courseId/materials', async (c) => {
     file_name: fileName,
   });
 
+  const updatedDetail = getCourseDetail(courseId, user.id);
+  if (updatedDetail) {
+    await persistCourseDetail(updatedDetail, c.env as RuntimeBindings | undefined);
+  }
+
   return jsonSuccess(material, '자료가 등록되었습니다.', 201);
 });
 
@@ -199,6 +208,11 @@ courses.post('/:courseId/notices', async (c) => {
     content,
     pinned: Boolean(body?.pinned),
   });
+
+  const updatedDetail = getCourseDetail(courseId, user.id);
+  if (updatedDetail) {
+    await persistCourseDetail(updatedDetail, c.env as RuntimeBindings | undefined);
+  }
 
   return jsonSuccess(notice, '공지가 등록되었습니다.', 201);
 });

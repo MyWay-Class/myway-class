@@ -13,9 +13,26 @@ function collectOutput(child: ReturnType<typeof spawn>): () => string {
   return () => output;
 }
 
+function quoteWindowsArg(value: string): string {
+  if (!/[\s"]/u.test(value)) {
+    return value;
+  }
+
+  return `"${value.replace(/(["\\])/g, '\\$1')}"`;
+}
+
+function spawnFfmpeg(ffmpegPath: string, args: string[]): ReturnType<typeof spawn> {
+  if (process.platform !== 'win32') {
+    return spawn(ffmpegPath, args);
+  }
+
+  const commandLine = [quoteWindowsArg(ffmpegPath), ...args.map(quoteWindowsArg)].join(' ');
+  return spawn('cmd.exe', ['/d', '/s', '/c', commandLine]);
+}
+
 export async function extractAudioWithFfmpeg(ffmpegPath: string, videoPath: string, audioPath: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(ffmpegPath, [
+    const child = spawnFfmpeg(ffmpegPath, [
       '-y',
       '-i',
       videoPath,
@@ -57,7 +74,7 @@ export async function trimVideoSegmentWithFfmpeg(
 ): Promise<void> {
   const durationMs = Math.max(1000, endTimeMs - startTimeMs);
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(ffmpegPath, [
+    const child = spawnFfmpeg(ffmpegPath, [
       '-y',
       '-i',
       sourcePath,
@@ -109,7 +126,7 @@ export async function concatVideoSegmentsWithFfmpeg(
   await fs.writeFile(listPath, `${listContent}\n`, 'utf8');
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(ffmpegPath, [
+    const child = spawnFfmpeg(ffmpegPath, [
       '-y',
       '-f',
       'concat',
@@ -145,7 +162,7 @@ export async function probeFfmpeg(ffmpegPath: string): Promise<{
   output?: string;
 }> {
   return await new Promise((resolve) => {
-    const child = spawn(ffmpegPath, ['-version']);
+    const child = spawnFfmpeg(ffmpegPath, ['-version']);
     const getOutput = collectOutput(child);
     child.on('error', () => {
       resolve({ available: false });

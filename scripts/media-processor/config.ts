@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import ffmpegStatic from 'ffmpeg-static';
 import type { ProcessorConfig } from './types';
 
 function toInt(value: string | undefined, fallback: number): number {
@@ -23,6 +24,6 @@ export function getProcessorConfig(): ProcessorConfig {
     workDir: process.env.MEDIA_PROCESSOR_WORK_DIR || path.join(os.tmpdir(), 'mywayclass-media-processor'),
     token: process.env.MYWAY_MEDIA_PROCESSOR_TOKEN || process.env.MEDIA_PROCESSOR_TOKEN || 'local-media-processor-token',
     callbackSecret: process.env.MYWAY_MEDIA_CALLBACK_SECRET || process.env.MEDIA_CALLBACK_SECRET || null,
-    ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',
+    ffmpegPath: process.env.FFMPEG_PATH || ffmpegStatic || 'ffmpeg',
   };
 }
