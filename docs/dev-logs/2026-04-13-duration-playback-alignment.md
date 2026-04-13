@@ -13,6 +13,7 @@
 - shared 레벨에서 transcript duration 이 있으면 강의 총 러닝타임 계산에 우선 사용하도록 맞췄다.
 - AI1 강의 전사 원문을 shared demo media 와 D1 seed 에 함께 넣어, 강의 상세/시청/스크립트/숏폼이 같은 STT 결과를 보게 했다.
 - lecture duration 백필은 transcript duration_ms 를 올림 처리해서 2분 21초 같은 짧은 강의도 3분으로 덜 왜곡되게 맞췄다.
+- AI2, AI3, 경제 1~3강도 같은 방식으로 전사/타임라인/오디오 추출/pipeline seed를 추가해 실제 숏폼 구간을 뽑을 수 있게 했다.
 
 ## 검증
 - `npm --workspace @myway/frontend run build`
