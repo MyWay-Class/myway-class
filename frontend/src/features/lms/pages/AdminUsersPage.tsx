@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { AuthUser } from '@myway/shared';
 import { roleLabel } from '../config';
 import { StatePanel } from '../components/StatePanel';
+import { demoUsers } from '../data/demo';
 
 type AdminUsersPageProps = {
   users: AuthUser[];
@@ -24,27 +25,28 @@ const roleToneClasses: Record<AuthUser['role'], string> = {
 export function AdminUsersPage({ users }: AdminUsersPageProps) {
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  const visibleUsers = users.length > 0 ? users : demoUsers;
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
 
-    return users.filter((user) => {
+    return visibleUsers.filter((user) => {
       const matchesQuery = normalized
         ? [user.name, user.email, user.department, user.bio, user.role, roleLabel(user.role)].join(' ').toLowerCase().includes(normalized)
         : true;
       const matchesRole = roleFilter === 'all' ? true : user.role === roleFilter;
       return matchesQuery && matchesRole;
     });
-  }, [query, roleFilter, users]);
+  }, [query, roleFilter, visibleUsers]);
 
   const counts = useMemo(
     () => ({
-      total: users.length,
-      admin: users.filter((user) => user.role === 'ADMIN').length,
-      instructor: users.filter((user) => user.role === 'INSTRUCTOR').length,
-      student: users.filter((user) => user.role === 'STUDENT').length,
+      total: visibleUsers.length,
+      admin: visibleUsers.filter((user) => user.role === 'ADMIN').length,
+      instructor: visibleUsers.filter((user) => user.role === 'INSTRUCTOR').length,
+      student: visibleUsers.filter((user) => user.role === 'STUDENT').length,
     }),
-    [users],
+    [visibleUsers],
   );
 
   return (

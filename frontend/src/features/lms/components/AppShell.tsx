@@ -58,7 +58,7 @@ export function AppShell({ session, activePage, activeNavKey, title, onNavigate,
   const shellOffsetClass = dock === 'right' ? (collapsed ? 'lg:mr-20' : 'lg:mr-72') : (collapsed ? 'lg:ml-20' : 'lg:ml-72');
 
   return (
-    <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
+    <div className="hero-pattern min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
       <AppSidebar
         session={session}
         activePage={activePage}
@@ -67,16 +67,25 @@ export function AppShell({ session, activePage, activeNavKey, title, onNavigate,
         collapsed={collapsed}
         theme={theme}
         sidebarWidthClass={sidebarWidthClass}
+        mobileOpen={mobileOpen}
         onNavigate={onNavigate}
         onHome={onHome}
         onLogout={onLogout}
         onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
         onToggleDock={() => setDock((current) => (current === 'left' ? 'right' : 'left'))}
         onToggleCollapsed={() => setCollapsed((current) => !current)}
+        onCloseMobile={() => setMobileOpen(false)}
       />
-      <div className={`min-h-screen ${shellOffsetClass}`}>
-        <AppHeader title={title} theme={theme} onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))} />
-        <main className="mx-auto max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8">{children}</main>
+      <div className={`min-h-screen transition-all duration-300 ${shellOffsetClass}`}>
+        <AppHeader
+          title={title}
+          theme={theme}
+          onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
+          onOpenMobile={() => setMobileOpen(true)}
+        />
+        <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
+          <div className="animate-fade-in">{children}</div>
+        </main>
       </div>
     </div>
   );

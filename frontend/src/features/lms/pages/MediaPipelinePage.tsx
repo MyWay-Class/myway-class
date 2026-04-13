@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AudioExtraction, CourseDetail, LectureDetail, LecturePipeline, LectureTranscript, MediaProcessorHealth, STTProviderCatalog } from '@myway/shared';
+import { getSTTProviderCatalog } from '@myway/shared';
 import { AiNoticeBanner } from '../components/AiNoticeBanner';
 import { StatePanel } from '../components/StatePanel';
 import { MediaPipelineStatusBoard } from '../components/MediaPipelineStatusBoard';
@@ -16,6 +17,7 @@ import {
   type MediaUploadResult,
 } from '../../../lib/api-media';
 import { getAiErrorMessage, getQuotaStatusText, getPublicTestPolicyText } from '../../../lib/ai-access';
+import { demoAudioExtraction, demoCourseDetail, demoLectureDetail, demoLecturePipeline, demoLectureTranscript, demoMediaProcessorHealth } from '../data/demo';
 
 type MediaPipelinePageProps = {
   selectedCourse: CourseDetail | null;
@@ -31,8 +33,10 @@ function formatBytes(value: number): string {
 }
 
 export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionToken, viewerRole }: MediaPipelinePageProps) {
-  const lectureOptions = selectedCourse?.lectures ?? [];
-  const defaultLectureId = highlightedLecture?.id ?? lectureOptions[0]?.id ?? '';
+  const demoMode = !selectedCourse;
+  const displayCourse = selectedCourse ?? demoCourseDetail;
+  const lectureOptions = selectedCourse?.lectures ?? demoCourseDetail.lectures;
+  const defaultLectureId = highlightedLecture?.id ?? lectureOptions[0]?.id ?? demoLectureDetail.id;
   const [lectureId, setLectureId] = useState(defaultLectureId);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState('');
@@ -42,10 +46,21 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   const [bannerMeta, setBannerMeta] = useState<string | null>(null);
   const [pipeline, setPipeline] = useState<LecturePipeline | null>(null);
   const [transcript, setTranscript] = useState<LectureTranscript | null>(null);
-  const [providers, setProviders] = useState<STTProviderCatalog | null>(null);
-  const [processorHealth, setProcessorHealth] = useState<MediaProcessorHealth | null>(null);
-  const [uploadResult, setUploadResult] = useState<MediaUploadResult | null>(null);
-  const [extractions, setExtractions] = useState<AudioExtraction[]>([]);
+  const [providers, setProviders] = useState<STTProviderCatalog | null>(demoMode ? getSTTProviderCatalog() : null);
+  const [processorHealth, setProcessorHealth] = useState<MediaProcessorHealth | null>(demoMode ? demoMediaProcessorHealth : null);
+  const [uploadResult, setUploadResult] = useState<MediaUploadResult | null>(
+    demoMode
+      ? {
+          lecture_id: demoLectureDetail.id,
+          asset_key: demoAudioExtraction.source_video_key ?? 'media/demo/ai-orchestration-intro.mp4',
+          video_url: demoLectureDetail.video_url,
+          file_name: 'ai-orchestration-intro.mp4',
+          content_type: 'video/mp4',
+          size_bytes: demoAudioExtraction.source_size_bytes ?? 0,
+        }
+      : null,
+  );
+  const [extractions, setExtractions] = useState<AudioExtraction[]>(demoMode ? [demoAudioExtraction] : []);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
@@ -59,6 +74,23 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
 
   const refreshMediaState = useCallback(
     async (targetLectureId: string, options?: { silent?: boolean }) => {
+      if (demoMode) {
+        setProviders(getSTTProviderCatalog());
+        setPipeline(demoLecturePipeline);
+        setExtractions([demoAudioExtraction]);
+        setProcessorHealth(demoMediaProcessorHealth);
+        setTranscript(demoLectureTranscript);
+        setUploadResult({
+          lecture_id: demoLectureDetail.id,
+          asset_key: demoAudioExtraction.source_video_key ?? 'media/demo/ai-orchestration-intro.mp4',
+          video_url: demoLectureDetail.video_url,
+          file_name: 'ai-orchestration-intro.mp4',
+          content_type: 'video/mp4',
+          size_bytes: demoAudioExtraction.source_size_bytes ?? 0,
+        });
+        return;
+      }
+
       if (!targetLectureId) {
         setPipeline(null);
         setExtractions([]);
@@ -87,10 +119,28 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
         }
       }
     },
-    [sessionToken],
+    [demoMode, sessionToken],
   );
 
   useEffect(() => {
+    if (demoMode) {
+      setProviders(getSTTProviderCatalog());
+      setPipeline(demoLecturePipeline);
+      setExtractions([demoAudioExtraction]);
+      setProcessorHealth(demoMediaProcessorHealth);
+      setTranscript(demoLectureTranscript);
+      setUploadResult({
+        lecture_id: demoLectureDetail.id,
+        asset_key: demoAudioExtraction.source_video_key ?? 'media/demo/ai-orchestration-intro.mp4',
+        video_url: demoLectureDetail.video_url,
+        file_name: 'ai-orchestration-intro.mp4',
+        content_type: 'video/mp4',
+        size_bytes: demoAudioExtraction.source_size_bytes ?? 0,
+      });
+      setNotice('데모 데이터로 미디어 업로드, 전사, 타임라인, 파이프라인 상태를 미리 보여주고 있습니다.');
+      return;
+    }
+
     if (!lectureId) {
       setPipeline(null);
       setExtractions([]);
@@ -120,10 +170,10 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     return () => {
       active = false;
     };
-  }, [lectureId, sessionToken]);
+  }, [demoMode, lectureId, sessionToken]);
 
   const selectedLecture = useMemo(
-    () => lectureOptions.find((lecture) => lecture.id === lectureId) ?? highlightedLecture ?? null,
+    () => lectureOptions.find((lecture) => lecture.id === lectureId) ?? highlightedLecture ?? demoLectureDetail,
     [highlightedLecture, lectureId, lectureOptions],
   );
 
@@ -206,6 +256,11 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   }
 
   async function handleSubmit() {
+    if (demoMode) {
+      setNotice('데모 데이터 상태에서는 업로드를 실행하지 않습니다. 실제 강의를 선택하면 업로드와 추출이 연결됩니다.');
+      return;
+    }
+
     if (!lectureId) {
       setNotice('먼저 강의를 선택해 주세요.');
       return;
@@ -251,6 +306,11 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   }
 
   async function handleRetryExtraction() {
+    if (demoMode) {
+      setNotice('데모 데이터 상태에서는 재추출을 실행하지 않습니다.');
+      return;
+    }
+
     if (!lectureId || !retrySource.video_url) {
       setNotice('재시도를 위해 다시 업로드하거나 사용할 video URL이 필요합니다.');
       return;
@@ -300,62 +360,53 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
 
       <AiNoticeBanner title="공개 테스트 안내" description={bannerDescription} tone="amber" meta={bannerMeta} />
 
-      {!selectedCourse ? (
-        <StatePanel
-          compact
-          icon="ri-movie-2-line"
-          tone="slate"
-          title="먼저 강의를 선택해 주세요."
-          description="이 화면은 현재 선택된 강의의 미디어 업로드와 전사를 연결합니다. 강의 목록에서 대상 강의를 선택한 뒤 다시 열면 됩니다."
+      <>
+        <MediaPipelineSummaryPanel
+          selectedLecture={selectedLecture}
+          pipeline={pipeline}
+          uploadResult={uploadResult}
+          extraction={latestExtraction}
+          notice={notice}
         />
-      ) : (
-        <>
-          <MediaPipelineSummaryPanel
-            selectedLecture={selectedLecture}
-            pipeline={pipeline}
-            uploadResult={uploadResult}
-            extraction={latestExtraction}
-            notice={notice}
-          />
 
-          <section className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">대상 강의</div>
-                  <div className="mt-1 text-lg font-bold text-slate-900">{selectedLecture?.title ?? selectedCourse.title}</div>
-                  <div className="mt-1 text-sm text-slate-500">{selectedCourse.title} · {selectedCourse.instructor_name}</div>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
-                  <div className="text-xs text-slate-400">업로드 가능한 파일</div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">3분 ~ 1시간 내외 영상</div>
-                </div>
+        <section className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">대상 강의</div>
+                <div className="mt-1 text-lg font-bold text-slate-900">{selectedLecture?.title ?? displayCourse.title}</div>
+                <div className="mt-1 text-sm text-slate-500">{displayCourse.title} · {displayCourse.instructor_name}</div>
               </div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
+                <div className="text-xs text-slate-400">업로드 가능한 파일</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">3분 ~ 1시간 내외 영상</div>
+              </div>
+            </div>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-slate-700">강의 선택</span>
-                  <select
-                    value={lectureId}
-                    onChange={(event) => setLectureId(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400"
-                  >
-                    {lectureOptions.map((lecture) => (
-                      <option key={lecture.id} value={lecture.id}>
-                        {lecture.title}
-                      </option>
-                    ))}
-                  </select>
+                <select
+                  value={lectureId}
+                  onChange={(event) => setLectureId(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400"
+                >
+                  {lectureOptions.map((lecture) => (
+                    <option key={lecture.id} value={lecture.id}>
+                      {lecture.title}
+                    </option>
+                  ))}
+                </select>
                 </label>
 
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-slate-700">오디오 URL</span>
-                  <input
-                    value={audioUrl}
-                    onChange={(event) => setAudioUrl(event.target.value)}
-                    placeholder="이미 추출된 audio_url이 있으면 바로 입력"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400"
-                  />
+                <input
+                  value={audioUrl}
+                  onChange={(event) => setAudioUrl(event.target.value)}
+                  placeholder="이미 추출된 audio_url이 있으면 바로 입력"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400"
+                />
                 </label>
               </div>
 
@@ -377,118 +428,117 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
               </div>
 
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={busy}
-                  className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
-                >
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={busy || demoMode}
+                className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
                   <i className={`${busy ? 'ri-loader-4-line animate-spin' : 'ri-upload-2-line'}`} />
-                  {busy ? '진행 중' : '업로드 및 추출 요청'}
-                </button>
-                <div className="text-sm text-slate-500">{notice}</div>
+                {busy ? '진행 중' : demoMode ? '데모 모드' : '업로드 및 추출 요청'}
+              </button>
+              <div className="text-sm text-slate-500">{notice}</div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="text-sm font-semibold text-slate-900">현재 선택 정보</div>
+            <div className="mt-3 space-y-3 text-sm text-slate-600">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">강의</div>
+                <div className="mt-1 font-semibold text-slate-900">{selectedLecture?.title ?? '선택된 강의 없음'}</div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">영상 업로드 결과</div>
+                <div className="mt-1 break-all font-semibold text-slate-900">{uploadResult?.video_url ?? '아직 없음'}</div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">전사 결과</div>
+                <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.transcript_id ?? pipeline?.transcript_id ?? '아직 없음'}</div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 서비스 job</div>
+                <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.processing_job_id ?? '아직 없음'}</div>
+                {latestExtraction?.processing_error ? (
+                  <div className="mt-2 text-xs text-rose-600">{latestExtraction.processing_error}</div>
+                ) : null}
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="text-sm font-semibold text-slate-900">현재 선택 정보</div>
-              <div className="mt-3 space-y-3 text-sm text-slate-600">
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">강의</div>
-                  <div className="mt-1 font-semibold text-slate-900">{selectedLecture?.title ?? '선택된 강의 없음'}</div>
+        {latestExtraction?.status === 'FAILED' ? (
+          <StatePanel
+            compact
+            icon="ri-error-warning-line"
+            tone="rose"
+            title="오디오 추출이 실패했습니다."
+            description={latestExtraction.processing_error ?? '외부 처리 서비스 또는 callback 반영 과정에서 실패했습니다. 입력 경로를 확인한 뒤 다시 요청해 주세요.'}
+          />
+        ) : null}
+
+        {latestExtraction?.status === 'FAILED' ? (
+          <section className="rounded-3xl border border-rose-200 bg-rose-50/70 p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">실패 후 다음 단계</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  영상 업로드 결과나 기존 source video URL이 남아 있으면 같은 입력으로 다시 추출을 요청할 수 있습니다.
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">영상 업로드 결과</div>
-                  <div className="mt-1 break-all font-semibold text-slate-900">{uploadResult?.video_url ?? '아직 없음'}</div>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">전사 결과</div>
-                  <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.transcript_id ?? pipeline?.transcript_id ?? '아직 없음'}</div>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 서비스 job</div>
-                  <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.processing_job_id ?? '아직 없음'}</div>
-                  {latestExtraction?.processing_error ? (
-                    <div className="mt-2 text-xs text-rose-600">{latestExtraction.processing_error}</div>
-                  ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={handleRetryExtraction}
+                disabled={busy || !retrySource.video_url || demoMode}
+                className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <i className={`${busy ? 'ri-loader-4-line animate-spin' : 'ri-refresh-line'}`} />
+                추출 다시 시도
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border border-rose-100 bg-white/80 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">재시도 source video</div>
+                <div className="mt-1 break-all text-sm text-slate-700">{retrySource.video_url ?? '없음'}</div>
+              </div>
+              <div className="rounded-2xl border border-rose-100 bg-white/80 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">재시도 전 확인</div>
+                <div className="mt-1 text-sm text-slate-700">
+                  callback secret, media processor 연결 상태, 업로드 asset URL 접근 가능 여부를 먼저 확인하세요.
                 </div>
               </div>
             </div>
           </section>
+        ) : null}
 
-          {latestExtraction?.status === 'FAILED' ? (
-            <StatePanel
-              compact
-              icon="ri-error-warning-line"
-              tone="rose"
-              title="오디오 추출이 실패했습니다."
-              description={latestExtraction.processing_error ?? '외부 처리 서비스 또는 callback 반영 과정에서 실패했습니다. 입력 경로를 확인한 뒤 다시 요청해 주세요.'}
+        {viewerRole === 'STUDENT' ? (
+          <StatePanel
+            compact
+            icon="ri-lock-line"
+            tone="slate"
+            title="세부 상태는 관리자 전용입니다."
+            description="일반 사용자는 업로드 결과와 전사 완료 여부만 볼 수 있습니다. 내부 FFmpeg, processor job, callback 상세는 운영자 화면에서 확인합니다."
+          />
+        ) : (
+          <section className="grid gap-5 xl:grid-cols-[0.86fr_1.14fr]">
+            <MediaPipelineStatusBoard
+              selectedLecture={selectedLecture}
+              pipeline={pipeline}
+              providers={providers}
+              processorHealth={processorHealth}
+              uploadResult={uploadResult}
+              extraction={latestExtraction}
+              recentExtractions={extractions}
+              isRefreshing={isRefreshing}
+              onRefresh={() => {
+                void refreshMediaState(lectureId);
+              }}
             />
-          ) : null}
 
-          {latestExtraction?.status === 'FAILED' ? (
-            <section className="rounded-3xl border border-rose-200 bg-rose-50/70 p-5 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">실패 후 다음 단계</div>
-                  <div className="mt-1 text-sm text-slate-600">
-                    영상 업로드 결과나 기존 source video URL이 남아 있으면 같은 입력으로 다시 추출을 요청할 수 있습니다.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleRetryExtraction}
-                  disabled={busy || !retrySource.video_url}
-                  className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <i className={`${busy ? 'ri-loader-4-line animate-spin' : 'ri-refresh-line'}`} />
-                  추출 다시 시도
-                </button>
-              </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-rose-100 bg-white/80 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">재시도 source video</div>
-                  <div className="mt-1 break-all text-sm text-slate-700">{retrySource.video_url ?? '없음'}</div>
-                </div>
-                <div className="rounded-2xl border border-rose-100 bg-white/80 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">재시도 전 확인</div>
-                  <div className="mt-1 text-sm text-slate-700">
-                    callback secret, media processor 연결 상태, 업로드 asset URL 접근 가능 여부를 먼저 확인하세요.
-                  </div>
-                </div>
-              </div>
-            </section>
-          ) : null}
-
-          {viewerRole === 'STUDENT' ? (
-            <StatePanel
-              compact
-              icon="ri-lock-line"
-              tone="slate"
-              title="세부 상태는 관리자 전용입니다."
-              description="일반 사용자는 업로드 결과와 전사 완료 여부만 볼 수 있습니다. 내부 FFmpeg, processor job, callback 상세는 운영자 화면에서 확인합니다."
-            />
-          ) : (
-            <section className="grid gap-5 xl:grid-cols-[0.86fr_1.14fr]">
-              <MediaPipelineStatusBoard
-                selectedLecture={selectedLecture}
-                pipeline={pipeline}
-                providers={providers}
-                processorHealth={processorHealth}
-                uploadResult={uploadResult}
-                extraction={latestExtraction}
-                recentExtractions={extractions}
-                isRefreshing={isRefreshing}
-                onRefresh={() => {
-                  void refreshMediaState(lectureId);
-                }}
-              />
-
-              <TranscriptTimelineWorkspace selectedLecture={selectedLecture} transcript={transcript} />
-            </section>
-          )}
-        </>
-      )}
+            <TranscriptTimelineWorkspace selectedLecture={selectedLecture} transcript={transcript} />
+          </section>
+        )}
+      </>
     </div>
   );
 }

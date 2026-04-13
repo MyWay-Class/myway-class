@@ -14,6 +14,7 @@ import { CoursesPage } from './CoursesPage';
 import { InstructorDashboardPage } from './InstructorDashboardPage';
 import { LectureWatchPage } from './LectureWatchPage';
 import { LectureStudioPage } from './LectureStudioPage';
+import { HomePage } from './HomePage';
 import { MyCoursesPage } from './MyCoursesPage';
 import { MediaPipelinePage } from './MediaPipelinePage';
 import { QuizGenPage } from './QuizGenPage';
@@ -55,6 +56,19 @@ export function RolePageRouter({
 }: RolePageRouterProps) {
   const sessionToken = session.session_token;
   const shortformInitialTab = page === 'my-shortforms' ? 'library' : page === 'community' ? 'community' : 'create';
+
+  if (page === 'home') {
+    return (
+      <HomePage
+        session={session}
+        dashboard={dashboard}
+        courses={enrolledCourses}
+        highlightedLecture={highlightedLecture}
+        onNavigate={onNavigate}
+        onSelectCourse={onSelectCourse}
+      />
+    );
+  }
 
   if (loading) {
     return (

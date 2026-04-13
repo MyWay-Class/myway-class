@@ -1,4 +1,5 @@
 import type { AIProviderCatalog } from '@myway/shared';
+import { getAIProviderCatalog } from '@myway/shared';
 
 type AutomationTool = {
   icon: string;
@@ -71,8 +72,9 @@ type AdminAutomationPageProps = {
 };
 
 export function AdminAutomationPage({ providerCatalog }: AdminAutomationPageProps) {
-  const providerPlans = providerCatalog?.plans.slice(0, 4) ?? [];
-  const runtimePolicy = providerCatalog?.runtime_policy;
+  const resolvedCatalog = providerCatalog ?? getAIProviderCatalog();
+  const providerPlans = resolvedCatalog.plans.slice(0, 4);
+  const runtimePolicy = resolvedCatalog.runtime_policy;
   const runtimeModeLabel = runtimePolicy?.public_mode === 'free_test' ? '공개 테스트' : '개발';
   const authLabel = runtimePolicy?.require_auth ? '로그인 필수' : '로그인 선택';
   const sttLabel = runtimePolicy?.enable_stt ? 'STT 활성' : 'STT 비활성';

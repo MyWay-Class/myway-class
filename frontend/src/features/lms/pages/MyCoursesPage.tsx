@@ -3,6 +3,7 @@ import type { CourseCard, CourseDetail, LoginResponse } from '@myway/shared';
 import { CourseExploreCard } from '../components/CourseExploreCard';
 import { StatePanel } from '../components/StatePanel';
 import { loadManagedCourses } from '../../../lib/api';
+import { demoCourses } from '../data/demo';
 
 type MyCoursesPageProps = {
   session: LoginResponse;
@@ -53,13 +54,14 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
     ? managedCourses
     : courses.filter((course) => session.user.role === 'ADMIN' || course.instructor_id === session.user.id);
   const currentCourses = session.user.role === 'STUDENT' ? enrolledCourses : instructorCourses;
-  const primaryCourse = selectedCourse ?? currentCourses[0] ?? null;
-  const categories = ['all', ...new Set(currentCourses.map((course) => course.category))];
+  const visibleCourses = currentCourses.length > 0 ? currentCourses : demoCourses;
+  const primaryCourse = selectedCourse ?? visibleCourses[0] ?? null;
+  const categories = ['all', ...new Set(visibleCourses.map((course) => course.category))];
 
   const filteredCourses = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return currentCourses
+    return visibleCourses
       .filter((course) => {
         const queryMatch = query
           ? [course.title, course.category, course.description, course.instructor_name, ...course.tags].join(' ').toLowerCase().includes(query)
@@ -84,16 +86,16 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
 
         return right.progress_percent - left.progress_percent;
       });
-  }, [activeCategory, currentCourses, searchQuery, sortMode, statusFilter]);
+  }, [activeCategory, searchQuery, sortMode, statusFilter, visibleCourses]);
 
   const stats = useMemo(
     () => ({
-      total: currentCourses.length,
-      published: currentCourses.filter((course) => course.is_published).length,
-      totalLectures: currentCourses.reduce((sum, course) => sum + course.lecture_count, 0),
-      inProgress: currentCourses.filter((course) => course.progress_percent > 0 && course.progress_percent < 100).length,
+      total: visibleCourses.length,
+      published: visibleCourses.filter((course) => course.is_published).length,
+      totalLectures: visibleCourses.reduce((sum, course) => sum + course.lecture_count, 0),
+      inProgress: visibleCourses.filter((course) => course.progress_percent > 0 && course.progress_percent < 100).length,
     }),
-    [currentCourses],
+    [visibleCourses],
   );
   const totalLabel = session.user.role === 'STUDENT' ? '수강 중 강의 수' : '관리 강의 수';
   const publishedLabel = session.user.role === 'STUDENT' ? '완료 강의' : '공개 강의';

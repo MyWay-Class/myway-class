@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AuthUser, CourseCard } from '@myway/shared';
 import { AdminFilterBar } from '../components/AdminFilterBar';
+import { demoCourses, demoUsers } from '../data/demo';
 
 type AdminInstructorsPageProps = {
   instructors: AuthUser[];
@@ -11,13 +12,15 @@ export function AdminInstructorsPage({ instructors, courses }: AdminInstructorsP
   const [query, setQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [sortValue, setSortValue] = useState<'name' | 'course-count' | 'department'>('course-count');
+  const visibleInstructors = instructors.length > 0 ? instructors : demoUsers.filter((user) => user.role === 'INSTRUCTOR');
+  const visibleCourses = courses.length > 0 ? courses : demoCourses;
 
-  const departments = Array.from(new Set(instructors.map((instructor) => instructor.department))).sort((left, right) =>
+  const departments = Array.from(new Set(visibleInstructors.map((instructor) => instructor.department))).sort((left, right) =>
     left.localeCompare(right),
   );
   const departmentOptions = [{ value: 'ALL', label: '전체' }, ...departments.map((department) => ({ value: department, label: department }))];
 
-  const filteredInstructors = instructors
+  const filteredInstructors = visibleInstructors
     .filter((instructor) => {
       const searchable = [instructor.name, instructor.email, instructor.department].join(' ').toLowerCase();
       const queryMatch = query.trim() ? searchable.includes(query.trim().toLowerCase()) : true;
@@ -25,8 +28,8 @@ export function AdminInstructorsPage({ instructors, courses }: AdminInstructorsP
       return queryMatch && departmentMatch;
     })
     .sort((left, right) => {
-      const leftCourseCount = courses.filter((course) => course.instructor_name === left.name).length;
-      const rightCourseCount = courses.filter((course) => course.instructor_name === right.name).length;
+      const leftCourseCount = visibleCourses.filter((course) => course.instructor_name === left.name).length;
+      const rightCourseCount = visibleCourses.filter((course) => course.instructor_name === right.name).length;
 
       if (sortValue === 'name') {
         return left.name.localeCompare(right.name);
@@ -65,7 +68,7 @@ export function AdminInstructorsPage({ instructors, courses }: AdminInstructorsP
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {filteredInstructors.length > 0 ? (
           filteredInstructors.map((instructor) => {
-            const ownCourses = courses.filter((course) => course.instructor_name === instructor.name);
+            const ownCourses = visibleCourses.filter((course) => course.instructor_name === instructor.name);
             return (
               <article key={instructor.id} className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
                 <div className="flex items-start gap-3">

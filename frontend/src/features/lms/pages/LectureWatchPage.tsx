@@ -119,7 +119,7 @@ export function LectureWatchPage({
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-soft">
+      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-6 py-7 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)]">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
@@ -138,8 +138,8 @@ export function LectureWatchPage({
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
-        <article className="overflow-hidden rounded-[28px] border border-[var(--app-border)] bg-[var(--app-surface)] shadow-soft">
-          <div className="border-b border-[var(--app-border)] px-5 py-5">
+        <article className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
+          <div className="border-b border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-[12px] font-semibold text-indigo-600">내 강의 / 영상 시청</div>
@@ -168,7 +168,7 @@ export function LectureWatchPage({
           </div>
 
           <div className="p-5">
-            <div className="overflow-hidden rounded-[24px] border border-[var(--app-border)] bg-black">
+            <div className="overflow-hidden rounded-[24px] border border-[var(--app-border)] bg-black shadow-[0_16px_32px_rgba(15,23,42,0.20)]">
               {isLocked ? (
                 <div className="flex aspect-video items-center justify-center bg-[linear-gradient(135deg,#020617_0%,#111827_50%,#1e293b_100%)] text-white">
                   <div className="max-w-md px-6 text-center">
@@ -276,7 +276,7 @@ export function LectureWatchPage({
           </div>
         </article>
 
-        <aside className="overflow-hidden rounded-[28px] border border-[var(--app-border)] bg-[var(--app-surface)] shadow-soft">
+        <aside className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
           {isLocked ? (
             <div className="p-5">
               <StatePanel
@@ -295,7 +295,7 @@ export function LectureWatchPage({
             </div>
           ) : (
             <>
-              <div className="border-b border-[var(--app-border)] px-4 py-4">
+              <div className="border-b border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
                 <div className="flex gap-2">
                   {[
                     { key: 'sessions', label: '차시 목록', icon: 'ri-list-check-2' },

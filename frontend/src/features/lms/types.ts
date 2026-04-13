@@ -15,6 +15,7 @@ import type {
 } from '@myway/shared';
 
 export type LmsPageId =
+  | 'home'
   | 'dashboard'
   | 'courses'
   | 'lecture-watch'
