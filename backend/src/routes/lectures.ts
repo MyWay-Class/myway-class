@@ -37,7 +37,11 @@ lectures.post('/:lectureId/complete', async (c) => {
     return jsonFailure('ENROLLMENT_REQUIRED', '수강 신청 후에 진도를 저장할 수 있습니다.', 409);
   }
 
-  await persistLectureProgress(user.id, lectureId, c.env as RuntimeBindings | undefined);
+  try {
+    await persistLectureProgress(user.id, lectureId, c.env as RuntimeBindings | undefined);
+  } catch (error) {
+    console.error('failed to persist lecture progress', error);
+  }
 
   return jsonSuccess(
     {

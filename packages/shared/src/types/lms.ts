@@ -25,6 +25,8 @@ export type Lecture = {
   duration_minutes: number;
   is_published: boolean;
   is_completed?: boolean;
+  video_url?: string;
+  video_asset_key?: string;
 };
 
 export type Enrollment = {

@@ -68,7 +68,11 @@ courses.post('/', async (c) => {
     lecture_titles: lectureTitles.length > 0 ? lectureTitles : [title],
   });
 
-  await persistCourseDetail(result, c.env as RuntimeBindings | undefined);
+  try {
+    await persistCourseDetail(result, c.env as RuntimeBindings | undefined);
+  } catch (error) {
+    console.error('failed to persist created course detail', error);
+  }
 
   return jsonSuccess(result, '새 강의가 개설되었습니다.', 201);
 });
@@ -161,7 +165,11 @@ courses.post('/:courseId/materials', async (c) => {
 
   const updatedDetail = getCourseDetail(courseId, user.id);
   if (updatedDetail) {
-    await persistCourseDetail(updatedDetail, c.env as RuntimeBindings | undefined);
+    try {
+      await persistCourseDetail(updatedDetail, c.env as RuntimeBindings | undefined);
+    } catch (error) {
+      console.error('failed to persist course material', error);
+    }
   }
 
   return jsonSuccess(material, '자료가 등록되었습니다.', 201);
@@ -211,7 +219,11 @@ courses.post('/:courseId/notices', async (c) => {
 
   const updatedDetail = getCourseDetail(courseId, user.id);
   if (updatedDetail) {
-    await persistCourseDetail(updatedDetail, c.env as RuntimeBindings | undefined);
+    try {
+      await persistCourseDetail(updatedDetail, c.env as RuntimeBindings | undefined);
+    } catch (error) {
+      console.error('failed to persist course notice', error);
+    }
   }
 
   return jsonSuccess(notice, '공지가 등록되었습니다.', 201);

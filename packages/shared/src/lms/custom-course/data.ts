@@ -48,7 +48,7 @@ export function normalizeCourseClips(clips: CustomCourseComposeRequest['clips'],
         label: clip.label?.trim() || `${lecture.title} ${index + 1}`,
         description: clip.description?.trim() || lecture.content_text.slice(0, 100),
         order_index: index,
-        source_video_url: `/static/media/${lecture.id}.mp4`,
+        source_video_url: lecture.video_url ?? `/static/media/${lecture.id}.mp4`,
       };
     })
     .filter((clip): clip is CustomCourseClip => Boolean(clip));

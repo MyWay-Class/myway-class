@@ -1,24 +1,26 @@
 import type { CourseDetail, LectureDetail } from '@myway/shared';
 import { CourseSessionTimeline } from './CourseSessionTimeline';
 import { StatePanel } from './StatePanel';
+import { buildProtectedVideoUrl } from '../../../lib/video-url';
 
 type CourseExploreDetailPanelProps = {
   course: CourseDetail | null;
   highlightedLecture: LectureDetail | null;
   selectedLectureId: string;
   viewMode: 'detail' | 'watch';
-  activeTab: '강의' | '공지' | '자료' | 'Q&A';
+  activeTab: '강의' | '공지' | '자료';
   canManageCurrent: boolean;
+  sessionToken?: string | null;
   onSelectLecture: (lectureId: string) => void;
-  onTabChange: (tab: '강의' | '공지' | '자료' | 'Q&A') => void;
+  onEnroll: (courseId: string) => void;
+  onTabChange: (tab: '강의' | '공지' | '자료') => void;
   onNavigate: (page: 'courses' | 'lecture-watch' | 'shortform' | 'ai-chat' | 'course-create' | 'lecture-studio' | 'media-pipeline') => void;
 };
 
-const courseTabs: { key: '강의' | '공지' | '자료' | 'Q&A'; label: string; icon: string }[] = [
+const courseTabs: { key: '강의' | '공지' | '자료'; label: string; icon: string }[] = [
   { key: '강의', label: '강의', icon: 'ri-play-circle-line' },
   { key: '공지', label: '공지', icon: 'ri-megaphone-line' },
   { key: '자료', label: '자료', icon: 'ri-folder-line' },
-  { key: 'Q&A', label: 'Q&A', icon: 'ri-question-line' },
 ];
 
 function formatDisplayDate(value: string): string {
@@ -120,11 +122,15 @@ export function CourseExploreDetailPanel({
   viewMode,
   activeTab,
   canManageCurrent,
+  sessionToken,
   onSelectLecture,
+  onEnroll,
   onTabChange,
   onNavigate,
 }: CourseExploreDetailPanelProps) {
   const detailLecture = highlightedLecture;
+  const isLocked = Boolean(course && !course.enrolled && !canManageCurrent);
+  const protectedVideoUrl = buildProtectedVideoUrl(detailLecture?.video_url, sessionToken);
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
@@ -260,56 +266,110 @@ export function CourseExploreDetailPanel({
                         {viewMode === 'watch' ? detailLecture.transcript_excerpt : course.description}
                       </p>
                       {viewMode === 'watch' && detailLecture.video_url ? (
-                        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-black">
-                          <video className="h-auto w-full max-h-[240px]" controls preload="metadata" src={detailLecture.video_url} />
-                        </div>
+                        isLocked ? (
+                          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+                            <div className="text-[12px] font-semibold text-amber-700">수강 신청이 필요합니다.</div>
+                            <p className="mt-2 text-[13px] leading-6 text-amber-900/80">
+                              이 차시의 영상을 보려면 먼저 강의를 수강 신청해야 합니다.
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => course && onEnroll(course.id)}
+                                className="rounded-full bg-amber-500 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-amber-400"
+                              >
+                                수강 신청하기
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onNavigate('my-courses')}
+                                className="rounded-full border border-amber-200 bg-white px-4 py-2 text-[12px] font-semibold text-amber-700 transition hover:bg-amber-100"
+                              >
+                                내 강의로 이동
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-black">
+                            <video
+                              className="h-auto w-full max-h-[240px]"
+                              controls
+                              preload="metadata"
+                              src={protectedVideoUrl}
+                            />
+                          </div>
+                        )
                       ) : null}
                       <div className="mt-4 flex flex-wrap gap-2">
                         {viewMode === 'watch' ? (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('courses')}
-                              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
-                            >
-                              강의 상세로 돌아가기
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('shortform')}
-                              className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
-                            >
-                              숏폼 만들기
-                            </button>
-                            {canManageCurrent ? (
+                            {isLocked ? (
                               <button
                                 type="button"
-                                onClick={() => onNavigate('media-pipeline')}
-                                className="rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-[12px] font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                                onClick={() => course && onEnroll(course.id)}
+                                className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
                               >
-                                업로드/전사 관리
+                                수강 신청하기
                               </button>
-                            ) : null}
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => onNavigate('courses')}
+                                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                                >
+                                  강의 상세로 돌아가기
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onNavigate('shortform')}
+                                  className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                                >
+                                  숏폼 만들기
+                                </button>
+                                {canManageCurrent ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onNavigate('media-pipeline')}
+                                    className="rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-[12px] font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                                  >
+                                    업로드/전사 관리
+                                  </button>
+                                ) : null}
+                              </>
+                            )}
                           </>
                         ) : (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onSelectLecture(detailLecture.id);
-                                onNavigate('lecture-watch');
-                              }}
-                              className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
-                            >
-                              강의 시청으로 이동
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('ai-chat')}
-                              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
-                            >
-                              챗봇으로 질문
-                            </button>
+                            {isLocked ? (
+                              <button
+                                type="button"
+                                onClick={() => course && onEnroll(course.id)}
+                                className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                              >
+                                수강 신청하기
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onSelectLecture(detailLecture.id);
+                                    onNavigate('lecture-watch');
+                                  }}
+                                  className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                                >
+                                  강의 시청으로 이동
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onNavigate('ai-chat')}
+                                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                                >
+                                  챗봇으로 질문
+                                </button>
+                              </>
+                            )}
                           </>
                         )}
                       </div>
@@ -322,28 +382,50 @@ export function CourseExploreDetailPanel({
                 renderMaterialList(course)
               ) : (
                 <div className="space-y-3">
-                  <StatePanel
-                    compact
-                    icon="ri-question-line"
-                    tone="slate"
-                    title="Q&A는 아직 연결 준비 중입니다."
-                    description="질문은 우측 챗봇에서 먼저 바로 물어보고, 필요한 경우 강의 시청 화면으로 이어서 확인할 수 있습니다."
-                  />
+                  {isLocked ? (
+                    <StatePanel
+                      compact
+                      icon="ri-lock-line"
+                      tone="amber"
+                      title="수강 신청 후 Q&A를 사용할 수 있습니다."
+                      description="질문 검색과 강의 내용 탐색은 수강 신청한 뒤 활성화됩니다."
+                    />
+                  ) : (
+                    <StatePanel
+                      compact
+                      icon="ri-question-line"
+                      tone="slate"
+                      title="Q&A는 강의 내용 검색으로 연결됩니다."
+                      description="질문은 우측 챗봇에서 먼저 바로 물어보고, 필요한 경우 강의 시청 화면으로 이어서 확인할 수 있습니다."
+                    />
+                  )}
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('ai-chat')}
-                      className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
-                    >
-                      AI 챗봇으로 질문하기
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('lecture-watch')}
-                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
-                    >
-                      강의 시청으로 이동
-                    </button>
+                    {isLocked ? (
+                      <button
+                        type="button"
+                        onClick={() => course && onEnroll(course.id)}
+                        className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                      >
+                        수강 신청하기
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('ai-chat')}
+                          className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                        >
+                          AI 챗봇으로 질문하기
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('lecture-watch')}
+                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                        >
+                          강의 시청으로 이동
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

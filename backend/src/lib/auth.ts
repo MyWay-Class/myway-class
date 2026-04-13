@@ -32,7 +32,9 @@ export function loginUser(userId: string): AuthSession | null {
 export function readSessionToken(request: Request): string | null {
   const authorization = request.headers.get('authorization');
   const sessionHeader = request.headers.get('x-session-token');
-  const rawToken = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : authorization?.trim() ?? sessionHeader?.trim() ?? null;
+  const queryToken = new URL(request.url).searchParams.get('token')?.trim();
+  const rawToken =
+    authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : authorization?.trim() ?? sessionHeader?.trim() ?? queryToken ?? null;
 
   return rawToken || null;
 }

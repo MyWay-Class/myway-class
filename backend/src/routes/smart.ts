@@ -12,6 +12,27 @@ function ensureLectureExists(lectureId: string): boolean {
   return Boolean(getLectureDetail(lectureId));
 }
 
+function canAccessContent(userId: string, role: string, lectureId?: string, courseId?: string): boolean {
+  if (role === 'ADMIN' || role === 'INSTRUCTOR') {
+    return lectureId ? ensureLectureExists(lectureId) : Boolean(courseId && getCourseDetail(courseId, userId));
+  }
+
+  if (lectureId) {
+    const lecture = getLectureDetail(lectureId, userId);
+    if (!lecture) {
+      return false;
+    }
+
+    return Boolean(getCourseDetail(lecture.course_id, userId)?.enrolled);
+  }
+
+  if (courseId) {
+    return Boolean(getCourseDetail(courseId, userId)?.enrolled);
+  }
+
+  return false;
+}
+
 function getMediaRepository(env: RuntimeBindings | undefined) {
   return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
 }
@@ -32,6 +53,10 @@ smart.post('/chat', async (c) => {
 
   const lectureId = body?.lecture_id?.trim();
   const courseId = body?.course_id?.trim();
+
+  if (!canAccessContent(userId, user?.role ?? 'STUDENT', lectureId, courseId)) {
+    return jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', '수강 중인 강의만 검색할 수 있습니다.', user ? 403 : 401);
+  }
 
   if (lectureId && !ensureLectureExists(lectureId)) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);

@@ -81,12 +81,20 @@ export function getCourseTotalDurationMinutes(courseId: string): number {
 
 export function getLectureKeywords(lecture: Lecture): string[] {
   const keywordMap: Record<string, string[]> = {
-    lec_ai_001: ['AI', '머신러닝', '딥러닝', '정의'],
-    lec_ai_002: ['데이터셋', '라벨링', '검증', '모델'],
-    lec_web_001: ['React', '컴포넌트', '상태 관리', 'props'],
-    lec_web_002: ['TypeScript', '폼', '검증', '타입 안정성'],
-    lec_llm_001: ['RAG', '청킹', '임베딩', '검색'],
-    lec_llm_002: ['요약', '질문응답', '학습 흐름', '챗봇'],
+    lec_ai_001: ['AI', '개념', '머신러닝', '딥러닝'],
+    lec_ai_002: ['학습 데이터', '라벨링', '검증', '모델'],
+    lec_ai_003: ['서비스 흐름', '데이터', '배포', '운영'],
+    lec_econ_seed_001: ['경제', '희소성', '선택', '기회비용'],
+    lec_econ_seed_002: ['수요', '공급', '균형', '가격'],
+    lec_econ_seed_003: ['경기', '정책', '금융', '순환'],
+    lec_eng_seed_001: ['영어', '인사', '자기소개', '회화'],
+    lec_java_seed_001: ['Java', '변수', '자료형', '출력'],
+    lec_java_seed_002: ['조건문', '반복문', '배열', '문법'],
+    lec_java_seed_003: ['클래스', '객체', '상속', '객체지향'],
+    lec_python_seed_001: ['Python', '변수', '리스트', '조건문'],
+    lec_python_seed_002: ['함수', '모듈', '예외 처리', '구조화'],
+    lec_python_seed_003: ['파일 처리', '자동화', '실무 활용', '스크립트'],
+    lec_cert_seed_001: ['자격증', '학습 전략', '출제 패턴', '루틴'],
   };
 
   return keywordMap[lecture.id] ?? lecture.content_text.split(/[\s,·]+/).filter(Boolean).slice(0, 4);
@@ -96,8 +104,8 @@ export function getLectureTranscriptExcerpt(lecture: Lecture): string {
   return lecture.content_text;
 }
 
-export function getLectureVideoUrl(lectureId: string): string {
-  return `/static/media/${lectureId}.mp4`;
+export function getLectureVideoUrl(lecture: Lecture): string {
+  return lecture.video_url ?? '';
 }
 
 export function createCourseCard(course: Course, userId: string): CourseCard {

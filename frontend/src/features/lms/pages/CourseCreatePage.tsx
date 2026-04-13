@@ -14,6 +14,7 @@ type CourseCreatePageProps = {
   onCreateCourse: (input: CourseCreateRequest) => Promise<CourseDetail | null>;
   onSelectCourse: (courseId: string) => void;
   onSelectLecture: (lectureId: string) => void;
+  onNavigate: (page: 'courses' | 'lecture-watch' | 'my-courses' | 'shortform' | 'ai-chat' | 'course-create' | 'lecture-studio' | 'media-pipeline') => void;
 };
 
 type WorkspaceTab = 'create' | 'studio';
@@ -38,6 +39,7 @@ export function CourseCreatePage({
   onCreateCourse,
   onSelectCourse,
   onSelectLecture,
+  onNavigate,
 }: CourseCreatePageProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('create');
   const [createdCourse, setCreatedCourse] = useState<CourseDetail | null>(null);
@@ -136,6 +138,7 @@ export function CourseCreatePage({
     setCreatedCourse(created);
     onSelectCourse(created.id);
     onSelectLecture(created.lectures[0]?.id ?? '');
+    onNavigate('courses');
     setActiveTab('studio');
     setWorkspaceNote(`${created.title} 강의를 개설했습니다. 자동 처리와 스튜디오 설정을 이어갑니다.`);
     void runAutoMediaPipeline(created);

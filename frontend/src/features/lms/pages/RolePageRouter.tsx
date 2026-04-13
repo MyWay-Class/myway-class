@@ -25,7 +25,7 @@ import type { LmsDashboardProps, LmsPageId } from '../types';
 
 type RolePageRouterProps = Pick<
   LmsDashboardProps,
-  'loading' | 'busy' | 'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onCreateCourse' | 'onSelectCourse' | 'onSelectLecture' | 'demoUsers' | 'selectedCourse' | 'selectedLectureId'
+  'loading' | 'busy' | 'dashboard' | 'aiLogs' | 'enrolledCourses' | 'highlightedLecture' | 'recommendations' | 'courseCards' | 'insights' | 'onCreateCourse' | 'onEnroll' | 'onSelectCourse' | 'onSelectLecture' | 'demoUsers' | 'selectedCourse' | 'selectedLectureId'
 > & {
   session: LoginResponse;
   page: LmsPageId;
@@ -47,6 +47,7 @@ export function RolePageRouter({
   onSelectCourse,
   onSelectLecture,
   onCreateCourse,
+  onEnroll,
   demoUsers,
   selectedCourse,
   selectedLectureId,
@@ -103,6 +104,7 @@ export function RolePageRouter({
             busy={busy}
             sessionToken={sessionToken}
             onCreateCourse={onCreateCourse}
+            onEnroll={onEnroll}
             onNavigate={onNavigate}
             onSelectCourse={onSelectCourse}
             onSelectLecture={onSelectLecture}
@@ -117,6 +119,7 @@ export function RolePageRouter({
             selectedLectureId={selectedLectureId}
             canManageCurrent={true}
             sessionToken={sessionToken}
+            onEnroll={onEnroll}
             onSelectCourse={onSelectCourse}
             onSelectLecture={onSelectLecture}
             onNavigate={onNavigate}
@@ -134,6 +137,7 @@ export function RolePageRouter({
             onCreateCourse={onCreateCourse}
             onSelectCourse={onSelectCourse}
             onSelectLecture={onSelectLecture}
+            onNavigate={onNavigate}
           />
         );
       case 'admin-users':
@@ -186,13 +190,14 @@ export function RolePageRouter({
           selectedCourse={selectedCourse}
           highlightedLecture={highlightedLecture}
           selectedLectureId={selectedLectureId}
-          canManageCurrent={true}
-          busy={busy}
-          sessionToken={sessionToken}
-          onCreateCourse={onCreateCourse}
-          onNavigate={onNavigate}
-          onSelectCourse={onSelectCourse}
-          onSelectLecture={onSelectLecture}
+            canManageCurrent={true}
+            busy={busy}
+            sessionToken={sessionToken}
+            onCreateCourse={onCreateCourse}
+            onEnroll={onEnroll}
+            onNavigate={onNavigate}
+            onSelectCourse={onSelectCourse}
+            onSelectLecture={onSelectLecture}
         />
       );
     }
@@ -206,6 +211,7 @@ export function RolePageRouter({
           selectedLectureId={selectedLectureId}
           canManageCurrent={true}
           sessionToken={sessionToken}
+          onEnroll={onEnroll}
           onSelectCourse={onSelectCourse}
           onSelectLecture={onSelectLecture}
           onNavigate={onNavigate}
@@ -225,6 +231,7 @@ export function RolePageRouter({
           onCreateCourse={onCreateCourse}
           onSelectCourse={onSelectCourse}
           onSelectLecture={onSelectLecture}
+          onNavigate={onNavigate}
         />
       );
     }
@@ -249,7 +256,7 @@ export function RolePageRouter({
     }
 
     if (page === 'ai-chat') {
-      return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} />;
+      return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} selectedCourse={selectedCourse} canManageCurrent={true} sessionToken={sessionToken} />;
     }
 
     if (page === 'media-pipeline') {
@@ -296,6 +303,7 @@ export function RolePageRouter({
         canManageCurrent={false}
         busy={busy}
         sessionToken={sessionToken}
+        onEnroll={onEnroll}
         onCreateCourse={onCreateCourse}
         onNavigate={onNavigate}
         onSelectCourse={onSelectCourse}
@@ -313,6 +321,7 @@ export function RolePageRouter({
         selectedLectureId={selectedLectureId}
         canManageCurrent={false}
         sessionToken={sessionToken}
+        onEnroll={onEnroll}
         onSelectCourse={onSelectCourse}
         onSelectLecture={onSelectLecture}
         onNavigate={onNavigate}
@@ -333,7 +342,7 @@ export function RolePageRouter({
   }
 
   if (page === 'ai-chat') {
-    return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} />;
+    return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} selectedCourse={selectedCourse} canManageCurrent={false} sessionToken={sessionToken} />;
   }
 
   if (page === 'dashboard') {

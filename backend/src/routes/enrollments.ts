@@ -56,7 +56,11 @@ enrollments.post('/', async (c) => {
 
   const enrollment = enrollUser(user.id, courseId);
   const courseDetail = getCourseDetail(courseId, user.id);
-  await persistEnrollment(enrollment, c.env as RuntimeBindings | undefined);
+  try {
+    await persistEnrollment(enrollment, c.env as RuntimeBindings | undefined);
+  } catch (error) {
+    console.error('failed to persist enrollment', error);
+  }
 
   return jsonSuccess(
     {

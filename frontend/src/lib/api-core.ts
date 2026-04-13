@@ -1,6 +1,7 @@
 import type { LoginResponse, ApiResponse } from '@myway/shared';
+import { resolveApiBaseUrl } from './api-base';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '');
+const API_BASE_URL = resolveApiBaseUrl();
 const AUTH_STORAGE_KEY = 'mywayclass.auth';
 
 export type ApiRequestResult<T> = ApiResponse<T> & {

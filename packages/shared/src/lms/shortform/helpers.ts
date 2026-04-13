@@ -4,6 +4,7 @@ import type {
   ShortformStyle,
   ShortformVideo,
 } from '../../types';
+import { getLectureDetail } from '../learning';
 import {
   buildCandidateText,
   createId,
@@ -96,6 +97,7 @@ export function createShortformVideoFromCandidates(
 
   demoShortformVideos.push(video);
   candidates.forEach((candidate, index) => {
+    const lectureVideoUrl = getLectureDetail(candidate.lecture_id)?.video_url ?? `/static/media/${candidate.lecture_id}.mp4`;
     demoShortformClips.push({
       id: createId('clip', demoShortformClips.length + index),
       shortform_id: video.id,
@@ -107,7 +109,7 @@ export function createShortformVideoFromCandidates(
       label: candidate.label,
       description: candidate.description,
       order_index: index,
-      source_video_url: `/static/media/${candidate.lecture_id}.mp4`,
+      source_video_url: lectureVideoUrl,
     });
   });
 

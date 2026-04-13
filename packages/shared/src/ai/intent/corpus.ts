@@ -120,19 +120,21 @@ export async function collectLectureReferences(
     });
   }
 
-  lectureChunks.forEach((chunk, index) => {
-    references.push(
-      createReference(
-        lecture.id,
-        'lecture',
-        lecture.id,
-        `${lecture.course_title} · ${lecture.title} · 강의 본문`,
-        chunk,
-        index,
-        0.82 - index * 0.05,
-      ),
-    );
-  });
+  if (!transcript && !note) {
+    lectureChunks.forEach((chunk, index) => {
+      references.push(
+        createReference(
+          lecture.id,
+          'lecture',
+          lecture.id,
+          `${lecture.course_title} · ${lecture.title} · 강의 본문`,
+          chunk,
+          index,
+          0.82 - index * 0.05,
+        ),
+      );
+    });
+  }
 
   return references;
 }
@@ -155,6 +157,7 @@ export async function buildCorpusForLecture(
 
   const { lecture, transcript, note } = snapshot;
   const chunks: AIRagChunk[] = [];
+  const hasExtractedSource = Boolean(transcript || note);
 
   transcript?.segments.forEach((segment) => {
     const content = segment.text.trim();
@@ -198,22 +201,24 @@ export async function buildCorpusForLecture(
     });
   }
 
-  const lectureChunks = buildChunkText(`${lecture.title}. ${lecture.content_text}`, 2);
-  lectureChunks.forEach((chunk, index) => {
-    chunks.push({
-      id: `lecture_${lecture.id}_${String(index + 1).padStart(2, '0')}`,
-      lecture_id: lecture.id,
-      source_type: 'lecture',
-      source_id: lecture.id,
-      title: `${lecture.course_title} · ${lecture.title} · 강의 본문`,
-      content: chunk.slice(0, 240),
-      excerpt: chunk.slice(0, 240),
-      similarity: 0,
-      chunk_index: index,
-      source_scope: 'lecture',
-      token_count: countTokens(chunk),
+  if (!hasExtractedSource) {
+    const lectureChunks = buildChunkText(`${lecture.title}. ${lecture.content_text}`, 2);
+    lectureChunks.forEach((chunk, index) => {
+      chunks.push({
+        id: `lecture_${lecture.id}_${String(index + 1).padStart(2, '0')}`,
+        lecture_id: lecture.id,
+        source_type: 'lecture',
+        source_id: lecture.id,
+        title: `${lecture.course_title} · ${lecture.title} · 강의 본문`,
+        content: chunk.slice(0, 240),
+        excerpt: chunk.slice(0, 240),
+        similarity: 0,
+        chunk_index: index,
+        source_scope: 'lecture',
+        token_count: countTokens(chunk),
+      });
     });
-  });
+  }
 
   return chunks;
 }

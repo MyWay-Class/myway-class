@@ -4,6 +4,7 @@ import { CourseSessionTimeline } from '../components/CourseSessionTimeline';
 import { LectureSideChatPanel } from '../components/LectureSideChatPanel';
 import { StatePanel } from '../components/StatePanel';
 import { loadLectureTranscriptDetailed } from '../../../lib/api-media';
+import { buildProtectedVideoUrl } from '../../../lib/video-url';
 
 type LectureWatchPageProps = {
   courses: CourseCard[];
@@ -12,13 +13,14 @@ type LectureWatchPageProps = {
   selectedLectureId: string;
   canManageCurrent: boolean;
   sessionToken?: string | null;
+  onEnroll: (courseId: string) => void;
   onSelectCourse: (courseId: string) => void;
   onSelectLecture: (lectureId: string) => void;
   onNavigate: (page: 'courses' | 'lecture-watch' | 'my-courses' | 'shortform' | 'ai-chat' | 'course-create' | 'lecture-studio' | 'media-pipeline') => void;
 };
 
-type RightTab = 'sessions' | 'categories' | 'chat';
-type ScriptTab = 'sessions' | 'categories' | 'script' | 'chat';
+type RightTab = 'sessions' | 'script' | 'chat';
+type ScriptTab = RightTab;
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
@@ -37,6 +39,7 @@ export function LectureWatchPage({
   selectedLectureId,
   canManageCurrent,
   sessionToken,
+  onEnroll,
   onSelectCourse,
   onSelectLecture,
   onNavigate,
@@ -44,6 +47,7 @@ export function LectureWatchPage({
   const [activePanelTab, setActivePanelTab] = useState<ScriptTab>('sessions');
   const [transcript, setTranscript] = useState<LectureTranscript | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
+  const isLocked = Boolean(selectedCourse && !selectedCourse.enrolled && !canManageCurrent);
   const currentLecture = useMemo(() => {
     if (!selectedCourse) {
       return highlightedLecture;
@@ -64,7 +68,7 @@ export function LectureWatchPage({
   useEffect(() => {
     let active = true;
 
-    if (!currentLecture?.id) {
+    if (!currentLecture?.id || isLocked) {
       setTranscript(null);
       return () => {
         active = false;
@@ -87,7 +91,7 @@ export function LectureWatchPage({
     return () => {
       active = false;
     };
-  }, [currentLecture?.id, sessionToken]);
+  }, [currentLecture?.id, isLocked, sessionToken]);
 
   function formatTimecode(value: number): string {
     const totalSeconds = Math.max(0, Math.floor(value / 1000));
@@ -116,32 +120,19 @@ export function LectureWatchPage({
   return (
     <div className="space-y-5">
       <section className="overflow-hidden rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-soft">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
               <i className="ri-play-circle-line" />
               영상 시청
             </div>
-            <h1 className="mt-3 text-[26px] font-extrabold tracking-[-0.04em] lg:text-[30px]">
-              상세는 한 단계 뒤, 시청은 지금 바로
-            </h1>
+            <h1 className="mt-3 text-[26px] font-extrabold tracking-[-0.04em] lg:text-[30px]">{selectedCourse.title}</h1>
             <p className="mt-2 max-w-2xl text-[13px] leading-6 text-white/75">
-              화면은 재생과 다음 차시 이동에 집중하고, 우측 패널에서 차시 목록, 카테고리, 챗봇을 탭으로 전환합니다.
+              {currentLecture?.title ?? '차시를 선택하세요'} · {selectedCourse.category} · {selectedCourse.progress_percent}% 진행
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
-              <div className="font-semibold text-white">선택 강의</div>
-              <div className="mt-1">{selectedCourse.title}</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
-              <div className="font-semibold text-white">현재 차시</div>
-              <div className="mt-1">{currentLecture?.title ?? '차시 미선택'}</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
-              <div className="font-semibold text-white">역할</div>
-              <div className="mt-1">{canManageCurrent ? '교강사 시청 모드' : '학습자 시청 모드'}</div>
-            </div>
+          <div className="rounded-full bg-white/10 px-4 py-2 text-[12px] font-semibold text-white/90 backdrop-blur">
+            {canManageCurrent ? '교강사 시청 모드' : '학습자 시청 모드'}
           </div>
         </div>
       </section>
@@ -178,8 +169,41 @@ export function LectureWatchPage({
 
           <div className="p-5">
             <div className="overflow-hidden rounded-[24px] border border-[var(--app-border)] bg-black">
-              {currentLecture?.video_url ? (
-                <video className="aspect-video w-full bg-black" controls preload="metadata" src={currentLecture.video_url} />
+              {isLocked ? (
+                <div className="flex aspect-video items-center justify-center bg-[linear-gradient(135deg,#020617_0%,#111827_50%,#1e293b_100%)] text-white">
+                  <div className="max-w-md px-6 text-center">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/10 text-[30px] text-white/90">
+                      <i className="ri-lock-line" />
+                    </div>
+                    <div className="mt-4 text-[15px] font-semibold">수강 신청 후 영상을 볼 수 있습니다.</div>
+                    <div className="mt-1 text-[12px] text-white/65">
+                      상세 페이지에서 수강 신청을 완료하면 이 차시의 영상과 스크립트, 챗봇이 열립니다.
+                    </div>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => selectedCourse && onEnroll(selectedCourse.id)}
+                        className="rounded-full bg-white px-4 py-2 text-[12px] font-semibold text-slate-900 transition hover:bg-slate-100"
+                      >
+                        수강 신청하기
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('courses')}
+                        className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-white/15"
+                      >
+                        강의 상세로 이동
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : currentLecture?.video_url ? (
+                <video
+                  className="aspect-video w-full bg-black"
+                  controls
+                  preload="metadata"
+                  src={buildProtectedVideoUrl(currentLecture.video_url, sessionToken)}
+                />
               ) : (
                 <div className="flex aspect-video items-center justify-center bg-[linear-gradient(135deg,#020617_0%,#111827_50%,#1e293b_100%)] text-white">
                   <div className="text-center">
@@ -200,6 +224,11 @@ export function LectureWatchPage({
                 <p className="mt-3 text-[13px] leading-7 text-[var(--app-text-muted)]">
                   {currentLecture?.transcript_excerpt ?? '선택한 차시의 핵심 내용과 메모를 이곳에서 확인합니다.'}
                 </p>
+                {transcript?.duration_ms ? (
+                  <div className="mt-3 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">
+                    실제 재생 길이 {formatTimecode(transcript.duration_ms)}
+                  </div>
+                ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -248,114 +277,121 @@ export function LectureWatchPage({
         </article>
 
         <aside className="overflow-hidden rounded-[28px] border border-[var(--app-border)] bg-[var(--app-surface)] shadow-soft">
-          <div className="border-b border-[var(--app-border)] px-4 py-4">
-            <div className="flex gap-2">
-              {[
-                { key: 'sessions', label: '차시 목록', icon: 'ri-list-check-2' },
-                { key: 'categories', label: '카테고리', icon: 'ri-grid-line' },
-                { key: 'script', label: '스크립트', icon: 'ri-subtitle' },
-                { key: 'chat', label: '챗봇', icon: 'ri-robot-line' },
-              ].map((tab) => {
-                const active = activePanelTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActivePanelTab(tab.key as RightTab)}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-[12px] font-semibold transition ${
-                      active
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'border border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-text-muted)] hover:text-[var(--app-text)]'
-                    }`}
-                  >
-                    <i className={tab.icon} />
-                    {tab.label}
-                  </button>
-                );
-              })}
+          {isLocked ? (
+            <div className="p-5">
+              <StatePanel
+                icon="ri-lock-line"
+                tone="amber"
+                title="수강 신청 후 시청 패널이 열립니다."
+                description="차시 목록, 스크립트, 챗봇은 수강 신청이 완료된 뒤 사용할 수 있습니다."
+              />
+              <button
+                type="button"
+                onClick={() => onEnroll(selectedCourse.id)}
+                className="mt-4 w-full rounded-full bg-indigo-600 px-4 py-3 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+              >
+                수강 신청하기
+              </button>
             </div>
-          </div>
-
-          <div className="p-4">
-            {activePanelTab === 'sessions' ? (
-              <div className="space-y-4">
-                <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
-                  <div className="text-[12px] font-semibold text-indigo-600">다음 차시 선택</div>
-                  <div className="mt-1 text-[14px] font-bold text-[var(--app-text)]">현재 강의의 차시 목록을 바로 전환합니다.</div>
-                  <p className="mt-2 text-[12px] leading-6 text-[var(--app-text-muted)]">
-                    원하는 주차를 눌러 선택하고, 이어서 영상 시청과 챗봇 질문으로 연결할 수 있습니다.
-                  </p>
-                </div>
-                <CourseSessionTimeline
-                  course={selectedCourse}
-                  selectedLectureId={selectedLectureId}
-                  onSelectLecture={onSelectLecture}
-                  onOpenLecture={(lectureId) => {
-                    onSelectLecture(lectureId);
-                    onNavigate('lecture-watch');
-                  }}
-                />
-              </div>
-            ) : null}
-
-            {activePanelTab === 'categories' ? (
-              <div className="space-y-4">
-                <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
-                  <div className="text-[12px] font-semibold text-indigo-600">강의 카테고리</div>
-                  <div className="mt-1 text-[16px] font-bold text-[var(--app-text)]">{selectedCourse.category}</div>
-                  <p className="mt-2 text-[12px] leading-6 text-[var(--app-text-muted)]">
-                    {selectedCourse.difficulty} · {selectedCourse.lecture_count}차시 · {selectedCourse.student_count}명 수강
-                  </p>
+          ) : (
+            <>
+              <div className="border-b border-[var(--app-border)] px-4 py-4">
+                <div className="flex gap-2">
+                  {[
+                    { key: 'sessions', label: '차시 목록', icon: 'ri-list-check-2' },
+                    { key: 'script', label: '스크립트', icon: 'ri-subtitle' },
+                    { key: 'chat', label: '챗봇', icon: 'ri-robot-line' },
+                  ].map((tab) => {
+                    const active = activePanelTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setActivePanelTab(tab.key as RightTab)}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-[12px] font-semibold transition ${
+                          active
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'border border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-text-muted)] hover:text-[var(--app-text)]'
+                        }`}
+                      >
+                        <i className={tab.icon} />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            ) : null}
 
-            {activePanelTab === 'script' ? (
-              <div className="space-y-4">
-                <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
-                  <div className="text-[12px] font-semibold text-indigo-600">스크립트</div>
-                  <div className="mt-1 text-[16px] font-bold text-[var(--app-text)]">타임스탬프 기준으로 바로 찾아볼 수 있습니다.</div>
-                  <p className="mt-2 text-[12px] leading-6 text-[var(--app-text-muted)]">
-                    필요한 구간의 시작 시간을 눌러 복사하거나, 차시 이동 전에 먼저 확인할 수 있습니다.
-                  </p>
-                </div>
-
-                {transcriptLoading ? (
-                  <StatePanel compact icon="ri-loader-4-line" tone="slate" title="스크립트를 불러오는 중입니다." description="전사 데이터를 가져오고 있습니다." />
-                ) : transcript?.segments?.length ? (
-                  <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
-                    {transcript.segments.map((segment) => (
-                      <article key={segment.index} className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void navigator.clipboard.writeText(formatTimecode(segment.start_ms));
-                            }}
-                            className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-indigo-600"
-                          >
-                            {formatTimecode(segment.start_ms)} - {formatTimecode(segment.end_ms)}
-                          </button>
-                          <span className="text-[11px] font-semibold text-slate-400">#{segment.index + 1}</span>
-                        </div>
-                        <p className="mt-3 text-[13px] leading-7 text-[var(--app-text)]">{segment.text}</p>
-                      </article>
-                    ))}
+              <div className="p-4">
+                {activePanelTab === 'sessions' ? (
+                  <div className="space-y-4">
+                    <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
+                      <div className="text-[12px] font-semibold text-indigo-600">다음 차시 선택</div>
+                      <div className="mt-1 text-[14px] font-bold text-[var(--app-text)]">현재 강의의 차시 목록을 바로 전환합니다.</div>
+                      <p className="mt-2 text-[12px] leading-6 text-[var(--app-text-muted)]">
+                        원하는 주차를 눌러 선택하고, 이어서 영상 시청과 챗봇 질문으로 연결할 수 있습니다.
+                      </p>
+                    </div>
+                    <CourseSessionTimeline
+                      course={selectedCourse}
+                      selectedLectureId={selectedLectureId}
+                      onSelectLecture={onSelectLecture}
+                      onOpenLecture={(lectureId) => {
+                        onSelectLecture(lectureId);
+                        onNavigate('lecture-watch');
+                      }}
+                    />
                   </div>
-                ) : (
-                  <StatePanel
-                    compact
-                    icon="ri-subtitle"
-                    tone="slate"
-                    title="스크립트가 아직 없습니다."
-                    description="전사 완료 후에 타임스탬프 기반 스크립트가 표시됩니다."
-                  />
-                )}
-              </div>
-            ) : null}
+                ) : null}
 
-            {activePanelTab === 'chat' ? <LectureSideChatPanel highlightedLecture={highlightedLecture} sessionToken={sessionToken} /> : null}
-          </div>
+                {activePanelTab === 'script' ? (
+                  <div className="space-y-4">
+                    <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
+                      <div className="text-[12px] font-semibold text-indigo-600">스크립트</div>
+                      <div className="mt-1 text-[16px] font-bold text-[var(--app-text)]">타임스탬프 기준으로 바로 찾아볼 수 있습니다.</div>
+                      <p className="mt-2 text-[12px] leading-6 text-[var(--app-text-muted)]">
+                        필요한 구간의 시작 시간을 눌러 복사하거나, 차시 이동 전에 먼저 확인할 수 있습니다.
+                      </p>
+                    </div>
+
+                    {transcriptLoading ? (
+                      <StatePanel compact icon="ri-loader-4-line" tone="slate" title="스크립트를 불러오는 중입니다." description="전사 데이터를 가져오고 있습니다." />
+                    ) : transcript?.segments?.length ? (
+                      <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
+                        {transcript.segments.map((segment) => (
+                          <article key={segment.index} className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void navigator.clipboard.writeText(formatTimecode(segment.start_ms));
+                                }}
+                                className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-indigo-600"
+                              >
+                                {formatTimecode(segment.start_ms)} - {formatTimecode(segment.end_ms)}
+                              </button>
+                              <span className="text-[11px] font-semibold text-slate-400">#{segment.index + 1}</span>
+                            </div>
+                            <p className="mt-3 text-[13px] leading-7 text-[var(--app-text)]">{segment.text}</p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <StatePanel
+                        compact
+                        icon="ri-subtitle"
+                        tone="slate"
+                        title="스크립트가 아직 없습니다."
+                        description="전사 완료 후에 타임스탬프 기반 스크립트가 표시됩니다."
+                      />
+                    )}
+                  </div>
+                ) : null}
+
+                {activePanelTab === 'chat' ? <LectureSideChatPanel highlightedLecture={highlightedLecture} sessionToken={sessionToken} /> : null}
+              </div>
+            </>
+          )}
         </aside>
       </section>
     </div>

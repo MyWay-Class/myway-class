@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import {
   buildPipelineOverview,
   createLectureSummaryNote,
+  canManageCourses,
+  getCourseDetail,
   getLectureDetail,
   listAudioExtractions,
   listLectureNotes,
@@ -17,6 +19,7 @@ import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { readLectureVideoAsset, uploadLectureVideoAsset } from '../lib/media-assets';
 import { completeMediaExtractionJob, createMediaExtractionJob } from '../lib/media-pipeline';
 import { createMediaRepository } from '../lib/media-repository';
+import { persistLectureVideoAsset } from '../lib/learning-store';
 import {
   loadMediaProcessorHealth,
   normalizeMediaCallbackPayload,
@@ -33,6 +36,24 @@ const media = new Hono();
 
 function ensureLectureExists(lectureId: string, userId: string): boolean {
   return Boolean(getLectureDetail(lectureId, userId));
+}
+
+function canAccessLectureContent(user: ReturnType<typeof getAuthenticatedUser>, lectureId: string): boolean {
+  if (!user) {
+    return false;
+  }
+
+  const lecture = getLectureDetail(lectureId, user.id);
+  if (!lecture) {
+    return false;
+  }
+
+  if (canManageCourses(user.role)) {
+    return true;
+  }
+
+  const course = getCourseDetail(lecture.course_id, user.id);
+  return Boolean(course?.enrolled);
 }
 
 function getMediaRepository(env: RuntimeBindings | undefined) {
@@ -70,6 +91,12 @@ media.post('/upload-video', async (c) => {
 
   if (!upload) {
     return jsonFailure('R2_BINDING_REQUIRED', '영상 업로드를 위해 R2 바인딩이 필요합니다.', 503);
+  }
+
+  try {
+    await persistLectureVideoAsset(lectureId, upload.video_url, upload.asset_key, c.env as RuntimeBindings | undefined);
+  } catch (error) {
+    console.error('failed to persist lecture video asset', error);
   }
 
   return jsonSuccess(
@@ -170,11 +197,29 @@ media.get('/processor-health', async (c) => {
 });
 
 media.get('/assets/:assetKey', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
   const assetKey = c.req.param('assetKey');
+  const user = getAuthenticatedUser(c.req.raw);
 
-  if (!user && !verifyMediaProcessorToken(c.req.raw, c.env as RuntimeBindings | undefined)) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+  if (!verifyMediaProcessorToken(c.req.raw, c.env as RuntimeBindings | undefined)) {
+    if (!user) {
+      return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+    }
+
+    const lectureId = assetKey.split('/').pop()?.replace(/\.[^.]+$/, '') ?? '';
+    const lecture = getLectureDetail(lectureId, user.id);
+
+    if (!lecture) {
+      return jsonFailure('ASSET_NOT_FOUND', '미디어 파일을 찾을 수 없습니다.', 404);
+    }
+
+    const course = getCourseDetail(lecture.course_id, user.id);
+    if (!course) {
+      return jsonFailure('ASSET_NOT_FOUND', '미디어 파일을 찾을 수 없습니다.', 404);
+    }
+
+    if (!canManageCourses(user.role) && !course.enrolled) {
+      return jsonFailure('FORBIDDEN', '수강 신청 후에 영상을 시청할 수 있습니다.', 403);
+    }
   }
 
   const response = await readLectureVideoAsset(assetKey, c.env as RuntimeBindings | undefined);
@@ -304,6 +349,10 @@ media.get('/transcript/:lectureId', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
 
+  if (!canAccessLectureContent(user, lectureId)) {
+    return jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', '강의 수강 후에 스크립트를 볼 수 있습니다.', user ? 403 : 401);
+  }
+
   if (!ensureLectureExists(lectureId, user?.id ?? 'guest')) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
@@ -314,6 +363,10 @@ media.get('/transcript/:lectureId', async (c) => {
 media.get('/notes/:lectureId', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
+
+  if (!canAccessLectureContent(user, lectureId)) {
+    return jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', '강의 수강 후에 자료를 볼 수 있습니다.', user ? 403 : 401);
+  }
 
   if (!ensureLectureExists(lectureId, user?.id ?? 'guest')) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
@@ -326,6 +379,10 @@ media.get('/audio-extractions/:lectureId', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
 
+  if (!canAccessLectureContent(user, lectureId)) {
+    return jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', '강의 수강 후에 추출 기록을 볼 수 있습니다.', user ? 403 : 401);
+  }
+
   if (!ensureLectureExists(lectureId, user?.id ?? 'guest')) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
@@ -336,6 +393,10 @@ media.get('/audio-extractions/:lectureId', async (c) => {
 media.get('/pipeline/:lectureId', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
+
+  if (!canAccessLectureContent(user, lectureId)) {
+    return jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.', user ? 403 : 401);
+  }
 
   if (!ensureLectureExists(lectureId, user?.id ?? 'guest')) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
