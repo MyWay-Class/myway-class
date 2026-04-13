@@ -11,6 +11,7 @@ type AppShellProps = {
   activeNavKey: LmsNavKey;
   title: string;
   onNavigate: (page: LmsPageId) => void;
+  onHome: () => void;
   onLogout: () => void;
   children: React.ReactNode;
 };
@@ -28,7 +29,7 @@ function readStorageValue<T extends string>(key: string, allowed: readonly T[], 
   return value && allowed.includes(value as T) ? (value as T) : fallback;
 }
 
-export function AppShell({ session, activePage, activeNavKey, title, onNavigate, onLogout, children }: AppShellProps) {
+export function AppShell({ session, activePage, activeNavKey, title, onNavigate, onHome, onLogout, children }: AppShellProps) {
   const [theme, setTheme] = useState<ThemeMode>(() => readStorageValue(themeStorageKey, ['light', 'dark'], 'light'));
   const [dock, setDock] = useState<SidebarDock>(() => readStorageValue(dockStorageKey, ['left', 'right'], 'left'));
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -67,6 +68,7 @@ export function AppShell({ session, activePage, activeNavKey, title, onNavigate,
         theme={theme}
         sidebarWidthClass={sidebarWidthClass}
         onNavigate={onNavigate}
+        onHome={onHome}
         onLogout={onLogout}
         onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
         onToggleDock={() => setDock((current) => (current === 'left' ? 'right' : 'left'))}

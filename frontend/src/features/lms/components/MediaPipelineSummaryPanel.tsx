@@ -1,4 +1,4 @@
-import type { AudioExtraction, LecturePipeline } from '@myway/shared';
+import { getLectureDisplayDurationMinutes, type AudioExtraction, type LecturePipeline } from '@myway/shared';
 import type { MediaUploadResult } from '../../../lib/api-media';
 
 type MediaPipelineSummaryPanelProps = {
@@ -39,7 +39,7 @@ export function MediaPipelineSummaryPanel({
         <div>
           <div className="text-sm font-semibold text-slate-900">요약 상태</div>
           <div className="mt-1 text-xs text-slate-500">
-            {selectedLecture ? `${selectedLecture.title} · ${selectedLecture.duration_minutes}분` : '강의를 선택하면 요약 상태가 표시됩니다.'}
+            {selectedLecture ? `${selectedLecture.title} · ${getLectureDisplayDurationMinutes(selectedLecture)}분` : '강의를 선택하면 요약 상태가 표시됩니다.'}
           </div>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">

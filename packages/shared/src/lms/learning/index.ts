@@ -1,4 +1,4 @@
-export { getLectureInstructorName, getCourseLectures, isEnrolled, getCompletedLectureCount, getLectureCount, getCourseProgress, createCourseCard } from './helpers';
+export { getLectureInstructorName, getCourseLectures, isEnrolled, getCompletedLectureCount, getLectureCount, getCourseProgress, getLectureDisplayDurationMinutes, createCourseCard } from './course';
 export { listCourseCards, getCourseDetail, getLectureDetail, createCourseRecord } from './catalog';
 export { getCourseMaterials, getCourseNotices, createCourseMaterial, createCourseNotice } from './content';
 export { getDashboard } from './dashboard';

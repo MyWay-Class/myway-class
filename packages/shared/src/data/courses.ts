@@ -271,34 +271,27 @@ export const demoEnrollments: Enrollment[] = [
   {
     id: 'enr_001',
     user_id: 'usr_std_001',
-    course_id: 'crs_ai_001',
+    course_id: 'crs_econ_seed_001',
     status: 'active',
-    progress_percent: 50,
+    progress_percent: 0,
     created_at: '2026-04-06T09:10:00.000Z',
+  },
+  {
+    id: 'enr_002',
+    user_id: 'usr_std_001',
+    course_id: 'crs_java_seed_001',
+    status: 'active',
+    progress_percent: 0,
+    created_at: '2026-04-06T09:20:00.000Z',
+  },
+  {
+    id: 'enr_003',
+    user_id: 'usr_std_001',
+    course_id: 'crs_python_seed_001',
+    status: 'active',
+    progress_percent: 0,
+    created_at: '2026-04-06T09:30:00.000Z',
   },
 ];
 
-export const demoLectureProgress: LectureProgress[] = [
-  {
-    id: 'prg_001',
-    user_id: 'usr_std_001',
-    lecture_id: 'lec_ai_001',
-    is_completed: true,
-    completed_at: '2026-04-08T07:40:00.000Z',
-    updated_at: '2026-04-08T07:40:00.000Z',
-  },
-  {
-    id: 'prg_002',
-    user_id: 'usr_std_001',
-    lecture_id: 'lec_ai_002',
-    is_completed: false,
-    updated_at: '2026-04-08T07:50:00.000Z',
-  },
-  {
-    id: 'prg_003',
-    user_id: 'usr_std_001',
-    lecture_id: 'lec_ai_003',
-    is_completed: false,
-    updated_at: '2026-04-08T08:10:00.000Z',
-  },
-];
+export const demoLectureProgress: LectureProgress[] = [];

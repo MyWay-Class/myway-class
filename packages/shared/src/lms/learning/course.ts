@@ -1,4 +1,4 @@
-import { demoEnrollments, demoLectureProgress, demoLectures, getDemoUser, instructorNames } from '../../data/demo-data';
+import { demoAudioExtractions, demoEnrollments, demoLectureProgress, demoLectureTranscripts, demoLectures, getDemoUser, instructorNames } from '../../data/demo-data';
 import type { Course, CourseCard, CourseThumbnailPalette, Lecture } from '../../types';
 
 export function getLectureInstructorName(instructorId: string): string {
@@ -76,7 +76,23 @@ export function getCourseStudentCount(courseId: string): number {
 }
 
 export function getCourseTotalDurationMinutes(courseId: string): number {
-  return getCourseLectures(courseId).reduce((sum, lecture) => sum + lecture.duration_minutes, 0);
+  return getCourseLectures(courseId).reduce((sum, lecture) => sum + getLectureDisplayDurationMinutes(lecture), 0);
+}
+
+export function getLectureDisplayDurationMinutes(lecture: Pick<Lecture, 'duration_minutes'> & Partial<Lecture>): number {
+  if (lecture.id) {
+    const transcript = demoLectureTranscripts.find((item) => item.lecture_id === lecture.id);
+    if (transcript?.duration_ms) {
+      return Math.max(1, Math.round(transcript.duration_ms / 60_000));
+    }
+  }
+
+  const extraction = lecture.id ? demoAudioExtractions.find((item) => item.lecture_id === lecture.id && item.audio_duration_ms > 0) : undefined;
+  if (extraction?.audio_duration_ms) {
+    return Math.max(1, Math.round(extraction.audio_duration_ms / 60_000));
+  }
+
+  return lecture.duration_minutes;
 }
 
 export function getLectureKeywords(lecture: Lecture): string[] {

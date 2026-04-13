@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { CourseCard, CourseDetail, LectureDetail, ShortformCommunityItem } from '@myway/shared';
+import { getLectureDisplayDurationMinutes, type CourseCard, type CourseDetail, type LectureDetail, type ShortformCommunityItem } from '@myway/shared';
 import { composeCustomCourseDraft, loadCourseDetail, loadLectureTranscriptDetailed, loadShortformCommunity, shareCustomCourseDraft } from '../../../lib/api';
 import { ShortformWizardSidebar } from './ShortformWizardSidebar';
 import { ShortformWizardStep1 } from './ShortformWizardStep1';
@@ -73,7 +73,7 @@ function buildClipSuggestions(course: CourseDetail | null, transcriptMap: Record
       return buildTranscriptSuggestions(course, lecture.id, transcriptSnapshot);
     }
 
-    const totalMs = Math.max(transcriptSnapshot?.duration_ms ?? lecture.duration_minutes * 60_000, 1);
+    const totalMs = Math.max(transcriptSnapshot?.duration_ms ?? getLectureDisplayDurationMinutes(lecture) * 60_000, 1);
     const segment = Math.max(Math.round(totalMs / 3), 30_000);
 
     return Array.from({ length: 3 }, (_, clipIndex) => {
