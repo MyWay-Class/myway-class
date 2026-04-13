@@ -107,6 +107,7 @@ export type ShortformGenerateRequest = {
   style?: ShortformStyle;
   target_duration_sec?: number;
   language?: string;
+  transcript_segments_by_lecture?: Record<string, Array<{ start_ms: number; end_ms: number; text: string }>>;
 };
 
 export type ShortformSelectRequest = {

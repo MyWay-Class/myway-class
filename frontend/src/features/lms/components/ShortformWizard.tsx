@@ -25,8 +25,14 @@ function clipKey(clip: ClipSuggestion): string {
   return `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
 }
 
-function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, segments: Array<{ start_ms: number; end_ms: number; text: string }>): ClipSuggestion[] {
+type TranscriptSnapshot = {
+  segments: Array<{ start_ms: number; end_ms: number; text: string }>;
+  duration_ms: number;
+} | null;
+
+function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, transcript: TranscriptSnapshot): ClipSuggestion[] {
   const lecture = course.lectures.find((item) => item.id === lectureId);
+  const segments = transcript?.segments ?? [];
   if (!lecture || segments.length === 0) {
     return [];
   }
@@ -56,18 +62,18 @@ function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, seg
   });
 }
 
-function buildClipSuggestions(course: CourseDetail | null, transcriptMap: Record<string, Array<{ start_ms: number; end_ms: number; text: string }> | null>): ClipSuggestion[] {
+function buildClipSuggestions(course: CourseDetail | null, transcriptMap: Record<string, TranscriptSnapshot>): ClipSuggestion[] {
   if (!course) {
     return [];
   }
 
   return course.lectures.flatMap((lecture, lectureIndex) => {
-    const transcriptSegments = transcriptMap[lecture.id] ?? null;
-    if (transcriptSegments && transcriptSegments.length > 0) {
-      return buildTranscriptSuggestions(course, lecture.id, transcriptSegments);
+    const transcriptSnapshot = transcriptMap[lecture.id] ?? null;
+    if (transcriptSnapshot?.segments && transcriptSnapshot.segments.length > 0) {
+      return buildTranscriptSuggestions(course, lecture.id, transcriptSnapshot);
     }
 
-    const totalMs = Math.max(lecture.duration_minutes, 1) * 60_000;
+    const totalMs = Math.max(transcriptSnapshot?.duration_ms ?? lecture.duration_minutes * 60_000, 1);
     const segment = Math.max(Math.round(totalMs / 3), 30_000);
 
     return Array.from({ length: 3 }, (_, clipIndex) => {
@@ -97,7 +103,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   const [status, setStatus] = useState('아직 조립된 개인 코스가 없습니다.');
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [communityItems, setCommunityItems] = useState<ShortformCommunityItem[]>([]);
-  const [transcriptMap, setTranscriptMap] = useState<Record<string, Array<{ start_ms: number; end_ms: number; text: string }> | null>>({});
+  const [transcriptMap, setTranscriptMap] = useState<Record<string, TranscriptSnapshot>>({});
 
   useEffect(() => {
     if (selectedCourse?.id) {
@@ -153,7 +159,15 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
     Promise.all(
       courseDetail.lectures.map(async (lecture) => {
         const transcript = await loadLectureTranscriptDetailed(lecture.id, sessionToken);
-        return [lecture.id, transcript?.segments ?? null] as const;
+        return [
+          lecture.id,
+          transcript
+            ? {
+                segments: transcript.segments ?? [],
+                duration_ms: transcript.duration_ms,
+              }
+            : null,
+        ] as const;
       }),
     ).then((entries) => {
       if (!alive) {

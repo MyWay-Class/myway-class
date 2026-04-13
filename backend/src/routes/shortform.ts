@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import {
   composeShortformVideo,
+  getCourseDetail,
   getShortformVideoDetail,
   generateShortformExtraction,
   getShortformExtractionById,
@@ -12,6 +13,7 @@ import {
   updateVideoExport,
   toggleShortformCandidateSelection,
   toggleShortformLike,
+  listLectureTranscripts,
   type ShortformComposeRequest,
   type ShortformGenerateRequest,
   type ShortformLikeRequest,
@@ -23,6 +25,7 @@ import { getAuthenticatedUser } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { dispatchShortformExportJob } from '../lib/shortform-export';
 import { verifyMediaCallbackSecret } from '../lib/media-processor';
+import { createMediaRepository } from '../lib/media-repository';
 import type { RuntimeBindings } from '../lib/runtime-env';
 
 type ShortformExportCallbackRequest = {
@@ -44,6 +47,10 @@ function buildExportCallbackUrl(requestUrl: string): string {
 
 const shortform = new Hono();
 
+function getMediaRepository(env: RuntimeBindings | undefined) {
+  return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
+}
+
 shortform.post('/generate', async (c) => {
   const user = getAuthenticatedUser(c.req.raw);
   if (!user) {
@@ -56,6 +63,26 @@ shortform.post('/generate', async (c) => {
     return jsonFailure('COURSE_ID_REQUIRED', 'course_id가 필요합니다.');
   }
 
+  const repository = getMediaRepository(c.env as RuntimeBindings | undefined);
+  const transcriptSegmentsByLecture: Record<string, Array<{ start_ms: number; end_ms: number; text: string }>> = {};
+  const course = getCourseDetail(courseId, user.id);
+  const lectureIds = body?.mode === 'single' && body?.lecture_id?.trim()
+    ? [body.lecture_id.trim()]
+    : course?.lectures.map((lecture) => lecture.id) ?? [];
+
+  if (repository && lectureIds.length > 0) {
+    for (const lectureId of lectureIds) {
+      const transcript = (await listLectureTranscripts(lectureId, repository))[0] ?? null;
+      if (transcript?.segments?.length) {
+        transcriptSegmentsByLecture[lectureId] = transcript.segments.map((segment) => ({
+          start_ms: segment.start_ms,
+          end_ms: segment.end_ms,
+          text: segment.text,
+        }));
+      }
+    }
+  }
+
   return jsonSuccess(
     generateShortformExtraction(user.id, {
       lecture_id: body?.lecture_id?.trim(),
@@ -64,6 +91,7 @@ shortform.post('/generate', async (c) => {
       style: body?.style ?? 'highlight',
       target_duration_sec: body?.target_duration_sec ?? 300,
       language: body?.language ?? 'ko',
+      transcript_segments_by_lecture: transcriptSegmentsByLecture,
     }),
     '숏폼 후보가 생성되었습니다.',
     201,

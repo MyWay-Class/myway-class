@@ -13,12 +13,19 @@ import { getCourseMaterials } from './content';
 import { getCourseNotices } from './content';
 
 export function listCourseCards(userId: string): CourseCard[] {
-  return demoCourses.map((course) => createCourseCard(course, userId));
+  return demoCourses
+    .filter((course) => getCourseLectures(course.id).some((lecture) => Boolean(lecture.video_url)))
+    .map((course) => createCourseCard(course, userId));
 }
 
 export function getCourseDetail(courseId: string, userId: string): CourseDetail | undefined {
   const course = demoCourses.find((item) => item.id === courseId);
   if (!course) {
+    return undefined;
+  }
+
+  const lectures = getCourseLectures(courseId).filter((lecture) => Boolean(lecture.video_url));
+  if (lectures.length === 0) {
     return undefined;
   }
 
@@ -30,7 +37,7 @@ export function getCourseDetail(courseId: string, userId: string): CourseDetail 
 
   return {
     ...createCourseCard(course, userId),
-    lectures: getCourseLectures(courseId).map((lecture) => ({
+    lectures: lectures.map((lecture) => ({
       ...lecture,
       is_completed: completedLectureIds.has(lecture.id),
     })),
@@ -58,7 +65,7 @@ export function getLectureDetail(lectureId: string, userId?: string): LectureDet
     is_completed: userId
       ? demoLectureProgress.some((progress) => progress.user_id === userId && progress.lecture_id === lectureId && progress.is_completed)
       : undefined,
-    video_url: getLectureVideoUrl(lecture.id),
+    video_url: getLectureVideoUrl(lecture),
     transcript_excerpt: getLectureTranscriptExcerpt(lecture),
     keywords: getLectureKeywords(lecture),
   };

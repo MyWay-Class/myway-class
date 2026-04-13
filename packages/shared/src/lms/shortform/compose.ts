@@ -10,6 +10,7 @@ import type {
   ShortformVideo,
 } from '../../types';
 import {
+  buildCandidateText,
   demoShortformCandidates,
   demoShortformExtractions,
   createId,
@@ -23,6 +24,53 @@ import {
   createShortformVideoFromCandidates,
   getSelectedShortformCandidates,
 } from './helpers';
+
+type TranscriptSegmentLike = {
+  start_ms: number;
+  end_ms: number;
+  text: string;
+};
+
+function buildTranscriptCandidates(
+  extractionId: string,
+  lectureId: string,
+  lectureTitle: string,
+  courseId: string,
+  style: ShortformStyle,
+  segments: TranscriptSegmentLike[],
+  startOrderIndex: number,
+): ShortformCandidate[] {
+  const validSegments = segments.filter((segment) => segment.text.trim().length > 0);
+  if (validSegments.length === 0) {
+    return [];
+  }
+
+  const clipCount = Math.min(3, validSegments.length);
+  const chunkSize = Math.ceil(validSegments.length / clipCount);
+
+  return Array.from({ length: clipCount }, (_, clipIndex) => {
+    const startIndex = clipIndex * chunkSize;
+    const chunk = validSegments.slice(startIndex, startIndex + chunkSize);
+    const start = chunk[0]?.start_ms ?? 0;
+    const end = chunk[chunk.length - 1]?.end_ms ?? start + 30_000;
+    const description = chunk.map((segment) => segment.text).join(' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+
+    return {
+      id: createId('cand', demoShortformCandidates.length + startOrderIndex + clipIndex),
+      extraction_id: extractionId,
+      lecture_id: lectureId,
+      lecture_title: lectureTitle,
+      course_id: courseId,
+      start_time_ms: start,
+      end_time_ms: Math.max(end, start + 1_000),
+      label: `${lectureTitle} 전사 ${clipIndex + 1}`,
+      description: description || buildCandidateText(lectureTitle, style, clipIndex),
+      importance: Math.max(0.4, 0.94 - clipIndex * 0.08),
+      order_index: startOrderIndex + clipIndex,
+      is_selected: clipIndex < 3,
+    };
+  });
+}
 
 export function listShortformCandidates(extractionId: string): ShortformCandidate[] {
   return demoShortformCandidates
@@ -60,19 +108,31 @@ export function generateShortformExtraction(userId: string, input: ShortformGene
       return;
     }
 
-    const startBase = lectureIndex * 60_000;
-    const candidates = Array.from({ length: 3 }, (_, index) =>
-      createShortformCandidate(
-        extraction.id,
-        lecture.id,
-        lecture.title,
-        lecture.course_id,
-        startBase + index * 30_000,
-        startBase + index * 30_000 + 45_000,
-        extraction.style,
-        demoShortformCandidates.filter((item) => item.extraction_id === extraction.id).length + index,
-      ),
-    );
+    const transcriptSegments = input.transcript_segments_by_lecture?.[lecture.id];
+    const baseOrderIndex = demoShortformCandidates.filter((item) => item.extraction_id === extraction.id).length;
+    const candidates =
+      transcriptSegments && transcriptSegments.length > 0
+        ? buildTranscriptCandidates(
+            extraction.id,
+            lecture.id,
+            lecture.title,
+            lecture.course_id,
+            extraction.style,
+            transcriptSegments,
+            baseOrderIndex,
+          )
+        : Array.from({ length: 3 }, (_, index) =>
+            createShortformCandidate(
+              extraction.id,
+              lecture.id,
+              lecture.title,
+              lecture.course_id,
+              lectureIndex * 60_000 + index * 30_000,
+              lectureIndex * 60_000 + index * 30_000 + 45_000,
+              extraction.style,
+              baseOrderIndex + index,
+            ),
+          );
     demoShortformCandidates.push(...candidates);
   });
 

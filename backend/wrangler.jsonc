@@ -30,6 +30,27 @@
   },
   "env": {
     "dev": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "myway-class-quota",
+          "database_id": "3ef1768f-347d-4e82-93ea-2c346f52630a"
+        },
+        {
+          "binding": "MEDIA_DB",
+          "database_name": "myway-class-data",
+          "database_id": "519993d1-b497-401d-a072-c7d777bc0ddb"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ASSETS",
+          "bucket_name": "myway-class-assets"
+        }
+      ],
+      "ai": {
+        "binding": "AI"
+      },
       "vars": {
         "APP_ENV": "development",
         "API_ORIGIN": "http://localhost:5173",
@@ -49,10 +70,33 @@
         "MYWAY_MEDIA_PROCESSOR_TOKEN": "local-media-processor-token",
         "MYWAY_MEDIA_CALLBACK_SECRET": "local-media-callback-secret",
         "MYWAY_OLLAMA_BASE_URL": "http://127.0.0.1:11434",
-        "MYWAY_OLLAMA_MODEL": "llama3.1:8b"
+        "MYWAY_OLLAMA_MODEL": "llama3.1:8b",
+        "MYWAY_GEMINI_MODEL": "gemini-2.0-flash",
+        "MYWAY_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta"
       }
     },
     "staging": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "myway-class-quota",
+          "database_id": "3ef1768f-347d-4e82-93ea-2c346f52630a"
+        },
+        {
+          "binding": "MEDIA_DB",
+          "database_name": "myway-class-data",
+          "database_id": "519993d1-b497-401d-a072-c7d777bc0ddb"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ASSETS",
+          "bucket_name": "myway-class-assets"
+        }
+      ],
+      "ai": {
+        "binding": "AI"
+      },
       "vars": {
         "APP_ENV": "staging",
         "API_ORIGIN": "https://staging.mywayclass.pages.dev",
@@ -74,6 +118,27 @@
       }
     },
     "production": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "myway-class-quota",
+          "database_id": "3ef1768f-347d-4e82-93ea-2c346f52630a"
+        },
+        {
+          "binding": "MEDIA_DB",
+          "database_name": "myway-class-data",
+          "database_id": "519993d1-b497-401d-a072-c7d777bc0ddb"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ASSETS",
+          "bucket_name": "myway-class-assets"
+        }
+      ],
+      "ai": {
+        "binding": "AI"
+      },
       "vars": {
         "APP_ENV": "production",
         "API_ORIGIN": "https://mywayclass.pages.dev",

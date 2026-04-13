@@ -7,10 +7,14 @@ import { AIChatComposer } from '../components/AIChatComposer';
 import { AiNoticeBanner } from '../components/AiNoticeBanner';
 import { AIChatSidebar } from '../components/AIChatSidebar';
 import { AIChatThread, type AIChatMessage } from '../components/AIChatThread';
+import { StatePanel } from '../components/StatePanel';
 
 type AIChatPageProps = {
   highlightedLecture: LectureDetail | null;
   insights: AIInsights | null;
+  selectedCourse?: { enrolled: boolean } | null;
+  canManageCurrent?: boolean;
+  sessionToken?: string | null;
 };
 
 function createWelcomeMessage(highlightedLecture: LectureDetail | null): AIChatMessage {
@@ -35,7 +39,7 @@ function mapSmartChatResult(result: SmartChatResult): AIChatMessage {
   };
 }
 
-export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
+export function AIChatPage({ highlightedLecture, insights, selectedCourse, canManageCurrent, sessionToken }: AIChatPageProps) {
   const [ragOverview, setRagOverview] = useState<AIRagResult | null>(null);
   const [ragLoading, setRagLoading] = useState(false);
   const [messages, setMessages] = useState<AIChatMessage[]>(() => [createWelcomeMessage(null)]);
@@ -45,6 +49,7 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
   const [bannerTitle, setBannerTitle] = useState('공개 테스트 안내');
   const [bannerDescription, setBannerDescription] = useState(getPublicTestPolicyText('chat'));
   const [bannerMeta, setBannerMeta] = useState<string | null>(null);
+  const isLocked = Boolean(selectedCourse && !selectedCourse.enrolled && !canManageCurrent);
 
   useEffect(() => {
     setMessages([createWelcomeMessage(highlightedLecture)]);
@@ -57,7 +62,7 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
     setBannerDescription(getPublicTestPolicyText('chat'));
     setBannerMeta(null);
 
-    if (!highlightedLecture) {
+    if (isLocked || !highlightedLecture) {
       setRagOverview(null);
       setRagLoading(false);
       return undefined;
@@ -83,7 +88,7 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
     return () => {
       alive = false;
     };
-  }, [highlightedLecture?.id, highlightedLecture?.title]);
+  }, [highlightedLecture?.id, highlightedLecture?.title, isLocked]);
 
   const quickPrompts = useMemo(
     () => ['핵심 개념 요약', '시험 대비 문제', '이전 강의와 연결', '숏폼으로 복습'],
@@ -115,7 +120,7 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
           course_id: undefined,
           context: highlightedLecture ? [highlightedLecture.title] : undefined,
         },
-        undefined,
+        sessionToken,
       );
 
       if (result?.success && result.data) {
@@ -148,12 +153,25 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
 
   return (
     <div className="space-y-5">
+      {isLocked ? (
+        <StatePanel
+          icon="ri-lock-line"
+          tone="amber"
+          title="수강 신청 후 AI 챗봇을 사용할 수 있습니다."
+          description="강의 내용 검색과 질문 응답은 수강 신청한 강의에서만 열립니다."
+        />
+      ) : null}
+
       <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-[20px] font-extrabold tracking-[-0.03em] text-slate-900">AI 학습 챗</h1>
             <p className="mt-2 text-[13px] leading-6 text-slate-500">
-              {highlightedLecture ? `${highlightedLecture.title} 기준으로 질문을 이어갈 수 있습니다.` : '강의 기반 질문과 복습을 위한 채팅 화면입니다.'}
+              {isLocked
+                ? '수강 신청 후에 강의 내용 검색과 질문을 이어갈 수 있습니다.'
+                : highlightedLecture
+                  ? `${highlightedLecture.title} 기준으로 질문을 이어갈 수 있습니다.`
+                  : '강의 기반 질문과 복습을 위한 채팅 화면입니다.'}
             </p>
           </div>
           <button
@@ -167,9 +185,10 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
         </div>
       </section>
 
-      <AiNoticeBanner title={bannerTitle} description={bannerDescription} tone="indigo" meta={bannerMeta} />
+      {!isLocked ? <AiNoticeBanner title={bannerTitle} description={bannerDescription} tone="indigo" meta={bannerMeta} /> : null}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+      {!isLocked ? (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
           <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
             <div>
@@ -223,7 +242,8 @@ export function AIChatPage({ highlightedLecture, insights }: AIChatPageProps) {
           openOnMobile={sidebarOpen}
           onCloseMobile={() => setSidebarOpen(false)}
         />
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

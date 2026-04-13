@@ -17,7 +17,11 @@ app.use(
 );
 
 app.use('*', async (c, next) => {
-  await ensureLearningStore(c.env as RuntimeBindings | undefined);
+  try {
+    await ensureLearningStore(c.env as RuntimeBindings | undefined);
+  } catch (error) {
+    console.error('learning store initialization failed', error);
+  }
   await next();
 });
 

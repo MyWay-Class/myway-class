@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { LectureTranscript } from '@myway/shared';
 
 type TranscriptTimelineWorkspaceProps = {
-  selectedLecture: { title: string; duration_minutes: number } | null;
+  selectedLecture: { title: string; duration_minutes?: number; duration_ms?: number } | null;
   transcript: LectureTranscript | null;
 };
 
@@ -23,6 +23,14 @@ export function TranscriptTimelineWorkspace({ selectedLecture, transcript }: Tra
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
   const segments = transcript?.segments ?? [];
   const totalDurationLabel = transcript ? formatTimecode(transcript.duration_ms) : '00:00';
+  const selectedLectureDurationLabel =
+    transcript?.duration_ms
+      ? formatTimecode(transcript.duration_ms)
+      : selectedLecture?.duration_ms
+        ? formatTimecode(selectedLecture.duration_ms)
+        : selectedLecture?.duration_minutes
+          ? `${selectedLecture.duration_minutes}분`
+          : '00:00';
 
   async function copySegmentStart(timeMs: number) {
     const label = formatTimecode(timeMs);
@@ -44,7 +52,7 @@ export function TranscriptTimelineWorkspace({ selectedLecture, transcript }: Tra
           <div className="text-sm font-semibold text-slate-900">타임라인 작업 공간</div>
           <div className="mt-1 text-xs text-slate-500">
             {selectedLecture
-              ? `${selectedLecture.title} · ${selectedLecture.duration_minutes}분`
+              ? `${selectedLecture.title} · ${selectedLectureDurationLabel}`
               : '강의를 선택하면 전사 타임라인이 표시됩니다.'}
           </div>
         </div>

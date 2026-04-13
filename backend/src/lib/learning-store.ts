@@ -4,6 +4,17 @@ import { demoMaterials, demoNotices } from '@myway/shared/data/media';
 import type { CourseDetail, Enrollment, Lecture, LectureProgress, Material, Notice } from '@myway/shared';
 import type { RuntimeBindings } from './runtime-env';
 
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+const seedDemoCourses = clone(demoCourses);
+const seedDemoLectures = clone(demoLectures);
+const seedDemoMaterials = clone(demoMaterials);
+const seedDemoNotices = clone(demoNotices);
+const seedDemoEnrollments = clone(demoEnrollments);
+const seedDemoLectureProgress = clone(demoLectureProgress);
+
 type CourseRow = {
   id: string;
   instructor_id: string;
@@ -28,6 +39,8 @@ type LectureRow = {
   content_text: string;
   duration_minutes: number;
   is_published: number;
+  video_url?: string | null;
+  video_asset_key?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -109,6 +122,15 @@ function ensureLectureContentType(value: string): Lecture['content_type'] {
   return value === 'text' ? 'text' : 'video';
 }
 
+function resetMemoryState(): void {
+  demoCourses.splice(0, demoCourses.length, ...clone(seedDemoCourses));
+  demoLectures.splice(0, demoLectures.length, ...clone(seedDemoLectures));
+  demoMaterials.splice(0, demoMaterials.length, ...clone(seedDemoMaterials));
+  demoNotices.splice(0, demoNotices.length, ...clone(seedDemoNotices));
+  demoEnrollments.splice(0, demoEnrollments.length, ...clone(seedDemoEnrollments));
+  demoLectureProgress.splice(0, demoLectureProgress.length, ...clone(seedDemoLectureProgress));
+}
+
 function mapLectureRow(row: LectureRow): Lecture {
   const lecture = demoLectures.find((item) => item.id === row.id);
   return {
@@ -134,6 +156,8 @@ function mapLectureRow(row: LectureRow): Lecture {
     content_text: row.content_text,
     duration_minutes: row.duration_minutes,
     is_published: toBoolean(row.is_published),
+    video_url: row.video_url ?? undefined,
+    video_asset_key: row.video_asset_key ?? undefined,
   };
 }
 
@@ -262,6 +286,16 @@ async function ensureSchema(db: D1Database): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_lecture_progress_user_id ON lecture_progress(user_id);
     CREATE INDEX IF NOT EXISTS idx_lecture_progress_lecture_id ON lecture_progress(lecture_id);
   `);
+
+  const lectureColumns = await db.prepare('PRAGMA table_info(lectures)').all<{ name: string }>();
+  const columnNames = new Set(lectureColumns.results.map((column) => column.name));
+  if (!columnNames.has('video_url')) {
+    await db.exec('ALTER TABLE lectures ADD COLUMN video_url TEXT');
+  }
+
+  if (!columnNames.has('video_asset_key')) {
+    await db.exec('ALTER TABLE lectures ADD COLUMN video_asset_key TEXT');
+  }
 }
 
 async function seedCourseData(db: D1Database): Promise<void> {
@@ -294,7 +328,7 @@ async function seedCourseData(db: D1Database): Promise<void> {
   for (const lecture of demoLectures) {
     await db
       .prepare(
-        'INSERT INTO lectures (id, course_id, title, order_index, week_number, session_number, content_type, content_text, duration_minutes, is_published, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO lectures (id, course_id, title, order_index, week_number, session_number, content_type, content_text, duration_minutes, is_published, video_url, video_asset_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       )
       .bind(
         lecture.id,
@@ -307,6 +341,8 @@ async function seedCourseData(db: D1Database): Promise<void> {
         lecture.content_text,
         lecture.duration_minutes,
         toNumber(lecture.is_published),
+        lecture.video_url ?? null,
+        lecture.video_asset_key ?? null,
         seededAt,
         seededAt,
       )
@@ -419,7 +455,7 @@ async function upsertLecture(db: D1Database, lecture: Lecture): Promise<void> {
   const timestamp = nowIso();
   await db
     .prepare(
-      'INSERT INTO lectures (id, course_id, title, order_index, week_number, session_number, content_type, content_text, duration_minutes, is_published, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET course_id = excluded.course_id, title = excluded.title, order_index = excluded.order_index, week_number = excluded.week_number, session_number = excluded.session_number, content_type = excluded.content_type, content_text = excluded.content_text, duration_minutes = excluded.duration_minutes, is_published = excluded.is_published, updated_at = excluded.updated_at',
+      'INSERT INTO lectures (id, course_id, title, order_index, week_number, session_number, content_type, content_text, duration_minutes, is_published, video_url, video_asset_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET course_id = excluded.course_id, title = excluded.title, order_index = excluded.order_index, week_number = excluded.week_number, session_number = excluded.session_number, content_type = excluded.content_type, content_text = excluded.content_text, duration_minutes = excluded.duration_minutes, is_published = excluded.is_published, video_url = excluded.video_url, video_asset_key = excluded.video_asset_key, updated_at = excluded.updated_at',
     )
     .bind(
       lecture.id,
@@ -432,9 +468,19 @@ async function upsertLecture(db: D1Database, lecture: Lecture): Promise<void> {
       lecture.content_text,
       lecture.duration_minutes,
       toNumber(lecture.is_published),
+      lecture.video_url ?? null,
+      lecture.video_asset_key ?? null,
       timestamp,
       timestamp,
     )
+    .run();
+}
+
+async function updateLectureVideoAsset(db: D1Database, lectureId: string, videoUrl: string, videoAssetKey: string): Promise<void> {
+  const timestamp = nowIso();
+  await db
+    .prepare('UPDATE lectures SET video_url = ?, video_asset_key = ?, updated_at = ? WHERE id = ?')
+    .bind(videoUrl, videoAssetKey, timestamp, lectureId)
     .run();
 }
 
@@ -495,8 +541,40 @@ export async function ensureLearningStore(env?: RuntimeBindings): Promise<void> 
 
   if (!learningStorePromise) {
     learningStorePromise = (async () => {
-      await ensureSchema(db);
-      await seedCourseData(db);
+      await hydrateMemory(db);
+      learningStoreReady = true;
+    })().catch((error) => {
+      learningStorePromise = null;
+      throw error;
+    });
+  }
+
+  await learningStorePromise;
+}
+
+export async function reloadLearningStore(env?: RuntimeBindings): Promise<void> {
+  const db = env?.MEDIA_DB;
+  if (!db) {
+    return;
+  }
+
+  learningStoreReady = false;
+  learningStorePromise = null;
+  await ensureLearningStore(env);
+}
+
+export async function refreshLearningStoreFromDatabase(env?: RuntimeBindings): Promise<void> {
+  const db = env?.MEDIA_DB;
+  if (!db) {
+    return;
+  }
+
+  learningStoreReady = false;
+  learningStorePromise = null;
+  resetMemoryState();
+
+  if (!learningStorePromise) {
+    learningStorePromise = (async () => {
       await hydrateMemory(db);
       learningStoreReady = true;
     })().catch((error) => {
@@ -549,5 +627,26 @@ export async function persistLectureProgress(userId: string, lectureId: string, 
   const enrollment = demoEnrollments.find((item) => item.user_id === userId && item.course_id === demoLectures.find((lecture) => lecture.id === lectureId)?.course_id);
   if (enrollment) {
     await upsertEnrollment(db, enrollment);
+  }
+}
+
+export async function persistLectureVideoAsset(
+  lectureId: string,
+  videoUrl: string,
+  videoAssetKey: string,
+  env?: RuntimeBindings,
+): Promise<void> {
+  const db = env?.MEDIA_DB;
+  if (!db) {
+    return;
+  }
+
+  await ensureLearningStore(env);
+  await updateLectureVideoAsset(db, lectureId, videoUrl, videoAssetKey);
+
+  const lecture = demoLectures.find((item) => item.id === lectureId);
+  if (lecture) {
+    lecture.video_url = videoUrl;
+    lecture.video_asset_key = videoAssetKey;
   }
 }

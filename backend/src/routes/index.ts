@@ -7,6 +7,7 @@ import aiRecommendations from './ai-recommendations';
 import aiProviders from './ai-providers';
 import aiRag from './ai-rag';
 import ai from './ai';
+import dev from './dev';
 import courses from './courses';
 import dashboard from './dashboard';
 import enrollments from './enrollments';
@@ -26,6 +27,7 @@ export function registerRoutes(app: Hono): void {
   app.route('/api/v1/ai/providers', aiProviders);
   app.route('/api/v1/ai/rag', aiRag);
   app.route('/api/v1/ai', ai);
+  app.route('/api/v1/dev', dev);
   app.route('/api/v1/custom-courses', customCourses);
   app.route('/api/v1/dashboard', dashboard);
   app.route('/api/v1/courses', courses);

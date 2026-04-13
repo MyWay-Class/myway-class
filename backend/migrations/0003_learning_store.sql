@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS lectures (
   content_text TEXT NOT NULL,
   duration_minutes INTEGER NOT NULL,
   is_published INTEGER NOT NULL,
+  video_url TEXT,
+  video_asset_key TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

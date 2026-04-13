@@ -15,6 +15,14 @@ export function LmsDashboard(props: LmsDashboardProps) {
       ? 'my-courses'
       : activePage;
 
+  function goToHome() {
+    setActivePage(defaultPageForRole(props.session));
+    const homeCourseId = props.enrolledCourses[0]?.id ?? props.courseCards[0]?.id;
+    if (homeCourseId) {
+      props.onSelectCourse(homeCourseId);
+    }
+  }
+
   useEffect(() => {
     setActivePage(defaultPageForRole(props.session));
   }, [props.session]);
@@ -58,14 +66,19 @@ export function LmsDashboard(props: LmsDashboardProps) {
   }
 
   return (
-    <AppShell
-      session={props.session}
-      activePage={activePage}
-      activeNavKey={activeNavKey}
-      title={pageTitle(activePage, props.session.user.role)}
-      onNavigate={setActivePage}
-      onLogout={props.onLogout}
-    >
+      <AppShell
+        session={props.session}
+        activePage={activePage}
+        activeNavKey={activeNavKey}
+        title={pageTitle(activePage, props.session.user.role)}
+        onNavigate={(page) => {
+          setActivePage(page);
+          if (page === 'dashboard') {
+            goToHome();
+          }
+        }}
+        onLogout={props.onLogout}
+      >
       {props.apiStatus === 'offline' ? (
         <div className="mb-5">
           <StatePanel
@@ -91,6 +104,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
         insights={props.insights}
         providers={props.providers}
         onCreateCourse={props.onCreateCourse}
+        onEnroll={props.onEnroll}
         onSelectCourse={props.onSelectCourse}
         onSelectLecture={props.onSelectLecture}
         demoUsers={props.demoUsers}
