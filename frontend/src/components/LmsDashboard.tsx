@@ -11,8 +11,8 @@ export function LmsDashboard(props: LmsDashboardProps) {
   const [activePage, setActivePage] = useState<LmsPageId>(defaultPageForRole(props.session));
   const [showAuthPage, setShowAuthPage] = useState(false);
   const activeNavKey =
-    activePage === 'courses' && props.selectedLectureId
-      ? 'lecture-watch'
+    activePage === 'courses' || activePage === 'lecture-watch'
+      ? 'my-courses'
       : activePage;
 
   useEffect(() => {

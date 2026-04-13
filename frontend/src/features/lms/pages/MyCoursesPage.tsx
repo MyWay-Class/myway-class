@@ -7,13 +7,13 @@ type MyCoursesPageProps = {
   courses: CourseCard[];
   selectedCourse: CourseDetail | null;
   onSelectCourse: (courseId: string) => void;
-  onNavigate: (page: 'my-courses' | 'course-create' | 'lecture-studio' | 'courses') => void;
+  onNavigate: (page: 'my-courses' | 'course-create' | 'lecture-studio' | 'courses' | 'lecture-watch') => void;
 };
 
 export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse, onNavigate }: MyCoursesPageProps) {
   const [managedCourses, setManagedCourses] = useState<CourseCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState('내가 개설한 강의만 모아서 보고, 바로 개설 워크플로우나 제작 스튜디오로 이어갑니다.');
+  const [notice, setNotice] = useState('내가 수강 중인 강의를 먼저 보고, 선택하면 상세와 진도율 화면으로 이어집니다.');
 
   useEffect(() => {
     let active = true;
@@ -37,28 +37,32 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
     };
   }, [session.session_token]);
 
-  const currentCourses = managedCourses.length > 0
+  const enrolledCourses = courses.filter((course) => course.enrolled);
+  const instructorCourses = managedCourses.length > 0
     ? managedCourses
     : courses.filter((course) => session.user.role === 'ADMIN' || course.instructor_id === session.user.id);
+  const currentCourses = session.user.role === 'STUDENT' ? enrolledCourses : instructorCourses;
+  const primaryCourse = selectedCourse ?? currentCourses[0] ?? null;
 
   const stats = useMemo(
     () => ({
       total: currentCourses.length,
       published: currentCourses.filter((course) => course.is_published).length,
       totalLectures: currentCourses.reduce((sum, course) => sum + course.lecture_count, 0),
+      inProgress: currentCourses.filter((course) => course.progress_percent > 0 && course.progress_percent < 100).length,
     }),
     [currentCourses],
   );
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-6 text-white shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="text-[12px] font-semibold uppercase tracking-[0.2em] text-indigo-200">My Courses</div>
-            <h2 className="mt-2 text-[24px] font-extrabold tracking-[-0.04em]">내 강의 관리</h2>
+            <h2 className="mt-2 text-[24px] font-extrabold tracking-[-0.04em]">내 강의</h2>
             <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-300">
-              내가 개설한 강의를 한곳에서 확인하고, 바로 개설 워크플로우나 제작 스튜디오로 이동할 수 있습니다.
+              수강 중인 강의와 관리 중인 강의를 한곳에서 확인하고, 선택하면 강의 상세와 진도율 화면으로 이동합니다.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
@@ -68,7 +72,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
           <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{stats.total}</div>
           <div className="mt-1 text-[12px] text-slate-500">관리 강의 수</div>
@@ -81,28 +85,71 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
           <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{stats.totalLectures}</div>
           <div className="mt-1 text-[12px] text-slate-500">총 차시 수</div>
         </article>
+        <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+          <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{stats.inProgress}</div>
+          <div className="mt-1 text-[12px] text-slate-500">진행 중 강의</div>
+        </article>
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-[15px] font-bold text-slate-900">내가 개설한 강의</h3>
+            <h3 className="text-[15px] font-bold text-slate-900">{session.user.role === 'STUDENT' ? '수강 중인 강의' : '관리 중인 강의'}</h3>
             <p className="mt-1 text-[12px] text-slate-500">{notice}</p>
           </div>
           <button
             type="button"
-            onClick={() => onNavigate('course-create')}
+            onClick={() => onNavigate(session.user.role === 'STUDENT' ? 'dashboard' : 'course-create')}
             className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
           >
-            새 강의 개설
+            {session.user.role === 'STUDENT' ? '대시보드로 이동' : '새 강의 개설'}
           </button>
         </div>
+
+        {primaryCourse ? (
+          <div className="mt-4 rounded-3xl border border-indigo-100 bg-indigo-50 px-5 py-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] font-semibold text-indigo-600">선택 강의 미리보기</div>
+                <div className="mt-1 text-[18px] font-extrabold tracking-[-0.03em] text-slate-900">{primaryCourse.title}</div>
+                <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-600">
+                  {primaryCourse.category} · {primaryCourse.lecture_count}차시 · {primaryCourse.progress_percent}% 진행
+                </p>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
+                  <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${Math.max(primaryCourse.progress_percent, 8)}%` }} />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectCourse(primaryCourse.id);
+                    onNavigate('courses');
+                  }}
+                  className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                >
+                  상세/진도율 보기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectCourse(primaryCourse.id);
+                    onNavigate('lecture-watch');
+                  }}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  차시 선택하기
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">내 강의 목록을 불러오는 중입니다.</div>
         ) : currentCourses.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
-            아직 관리 중인 강의가 없습니다. 강의 개설 워크플로우에서 새 강의를 시작해 주세요.
+            아직 수강하거나 관리 중인 강의가 없습니다. 대시보드에서 탐색을 시작해 주세요.
           </div>
         ) : (
           <div className="mt-4 grid gap-4 xl:grid-cols-2">
@@ -119,7 +166,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                     <div>
                       <div className="text-[14px] font-bold text-slate-900">{course.title}</div>
                       <div className="mt-1 text-[12px] text-slate-500">
-                        {course.category} · {course.difficulty} · {course.lecture_count}차시
+                        {course.category} · {course.difficulty} · {course.lecture_count}차시 · {course.progress_percent}% 진행
                       </div>
                     </div>
                     <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${course.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
@@ -134,21 +181,21 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                       type="button"
                       onClick={() => {
                         onSelectCourse(course.id);
-                        onNavigate('course-create');
+                        onNavigate('courses');
                       }}
                       className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
                     >
-                      개설 워크플로우
+                      상세/진도율
                     </button>
                     <button
                       type="button"
                       onClick={() => {
                         onSelectCourse(course.id);
-                        onNavigate('lecture-studio');
+                        onNavigate('lecture-watch');
                       }}
                       className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
-                      제작 스튜디오
+                      시청하기
                     </button>
                   </div>
                 </article>
