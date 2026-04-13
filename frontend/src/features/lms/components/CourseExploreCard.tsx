@@ -4,6 +4,7 @@ type CourseExploreCardProps = {
   course: CourseCard;
   selected: boolean;
   onSelect: (courseId: string) => void;
+  onOpen?: (courseId: string) => void;
 };
 
 const difficultyLabel: Record<CourseCard['difficulty'], string> = {
@@ -49,13 +50,16 @@ function formatDuration(minutes: number): string {
   return remain > 0 ? `${hours}시간 ${remain}분` : `${hours}시간`;
 }
 
-export function CourseExploreCard({ course, selected, onSelect }: CourseExploreCardProps) {
+export function CourseExploreCard({ course, selected, onSelect, onOpen }: CourseExploreCardProps) {
   const palette = paletteClasses[course.thumbnail_palette];
 
   return (
     <button
       type="button"
-      onClick={() => onSelect(course.id)}
+      onClick={() => {
+        onSelect(course.id);
+        onOpen?.(course.id);
+      }}
       className={`group overflow-hidden rounded-3xl border bg-white text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)] ${
         selected ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-200'
       }`}
