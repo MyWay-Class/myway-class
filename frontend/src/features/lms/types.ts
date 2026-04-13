@@ -50,6 +50,10 @@ export type LmsNavGroup = {
   items: LmsNavItem[];
 };
 
+export type ThemeMode = 'light' | 'dark';
+
+export type SidebarDock = 'left' | 'right';
+
 export type LmsDashboardProps = {
   busy: boolean;
   canEnrollCurrent: boolean;

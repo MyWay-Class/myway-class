@@ -19,10 +19,10 @@ export function defaultPageForRole(session: LoginResponse | null): LmsPageId {
 
 export function pageTitle(page: LmsPageId, role: UserRole): string {
   const titles: Record<LmsPageId, string> = {
-    dashboard: '홈',
-    courses: '강의 목록',
-    'lecture-watch': '강의 시청',
-    'my-courses': '내 강의 관리',
+    dashboard: '대시보드',
+    courses: '강의 상세',
+    'lecture-watch': '영상 시청',
+    'my-courses': '내 강의',
     'course-create': '강의 워크스페이스',
     'lecture-studio': '강의 제작 스튜디오',
     shortform: '숏폼 제작',
@@ -41,7 +41,7 @@ export function pageTitle(page: LmsPageId, role: UserRole): string {
   };
 
   if (page === 'dashboard' && role === 'INSTRUCTOR') {
-    return '강의 홈';
+    return '대시보드';
   }
 
   return titles[page];
@@ -50,10 +50,10 @@ export function pageTitle(page: LmsPageId, role: UserRole): string {
 export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
   const groups: LmsNavGroup[] = [
     {
-      label: '주요 메뉴',
+      label: '핵심',
       items: [
-        { page: 'dashboard', icon: 'ri-home-4-line', label: '홈' },
-        { page: 'courses', icon: 'ri-book-2-line', label: '강의 목록', aliases: ['lecture-watch'] },
+        { page: 'dashboard', icon: 'ri-dashboard-3-line', label: '대시보드' },
+        { page: 'my-courses', icon: 'ri-book-open-line', label: '내 강의', aliases: ['courses', 'lecture-watch'] },
       ],
     },
   ];
@@ -75,7 +75,7 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
       {
         label: '제작 도구',
         items: [
-          { page: 'my-courses', icon: 'ri-folder-user-line', label: '내 강의 관리', badge: 'NEW' },
+          { page: 'my-courses', icon: 'ri-folder-user-line', label: '내 강의', badge: 'NEW', aliases: ['courses', 'lecture-watch'] },
           { page: 'course-create', icon: 'ri-add-circle-line', label: '강의 워크스페이스', badge: 'NEW' },
           { page: 'lecture-studio', icon: 'ri-layout-masonry-line', label: '강의 제작 스튜디오', badge: 'NEW' },
           { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작' },
@@ -99,7 +99,7 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
       {
         label: '운영 관리',
         items: [
-          { page: 'my-courses', icon: 'ri-folder-user-line', label: '내 강의 관리' },
+          { page: 'my-courses', icon: 'ri-folder-user-line', label: '내 강의', aliases: ['courses', 'lecture-watch'] },
           { page: 'admin-users', icon: 'ri-user-settings-line', label: '사용자 관리', aliases: ['admin-user-detail'] },
         ],
       },

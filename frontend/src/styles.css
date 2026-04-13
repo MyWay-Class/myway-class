@@ -8,15 +8,73 @@
 @layer base {
   :root {
     color-scheme: light;
+    --app-bg: #f8f9fb;
+    --app-surface: #ffffff;
+    --app-surface-soft: #f1f5f9;
+    --app-border: #e2e8f0;
+    --app-text: #0f172a;
+    --app-text-muted: #64748b;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --app-bg: #020617;
+    --app-surface: #0f172a;
+    --app-surface-soft: #111827;
+    --app-border: #334155;
+    --app-text: #e2e8f0;
+    --app-text-muted: #94a3b8;
+  }
+
+  :root[data-theme='dark'] .bg-white {
+    background-color: var(--app-surface) !important;
+  }
+
+  :root[data-theme='dark'] .bg-slate-50 {
+    background-color: var(--app-surface-soft) !important;
+  }
+
+  :root[data-theme='dark'] .bg-slate-100 {
+    background-color: rgba(148, 163, 184, 0.14) !important;
+  }
+
+  :root[data-theme='dark'] .bg-indigo-50 {
+    background-color: rgba(99, 102, 241, 0.16) !important;
+  }
+
+  :root[data-theme='dark'] .bg-indigo-100 {
+    background-color: rgba(99, 102, 241, 0.22) !important;
+  }
+
+  :root[data-theme='dark'] .border-slate-200 {
+    border-color: var(--app-border) !important;
+  }
+
+  :root[data-theme='dark'] .border-indigo-100 {
+    border-color: rgba(99, 102, 241, 0.3) !important;
+  }
+
+  :root[data-theme='dark'] .text-slate-900,
+  :root[data-theme='dark'] .text-slate-800,
+  :root[data-theme='dark'] .text-slate-700 {
+    color: var(--app-text) !important;
+  }
+
+  :root[data-theme='dark'] .text-slate-600,
+  :root[data-theme='dark'] .text-slate-500,
+  :root[data-theme='dark'] .text-slate-400 {
+    color: var(--app-text-muted) !important;
   }
 
   html {
     font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #f8f9fb;
+    background: var(--app-bg);
   }
 
   body {
-    @apply m-0 min-h-screen bg-[#f8f9fb] text-slate-900 antialiased;
+    @apply m-0 min-h-screen antialiased;
+    background: var(--app-bg);
+    color: var(--app-text);
     font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
