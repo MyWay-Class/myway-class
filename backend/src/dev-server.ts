@@ -4,7 +4,9 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { demoLectures } from '@myway/shared';
 import app from './index';
+import { DEMO_VIDEO_BYTES } from './lib/demo-video';
 import type { R2BucketLike } from './lib/runtime-env';
+import { getLectureVideoAssetAliases } from './lib/media-assets';
 
 const port = Number(process.env.PORT ?? '8787');
 const host = process.env.HOST ?? '127.0.0.1';
@@ -92,7 +94,12 @@ async function seedDemoLectureVideoAssets(): Promise<void> {
 
   const samplePath = path.resolve(process.cwd(), '..', 'temp-sample-10s.mp4');
   try {
-    const sampleVideo = await fs.readFile(samplePath);
+    let sampleVideo: Buffer;
+    try {
+      sampleVideo = await fs.readFile(samplePath);
+    } catch {
+      sampleVideo = Buffer.from(DEMO_VIDEO_BYTES);
+    }
     let seededCount = 0;
 
     for (const lecture of demoLectures) {
@@ -100,13 +107,16 @@ async function seedDemoLectureVideoAssets(): Promise<void> {
         continue;
       }
 
-      await runtimeEnv.ASSETS.put(lecture.video_asset_key, sampleVideo, {
-        httpMetadata: {
-          contentType: 'video/mp4',
-          contentDisposition: `inline; filename="${lecture.id}.mp4"`,
-        },
-      });
-      seededCount += 1;
+      const assetKeys = [lecture.video_asset_key, ...getLectureVideoAssetAliases(lecture.video_asset_key)];
+      for (const assetKey of assetKeys) {
+        await runtimeEnv.ASSETS.put(assetKey, sampleVideo, {
+          httpMetadata: {
+            contentType: 'video/mp4',
+            contentDisposition: `inline; filename="${lecture.id}.mp4"`,
+          },
+        });
+        seededCount += 1;
+      }
     }
 
     console.log(`Seeded ${seededCount} demo lecture video assets from ${samplePath}`);

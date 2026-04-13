@@ -24,6 +24,21 @@ type MemoryAsset = {
 
 const memoryAssets = new Map<string, MemoryAsset>();
 
+export function getLectureVideoAssetAliases(assetKey: string): string[] {
+  const aliases = new Set<string>();
+  const aiCurrentMatch = assetKey.match(/^media\/crs_ai_001\/lec_ai_(\d{3})\.mp4$/);
+  if (aiCurrentMatch) {
+    aliases.add(`media/crs_ai_seed_001/lec_ai_seed_${aiCurrentMatch[1]}.mp4`);
+  }
+
+  const aiSeedMatch = assetKey.match(/^media\/crs_ai_seed_001\/lec_ai_seed_(\d{3})\.mp4$/);
+  if (aiSeedMatch) {
+    aliases.add(`media/crs_ai_001/lec_ai_${aiSeedMatch[1]}.mp4`);
+  }
+
+  return [...aliases];
+}
+
 function sanitizeName(value: string): string {
   return value
     .trim()
@@ -107,23 +122,29 @@ export async function uploadLectureVideoAsset(
 }
 
 export async function readLectureVideoAsset(assetKey: string, env?: RuntimeBindings): Promise<Response | null> {
+  const candidateKeys = [assetKey, ...getLectureVideoAssetAliases(assetKey)];
+
   if (!env?.ASSETS) {
-    const asset = memoryAssets.get(assetKey);
-    if (!asset) {
-      return buildDemoVideoResponse();
+    for (const candidateKey of candidateKeys) {
+      const asset = memoryAssets.get(candidateKey);
+      if (asset) {
+        return new Response(asset.body, {
+          headers: buildAssetResponseHeaders(asset.contentType, asset.contentDisposition),
+        });
+      }
     }
 
-    return new Response(asset.body, {
-      headers: buildAssetResponseHeaders(asset.contentType, asset.contentDisposition),
-    });
-  }
-
-  const asset = await env.ASSETS.get(assetKey);
-  if (!asset?.body) {
     return buildDemoVideoResponse();
   }
 
-  return new Response(asset.body, {
-    headers: buildAssetResponseHeaders(asset.httpMetadata?.contentType, asset.httpMetadata?.contentDisposition),
-  });
+  for (const candidateKey of candidateKeys) {
+    const asset = await env.ASSETS.get(candidateKey);
+    if (asset?.body) {
+      return new Response(asset.body, {
+        headers: buildAssetResponseHeaders(asset.httpMetadata?.contentType, asset.httpMetadata?.contentDisposition),
+      });
+    }
+  }
+
+  return buildDemoVideoResponse();
 }

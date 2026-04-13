@@ -80,8 +80,8 @@ export const demoLectures: Lecture[] = [
     content_text: 'AI의 개념, 머신러닝과 딥러닝의 차이, 학습이 필요한 이유를 이해합니다.',
     duration_minutes: 18,
     is_published: true,
-    video_url: '/api/v1/media/assets/media%2Fcrs_ai_001%2Flec_ai_001.mp4',
-    video_asset_key: 'media/crs_ai_001/lec_ai_001.mp4',
+    video_url: '/api/v1/media/assets/media%2Fcrs_ai_seed_001%2Flec_ai_seed_001.mp4',
+    video_asset_key: 'media/crs_ai_seed_001/lec_ai_seed_001.mp4',
   },
   {
     id: 'lec_ai_002',
@@ -94,8 +94,8 @@ export const demoLectures: Lecture[] = [
     content_text: '데이터셋, 라벨링, 학습과 검증, 모델의 역할을 살펴봅니다.',
     duration_minutes: 22,
     is_published: true,
-    video_url: '/api/v1/media/assets/media%2Fcrs_ai_001%2Flec_ai_002.mp4',
-    video_asset_key: 'media/crs_ai_001/lec_ai_002.mp4',
+    video_url: '/api/v1/media/assets/media%2Fcrs_ai_seed_001%2Flec_ai_seed_002.mp4',
+    video_asset_key: 'media/crs_ai_seed_001/lec_ai_seed_002.mp4',
   },
   {
     id: 'lec_ai_003',
@@ -108,8 +108,8 @@ export const demoLectures: Lecture[] = [
     content_text: '문제 정의부터 데이터 준비, 모델 적용, 배포와 운영까지 전체 흐름을 이해합니다.',
     duration_minutes: 24,
     is_published: true,
-    video_url: '/api/v1/media/assets/media%2Fcrs_ai_001%2Flec_ai_003.mp4',
-    video_asset_key: 'media/crs_ai_001/lec_ai_003.mp4',
+    video_url: '/api/v1/media/assets/media%2Fcrs_ai_seed_001%2Flec_ai_seed_003.mp4',
+    video_asset_key: 'media/crs_ai_seed_001/lec_ai_seed_003.mp4',
   },
   {
     id: 'lec_econ_seed_001',
