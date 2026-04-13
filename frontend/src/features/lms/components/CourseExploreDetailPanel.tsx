@@ -14,7 +14,7 @@ type CourseExploreDetailPanelProps = {
   onSelectLecture: (lectureId: string) => void;
   onEnroll: (courseId: string) => void;
   onTabChange: (tab: '강의' | '공지' | '자료') => void;
-  onNavigate: (page: 'courses' | 'lecture-watch' | 'shortform' | 'ai-chat' | 'course-create' | 'lecture-studio' | 'media-pipeline') => void;
+  onNavigate: (page: 'courses' | 'lecture-watch' | 'my-courses' | 'shortform' | 'ai-chat' | 'course-create' | 'lecture-studio' | 'media-pipeline') => void;
 };
 
 const courseTabs: { key: '강의' | '공지' | '자료'; label: string; icon: string }[] = [

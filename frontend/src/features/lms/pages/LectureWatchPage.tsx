@@ -222,7 +222,7 @@ export function LectureWatchPage({
                 <div className="text-[12px] font-semibold text-indigo-600">현재 차시</div>
                 <div className="mt-1 text-[18px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{currentLecture?.title ?? '차시를 선택하세요'}</div>
                 <p className="mt-3 text-[13px] leading-7 text-[var(--app-text-muted)]">
-                  {currentLecture?.transcript_excerpt ?? '선택한 차시의 핵심 내용과 메모를 이곳에서 확인합니다.'}
+                  {highlightedLecture?.transcript_excerpt ?? currentLecture?.content_text ?? '선택한 차시의 핵심 내용과 메모를 이곳에서 확인합니다.'}
                 </p>
                 {transcript?.duration_ms ? (
                   <div className="mt-3 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">

@@ -14,7 +14,7 @@ import {
   demoLecturePipelines,
   demoLectureTranscripts,
 } from '../../data/demo-data';
-import { createId, findLecture, now, normalizeText, splitIntoSegments, upsertPipeline } from './helpers';
+import { buildTimelineMarkers, createId, findLecture, now, normalizeText, splitIntoSegments, upsertPipeline } from './helpers';
 
 export type MediaRepository = {
   getLectureTranscript(lectureId: string): LectureTranscript | undefined | Promise<LectureTranscript | undefined>;
@@ -236,6 +236,10 @@ export const memoryMediaRepository: MediaRepository = {
               .split(/[.!?]\s+/)
               .slice(0, 2)
               .join(' ');
+    const timestamps =
+      style === 'timeline'
+        ? buildTimelineMarkers(transcript?.segments ?? splitIntoSegments(sourceText, Math.max(lecture.duration_minutes * 60_000, 180_000)))
+        : null;
 
     const noteType: LectureNote['note_type'] =
       style === 'detailed' ? 'ai_detailed' : style === 'timeline' ? 'ai_timeline' : 'ai_summary';
@@ -249,7 +253,7 @@ export const memoryMediaRepository: MediaRepository = {
       content: summaryContent,
       key_concepts: keyConcepts,
       keywords,
-      timestamps: null,
+      timestamps,
       language: input.language ?? 'ko',
       ai_model: 'demo-summary-v1',
       created_at: now(),
