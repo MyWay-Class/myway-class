@@ -165,6 +165,10 @@ export function RolePageRouter({
             icon="ri-layout-grid-line"
             title="운영 화면 준비 중"
             description="사용자 관리, 통계, 강사 배정 화면은 이 디자인 시스템 위에서 다음 단계로 이어집니다."
+            actions={[
+              { label: '대시보드로 이동', onClick: () => onNavigate('dashboard') },
+              { label: '내 강의 보기', onClick: () => onNavigate('my-courses') },
+            ]}
           />
         );
     }
@@ -289,6 +293,10 @@ export function RolePageRouter({
         icon="ri-tools-line"
         title="교강사 도구 연결 준비 중"
         description="현재 레이아웃과 정보 구조는 레퍼런스 기준으로 정리했고, 기능 연결은 다음 단계에서 이어집니다."
+        actions={[
+          { label: '내 강의로 이동', onClick: () => onNavigate('my-courses') },
+          { label: '강의 개설', onClick: () => onNavigate('course-create') },
+        ]}
       />
     );
   }
@@ -365,6 +373,10 @@ export function RolePageRouter({
         icon="ri-lock-line"
         title="업로드와 전사는 교강사 전용입니다."
         description="학생은 강의 상세, 챗봇, 숏폼 제작만 사용할 수 있습니다. 영상 업로드와 자동 전사는 교수 또는 강사 계정에서만 가능합니다."
+        actions={[
+          { label: '강의 상세로', onClick: () => onNavigate('courses') },
+          { label: '내 강의로', onClick: () => onNavigate('my-courses') },
+        ]}
       />
     );
   }
@@ -374,6 +386,10 @@ export function RolePageRouter({
       icon="ri-robot-line"
       title="학습 도구 연결 준비 중"
       description="숏폼, 커뮤니티, AI 채팅은 동일한 UI 체계에 맞춰 이어서 붙일 수 있게 정리한 상태입니다."
+      actions={[
+        { label: '대시보드로 이동', onClick: () => onNavigate('dashboard') },
+        { label: '내 숏폼 보기', onClick: () => onNavigate('my-shortforms') },
+      ]}
     />
   );
 }
