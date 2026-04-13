@@ -22,8 +22,10 @@
 - Seeded demo lecture video assets in the backend dev server and fixed the asset directory path to the repo-root temp directory.
 - Added timeline timestamps to summary notes.
 - Changed smart chat to return a direct answer when a lecture context exists.
+- Added an embedded MP4 fallback in backend media asset reads so deployed dev can play lecture videos even when R2 is empty.
 
 ## Verification
 - `npm run verify`
 - `npm --workspace @myway/frontend exec -- tsc -p tsconfig.json --noEmit`
 - `npm --workspace @myway/frontend run build`
+- Verified `GET /api/v1/media/assets/media%2Fcrs_ai_001%2Flec_ai_001.mp4` returns `200 video/mp4` on deployed dev.

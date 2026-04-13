@@ -1,4 +1,5 @@
 import type { RuntimeBindings } from './runtime-env';
+import { buildDemoVideoResponse } from './demo-video';
 
 type MediaUploadResult = {
   asset_key: string;
@@ -109,7 +110,7 @@ export async function readLectureVideoAsset(assetKey: string, env?: RuntimeBindi
   if (!env?.ASSETS) {
     const asset = memoryAssets.get(assetKey);
     if (!asset) {
-      return null;
+      return buildDemoVideoResponse();
     }
 
     return new Response(asset.body, {
@@ -119,7 +120,7 @@ export async function readLectureVideoAsset(assetKey: string, env?: RuntimeBindi
 
   const asset = await env.ASSETS.get(assetKey);
   if (!asset?.body) {
-    return null;
+    return buildDemoVideoResponse();
   }
 
   return new Response(asset.body, {
