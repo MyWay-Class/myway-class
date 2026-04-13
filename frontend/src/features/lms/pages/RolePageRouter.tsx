@@ -403,10 +403,10 @@ export function RolePageRouter({
   }
 
   return (
-      <RolePageFallback
-        icon="ri-robot-line"
-        title="학습 도구 연결 준비 중"
-        description="숏폼, 커뮤니티, AI 채팅은 동일한 UI 체계에 맞춰 이어서 붙일 수 있게 정리한 상태입니다."
+    <RolePageFallback
+      icon="ri-robot-line"
+      title="학습 도구 연결 준비 중"
+      description="숏폼, 커뮤니티, AI 채팅은 동일한 UI 체계에 맞춰 이어서 붙일 수 있게 정리한 상태입니다."
       actions={[
         { label: '대시보드로 이동', onClick: () => onNavigate('dashboard') },
         { label: '숏폼으로 이동', onClick: () => onNavigate('shortform') },
