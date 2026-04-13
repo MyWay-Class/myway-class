@@ -39,9 +39,14 @@ export function ShortformWizardStep2({
           </div>
           <p className="mt-1 text-[12px] text-slate-500">레퍼런스처럼 차시 필터 탭으로 구간을 좁히고, 핵심 구간을 카드 단위로 선택합니다.</p>
         </div>
-        <button type="button" onClick={onBack} className="rounded-full border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600">
-          이전
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
+            선택 {selectedClipKeys.length}개
+          </span>
+          <button type="button" onClick={onBack} className="rounded-full border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600">
+            이전
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 flex gap-2 overflow-x-auto pb-1">

@@ -207,6 +207,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
 
   const totalDurationMs = selectedClips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
   const totalDurationLabel = formatDuration(totalDurationMs);
+  const stepLabel = step === 1 ? '강좌 선택' : step === 2 ? '구간 선택' : '미리보기 / 저장';
 
   async function handleCompose() {
     if (!courseDetail || selectedClips.length === 0) {
@@ -284,16 +285,60 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
 
   return (
     <div className="space-y-5">
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
+              <i className="ri-scissors-cut-line" />
+              숏폼 제작 허브
+            </div>
+            <h1 className="mt-3 text-[26px] font-extrabold tracking-[-0.04em] lg:text-[30px]">선택이 쉬운 숏폼 제작 화면</h1>
+            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-white/75">
+              강좌 선택, 추천 구간 선택, 미리보기 저장을 하나의 흐름으로 정리해 중간에 길을 잃지 않도록 바꿨습니다.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
+              <div className="font-semibold text-white">현재 강좌</div>
+              <div className="mt-1">{courseDetail?.title ?? '강좌 선택 필요'}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
+              <div className="font-semibold text-white">선택 클립</div>
+              <div className="mt-1">{selectedClips.length}개 · {totalDurationLabel}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
+              <div className="font-semibold text-white">현재 단계</div>
+              <div className="mt-1">{stepLabel}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl bg-white/10 px-4 py-3 text-[12px] text-slate-200 backdrop-blur">
+            <div className="font-semibold text-white">차시 바로 시작</div>
+            <div className="mt-1">현재 보고 있는 강의에서 곧바로 구간을 좁힐 수 있습니다.</div>
+          </div>
+          <div className="rounded-2xl bg-white/10 px-4 py-3 text-[12px] text-slate-200 backdrop-blur">
+            <div className="font-semibold text-white">추천 구간 확인</div>
+            <div className="mt-1">차시별 추천 후보를 탭으로 빠르게 좁힙니다.</div>
+          </div>
+          <div className="rounded-2xl bg-white/10 px-4 py-3 text-[12px] text-slate-200 backdrop-blur">
+            <div className="font-semibold text-white">저장 전 확인</div>
+            <div className="mt-1">미리보기와 제목을 마지막에 정리할 수 있습니다.</div>
+          </div>
+        </div>
+      </section>
+
       <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-[20px] font-extrabold tracking-[-0.03em] text-slate-900">숏폼 제작</h1>
+            <h2 className="text-[20px] font-extrabold tracking-[-0.03em] text-slate-900">제작 흐름</h2>
             <p className="mt-2 text-[13px] leading-6 text-slate-500">
-              강좌 선택 → 차시별 구간 선택 → 제목/미리보기/저장의 3단계로 구성해, 레퍼런스와 같은 제작 흐름을 유지합니다.
+              강좌 선택 → 차시별 구간 선택 → 제목/미리보기/저장의 3단계로 정리했습니다.
             </p>
           </div>
           <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
-            {courseDetail?.title ?? '강좌 선택 필요'}
+            {selectedClips.length}개 클립
           </span>
         </div>
 
