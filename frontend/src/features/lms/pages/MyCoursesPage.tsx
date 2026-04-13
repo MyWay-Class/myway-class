@@ -359,7 +359,16 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
         ) : viewMode === 'grid' ? (
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             {filteredCourses.map((course) => (
-              <CourseExploreCard key={course.id} course={course} selected={selectedCourse?.id === course.id} onSelect={onSelectCourse} />
+              <CourseExploreCard
+                key={course.id}
+                course={course}
+                selected={selectedCourse?.id === course.id}
+                onSelect={onSelectCourse}
+                onOpen={(courseId) => {
+                  onSelectCourse(courseId);
+                  onNavigate('courses');
+                }}
+              />
             ))}
           </div>
         ) : (

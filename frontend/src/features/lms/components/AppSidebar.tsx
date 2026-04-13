@@ -11,6 +11,7 @@ type AppSidebarProps = {
   theme: ThemeMode;
   sidebarWidthClass: string;
   onNavigate: (page: LmsPageId) => void;
+  onHome: () => void;
   onLogout: () => void;
   onToggleTheme: () => void;
   onToggleDock: () => void;
@@ -26,6 +27,7 @@ export function AppSidebar({
   theme,
   sidebarWidthClass,
   onNavigate,
+  onHome,
   onLogout,
   onToggleTheme,
   onToggleDock,
@@ -45,7 +47,7 @@ export function AppSidebar({
       className={`fixed inset-y-0 z-20 hidden flex-col border-[var(--app-border)] bg-[var(--app-surface)] shadow-[0_10px_30px_rgba(15,23,42,0.08)] lg:flex ${dockClass} ${sidebarWidthClass}`}
     >
       <div className="flex h-14 items-center justify-between gap-2 px-4">
-        <button type="button" onClick={() => onNavigate('dashboard')} className={`flex items-center gap-2 ${collapsed ? 'mx-auto' : ''}`}>
+        <button type="button" onClick={onHome} className={`flex items-center gap-2 ${collapsed ? 'mx-auto' : ''}`} title="메인 화면으로 이동">
           <div className="flex h-[30px] w-[30px] items-center justify-center rounded-[8px] bg-indigo-600 text-[15px] text-white">
             <i className="ri-play-circle-fill" />
           </div>

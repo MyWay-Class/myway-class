@@ -100,6 +100,8 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedCourseId) {
+      setSelectedCourse(null);
+      setSelectedLectureId('');
       return;
     }
 

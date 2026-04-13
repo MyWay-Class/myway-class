@@ -1,4 +1,4 @@
-import type { CourseDetail } from '@myway/shared';
+import { getLectureDisplayDurationMinutes, type CourseDetail } from '@myway/shared';
 
 type CourseSessionTimelineProps = {
   course: CourseDetail;
@@ -92,7 +92,7 @@ export function CourseSessionTimeline({ course, selectedLectureId, onSelectLectu
                       <p className="mt-1 truncate text-[13px] font-semibold text-slate-900 group-hover:text-indigo-700">{lecture.title}</p>
                       <p className="mt-0.5 text-[11px] text-slate-400">
                         {lecture.content_type === 'video' ? <i className="ri-play-circle-line mr-1" /> : <i className="ri-file-text-line mr-1" />}
-                        {formatDuration(lecture.duration_minutes)}
+                        {formatDuration(getLectureDisplayDurationMinutes(lecture))}
                       </p>
                     </div>
 

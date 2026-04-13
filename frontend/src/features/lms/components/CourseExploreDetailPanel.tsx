@@ -1,4 +1,4 @@
-import type { CourseDetail, LectureDetail } from '@myway/shared';
+import { getLectureDisplayDurationMinutes, type CourseDetail, type LectureDetail } from '@myway/shared';
 import { CourseSessionTimeline } from './CourseSessionTimeline';
 import { StatePanel } from './StatePanel';
 import { buildProtectedVideoUrl } from '../../../lib/video-url';
@@ -255,7 +255,7 @@ export function CourseExploreDetailPanel({
                             <span>·</span>
                             <span>{detailLecture.course_instructor}</span>
                             <span>·</span>
-                            <span>{formatDuration(detailLecture.duration_minutes)}</span>
+                            <span>{formatDuration(getLectureDisplayDurationMinutes(detailLecture))}</span>
                           </div>
                         </div>
                         <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-white text-[18px] text-indigo-500 shadow-sm">

@@ -148,7 +148,16 @@ export function CoursesPage({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredCourses.length > 0 ? (
             filteredCourses.map((item) => (
-              <CourseExploreCard key={item.id} course={item} selected={selectedCourse?.id === item.id} onSelect={onSelectCourse} />
+              <CourseExploreCard
+                key={item.id}
+                course={item}
+                selected={selectedCourse?.id === item.id}
+                onSelect={onSelectCourse}
+                onOpen={(courseId) => {
+                  onSelectCourse(courseId);
+                  onNavigate('courses');
+                }}
+              />
             ))
           ) : (
             <div className="md:col-span-2 xl:col-span-3">

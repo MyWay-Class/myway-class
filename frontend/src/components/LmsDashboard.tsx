@@ -19,10 +19,8 @@ export function LmsDashboard(props: LmsDashboardProps) {
 
   function goToHome() {
     setActivePage(defaultPageForRole(props.session));
-    const homeCourseId = props.enrolledCourses[0]?.id ?? props.courseCards[0]?.id;
-    if (homeCourseId) {
-      props.onSelectCourse(homeCourseId);
-    }
+    props.onSelectCourse('');
+    props.onSelectLecture('');
   }
 
   useEffect(() => {
@@ -79,6 +77,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
             goToHome();
           }
         }}
+        onHome={goToHome}
         onLogout={props.onLogout}
       >
       {props.apiStatus === 'offline' ? (

@@ -1,4 +1,4 @@
-import type { AudioExtraction, LecturePipeline, MediaProcessorHealth, STTProviderCatalog } from '@myway/shared';
+import { getLectureDisplayDurationMinutes, type AudioExtraction, type LecturePipeline, type MediaProcessorHealth, type STTProviderCatalog } from '@myway/shared';
 import type { MediaUploadResult } from '../../../lib/api-media';
 
 type MediaPipelineStatusBoardProps = {
@@ -112,7 +112,7 @@ export function MediaPipelineStatusBoard({
             {statusLabel(pipeline?.transcript_status ?? 'PENDING')}
           </div>
           <p className="mt-4 text-sm text-slate-600">
-            {selectedLecture ? `${selectedLecture.title} · ${selectedLecture.duration_minutes}분` : '강의를 선택하면 전사 경로가 연결됩니다.'}
+            {selectedLecture ? `${selectedLecture.title} · ${getLectureDisplayDurationMinutes(selectedLecture)}분` : '강의를 선택하면 전사 경로가 연결됩니다.'}
           </p>
         </div>
       </section>
