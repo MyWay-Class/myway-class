@@ -133,9 +133,9 @@ export function CourseExploreDetailPanel({
   const protectedVideoUrl = buildProtectedVideoUrl(detailLecture?.video_url, sessionToken);
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+    <section className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
       {course ? (
-        <div className="bg-[linear-gradient(135deg,#1f2937,#4338ca)] px-5 py-5 text-white">
+        <div className="bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-5 py-5 text-white">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold opacity-90">
@@ -190,22 +190,22 @@ export function CourseExploreDetailPanel({
       )}
 
       {course ? (
-        <div className="grid grid-cols-2 gap-3 border-t border-white/10 bg-white px-5 py-5 text-slate-900 md:grid-cols-4">
-          <div className="rounded-2xl bg-slate-50 px-4 py-4">
-            <div className="text-[12px] text-slate-500">총 강의 수</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-slate-900">{course.lecture_count}</div>
+        <div className="grid grid-cols-2 gap-3 border-t border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-5 text-[var(--app-text)] md:grid-cols-4">
+          <div className="rounded-2xl bg-white px-4 py-4">
+            <div className="text-[12px] text-[var(--app-text-muted)]">총 강의 수</div>
+            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{course.lecture_count}</div>
           </div>
-          <div className="rounded-2xl bg-slate-50 px-4 py-4">
-            <div className="text-[12px] text-slate-500">총 러닝타임</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-slate-900">{formatDuration(course.total_duration_minutes)}</div>
+          <div className="rounded-2xl bg-white px-4 py-4">
+            <div className="text-[12px] text-[var(--app-text-muted)]">총 러닝타임</div>
+            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{formatDuration(course.total_duration_minutes)}</div>
           </div>
-          <div className="rounded-2xl bg-slate-50 px-4 py-4">
-            <div className="text-[12px] text-slate-500">평점</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-slate-900">{course.rating.toFixed(1)}</div>
+          <div className="rounded-2xl bg-white px-4 py-4">
+            <div className="text-[12px] text-[var(--app-text-muted)]">평점</div>
+            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{course.rating.toFixed(1)}</div>
           </div>
-          <div className="rounded-2xl bg-slate-50 px-4 py-4">
-            <div className="text-[12px] text-slate-500">수강생</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-slate-900">{course.student_count}</div>
+          <div className="rounded-2xl bg-white px-4 py-4">
+            <div className="text-[12px] text-[var(--app-text-muted)]">수강생</div>
+            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{course.student_count}</div>
           </div>
         </div>
       ) : null}
@@ -213,7 +213,7 @@ export function CourseExploreDetailPanel({
       <div className="px-5 py-5">
         {course ? (
           <>
-            <div className="flex gap-1 overflow-x-auto border-b border-slate-200 pb-0.5">
+            <div className="flex gap-1 overflow-x-auto border-b border-[var(--app-border)] pb-0.5">
               {courseTabs.map((tab) => {
                 const active = activeTab === tab.key;
                 return (
@@ -222,7 +222,7 @@ export function CourseExploreDetailPanel({
                     type="button"
                     onClick={() => onTabChange(tab.key)}
                     className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm transition-colors ${
-                      active ? 'border-indigo-500 text-slate-900' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                      active ? 'border-indigo-500 text-[var(--app-text)]' : 'border-transparent text-[var(--app-text-muted)] hover:border-slate-300 hover:text-[var(--app-text-secondary)]'
                     }`}
                   >
                     <i className={`${tab.icon} text-[15px]`} />

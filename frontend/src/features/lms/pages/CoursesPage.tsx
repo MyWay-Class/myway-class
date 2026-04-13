@@ -39,14 +39,15 @@ export function CoursesPage({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-6 py-7 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)] lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-[15px] font-bold text-slate-900">강의 상세</h3>
-            <p className="mt-1 text-[12px] text-slate-500">선택한 강의의 상세 정보, 차시, 공지, 자료만 보여줍니다.</p>
+            <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">강의 상세</span>
+            <h3 className="mt-3 text-[26px] font-extrabold tracking-[-0.05em] lg:text-[32px]">선택한 강의의 상세 정보와 차시를 한 화면에서 봅니다.</h3>
+            <p className="mt-2 text-[13px] leading-6 text-white/78">차시, 공지, 자료, 시청으로 이어지는 핵심 흐름을 유지합니다.</p>
           </div>
           {selectedCourse ? (
-            <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
+            <div className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
               현재 선택: {selectedCourse.title}
             </div>
           ) : null}

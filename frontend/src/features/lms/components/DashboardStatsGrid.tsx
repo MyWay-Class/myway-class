@@ -34,18 +34,18 @@ const toneClasses: Record<DashboardStat['tone'], { panel: string; icon: string; 
 
 export function DashboardStatsGrid({ stats }: DashboardStatsGridProps) {
   return (
-    <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat) => {
         const tone = toneClasses[stat.tone];
 
         return (
-          <article key={stat.id} className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
-            <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl text-[20px] ${tone.icon}`}>
+          <article key={stat.id} className="rounded-[28px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+            <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl text-[20px] ${tone.icon}`}>
               <i className={stat.icon} />
             </div>
-            <div className={`text-[28px] font-extrabold tracking-[-0.03em] ${tone.value}`}>{stat.value}</div>
-            <div className="mt-1 text-[12px] font-semibold text-slate-500">{stat.label}</div>
-            <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone.panel}`}>{stat.hint}</div>
+            <div className={`text-[30px] font-extrabold tracking-[-0.04em] ${tone.value}`}>{stat.value}</div>
+            <div className="mt-1 text-[12px] font-semibold text-[var(--app-text-secondary)]">{stat.label}</div>
+            <div className={`mt-2 inline-flex rounded-full px-3 py-1.5 text-[11px] font-semibold ${tone.panel}`}>{stat.hint}</div>
           </article>
         );
       })}

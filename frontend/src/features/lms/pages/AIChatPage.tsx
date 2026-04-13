@@ -162,11 +162,12 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
         />
       ) : null}
 
-      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-6 py-7 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)] lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-[20px] font-extrabold tracking-[-0.03em] text-slate-900">AI 학습 챗</h1>
-            <p className="mt-2 text-[13px] leading-6 text-slate-500">
+            <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">AI 학습 챗</span>
+            <h1 className="mt-3 text-[26px] font-extrabold tracking-[-0.05em] lg:text-[32px]">질문에 맞는 답을 바로 받을 수 있는 챗봇 화면입니다.</h1>
+            <p className="mt-2 text-[13px] leading-6 text-white/78">
               {isLocked
                 ? '수강 신청 후에 강의 내용 검색과 질문을 이어갈 수 있습니다.'
                 : highlightedLecture
@@ -177,7 +178,7 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
           <button
             type="button"
             onClick={() => setSidebarOpen((current) => !current)}
-            className="rounded-full border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 lg:hidden"
+            className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-semibold text-white lg:hidden"
           >
             <i className="ri-layout-right-line mr-1" />
             도우미 패널
@@ -189,11 +190,11 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
 
       {!isLocked ? (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <section className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-4">
             <div>
-              <h2 className="text-[15px] font-bold text-slate-900">대화</h2>
-              <p className="mt-1 text-[12px] text-slate-500">
+              <h2 className="text-[15px] font-bold text-[var(--app-text)]">대화</h2>
+              <p className="mt-1 text-[12px] text-[var(--app-text-muted)]">
                 질문, 요약, 퀴즈, 복습 순서로 이어가면 레퍼런스처럼 흐름이 안정적입니다.
               </p>
             </div>
@@ -206,17 +207,17 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
             <AIChatThread messages={messages} loading={sending} />
 
             {ragOverview ? (
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
+              <div className="rounded-[28px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[12px] font-semibold text-slate-500">RAG 파이프라인</div>
-                    <div className="mt-1 text-[14px] font-bold text-slate-900">{ragOverview.query}</div>
+                    <div className="text-[12px] font-semibold text-[var(--app-text-muted)]">RAG 파이프라인</div>
+                    <div className="mt-1 text-[14px] font-bold text-[var(--app-text)]">{ragOverview.query}</div>
                   </div>
                   <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
                     {ragOverview.provider.search_provider}
                   </span>
                 </div>
-                <p className="mt-3 text-[12px] leading-5 text-slate-600">{ragOverview.answer.answer}</p>
+                <p className="mt-3 text-[12px] leading-5 text-[var(--app-text-secondary)]">{ragOverview.answer.answer}</p>
               </div>
             ) : null}
           </div>

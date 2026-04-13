@@ -3,8 +3,8 @@ import { defaultPageForRole, pageTitle } from '../features/lms/config';
 import { AppShell } from '../features/lms/components/AppShell';
 import { StatePanel } from '../features/lms/components/StatePanel';
 import { LoginScreen } from '../features/lms/components/LoginScreen';
-import { RolePageRouter } from '../features/lms/pages/RolePageRouter';
 import { PublicHomePage } from '../features/lms/pages/PublicHomePage';
+import { RolePageRouter } from '../features/lms/pages/RolePageRouter';
 import type { LmsDashboardProps, LmsPageId } from '../features/lms/types';
 
 export function LmsDashboard(props: LmsDashboardProps) {
@@ -73,7 +73,7 @@ export function LmsDashboard(props: LmsDashboardProps) {
         title={pageTitle(activePage, props.session.user.role)}
         onNavigate={(page) => {
           setActivePage(page);
-          if (page === 'dashboard') {
+          if (page === 'home') {
             goToHome();
           }
         }}

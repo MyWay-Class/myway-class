@@ -14,11 +14,12 @@ export function userDescription(role: AuthUser['role']): string {
 }
 
 export function defaultPageForRole(session: LoginResponse | null): LmsPageId {
-  return 'dashboard';
+  return 'home';
 }
 
 export function pageTitle(page: LmsPageId, role: UserRole): string {
   const titles: Record<LmsPageId, string> = {
+    home: '홈',
     dashboard: '대시보드',
     courses: '강의 상세',
     'lecture-watch': '영상 시청',

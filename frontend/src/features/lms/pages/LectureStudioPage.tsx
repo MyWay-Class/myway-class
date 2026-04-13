@@ -16,6 +16,7 @@ import {
   toLectureStudioDraftInput,
   type LectureStudioDraft,
 } from '../components/lecture-studio/types';
+import { demoCourseDetail, demoLectureDetail } from '../data/demo';
 
 type LectureStudioPageProps = {
   courses: CourseCard[];
@@ -25,29 +26,32 @@ type LectureStudioPageProps = {
 };
 
 export function LectureStudioPage({ courses, selectedCourse, highlightedLecture, onSelectCourse }: LectureStudioPageProps) {
-  const [draft, setDraft] = useState<LectureStudioDraft>(() => buildLectureStudioDraft(selectedCourse, highlightedLecture));
+  const activeCourse = selectedCourse ?? demoCourseDetail;
+  const activeLecture = highlightedLecture ?? demoLectureDetail;
+  const demoMode = !selectedCourse;
+  const [draft, setDraft] = useState<LectureStudioDraft>(() => buildLectureStudioDraft(activeCourse, activeLecture));
   const [statusNote, setStatusNote] = useState('수강 인원, 강의실, 평가 방식, AI 보조 옵션을 단계적으로 채워보세요.');
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftSummaries, setDraftSummaries] = useState<LectureStudioDraftSummary[]>([]);
 
-  const previewLecture = useMemo(() => highlightedLecture ?? selectedCourse?.lectures[0] ?? null, [highlightedLecture, selectedCourse]);
+  const previewLecture = useMemo(() => activeLecture ?? activeCourse.lectures[0] ?? null, [activeCourse, activeLecture]);
   const outlineCount = draft.outlineText.split(/\r?\n/).filter(Boolean).length;
   const materialCount = draft.materialsText.split(/\r?\n/).filter(Boolean).length;
 
   useEffect(() => {
+    if (demoMode) {
+      setDraft(buildLectureStudioDraft(activeCourse, activeLecture));
+      setDraftId(null);
+      setDraftSummaries([]);
+      setStatusNote('데모 데이터로 강의 제작 스튜디오를 미리 보여주고 있습니다. 실제 저장은 강의 선택 후 가능합니다.');
+      return;
+    }
+
     let alive = true;
     const baseDraft = buildLectureStudioDraft(selectedCourse, highlightedLecture);
 
     setDraft(baseDraft);
     setDraftId(null);
-
-    if (!selectedCourse) {
-      setDraftSummaries([]);
-      setStatusNote('강의를 선택하면 세부 옵션이 자동으로 채워집니다.');
-      return () => {
-        alive = false;
-      };
-    }
 
     const lectureId = previewLecture?.id ?? selectedCourse.lectures[0]?.id ?? null;
     setStatusNote(`${selectedCourse.title} 기준 강의 제작 초안을 불러오는 중입니다.`);
@@ -82,10 +86,10 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
     return () => {
       alive = false;
     };
-  }, [selectedCourse?.id, highlightedLecture?.id]);
+  }, [activeCourse, activeLecture, demoMode, highlightedLecture?.id, previewLecture?.id, selectedCourse]);
 
   async function persistDraft() {
-    if (!selectedCourse || !previewLecture) {
+    if (demoMode || !selectedCourse || !previewLecture) {
       setStatusNote('저장할 강의와 차시를 먼저 선택해 주세요.');
       return null;
     }
@@ -197,8 +201,8 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <LectureStudioEditor
-          courses={courses}
-          selectedCourse={selectedCourse}
+          courses={courses.length > 0 ? courses : [demoCourseDetail]}
+          selectedCourse={activeCourse}
           highlightedLecture={previewLecture}
           draft={draft}
           statusNote={statusNote}
@@ -209,7 +213,7 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
         />
         <LectureStudioPreview
           draft={draft}
-          selectedCourse={selectedCourse}
+          selectedCourse={activeCourse}
           highlightedLecture={previewLecture}
           statusNote={statusNote}
         />

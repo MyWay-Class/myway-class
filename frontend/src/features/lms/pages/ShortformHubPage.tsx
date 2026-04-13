@@ -48,27 +48,27 @@ export function ShortformHubPage({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-6 py-7 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)] lg:px-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
               <i className="ri-scissors-cut-line" />
               숏폼 허브
             </div>
-            <h2 className="mt-3 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">숏폼 제작, 내 숏폼, 커뮤니티를 한 화면에서 다룹니다.</h2>
-            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-500">
+            <h2 className="mt-3 text-[26px] font-extrabold tracking-[-0.05em] lg:text-[32px]">숏폼 제작, 내 숏폼, 커뮤니티를 한 화면에서 다룹니다.</h2>
+            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-white/78">
               아래 탭으로 전환하면 제작, 보관함, 커뮤니티가 같은 흐름 안에서 이어집니다. 학생은 수강 중인 강의만 제작할 수 있습니다.
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-[12px] text-slate-500">
-            <div className="font-semibold text-slate-900">{selectedCourseTitle}</div>
+          <div className="rounded-2xl bg-white/10 px-4 py-3 text-[12px] text-white/75 backdrop-blur">
+            <div className="font-semibold text-white">{selectedCourseTitle}</div>
             <div className="mt-1">현재 선택된 강의 기준으로 숏폼을 조립합니다.</div>
           </div>
         </div>
       </section>
 
-      <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
-        <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
+      <section className="rounded-[30px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm">
+        <div className="flex flex-wrap gap-2 border-b border-[var(--app-border)] pb-4">
           {tabs.map((tab) => {
             const active = activeTab === tab.key;
             return (
@@ -77,14 +77,14 @@ export function ShortformHubPage({
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
                 className={`rounded-2xl border px-4 py-3 text-left transition ${
-                  active ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:bg-indigo-50'
+                  active ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-[var(--app-border)] bg-white text-[var(--app-text-secondary)] hover:border-indigo-300 hover:bg-indigo-50'
                 }`}
               >
                 <div className="flex items-center gap-2 text-[13px] font-bold">
                   <i className={`${tab.icon} text-[15px]`} />
                   {tab.label}
                 </div>
-                <div className={`mt-1 text-[11px] leading-5 ${active ? 'text-white/80' : 'text-slate-500'}`}>{tab.description}</div>
+                <div className={`mt-1 text-[11px] leading-5 ${active ? 'text-white/80' : 'text-[var(--app-text-muted)]'}`}>{tab.description}</div>
               </button>
             );
           })}

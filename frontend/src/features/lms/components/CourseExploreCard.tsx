@@ -60,8 +60,8 @@ export function CourseExploreCard({ course, selected, onSelect, onOpen }: Course
         onSelect(course.id);
         onOpen?.(course.id);
       }}
-      className={`group overflow-hidden rounded-3xl border bg-white text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)] ${
-        selected ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-200'
+      className={`group overflow-hidden rounded-[28px] border bg-white text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)] ${
+        selected ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-[var(--app-border)]'
       }`}
     >
       <div className={`relative flex h-36 flex-col justify-between px-5 py-4 text-white ${palette.panel}`}>
@@ -86,30 +86,30 @@ export function CourseExploreCard({ course, selected, onSelect, onOpen }: Course
       <div className="px-5 py-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${palette.chip}`}>{course.rating.toFixed(1)}점</span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+          <span className="rounded-full bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--app-text-secondary)]">
             수강생 {course.student_count}명
           </span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+          <span className="rounded-full bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--app-text-secondary)]">
             {formatDuration(course.total_duration_minutes)}
           </span>
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-[12px] text-slate-500">
+          <div className="flex items-center justify-between text-[12px] text-[var(--app-text-secondary)]">
             <span>{course.lecture_count}개 강의</span>
             <span>{course.enrolled ? `${course.progress_percent}% 진행` : '수강 대기'}</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-2 overflow-hidden rounded-full bg-[var(--app-surface-soft)]">
             <div className={`h-2 ${palette.line}`} style={{ width: `${Math.max(course.progress_percent, 12)}%` }} />
           </div>
         </div>
 
-        <p className="mt-4 line-clamp-2 text-[13px] leading-6 text-slate-500">{course.description}</p>
+        <p className="mt-4 line-clamp-2 text-[13px] leading-6 text-[var(--app-text-secondary)]">{course.description}</p>
 
         {course.tags.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {course.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+              <span key={tag} className="rounded-full bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-text-secondary)]">
                 #{tag}
               </span>
             ))}
