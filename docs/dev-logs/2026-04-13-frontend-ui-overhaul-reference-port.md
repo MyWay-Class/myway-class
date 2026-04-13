@@ -1,0 +1,34 @@
+# Frontend UI Overhaul Reference Port
+
+## 개요
+- 레퍼런스 디렉터리 `C:\Users\ggg99\Desktop\내맘대로Class\myway-frontend-ui-overhaul-2026-04-13\webapp`의 구조를 현재 프로젝트에 맞게 포팅했다.
+- 목표는 화면을 기능 메뉴 나열이 아니라 `탐색`, `상세 판단`, `시청`, `제작`, `운영` 흐름으로 다시 읽히게 만드는 것이다.
+
+## 반영 범위
+- `AppShell`, `AppSidebar`, `AppHeader`를 다시 구성해 모바일 드로어, 오버레이, body scroll lock, 좌우 도킹, 접기/펼치기, 라이트/다크 테마 전환을 넣었다.
+- 로고 클릭 시 메인 대시보드로 돌아가도록 연결해 상위 탐색 진입점을 고정했다.
+- `StudentDashboardPage`를 카드형 대시보드로 재구성해 평균 진도, 빠른 작업, 이어서 학습하기를 전면에 배치했다.
+- `MyCoursesPage`를 검색, 필터, 정렬, 그리드/리스트 전환이 가능한 `내 강의` 허브로 정리했다.
+- `CoursesPage`와 `LectureWatchPage`의 역할을 분리해, 상세/진도율 확인과 실제 시청/차시 이동을 다른 화면으로 나눴다.
+- 시청 화면 우측 패널은 차시 목록, 카테고리, 챗봇 탭 전환 구조로 묶어 레퍼런스의 사이드 패널 사용성을 반영했다.
+- `InstructorDashboardPage`, `AdminDashboardPage`, `AdminUsersPage`, `QuizGenPage`, `AssignmentCheckPage`를 카드형 운영 화면으로 다시 정리했다.
+- `LoginScreen`은 데모 계정 선택과 역할 설명을 강화해 진입 전 맥락을 더 읽기 쉽게 바꿨다.
+
+## 선택 이유
+- 레퍼런스는 단순한 심미 개선보다 `무엇을 먼저 눌러야 하는지`를 빠르게 읽히게 만드는 구조가 강했다.
+- 그래서 이번 포팅은 단순한 색상 교체가 아니라, 탐색 허브와 작업 화면을 분리하고, 좌우 패널과 탭 전환을 명확히 하는 방향으로 진행했다.
+- 특히 `내 강의 -> 상세/진도율 -> 차시 시청` 흐름은 사용자가 현재 위치를 잃지 않도록 가장 먼저 고정해야 하는 동선으로 판단했다.
+
+## 검증
+- `npm --workspace @myway/frontend run build` 통과
+
+## 추가 확인
+- 홈 상단 네비게이션은 `강의`, `숏폼`, `챗봇`, `로드맵`이 서로 다른 섹션이나 진입점으로 이동하도록 분리했다.
+- `CommunityPage`는 카드 벽 형태에서 피드 + 우측 상세/재생 패널 구조로 바꿔, 숏폼을 "보는 화면"으로 읽히게 했다.
+- `course-create`, `media-pipeline`, `ai-summary`, `quiz-gen`은 실제 페이지 라우트와 연결되어 있고, 라벨도 사용자 언어로 정리했다.
+- `CommunityPage`는 이제 수강 중인 강의만 대상으로 숏폼을 보여주며, 비수강 강의는 노출하지 않는다.
+- `MyCoursesPage`는 학생/관리자 문맥에 따라 카운트 라벨과 이동 버튼 문구를 다르게 보여줘 다음 행동이 더 읽히게 했다.
+- `CourseExploreDetailPanel`의 Q&A 영역은 안내만 하는 빈 상태 대신, AI 챗봇과 강의 시청으로 바로 이어지는 행동 버튼을 제공한다.
+- `StudentDashboardPage`는 프로필 카드, 평균 진도, 최근 학습, 빠른 메뉴가 먼저 읽히도록 배치해 마이페이지 성격을 강화했다.
+- `LectureWatchPage`에는 전사 `스크립트` 탭을 추가해, 타임스탬프 기반 세그먼트를 바로 확인하는 구조를 반영했다.
+- `LectureSideChatPanel`은 현재 강의 맥락과 스크립트 타임스탬프를 연결하는 안내를 추가하고, 입력부를 줄바꿈 가능한 textarea로 바꿨다.
