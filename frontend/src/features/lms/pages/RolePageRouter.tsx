@@ -409,7 +409,7 @@ export function RolePageRouter({
       description="숏폼, 커뮤니티, AI 채팅은 동일한 UI 체계에 맞춰 이어서 붙일 수 있게 정리한 상태입니다."
       actions={[
         { label: '대시보드로 이동', onClick: () => onNavigate('dashboard') },
-        { label: '숏폼으로 이동', onClick: () => onNavigate('shortform') },
+        { label: '내 숏폼 보기', onClick: () => onNavigate('my-shortforms') },
       ]}
     />
   );
