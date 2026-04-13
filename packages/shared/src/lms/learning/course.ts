@@ -22,7 +22,7 @@ export function getCourseLectures(courseId: string): Lecture[] {
       }
 
       return a.order_index - b.order_index;
-    });
+  });
 }
 
 export function getLectureDisplayDurationMinutes(lecture: Pick<Lecture, 'duration_minutes'> & Partial<Lecture>): number {

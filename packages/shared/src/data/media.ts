@@ -121,10 +121,117 @@ export const demoNotices: Notice[] = [
   },
 ];
 
-export const demoLectureTranscripts: LectureTranscript[] = [];
+export const demoLectureTranscripts: LectureTranscript[] = [
+  {
+    id: 'trs_ai_seed_001',
+    lecture_id: 'lec_ai_001',
+    user_id: 'usr_inst_001',
+    language: 'ko',
+    full_text:
+      '안녕하세요. 오늘부터 인공지능 강의를 시작합니다. 인공지능은 현재 우리 삶의 모든 영역에 영향을 미치고 있습니다. 스마트폰의 음성인식, 유튜브의 추천 알고리즘, 자율주행 자동차까지 모두 인공지능 기술입니다. 인공지능이란 무엇일까요? 간단히 말하면 컴퓨터가 인간처럼 생각하고 학습할 수 있도록 만드는 기술입니다. 1956년 존 메카시가 처음으로 인공지능이라는 용어를 사용했습니다. 인공지능의 역사는 크게 3번의 붐과 2번의 침체기로 나뉩니다. 첫 번째 붐은 1950년대에서 1960년대로 간단한 문제 해결과 게임에서 성과를 보였습니다. 하지만 복잡한 문제를 해결하지 못해 첫 번째 침체기가 찾아왔습니다. 두 번째 붐은 1980년대로 전문가 시스템이 주목받았습니다. 그러나 유지 비용과 한계로 인해 두 번째 침체기가 왔습니다. 세 번째 붐이 바로 지금입니다. 딥러닝의 등장과 빅데이터, 컴퓨팅 파워의 발전으로 인공지능이 폭발적으로 성장하고 있습니다. 인공지능의 분류를 알아보겠습니다. 좁은 의미의 인공지능인 약한 인공지능은 특정 작업에서만 뛰어난 성능을 보입니다. 현재 우리가 사용하는 모든 AI가 여기에 해당합니다. 강한 인공지능은 인간처럼 모든 분야에서 생각하고 판단할 수 있는 수준입니다. 아직 실현되지 않았습니다. 인공지능의 핵심 기술 3가지를 소개합니다. 머신러닝은 데이터를 통해 스스로 학습하는 기술입니다. 딥러닝은 인간의 뇌를 모방한 신경망을 사용하는 머신러닝의 한 분야입니다. 자연어처리는 인간의 언어를 이해하고 생성하는 기술입니다. 최근 가장 주목받는 기술은 생성형 인공지능입니다. 채치PT 클로드, 재미나이 같은 대형 언어 모델이 대표적입니다. 이미지 생성 AI 미드전이 달리도 큰 주목을 받고 있습니다. 인공지능이 가져올 변화와 우리가 준비해야 할 것들도 생각해봐야 합니다. 반복적인 작업은 AI로 대체될 가능성이 높지만, 창의적 사고와 인간적 공감 능력은 여전히 인간만이 할 수 있는 영역입니다. 다음 시간에는 머신러닝의 핵심 개념인 지도학습, 비지도학습, 강화학습에 대해 배워보겠습니다.',
+    segments: [
+      { index: 0, start_ms: 0, end_ms: 5000, text: '안녕하세요. 오늘부터 인공지능 강의를 시작합니다.' },
+      { index: 1, start_ms: 5000, end_ms: 10000, text: '인공지능은 현재 우리 삶의 모든 영역에 영향을 미치고 있습니다.' },
+      { index: 2, start_ms: 10000, end_ms: 17000, text: '스마트폰의 음성인식, 유튜브의 추천 알고리즘, 자율주행 자동차까지 모두 인공지능 기술입니다.' },
+      { index: 3, start_ms: 17000, end_ms: 19000, text: '인공지능이란 무엇일까요?' },
+      { index: 4, start_ms: 19000, end_ms: 25000, text: '간단히 말하면 컴퓨터가 인간처럼 생각하고 학습할 수 있도록 만드는 기술입니다.' },
+      { index: 5, start_ms: 25000, end_ms: 31000, text: '1956년 존 메카시가 처음으로 인공지능이라는 용어를 사용했습니다.' },
+      { index: 6, start_ms: 31000, end_ms: 37000, text: '인공지능의 역사는 크게 3번의 붐과 2번의 침체기로 나뉩니다.' },
+      { index: 7, start_ms: 37000, end_ms: 45000, text: '첫 번째 붐은 1950년대에서 1960년대로 간단한 문제 해결과 게임에서 성과를 보였습니다.' },
+      { index: 8, start_ms: 45000, end_ms: 50000, text: '하지만 복잡한 문제를 해결하지 못해 첫 번째 침체기가 찾아왔습니다.' },
+      { index: 9, start_ms: 50000, end_ms: 56000, text: '두 번째 붐은 1980년대로 전문가 시스템이 주목받았습니다.' },
+      { index: 10, start_ms: 56000, end_ms: 61000, text: '그러나 유지 비용과 한계로 인해 두 번째 침체기가 왔습니다.' },
+      { index: 11, start_ms: 61000, end_ms: 63000, text: '세 번째 붐이 바로 지금입니다.' },
+      { index: 12, start_ms: 63000, end_ms: 71000, text: '딥러닝의 등장과 빅데이터, 컴퓨팅 파워의 발전으로 인공지능이 폭발적으로 성장하고 있습니다.' },
+      { index: 13, start_ms: 71000, end_ms: 73000, text: '인공지능의 분류를 알아보겠습니다.' },
+      { index: 14, start_ms: 73000, end_ms: 79000, text: '좁은 의미의 인공지능인 약한 인공지능은 특정 작업에서만 뛰어난 성능을 보입니다.' },
+      { index: 15, start_ms: 79000, end_ms: 84000, text: '현재 우리가 사용하는 모든 AI가 여기에 해당합니다.' },
+      { index: 16, start_ms: 84000, end_ms: 90000, text: '강한 인공지능은 인간처럼 모든 분야에서 생각하고 판단할 수 있는 수준입니다.' },
+      { index: 17, start_ms: 90000, end_ms: 92000, text: '아직 실현되지 않았습니다.' },
+      { index: 18, start_ms: 92000, end_ms: 96000, text: '인공지능의 핵심 기술 3가지를 소개합니다.' },
+      { index: 19, start_ms: 96000, end_ms: 100000, text: '머신러닝은 데이터를 통해 스스로 학습하는 기술입니다.' },
+      { index: 20, start_ms: 100000, end_ms: 105000, text: '딥러닝은 인간의 뇌를 모방한 신경망을 사용하는 머신러닝의 한 분야입니다.' },
+      { index: 21, start_ms: 105000, end_ms: 109000, text: '자연어처리는 인간의 언어를 이해하고 생성하는 기술입니다.' },
+      { index: 22, start_ms: 109000, end_ms: 114000, text: '최근 가장 주목받는 기술은 생성형 인공지능입니다.' },
+      { index: 23, start_ms: 114000, end_ms: 119000, text: '채치PT 클로드, 재미나이 같은 대형 언어 모델이 대표적입니다.' },
+      { index: 24, start_ms: 119000, end_ms: 124000, text: '이미지 생성 AI 미드전이 달리도 큰 주목을 받고 있습니다.' },
+      { index: 25, start_ms: 124000, end_ms: 129000, text: '인공지능이 가져올 변화와 우리가 준비해야 할 것들도 생각해봐야 합니다.' },
+      { index: 26, start_ms: 129000, end_ms: 133000, text: '반복적인 작업은 AI로 대체될 가능성이 높지만,' },
+      { index: 27, start_ms: 133000, end_ms: 139000, text: '창의적 사고와 인간적 공감 능력은 여전히 인간만이 할 수 있는 영역입니다.' },
+      { index: 28, start_ms: 139000, end_ms: 141000, text: '다음 시간에는 머신러닝의 핵심 개념인 지도학습, 비지도학습, 강화학습에 대해 배워보겠습니다.' },
+    ],
+    word_count: 140,
+    duration_ms: 141000,
+    stt_provider: 'seed-stt',
+    stt_model: 'ai1-seed-v1',
+    created_at: '2026-04-13T09:00:00.000Z',
+  },
+];
 
-export const demoLectureNotes: LectureNote[] = [];
+export const demoLectureNotes: LectureNote[] = [
+  {
+    id: 'note_ai_seed_001',
+    lecture_id: 'lec_ai_001',
+    user_id: 'usr_inst_001',
+    note_type: 'ai_timeline',
+    title: 'AI란 무엇인가 - 타임라인 요약',
+    content:
+      'AI의 개념, 역사적 붐과 침체기, 약한 인공지능과 강한 인공지능, 핵심 기술과 생성형 AI 흐름을 시간 순서대로 정리합니다.',
+    key_concepts: ['AI 개념', 'AI 역사', '약한 인공지능', '핵심 기술', '생성형 AI'],
+    keywords: ['AI', '머신러닝', '딥러닝', '생성형 AI', '자연어처리'],
+    timestamps: [
+      { time_ms: 0, label: 'AI 개념', description: '인공지능의 정의와 활용 사례를 소개합니다.' },
+      { time_ms: 31000, label: 'AI 역사', description: '3번의 붐과 2번의 침체기로 나뉜 AI 역사를 정리합니다.' },
+      { time_ms: 71000, label: 'AI 분류', description: '약한 인공지능과 강한 인공지능의 차이를 설명합니다.' },
+      { time_ms: 92000, label: '핵심 기술 3가지', description: '머신러닝, 딥러닝, 자연어처리를 소개합니다.' },
+      { time_ms: 109000, label: '생성형 AI', description: 'ChatGPT, Claude, Gemini와 이미지 생성 AI를 다룹니다.' },
+      { time_ms: 124000, label: '변화와 준비', description: 'AI가 바꿀 일과 사람이 준비해야 할 역량을 정리합니다.' },
+    ],
+    language: 'ko',
+    ai_model: 'seed-summary-v1',
+    created_at: '2026-04-13T09:05:00.000Z',
+  },
+];
 
-export const demoAudioExtractions: AudioExtraction[] = [];
+export const demoAudioExtractions: AudioExtraction[] = [
+  {
+    id: 'aud_ai_seed_001',
+    lecture_id: 'lec_ai_001',
+    user_id: 'usr_inst_001',
+    source_type: 'video',
+    source_url: '/api/v1/media/assets/media%2Fcrs_ai_001%2Flec_ai_001.mp4',
+    source_video_key: 'media/crs_ai_001/lec_ai_001.mp4',
+    source_video_name: 'lec_ai_001.mp4',
+    source_content_type: 'video/mp4',
+    source_size_bytes: 0,
+    language: 'ko',
+    requested_stt_provider: 'seed-stt',
+    requested_stt_model: 'ai1-seed-v1',
+    processing_job_id: 'job_ai_seed_001',
+    processing_error: null,
+    audio_url: '/api/v1/media/assets/media%2Fcrs_ai_001%2Flec_ai_001.mp4',
+    audio_format: 'mp4',
+    audio_duration_ms: 141000,
+    sample_rate: 16000,
+    channels: 1,
+    status: 'COMPLETED',
+    transcript_id: 'trs_ai_seed_001',
+    stt_status: 'COMPLETED',
+    created_at: '2026-04-13T09:00:00.000Z',
+    processed_at: '2026-04-13T09:01:00.000Z',
+    updated_at: '2026-04-13T09:01:00.000Z',
+  },
+];
 
-export const demoLecturePipelines: LecturePipeline[] = [];
+export const demoLecturePipelines: LecturePipeline[] = [
+  {
+    lecture_id: 'lec_ai_001',
+    transcript_status: 'COMPLETED',
+    summary_status: 'COMPLETED',
+    audio_status: 'COMPLETED',
+    transcript_id: 'trs_ai_seed_001',
+    note_id: 'note_ai_seed_001',
+    extraction_id: 'aud_ai_seed_001',
+    updated_at: '2026-04-13T09:05:00.000Z',
+  },
+];
