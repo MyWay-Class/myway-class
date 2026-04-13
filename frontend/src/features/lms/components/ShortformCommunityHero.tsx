@@ -13,9 +13,9 @@ export function ShortformCommunityHero({ totalItems, totalClips, totalViews }: S
             <i className="ri-film-line" />
             숏폼 커뮤니티
           </div>
-          <h2 className="mt-4 text-[24px] font-extrabold tracking-[-0.04em]">클립 구성부터 보이는 커뮤니티</h2>
+          <h2 className="mt-4 text-[24px] font-extrabold tracking-[-0.04em]">수강 중인 강의의 숏폼만 바로 모아보는 커뮤니티</h2>
           <p className="mt-2 max-w-2xl text-[13px] leading-7 text-white/75">
-            카드에서 핵심 클립을 먼저 보여주고, 상세 모달에서 전체 구성과 메타데이터를 확인할 수 있게 정리했습니다.
+            카드에서 핵심 클립을 먼저 보여주고, 오른쪽 패널에서 재생, 클립 구성, 메타 정보를 바로 확인할 수 있게 정리했습니다.
           </p>
         </div>
 

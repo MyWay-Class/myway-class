@@ -134,6 +134,14 @@ export function LectureSideChatPanel({ highlightedLecture, sessionToken }: Lectu
             {highlightedLecture.week_number ?? 1}주차 · {highlightedLecture.session_number ?? highlightedLecture.order_index + 1}차시
           </div>
         </div>
+
+        <div className="mt-3 grid gap-2 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-[12px] text-slate-600">
+          <div className="flex items-center gap-2 font-semibold text-indigo-700">
+            <i className="ri-lightbulb-flash-line" />
+            지금 강의에 바로 물어보기
+          </div>
+          <div>스크립트 탭에서 타임스탬프를 확인한 뒤, 해당 구간의 개념이나 예시를 챗봇에 이어서 질문할 수 있습니다.</div>
+        </div>
       </div>
 
       <div className="px-5 py-5">
@@ -142,6 +150,11 @@ export function LectureSideChatPanel({ highlightedLecture, sessionToken }: Lectu
             <div className="text-[12px] font-semibold text-slate-500">{highlightedLecture.course_title}</div>
             <div className="mt-1 text-[15px] font-bold tracking-[-0.03em] text-slate-900">{highlightedLecture.title}</div>
             <div className="mt-1 text-[12px] text-slate-500">{highlightedLecture.course_instructor}</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">강의 질문</span>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">타임스탬프 참고</span>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">핵심 요약</span>
+            </div>
           </div>
 
           <AIChatThread messages={messages} loading={sending} />

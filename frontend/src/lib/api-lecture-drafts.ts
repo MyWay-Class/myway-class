@@ -31,9 +31,16 @@ export async function loadLectureStudioDrafts(courseId?: string | null, sessionT
     return listLectureStudioDraftsFallback(courseId ?? undefined);
   }
 
-  const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
-  const response = await request<LectureStudioDraftSummary[]>(`/api/v1/lecture-drafts${query}`, undefined, token);
-  return response?.success && response.data ? response.data : listLectureStudioDraftsFallback(courseId ?? undefined);
+  if (!courseId) {
+    return listLectureStudioDraftsFallback(undefined);
+  }
+
+  const response = await request<LectureStudioDraftSummary[]>(
+    `/api/v1/lecture-drafts/course/${encodeURIComponent(courseId)}`,
+    undefined,
+    token,
+  );
+  return response?.success && response.data ? response.data : listLectureStudioDraftsFallback(courseId);
 }
 
 export async function loadLectureStudioDraft(

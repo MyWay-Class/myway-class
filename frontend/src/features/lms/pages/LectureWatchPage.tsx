@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
-import type { CourseCard, CourseDetail, LectureDetail } from '@myway/shared';
+import { useEffect, useMemo, useState } from 'react';
+import type { CourseCard, CourseDetail, LectureDetail, LectureTranscript } from '@myway/shared';
 import { CourseSessionTimeline } from '../components/CourseSessionTimeline';
 import { LectureSideChatPanel } from '../components/LectureSideChatPanel';
 import { StatePanel } from '../components/StatePanel';
+import { loadLectureTranscriptDetailed } from '../../../lib/api-media';
 
 type LectureWatchPageProps = {
   courses: CourseCard[];
@@ -17,6 +18,7 @@ type LectureWatchPageProps = {
 };
 
 type RightTab = 'sessions' | 'categories' | 'chat';
+type ScriptTab = 'sessions' | 'categories' | 'script' | 'chat';
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
@@ -26,24 +28,6 @@ function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const remain = minutes % 60;
   return remain > 0 ? `${hours}시간 ${remain}분` : `${hours}시간`;
-}
-
-function getRelatedCourses(courses: CourseCard[], selectedCourse: CourseDetail | null): CourseCard[] {
-  if (!selectedCourse) {
-    return [];
-  }
-
-  const selectedTags = new Set(selectedCourse.tags);
-  return courses
-    .filter((course) => course.id !== selectedCourse.id)
-    .sort((left, right) => {
-      const leftScore = left.category === selectedCourse.category ? 2 : 0;
-      const rightScore = right.category === selectedCourse.category ? 2 : 0;
-      const leftTags = left.tags.filter((tag) => selectedTags.has(tag)).length;
-      const rightTags = right.tags.filter((tag) => selectedTags.has(tag)).length;
-      return rightScore + rightTags - (leftScore + leftTags);
-    })
-    .slice(0, 4);
 }
 
 export function LectureWatchPage({
@@ -57,8 +41,9 @@ export function LectureWatchPage({
   onSelectLecture,
   onNavigate,
 }: LectureWatchPageProps) {
-  const [activePanelTab, setActivePanelTab] = useState<RightTab>('sessions');
-  const [selectedRelatedFilter, setSelectedRelatedFilter] = useState<string>('전체');
+  const [activePanelTab, setActivePanelTab] = useState<ScriptTab>('sessions');
+  const [transcript, setTranscript] = useState<LectureTranscript | null>(null);
+  const [transcriptLoading, setTranscriptLoading] = useState(false);
   const currentLecture = useMemo(() => {
     if (!selectedCourse) {
       return highlightedLecture;
@@ -67,23 +52,6 @@ export function LectureWatchPage({
     return selectedCourse.lectures.find((lecture) => lecture.id === selectedLectureId) ?? highlightedLecture ?? selectedCourse.lectures[0] ?? null;
   }, [highlightedLecture, selectedCourse, selectedLectureId]);
 
-  const relatedCourses = useMemo(() => getRelatedCourses(courses, selectedCourse), [courses, selectedCourse]);
-  const relatedFilters = useMemo(() => {
-    if (!selectedCourse) {
-      return ['전체'];
-    }
-
-    return ['전체', selectedCourse.category, ...selectedCourse.tags].filter((value, index, array) => array.indexOf(value) === index);
-  }, [selectedCourse]);
-  const filteredRelatedCourses = useMemo(() => {
-    if (!selectedCourse || selectedRelatedFilter === '전체') {
-      return relatedCourses;
-    }
-
-    return relatedCourses.filter(
-      (course) => course.category === selectedRelatedFilter || course.tags.includes(selectedRelatedFilter),
-    );
-  }, [relatedCourses, selectedCourse, selectedRelatedFilter]);
   const upcomingLectures = useMemo(() => {
     if (!selectedCourse || !currentLecture) {
       return [];
@@ -92,6 +60,47 @@ export function LectureWatchPage({
     const currentIndex = selectedCourse.lectures.findIndex((lecture) => lecture.id === currentLecture.id);
     return selectedCourse.lectures.slice(Math.max(currentIndex + 1, 0), currentIndex + 5);
   }, [currentLecture, selectedCourse]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!currentLecture?.id) {
+      setTranscript(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    setTranscriptLoading(true);
+    void loadLectureTranscriptDetailed(currentLecture.id, sessionToken)
+      .then((nextTranscript) => {
+        if (active) {
+          setTranscript(nextTranscript);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setTranscriptLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentLecture?.id, sessionToken]);
+
+  function formatTimecode(value: number): string {
+    const totalSeconds = Math.max(0, Math.floor(value / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
 
   if (!selectedCourse) {
     return (
@@ -244,6 +253,7 @@ export function LectureWatchPage({
               {[
                 { key: 'sessions', label: '차시 목록', icon: 'ri-list-check-2' },
                 { key: 'categories', label: '카테고리', icon: 'ri-grid-line' },
+                { key: 'script', label: '스크립트', icon: 'ri-subtitle' },
                 { key: 'chat', label: '챗봇', icon: 'ri-robot-line' },
               ].map((tab) => {
                 const active = activePanelTab === tab.key;
@@ -276,7 +286,15 @@ export function LectureWatchPage({
                     원하는 주차를 눌러 선택하고, 이어서 영상 시청과 챗봇 질문으로 연결할 수 있습니다.
                   </p>
                 </div>
-                <CourseSessionTimeline course={selectedCourse} selectedLectureId={selectedLectureId} onSelectLecture={onSelectLecture} />
+                <CourseSessionTimeline
+                  course={selectedCourse}
+                  selectedLectureId={selectedLectureId}
+                  onSelectLecture={onSelectLecture}
+                  onOpenLecture={(lectureId) => {
+                    onSelectLecture(lectureId);
+                    onNavigate('lecture-watch');
+                  }}
+                />
               </div>
             ) : null}
 
@@ -289,64 +307,50 @@ export function LectureWatchPage({
                     {selectedCourse.difficulty} · {selectedCourse.lecture_count}차시 · {selectedCourse.student_count}명 수강
                   </p>
                 </div>
+              </div>
+            ) : null}
 
+            {activePanelTab === 'script' ? (
+              <div className="space-y-4">
                 <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
-                  <div className="text-[12px] font-semibold text-[var(--app-text-muted)]">선택 가능 카테고리</div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {relatedFilters.map((filter) => {
-                      const active = selectedRelatedFilter === filter;
-                      return (
-                        <button
-                          key={filter}
-                          type="button"
-                          onClick={() => setSelectedRelatedFilter(filter)}
-                          className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
-                            active ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 hover:bg-indigo-50'
-                          }`}
-                        >
-                          {filter === '전체' ? filter : `#${filter}`}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <div className="text-[12px] font-semibold text-indigo-600">스크립트</div>
+                  <div className="mt-1 text-[16px] font-bold text-[var(--app-text)]">타임스탬프 기준으로 바로 찾아볼 수 있습니다.</div>
+                  <p className="mt-2 text-[12px] leading-6 text-[var(--app-text-muted)]">
+                    필요한 구간의 시작 시간을 눌러 복사하거나, 차시 이동 전에 먼저 확인할 수 있습니다.
+                  </p>
                 </div>
 
-                <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
-                  <div className="text-[12px] font-semibold text-[var(--app-text-muted)]">추천 강의</div>
-                  <div className="mt-3 space-y-2">
-                    {filteredRelatedCourses.length > 0 ? (
-                      filteredRelatedCourses.map((course) => (
-                        <button
-                          key={course.id}
-                          type="button"
-                          onClick={() => {
-                            onSelectCourse(course.id);
-                            onNavigate('courses');
-                          }}
-                          className="flex w-full items-center gap-3 rounded-2xl border border-white/60 bg-white px-3 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
-                        >
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-[16px] text-indigo-600">
-                            <i className="ri-play-circle-line" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-[13px] font-semibold text-[var(--app-text)]">{course.title}</div>
-                            <div className="mt-0.5 text-[11px] text-[var(--app-text-muted)]">
-                              {course.category} · {course.progress_percent}% 진행
-                            </div>
-                          </div>
+                {transcriptLoading ? (
+                  <StatePanel compact icon="ri-loader-4-line" tone="slate" title="스크립트를 불러오는 중입니다." description="전사 데이터를 가져오고 있습니다." />
+                ) : transcript?.segments?.length ? (
+                  <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
+                    {transcript.segments.map((segment) => (
+                      <article key={segment.index} className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(formatTimecode(segment.start_ms));
+                            }}
+                            className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-indigo-600"
+                          >
+                            {formatTimecode(segment.start_ms)} - {formatTimecode(segment.end_ms)}
                           </button>
-                      ))
-                    ) : (
-                      <StatePanel
-                        compact
-                        icon="ri-compass-3-line"
-                        tone="slate"
-                        title="비슷한 강의를 찾지 못했습니다."
-                          description="현재 선택한 강의와 연결할 다른 코스를 다음 단계에서 추천할 수 있습니다."
-                      />
-                    )}
+                          <span className="text-[11px] font-semibold text-slate-400">#{segment.index + 1}</span>
+                        </div>
+                        <p className="mt-3 text-[13px] leading-7 text-[var(--app-text)]">{segment.text}</p>
+                      </article>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  <StatePanel
+                    compact
+                    icon="ri-subtitle"
+                    tone="slate"
+                    title="스크립트가 아직 없습니다."
+                    description="전사 완료 후에 타임스탬프 기반 스크립트가 표시됩니다."
+                  />
+                )}
               </div>
             ) : null}
 

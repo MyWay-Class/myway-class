@@ -4,6 +4,7 @@ type CourseSessionTimelineProps = {
   course: CourseDetail;
   selectedLectureId: string;
   onSelectLecture: (lectureId: string) => void;
+  onOpenLecture?: (lectureId: string) => void;
 };
 
 function formatDuration(minutes: number): string {
@@ -20,7 +21,7 @@ function formatSessionNumber(sessionNumber: number | undefined, orderIndex: numb
   return sessionNumber ?? orderIndex + 1;
 }
 
-export function CourseSessionTimeline({ course, selectedLectureId, onSelectLecture }: CourseSessionTimelineProps) {
+export function CourseSessionTimeline({ course, selectedLectureId, onSelectLecture, onOpenLecture }: CourseSessionTimelineProps) {
   const grouped = course.lectures.reduce<Record<number, typeof course.lectures>>((accumulator, lecture) => {
     const week = lecture.week_number ?? 1;
     if (!accumulator[week]) {
@@ -59,7 +60,10 @@ export function CourseSessionTimeline({ course, selectedLectureId, onSelectLectu
                   <button
                     key={lecture.id}
                     type="button"
-                    onClick={() => onSelectLecture(lecture.id)}
+                    onClick={() => {
+                      onSelectLecture(lecture.id);
+                      onOpenLecture?.(lecture.id);
+                    }}
                     className={`group flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition ${
                       active ? 'border-indigo-200 bg-indigo-50/70' : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/40'
                     }`}

@@ -200,10 +200,13 @@ export function RolePageRouter({
     if (page === 'lecture-watch') {
       return (
         <LectureWatchPage
+          courses={courseCards}
           selectedCourse={selectedCourse}
           highlightedLecture={highlightedLecture}
           selectedLectureId={selectedLectureId}
           canManageCurrent={true}
+          sessionToken={sessionToken}
+          onSelectCourse={onSelectCourse}
           onSelectLecture={onSelectLecture}
           onNavigate={onNavigate}
         />
@@ -336,6 +339,7 @@ export function RolePageRouter({
   if (page === 'dashboard') {
     return (
       <StudentDashboardPage
+        session={session}
         dashboard={dashboard}
         courses={enrolledCourses}
         highlightedLecture={highlightedLecture}
