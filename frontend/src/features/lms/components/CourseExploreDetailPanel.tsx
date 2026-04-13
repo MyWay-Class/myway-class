@@ -229,7 +229,15 @@ export function CourseExploreDetailPanel({
             <div className="pt-5">
               {activeTab === '강의' ? (
                 <div className="space-y-5">
-                  <CourseSessionTimeline course={course} selectedLectureId={selectedLectureId} onSelectLecture={onSelectLecture} />
+                  <CourseSessionTimeline
+                    course={course}
+                    selectedLectureId={selectedLectureId}
+                    onSelectLecture={onSelectLecture}
+                    onOpenLecture={(lectureId) => {
+                      onSelectLecture(lectureId);
+                      onNavigate('lecture-watch');
+                    }}
+                  />
                   {detailLecture ? (
                     <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-5">
                       <div className="flex items-start justify-between gap-3">
@@ -287,7 +295,10 @@ export function CourseExploreDetailPanel({
                           <>
                             <button
                               type="button"
-                              onClick={() => onNavigate('lecture-watch')}
+                              onClick={() => {
+                                onSelectLecture(detailLecture.id);
+                                onNavigate('lecture-watch');
+                              }}
                               className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
                             >
                               강의 시청으로 이동
@@ -310,13 +321,31 @@ export function CourseExploreDetailPanel({
               ) : activeTab === '자료' ? (
                 renderMaterialList(course)
               ) : (
-                <StatePanel
-                  compact
-                  icon="ri-question-line"
-                  tone="slate"
-                  title="Q&A 영역은 준비 중입니다."
-                  description="레퍼런스의 탭 레이아웃은 유지하고, 실제 Q&A 데이터는 다음 단계에서 연결할 수 있게 비워두었습니다."
-                />
+                <div className="space-y-3">
+                  <StatePanel
+                    compact
+                    icon="ri-question-line"
+                    tone="slate"
+                    title="Q&A는 아직 연결 준비 중입니다."
+                    description="질문은 우측 챗봇에서 먼저 바로 물어보고, 필요한 경우 강의 시청 화면으로 이어서 확인할 수 있습니다."
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('ai-chat')}
+                      className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                    >
+                      AI 챗봇으로 질문하기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('lecture-watch')}
+                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                    >
+                      강의 시청으로 이동
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </>

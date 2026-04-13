@@ -148,9 +148,9 @@ export function CourseCreatePage({
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
               <i className="ri-add-circle-line" />
-              강의 개설 워크스페이스
+              강좌개설
             </div>
-            <h1 className="mt-4 text-[28px] font-extrabold tracking-[-0.05em]">새 강의를 입력하고, 개설과 스튜디오를 한 번에 이어가기</h1>
+            <h1 className="mt-4 text-[28px] font-extrabold tracking-[-0.05em]">새 강좌를 입력하고, 개설과 스튜디오를 한 번에 이어가기</h1>
             <p className="mt-2 text-[13px] leading-7 text-white/75">
               교수, 강사, 운영자가 개설 정보를 먼저 입력하고 다음 단계로 넘어가면, 그 정보 그대로 강의를 개설하고 제작 스튜디오로 이어갈 수 있습니다.
             </p>

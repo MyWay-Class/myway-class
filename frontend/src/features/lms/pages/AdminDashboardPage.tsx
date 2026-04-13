@@ -9,7 +9,20 @@ type AdminDashboardPageProps = {
   insights: AIInsights | null;
 };
 
+function countByRole(users: AuthUser[]) {
+  return {
+    ADMIN: users.filter((user) => user.role === 'ADMIN').length,
+    INSTRUCTOR: users.filter((user) => user.role === 'INSTRUCTOR').length,
+    STUDENT: users.filter((user) => user.role === 'STUDENT').length,
+  };
+}
+
+function formatProgress(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
 export function AdminDashboardPage({ dashboard, users, courses, insights }: AdminDashboardPageProps) {
+  const roleCounts = countByRole(users);
   const stats =
     dashboard?.stats ?? [
       {
@@ -48,56 +61,152 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
   const activities = dashboard?.recent_activities ?? [];
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-6 text-white shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-end">
           <div>
-            <div className="text-[12px] font-semibold uppercase tracking-[0.2em] text-indigo-200">Admin Dashboard</div>
-            <h2 className="mt-2 text-[24px] font-extrabold tracking-[-0.04em]">운영 현황과 최근 학습 흐름을 함께 확인합니다.</h2>
-            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-300">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
+              <i className="ri-shield-star-line" />
+              Admin Dashboard
+            </div>
+            <h2 className="mt-4 text-[26px] font-extrabold tracking-[-0.04em] lg:text-[32px]">
+              사용자, 강의, AI 요청을
+              <br />
+              운영 관점에서 한 번에 봅니다.
+            </h2>
+            <p className="mt-3 max-w-2xl text-[14px] leading-7 text-white/78">
               {dashboard?.next_action ?? '운영 통계와 AI 사용량을 확인하고 병목이 생긴 코스를 점검하세요.'}
             </p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
-            <div className="font-semibold text-white">{dashboard?.learner_name ?? '운영자'}</div>
-            <div className="mt-1">{dashboard?.role ?? 'ADMIN'}</div>
+
+          <div className="rounded-[28px] border border-white/10 bg-white/10 px-5 py-5 backdrop-blur">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">역할 분포</div>
+            <div className="mt-4 space-y-3">
+              {[
+                { label: '운영자', count: roleCounts.ADMIN, color: 'bg-amber-400' },
+                { label: '교강사', count: roleCounts.INSTRUCTOR, color: 'bg-emerald-400' },
+                { label: '수강생', count: roleCounts.STUDENT, color: 'bg-indigo-400' },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-3">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/15">
+                    <div
+                      className={`h-full rounded-full ${item.color}`}
+                      style={{ width: `${Math.max((item.count / Math.max(users.length, 1)) * 100, item.count > 0 ? 12 : 0)}%` }}
+                    />
+                  </div>
+                  <div className="w-12 text-right text-[12px] font-semibold text-white">
+                    {item.label}
+                    <span className="ml-1 text-white/65">{item.count}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       <DashboardStatsGrid stats={stats} />
 
-      <DashboardTimeline
-        title="최근 활동"
-        subtitle="운영 등록, 수강 흐름, AI 사용 현황을 시간순으로 확인합니다."
-        activities={activities}
-        emptyMessage="아직 최근 활동이 없습니다. 수강 등록이나 AI 요청이 발생하면 여기에 표시됩니다."
-      />
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-6">
+          <DashboardTimeline
+            title="최근 활동"
+            subtitle="운영 등록, 수강 흐름, AI 사용 현황을 시간순으로 확인합니다."
+            activities={activities}
+            emptyMessage="아직 최근 활동이 없습니다. 수강 등록이나 AI 요청이 발생하면 여기에 표시됩니다."
+          />
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
-          <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{users.length}</div>
-          <div className="mt-1 text-[12px] text-slate-500">전체 사용자</div>
-        </article>
-        <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
-          <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{courses.length}</div>
-          <div className="mt-1 text-[12px] text-slate-500">전체 강의</div>
-        </article>
-        <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
-          <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{dashboard?.active_enrollments ?? 0}</div>
-          <div className="mt-1 text-[12px] text-slate-500">활성 수강</div>
-        </article>
-        <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
-          <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{insights?.summary.total_requests ?? 0}</div>
-          <div className="mt-1 text-[12px] text-slate-500">AI 요청 수</div>
-        </article>
-      </section>
+          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[15px] font-bold text-slate-900">운영 핵심 수치</h3>
+                <p className="mt-1 text-[12px] text-slate-500">사용자와 강의의 기본 규모를 운영 흐름에 맞게 정리합니다.</p>
+              </div>
+              <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">{users.length}명</div>
+            </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
-        <h2 className="text-[15px] font-bold text-slate-900">운영 개요</h2>
-        <p className="mt-3 text-[13px] leading-7 text-slate-500">
-          운영자는 이 화면에서 전체 사용자, 강의, 활성 수강, AI 사용량을 빠르게 확인하고 상세 운영 화면으로 이동할 수 있습니다.
-        </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <article className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="text-[11px] font-semibold text-slate-400">전체 사용자</div>
+                <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">{users.length}</div>
+              </article>
+              <article className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="text-[11px] font-semibold text-slate-400">전체 강의</div>
+                <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">{courses.length}</div>
+              </article>
+              <article className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="text-[11px] font-semibold text-slate-400">활성 수강</div>
+                <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">{dashboard?.active_enrollments ?? 0}</div>
+              </article>
+              <article className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="text-[11px] font-semibold text-slate-400">AI 요청</div>
+                <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">{insights?.summary.total_requests ?? 0}</div>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <div className="space-y-6">
+          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+            <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
+              <i className="ri-team-line text-indigo-600" />
+              최근 사용자
+            </h3>
+            <div className="mt-4 space-y-2">
+              {users.slice(0, 5).map((user) => (
+                <div key={user.id} className="flex items-center gap-3 rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-[13px] font-bold text-indigo-600">
+                    {user.name.slice(0, 1)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-semibold text-slate-900">{user.name}</div>
+                    <div className="mt-1 text-[11px] text-slate-500">{user.department}</div>
+                  </div>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-indigo-600">{user.role}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+            <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
+              <i className="ri-pie-chart-2-line text-indigo-600" />
+              역할 비율
+            </h3>
+            <div className="mt-4 space-y-3">
+              {[
+                { label: '운영자', count: roleCounts.ADMIN, tone: 'bg-amber-500' },
+                { label: '교강사', count: roleCounts.INSTRUCTOR, tone: 'bg-emerald-500' },
+                { label: '수강생', count: roleCounts.STUDENT, tone: 'bg-indigo-500' },
+              ].map((item) => (
+                <div key={item.label}>
+                  <div className="mb-1 flex items-center justify-between text-[12px] text-slate-500">
+                    <span>{item.label}</span>
+                    <span>{item.count}명</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full ${item.tone}`}
+                      style={{ width: `${Math.max((item.count / Math.max(users.length, 1)) * 100, item.count > 0 ? 12 : 0)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {insights ? (
+            <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+              <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
+                <i className="ri-lightbulb-flash-line text-indigo-600" />
+                AI 인사이트
+              </h3>
+              <p className="mt-3 text-[13px] leading-6 text-slate-500">
+                최근 {insights.summary.recent_window_days}일 동안 AI 요청 {insights.summary.total_requests}회, 성공률 {formatProgress(insights.summary.success_rate)}입니다.
+              </p>
+            </section>
+          ) : null}
+        </div>
       </section>
     </div>
   );

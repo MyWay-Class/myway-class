@@ -27,6 +27,8 @@ function scrollToElement(element: HTMLElement | null) {
 
 export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePageProps) {
   const coursesRef = useRef<HTMLElement | null>(null);
+  const shortformRef = useRef<HTMLElement | null>(null);
+  const roadmapRef = useRef<HTMLElement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
   const [activeStatus, setActiveStatus] = useState<'all' | 'available' | 'enrolled'>('all');
@@ -95,7 +97,24 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
               <button
                 key={item.label}
                 type="button"
-                onClick={() => scrollToElement(coursesRef.current)}
+                onClick={() => {
+                  if (item.label === '강의') {
+                    scrollToElement(coursesRef.current);
+                    return;
+                  }
+
+                  if (item.label === '숏폼') {
+                    scrollToElement(shortformRef.current);
+                    return;
+                  }
+
+                  if (item.label === '챗봇') {
+                    onOpenLogin();
+                    return;
+                  }
+
+                  scrollToElement(roadmapRef.current);
+                }}
                 className="flex items-center gap-2 transition hover:text-indigo-600"
               >
                 <i className={`${item.icon} text-base`} />
@@ -254,21 +273,23 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
           </div>
         </section>
 
-        <CourseExploreFilters
-          categories={categories}
-          activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
-          activeStatus={activeStatus}
-          onStatusChange={setActiveStatus}
-          resultCount={filteredCourses.length}
-        />
+        <section ref={roadmapRef} className="space-y-4">
+          <CourseExploreFilters
+            categories={categories}
+            activeCategory={activeCategory}
+            onCategoryChange={setActiveCategory}
+            activeStatus={activeStatus}
+            onStatusChange={setActiveStatus}
+            resultCount={filteredCourses.length}
+          />
 
-        <AiNoticeBanner
-          title="추천 흐름"
-          description={notice}
-          tone="indigo"
-          meta={`${totalProgress}% 평균 진도 · ${countUnique(courseCards.flatMap((course) => course.tags))}개 태그`}
-        />
+          <AiNoticeBanner
+            title="추천 흐름"
+            description={notice}
+            tone="indigo"
+            meta={`${totalProgress}% 평균 진도 · ${countUnique(courseCards.flatMap((course) => course.tags))}개 태그`}
+          />
+        </section>
 
         <section ref={coursesRef} className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">

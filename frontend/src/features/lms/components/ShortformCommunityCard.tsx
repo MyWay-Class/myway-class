@@ -4,6 +4,7 @@ type ShortformCommunityCardProps = {
   item: ShortformCommunityItem;
   active: boolean;
   onOpen: (item: ShortformCommunityItem) => void;
+  onPreview: (item: ShortformCommunityItem) => void;
 };
 
 function formatDuration(ms: number): string {
@@ -17,7 +18,7 @@ function formatDuration(ms: number): string {
   return remain > 0 ? `${minutes}분 ${remain}초` : `${minutes}분`;
 }
 
-export function ShortformCommunityCard({ item, active, onOpen }: ShortformCommunityCardProps) {
+export function ShortformCommunityCard({ item, active, onOpen, onPreview }: ShortformCommunityCardProps) {
   const totalDuration = item.clips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
 
   return (
@@ -54,6 +55,8 @@ export function ShortformCommunityCard({ item, active, onOpen }: ShortformCommun
       </div>
 
       <div className="px-5 py-4">
+        <p className="line-clamp-2 text-[12px] leading-6 text-slate-500">{item.description || '설명이 아직 없습니다.'}</p>
+
         <div className="space-y-1.5">
           {item.clips.slice(0, 3).map((clip, index) => (
             <div key={`${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[12px]">
@@ -71,12 +74,24 @@ export function ShortformCommunityCard({ item, active, onOpen }: ShortformCommun
           ) : null}
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-[12px] text-slate-400">
+        <div className="mt-4 flex items-center justify-between gap-2 text-[12px] text-slate-400">
           <span>{item.shared_by_name}</span>
-          <span className="flex items-center gap-1">
-            <i className="ri-heart-3-line" />
-            {item.like_count}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1">
+              <i className="ri-heart-3-line" />
+              {item.like_count}
+            </span>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onPreview(item);
+              }}
+              className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+            >
+              미리보기
+            </button>
+          </div>
         </div>
       </div>
     </article>
