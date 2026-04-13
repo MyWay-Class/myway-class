@@ -22,7 +22,27 @@ export function getCourseLectures(courseId: string): Lecture[] {
       }
 
       return a.order_index - b.order_index;
-    });
+  });
+}
+
+export function getLectureDisplayDurationMinutes(lecture: Pick<Lecture, 'duration_minutes'> & Partial<Lecture>): number {
+  if (lecture.id) {
+    const transcript = demoLectureTranscripts.find((item) => item.lecture_id === lecture.id);
+    if (transcript?.duration_ms) {
+      return Math.max(1, Math.ceil(transcript.duration_ms / 60_000));
+    }
+  }
+
+  const extraction = lecture.id ? demoAudioExtractions.find((item) => item.lecture_id === lecture.id && item.audio_duration_ms > 0) : undefined;
+  if (extraction?.audio_duration_ms) {
+    return Math.max(1, Math.ceil(extraction.audio_duration_ms / 60_000));
+  }
+
+  return lecture.duration_minutes;
+}
+
+export function getLectureDurationMinutes(lecture: Lecture): number {
+  return getLectureDisplayDurationMinutes(lecture);
 }
 
 export function isEnrolled(userId: string, courseId: string): boolean {
@@ -77,22 +97,6 @@ export function getCourseStudentCount(courseId: string): number {
 
 export function getCourseTotalDurationMinutes(courseId: string): number {
   return getCourseLectures(courseId).reduce((sum, lecture) => sum + getLectureDisplayDurationMinutes(lecture), 0);
-}
-
-export function getLectureDisplayDurationMinutes(lecture: Pick<Lecture, 'duration_minutes'> & Partial<Lecture>): number {
-  if (lecture.id) {
-    const transcript = demoLectureTranscripts.find((item) => item.lecture_id === lecture.id);
-    if (transcript?.duration_ms) {
-      return Math.max(1, Math.round(transcript.duration_ms / 60_000));
-    }
-  }
-
-  const extraction = lecture.id ? demoAudioExtractions.find((item) => item.lecture_id === lecture.id && item.audio_duration_ms > 0) : undefined;
-  if (extraction?.audio_duration_ms) {
-    return Math.max(1, Math.round(extraction.audio_duration_ms / 60_000));
-  }
-
-  return lecture.duration_minutes;
 }
 
 export function getLectureKeywords(lecture: Lecture): string[] {

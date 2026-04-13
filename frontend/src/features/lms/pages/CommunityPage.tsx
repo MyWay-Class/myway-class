@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AIRecommendationOverview, CourseCard, ShortformCommunityItem } from '@myway/shared';
 import { loadShortformCommunity } from '../../../lib/api';
+import { resolvePlayableVideoUrl } from '../../../lib/video-url';
 import { ShortformCommunityCard } from '../components/ShortformCommunityCard';
 import { ShortformCommunityHero } from '../components/ShortformCommunityHero';
 import { ShortformPreviewModal } from '../components/ShortformPreviewModal';
@@ -322,12 +323,15 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
 
                 {detailTab === 'video' ? (
                   <div className="mt-4">
-                    {selectedItem?.video_url ? (
+                    {(resolvePlayableVideoUrl(selectedItem?.export_result_url ?? undefined) ??
+                      (selectedItem?.video_url && !selectedItem.video_url.startsWith('/static/shortforms/')
+                        ? resolvePlayableVideoUrl(selectedItem.video_url)
+                        : null)) ? (
                       <video
                         className="aspect-video w-full rounded-2xl border border-white/10 bg-black"
                         controls
                         preload="metadata"
-                        src={selectedItem.video_url}
+                        src={resolvePlayableVideoUrl(selectedItem?.export_result_url ?? undefined) ?? resolvePlayableVideoUrl(selectedItem?.video_url) ?? undefined}
                       />
                     ) : (
                       <div className="flex aspect-video items-center justify-center rounded-2xl border border-white/10 bg-[linear-gradient(135deg,#111827,#334155)] text-white/70">

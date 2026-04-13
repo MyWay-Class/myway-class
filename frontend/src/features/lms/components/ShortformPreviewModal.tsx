@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { ShortformCommunityItem } from '@myway/shared';
+import { resolvePlayableVideoUrl } from '../../../lib/video-url';
 
 type ShortformPreviewModalProps = {
   item: ShortformCommunityItem | null;
@@ -38,6 +39,9 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
   }
 
   const totalDuration = item.clips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
+  const playbackUrl =
+    resolvePlayableVideoUrl(item.export_result_url ?? undefined) ??
+    (item.video_url && !item.video_url.startsWith('/static/shortforms/') ? resolvePlayableVideoUrl(item.video_url) : null);
 
   return (
     <div
@@ -69,12 +73,16 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
         <div className="grid gap-5 p-5 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-4">
             <div className="rounded-[24px] bg-slate-950 px-5 py-5 text-white">
-              <div className="aspect-video rounded-2xl border border-white/10 bg-[linear-gradient(135deg,#111827,#334155)] flex items-center justify-center text-white/60">
-                <div className="text-center">
-                  <i className="ri-film-line text-[34px]" />
-                  <p className="mt-2 text-[13px]">숏폼 미리보기</p>
+              {playbackUrl ? (
+                <video className="aspect-video w-full rounded-2xl border border-white/10 bg-black" controls preload="metadata" src={playbackUrl} />
+              ) : (
+                <div className="flex aspect-video items-center justify-center rounded-2xl border border-white/10 bg-[linear-gradient(135deg,#111827,#334155)] text-white/60">
+                  <div className="text-center">
+                    <i className="ri-film-line text-[34px]" />
+                    <p className="mt-2 text-[13px]">숏폼 미리보기</p>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold text-white/90">
                 <span className="rounded-full bg-white/10 px-2.5 py-1">{item.course_title}</span>
                 <span className="rounded-full bg-white/10 px-2.5 py-1">{item.clips.length}클립</span>

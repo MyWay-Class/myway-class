@@ -9,6 +9,7 @@ import {
   getLectureTranscriptExcerpt,
   getLectureVideoUrl,
 } from './helpers';
+import { getLectureDurationMinutes } from './course';
 import { getCourseMaterials } from './content';
 import { getCourseNotices } from './content';
 
@@ -39,6 +40,7 @@ export function getCourseDetail(courseId: string, userId: string): CourseDetail 
     ...createCourseCard(course, userId),
     lectures: lectures.map((lecture) => ({
       ...lecture,
+      duration_minutes: getLectureDurationMinutes(lecture),
       is_completed: completedLectureIds.has(lecture.id),
     })),
     materials: getCourseMaterials(courseId),
@@ -57,6 +59,7 @@ export function getLectureDetail(lectureId: string, userId?: string): LectureDet
 
   return {
     ...lecture,
+    duration_minutes: getLectureDurationMinutes(lecture),
     course_title: demoCourses.find((item) => item.id === lecture.course_id)?.title ?? '알 수 없는 강의',
     course_instructor:
       getLectureInstructorName(demoCourses.find((item) => item.id === lecture.course_id)?.instructor_id ?? ''),

@@ -168,13 +168,15 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
             >
               {session.user.role === 'STUDENT' ? '대시보드로 이동' : '새 강의 개설'}
             </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('lecture-studio')}
-              className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
-            >
-              제작 스튜디오
-            </button>
+            {session.user.role !== 'STUDENT' ? (
+              <button
+                type="button"
+                onClick={() => onNavigate('lecture-studio')}
+                className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+              >
+                제작 스튜디오
+              </button>
+            ) : null}
           </div>
         </div>
 

@@ -17,6 +17,7 @@ import {
   getCourseLectures,
   getExtraction,
   getStyleLabel,
+  normalizeShortformDescription,
   now,
 } from './data';
 import {
@@ -53,7 +54,10 @@ function buildTranscriptCandidates(
     const chunk = validSegments.slice(startIndex, startIndex + chunkSize);
     const start = chunk[0]?.start_ms ?? 0;
     const end = chunk[chunk.length - 1]?.end_ms ?? start + 30_000;
-    const description = chunk.map((segment) => segment.text).join(' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+    const description = normalizeShortformDescription(
+      chunk.map((segment) => segment.text).join(' ').replace(/\s+/g, ' ').trim().slice(0, 120),
+      buildCandidateText(lectureTitle, style, clipIndex),
+    );
 
     return {
       id: createId('cand', demoShortformCandidates.length + startOrderIndex + clipIndex),

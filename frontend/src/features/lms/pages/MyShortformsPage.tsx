@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CourseCard, CourseDetail, CustomCourseLibraryItem, ShortformLibraryItem } from '@myway/shared';
 import { copyCustomCourseDraft, loadCustomCourseLibrary, loadShortformLibrary, retryShortformExportDraft, saveShortformDraft, shareCustomCourseDraft, shareShortformDraft, toggleShortformLikeDraft } from '../../../lib/api';
+import { resolvePlayableVideoUrl } from '../../../lib/video-url';
 
 type MyShortformsPageProps = {
   courses: CourseCard[];
@@ -164,6 +165,15 @@ export function MyShortformsPage({ courses, selectedCourse, sessionToken }: MySh
                       </div>
                       <div className="mt-2 text-[14px] font-bold text-slate-900">{video.title}</div>
                       <p className="mt-1 text-[12px] leading-6 text-slate-500">{video.description}</p>
+                      {(resolvePlayableVideoUrl(video.export_result_url ?? undefined) ??
+                        (video.video_url && !video.video_url.startsWith('/static/shortforms/') ? resolvePlayableVideoUrl(video.video_url) : null)) ? (
+                        <video
+                          className="mt-3 w-full rounded-2xl border border-slate-200 bg-black"
+                          controls
+                          preload="metadata"
+                          src={resolvePlayableVideoUrl(video.export_result_url ?? undefined) ?? resolvePlayableVideoUrl(video.video_url) ?? undefined}
+                        />
+                      ) : null}
                       <div className="mt-3 flex flex-wrap gap-2">
                         <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${video.export_status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : video.export_status === 'FAILED' ? 'bg-rose-100 text-rose-700' : video.export_status === 'PROCESSING' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
                           export {video.export_status}
@@ -173,7 +183,7 @@ export function MyShortformsPage({ courses, selectedCourse, sessionToken }: MySh
                         </span>
                       </div>
                       <div className="mt-2 text-[11px] leading-5 text-slate-400">
-                        {video.export_result_url ?? video.video_url}
+                        {resolvePlayableVideoUrl(video.export_result_url ?? undefined) ?? resolvePlayableVideoUrl(video.video_url) ?? video.video_url}
                       </div>
                       {video.export_error_message ? <p className="mt-1 text-[11px] leading-5 text-rose-600">{video.export_error_message}</p> : null}
                     </div>
