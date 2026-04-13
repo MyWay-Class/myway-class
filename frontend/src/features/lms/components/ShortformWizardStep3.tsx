@@ -80,9 +80,12 @@ export function ShortformWizardStep3({
           </div>
           <p className="mt-1 text-[12px] text-slate-500">선택한 클립을 미리보고 제목과 설명을 입력한 뒤 저장합니다.</p>
         </div>
-        <button type="button" onClick={onBack} className="rounded-full border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600">
-          이전
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">{formatDuration(totalDurationMs)} 합계</span>
+          <button type="button" onClick={onBack} className="rounded-full border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600">
+            이전
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-3xl bg-slate-950 p-5 text-white">

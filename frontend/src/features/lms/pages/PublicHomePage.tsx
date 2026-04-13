@@ -74,6 +74,7 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
   const totalProgress = Math.round(
     courseCards.reduce((sum, course) => sum + course.progress_percent, 0) / Math.max(courseCards.length, 1),
   );
+  const visualCourses = courseCards.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-[#f8f9fb]">
@@ -123,23 +124,23 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
       </header>
 
       <main className="mx-auto max-w-[1320px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="grid gap-5">
-          <div className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#6d62ef_0%,#4f46e5_46%,#7c3aed_100%)] px-7 py-8 text-white shadow-[0_30px_70px_rgba(79,70,229,0.16)] lg:px-8 lg:py-9">
+        <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-7 py-8 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)] lg:px-8 lg:py-9">
             <div className="pointer-events-none absolute -right-8 top-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-cyan-300/10 blur-3xl" />
 
             <div className="relative z-10 max-w-2xl">
               <span className="inline-flex rounded-full bg-white/14 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
-                AI 기반 맞춤형 학습 플랫폼
+                강의 탐색 허브
               </span>
               <h1 className="mt-5 text-[2.1rem] font-extrabold tracking-[-0.05em] text-white lg:text-[3.2rem]">
-                내맘대로 배우고,
+                찾기 쉽고,
                 <br />
-                내맘대로 성장하세요
+                보기 쉬운 학습 화면
               </h1>
               <p className="mt-4 max-w-2xl text-[14px] leading-7 text-white/80 lg:text-[15px]">
-                강의 탐색, 자동 STT 전사, 우측 챗봇, 숏폼 복습까지 하나의 흐름으로 이어지는 LMS 메인 화면입니다.
-                로그인 전에는 탐색과 체험만, 로그인 후에는 학습과 제작이 바로 연결됩니다.
+                검색, 카테고리, 추천 강의, 이미지 섹션을 첫 화면에 모아두고 상세와 시청은 다음 단계로 분리했습니다.
+                사용자는 무엇부터 눌러야 하는지 바로 알 수 있습니다.
               </p>
 
               <div className="mt-7 flex flex-wrap gap-3">
@@ -155,7 +156,7 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
                   onClick={onOpenLogin}
                   className="rounded-full border border-white/30 bg-white/10 px-5 py-3 text-[13px] font-semibold text-white backdrop-blur transition hover:bg-white/15"
                 >
-                  무료로 시작하기
+                  로그인 후 계속
                 </button>
               </div>
 
@@ -172,6 +173,83 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
                   </span>
                 )}
               </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Search</div>
+                  <h2 className="mt-2 text-[18px] font-extrabold tracking-[-0.03em] text-slate-900">원하는 강의를 바로 찾기</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  로그인
+                </button>
+              </div>
+              <div className="mt-4 relative">
+                <i className="ri-search-line pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="강좌명, 카테고리, 태그, 강사명 검색"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-[13px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white"
+                />
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <div className="text-[11px] text-slate-500">평균 진도</div>
+                  <div className="mt-1 text-[18px] font-extrabold text-slate-900">{totalProgress}%</div>
+                </div>
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <div className="text-[11px] text-slate-500">강의</div>
+                  <div className="mt-1 text-[18px] font-extrabold text-slate-900">{courseCards.length}</div>
+                </div>
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <div className="text-[11px] text-slate-500">카테고리</div>
+                  <div className="mt-1 text-[18px] font-extrabold text-slate-900">{categories.length}</div>
+                </div>
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <div className="text-[11px] text-slate-500">태그</div>
+                  <div className="mt-1 text-[18px] font-extrabold text-slate-900">{countUnique(courseCards.flatMap((course) => course.tags))}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {visualCourses.length > 0 ? (
+                visualCourses.map((course) => (
+                  <article
+                    key={course.id}
+                    className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5"
+                  >
+                    <div className="relative h-32 bg-[linear-gradient(135deg,#4338ca,#1d4ed8)]">
+                      <div className="absolute inset-0 opacity-20">
+                        <i className={`${course.thumbnail_palette === 'emerald' ? 'ri-layout-grid-line' : course.thumbnail_palette === 'violet' ? 'ri-video-line' : course.thumbnail_palette === 'amber' ? 'ri-lightbulb-flash-line' : 'ri-brain-line'} absolute -right-5 -bottom-5 text-[92px] text-white`} />
+                      </div>
+                      <div className="absolute left-4 top-4 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur">
+                        {course.category}
+                      </div>
+                    </div>
+                    <div className="px-4 py-4">
+                      <div className="text-[11px] text-slate-500">{course.instructor_name}</div>
+                      <div className="mt-1 line-clamp-2 text-[15px] font-bold tracking-[-0.02em] text-slate-900">{course.title}</div>
+                      <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
+                        <span>{course.lecture_count}강의</span>
+                        <span>{course.enrolled ? `${course.progress_percent}% 진행` : '수강 전'}</span>
+                      </div>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="sm:col-span-3 rounded-[28px] border border-dashed border-slate-200 bg-white px-5 py-7 text-center text-[13px] text-slate-500">
+                  아직 소개할 강의가 없습니다.
+                </div>
+              )}
             </div>
           </div>
         </section>

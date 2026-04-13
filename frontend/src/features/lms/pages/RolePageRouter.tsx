@@ -13,6 +13,7 @@ import { CommunityPage } from './CommunityPage';
 import { CourseCreatePage } from './CourseCreatePage';
 import { CoursesPage } from './CoursesPage';
 import { InstructorDashboardPage } from './InstructorDashboardPage';
+import { LectureWatchPage } from './LectureWatchPage';
 import { LectureStudioPage } from './LectureStudioPage';
 import { MyCoursesPage } from './MyCoursesPage';
 import { MediaPipelinePage } from './MediaPipelinePage';
@@ -107,6 +108,17 @@ export function RolePageRouter({
             onSelectLecture={onSelectLecture}
           />
         );
+      case 'lecture-watch':
+        return (
+          <LectureWatchPage
+            selectedCourse={selectedCourse}
+            highlightedLecture={highlightedLecture}
+            selectedLectureId={selectedLectureId}
+            canManageCurrent={true}
+            onSelectLecture={onSelectLecture}
+            onNavigate={onNavigate}
+          />
+        );
       case 'course-create':
         return (
           <CourseCreatePage
@@ -178,6 +190,19 @@ export function RolePageRouter({
           onNavigate={onNavigate}
           onSelectCourse={onSelectCourse}
           onSelectLecture={onSelectLecture}
+        />
+      );
+    }
+
+    if (page === 'lecture-watch') {
+      return (
+        <LectureWatchPage
+          selectedCourse={selectedCourse}
+          highlightedLecture={highlightedLecture}
+          selectedLectureId={selectedLectureId}
+          canManageCurrent={true}
+          onSelectLecture={onSelectLecture}
+          onNavigate={onNavigate}
         />
       );
     }
@@ -269,6 +294,19 @@ export function RolePageRouter({
         onNavigate={onNavigate}
         onSelectCourse={onSelectCourse}
         onSelectLecture={onSelectLecture}
+      />
+    );
+  }
+
+  if (page === 'lecture-watch') {
+    return (
+      <LectureWatchPage
+        selectedCourse={selectedCourse}
+        highlightedLecture={highlightedLecture}
+        selectedLectureId={selectedLectureId}
+        canManageCurrent={false}
+        onSelectLecture={onSelectLecture}
+        onNavigate={onNavigate}
       />
     );
   }

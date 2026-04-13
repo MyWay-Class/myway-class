@@ -21,6 +21,7 @@ export function pageTitle(page: LmsPageId, role: UserRole): string {
   const titles: Record<LmsPageId, string> = {
     dashboard: '홈',
     courses: '강의 목록',
+    'lecture-watch': '강의 시청',
     'my-courses': '내 강의 관리',
     'course-create': '강의 워크스페이스',
     'lecture-studio': '강의 제작 스튜디오',

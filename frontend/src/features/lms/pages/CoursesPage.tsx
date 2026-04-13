@@ -154,6 +154,7 @@ export function CoursesPage({
               course={course}
               highlightedLecture={detailLecture}
               selectedLectureId={selectedLectureId}
+              viewMode="detail"
               activeTab={activeTab}
               canManageCurrent={canManageCurrent}
               onSelectLecture={onSelectLecture}
