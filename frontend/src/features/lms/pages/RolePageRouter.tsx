@@ -9,7 +9,6 @@ import { AdminUsersPage } from './AdminUsersPage';
 import { AIChatPage } from './AIChatPage';
 import { AISummaryPage } from './AISummaryPage';
 import { AssignmentCheckPage } from './AssignmentCheckPage';
-import { CommunityPage } from './CommunityPage';
 import { CourseCreatePage } from './CourseCreatePage';
 import { CoursesPage } from './CoursesPage';
 import { InstructorDashboardPage } from './InstructorDashboardPage';
@@ -17,9 +16,8 @@ import { LectureWatchPage } from './LectureWatchPage';
 import { LectureStudioPage } from './LectureStudioPage';
 import { MyCoursesPage } from './MyCoursesPage';
 import { MediaPipelinePage } from './MediaPipelinePage';
-import { MyShortformsPage } from './MyShortformsPage';
 import { QuizGenPage } from './QuizGenPage';
-import { ShortformPage } from './ShortformPage';
+import { ShortformHubPage } from './ShortformHubPage';
 import { StudentDashboardPage } from './StudentDashboardPage';
 import type { LmsDashboardProps, LmsPageId } from '../types';
 
@@ -56,6 +54,7 @@ export function RolePageRouter({
   onNavigate,
 }: RolePageRouterProps) {
   const sessionToken = session.session_token;
+  const shortformInitialTab = page === 'my-shortforms' ? 'library' : page === 'community' ? 'community' : 'create';
 
   if (loading) {
     return (
@@ -159,6 +158,20 @@ export function RolePageRouter({
             viewerRole={session.user.role}
           />
         );
+      case 'shortform':
+      case 'my-shortforms':
+      case 'community':
+        return (
+          <ShortformHubPage
+            session={session}
+            highlightedLecture={highlightedLecture}
+            selectedCourse={selectedCourse}
+            courses={courseCards}
+            sessionToken={sessionToken}
+            recommendations={recommendations}
+            initialTab={shortformInitialTab}
+          />
+        );
       default:
         return (
           <RolePageFallback
@@ -240,10 +253,6 @@ export function RolePageRouter({
       );
     }
 
-    if (page === 'shortform') {
-      return <ShortformPage highlightedLecture={highlightedLecture} selectedCourse={selectedCourse} courses={courseCards} sessionToken={sessionToken} />;
-    }
-
     if (page === 'lecture-studio') {
       return (
         <LectureStudioPage
@@ -253,10 +262,6 @@ export function RolePageRouter({
           onSelectCourse={onSelectCourse}
         />
       );
-    }
-
-    if (page === 'community') {
-      return <CommunityPage courses={courseCards} recommendations={recommendations} />;
     }
 
     if (page === 'ai-chat') {
@@ -286,6 +291,20 @@ export function RolePageRouter({
 
     if (page === 'assignment-check') {
       return <AssignmentCheckPage courses={courseCards} />;
+    }
+
+    if (page === 'shortform' || page === 'my-shortforms' || page === 'community') {
+      return (
+        <ShortformHubPage
+          session={session}
+          highlightedLecture={highlightedLecture}
+          selectedCourse={selectedCourse}
+          courses={courseCards}
+          sessionToken={sessionToken}
+          recommendations={recommendations}
+          initialTab={shortformInitialTab}
+        />
+      );
     }
 
     return (
@@ -337,20 +356,22 @@ export function RolePageRouter({
     );
   }
 
-  if (page === 'shortform') {
-    return <ShortformPage highlightedLecture={highlightedLecture} selectedCourse={selectedCourse} courses={courseCards} sessionToken={sessionToken} />;
-  }
-
-  if (page === 'my-shortforms') {
-    return <MyShortformsPage courses={courseCards} selectedCourse={selectedCourse} sessionToken={sessionToken} />;
-  }
-
-  if (page === 'community') {
-    return <CommunityPage courses={courseCards} recommendations={recommendations} />;
-  }
-
   if (page === 'ai-chat') {
     return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} selectedCourse={selectedCourse} canManageCurrent={false} sessionToken={sessionToken} />;
+  }
+
+  if (page === 'shortform' || page === 'my-shortforms' || page === 'community') {
+    return (
+      <ShortformHubPage
+        session={session}
+        highlightedLecture={highlightedLecture}
+        selectedCourse={selectedCourse}
+        courses={courseCards}
+        sessionToken={sessionToken}
+        recommendations={recommendations}
+        initialTab={shortformInitialTab}
+      />
+    );
   }
 
   if (page === 'dashboard') {
@@ -382,13 +403,13 @@ export function RolePageRouter({
   }
 
   return (
-    <RolePageFallback
-      icon="ri-robot-line"
-      title="학습 도구 연결 준비 중"
-      description="숏폼, 커뮤니티, AI 채팅은 동일한 UI 체계에 맞춰 이어서 붙일 수 있게 정리한 상태입니다."
+      <RolePageFallback
+        icon="ri-robot-line"
+        title="학습 도구 연결 준비 중"
+        description="숏폼, 커뮤니티, AI 채팅은 동일한 UI 체계에 맞춰 이어서 붙일 수 있게 정리한 상태입니다."
       actions={[
         { label: '대시보드로 이동', onClick: () => onNavigate('dashboard') },
-        { label: '내 숏폼 보기', onClick: () => onNavigate('my-shortforms') },
+        { label: '숏폼으로 이동', onClick: () => onNavigate('shortform') },
       ]}
     />
   );

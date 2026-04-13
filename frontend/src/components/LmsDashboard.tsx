@@ -13,6 +13,8 @@ export function LmsDashboard(props: LmsDashboardProps) {
   const activeNavKey =
     activePage === 'courses' || activePage === 'lecture-watch'
       ? 'my-courses'
+      : activePage === 'shortform' || activePage === 'community' || activePage === 'my-shortforms'
+        ? 'shortform'
       : activePage;
 
   function goToHome() {

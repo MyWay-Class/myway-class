@@ -16,9 +16,9 @@ type StudentDashboardPageProps = {
 
 const quickActions = [
   { page: 'courses' as const, label: '내 강의', icon: 'ri-book-open-line', hint: '상세와 진도율 보기' },
-  { page: 'shortform' as const, label: '숏폼 제작', icon: 'ri-scissors-cut-line', hint: '복습용 짧은 영상 만들기' },
-  { page: 'community' as const, label: '커뮤니티', icon: 'ri-group-line', hint: '다른 학습자와 공유하기' },
+  { page: 'shortform' as const, label: '숏폼', icon: 'ri-scissors-cut-line', hint: '제작, 내 숏폼, 커뮤니티' },
   { page: 'ai-chat' as const, label: 'AI 챗봇', icon: 'ri-robot-line', hint: '강의 질문 바로하기' },
+  { page: 'dashboard' as const, label: '진도 확인', icon: 'ri-dashboard-3-line', hint: '대시보드로 다시 보기' },
 ];
 
 function circularProgress(value: number) {

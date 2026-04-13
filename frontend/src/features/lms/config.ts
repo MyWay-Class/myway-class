@@ -25,9 +25,9 @@ export function pageTitle(page: LmsPageId, role: UserRole): string {
     'my-courses': '내 강의',
     'course-create': '강좌개설',
     'lecture-studio': '강의 제작',
-    shortform: '숏폼 제작',
-    community: '숏폼 커뮤니티',
-    'my-shortforms': '내 숏폼',
+    shortform: '숏폼',
+    community: '숏폼',
+    'my-shortforms': '숏폼',
     'ai-chat': 'AI 학습 챗',
     'media-pipeline': '실제 강의 업로드',
     'quiz-gen': '퀴즈 생성',
@@ -62,9 +62,7 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
     groups.push({
       label: '학습 도구',
       items: [
-        { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작', aliases: ['shortform-wizard'] },
-        { page: 'community', icon: 'ri-group-line', label: '숏폼 커뮤니티' },
-        { page: 'my-shortforms', icon: 'ri-folder-video-line', label: '내 숏폼' },
+        { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼', aliases: ['shortform-wizard', 'community', 'my-shortforms'] },
         { page: 'ai-chat', icon: 'ri-robot-line', label: 'AI 학습 챗' },
       ],
     });
@@ -72,14 +70,13 @@ export function navGroupsForRole(role: UserRole): LmsNavGroup[] {
 
   if (role === 'INSTRUCTOR') {
     groups.push(
-      {
-        label: '제작 도구',
-        items: [
+        {
+          label: '제작 도구',
+          items: [
           { page: 'my-courses', icon: 'ri-folder-user-line', label: '내 강의', badge: 'NEW', aliases: ['courses', 'lecture-watch'] },
           { page: 'course-create', icon: 'ri-add-circle-line', label: '강좌개설', badge: 'NEW' },
           { page: 'lecture-studio', icon: 'ri-layout-masonry-line', label: '강의 제작', badge: 'NEW' },
-          { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼 제작' },
-          { page: 'community', icon: 'ri-group-line', label: '숏폼 커뮤니티' },
+          { page: 'shortform', icon: 'ri-scissors-cut-line', label: '숏폼', aliases: ['community', 'my-shortforms'] },
           { page: 'ai-chat', icon: 'ri-robot-line', label: 'AI 챗' },
         ],
       },
