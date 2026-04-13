@@ -5,7 +5,9 @@ type ShortformWizardStep3Props = {
   selectedClips: ClipSuggestion[];
   title: string;
   description: string;
-  createdCourseId: string | null;
+  createdVideoId: string | null;
+  previewVideoUrl: string | null;
+  exportStatus: string | null;
   status: string;
   onBack: () => void;
   onSave: () => void;
@@ -57,7 +59,9 @@ export function ShortformWizardStep3({
   selectedClips,
   title,
   description,
-  createdCourseId,
+  createdVideoId,
+  previewVideoUrl,
+  exportStatus,
   status,
   onBack,
   onSave,
@@ -95,12 +99,23 @@ export function ShortformWizardStep3({
             {selectedClips.length}클립 · {formatDuration(totalDurationMs)}
           </span>
         </div>
-        <div className="mt-4 flex min-h-[180px] items-center justify-center rounded-3xl border border-white/10 bg-white/5">
-          <div className="text-center text-white/60">
-            <i className="ri-play-circle-line text-5xl" />
-            <p className="mt-2 text-[13px] font-semibold text-white/80">{title || '숏폼 제목을 입력하세요'}</p>
-            <p className="mt-1 text-[12px]">{selectedClips.length}개 클립 재생 목록</p>
-          </div>
+        <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+          {previewVideoUrl ? (
+            <video className="aspect-video w-full bg-black" controls preload="metadata" src={previewVideoUrl} />
+          ) : (
+            <div className="flex min-h-[180px] items-center justify-center p-6">
+              <div className="text-center text-white/60">
+                <i className="ri-play-circle-line text-5xl" />
+                <p className="mt-2 text-[13px] font-semibold text-white/80">{title || '숏폼 제목을 입력하세요'}</p>
+                <p className="mt-1 text-[12px]">{selectedClips.length}개 클립 재생 목록</p>
+                <p className="mt-2 text-[11px] text-white/45">
+                  {exportStatus === 'PROCESSING'
+                    ? '숏폼 영상을 합치는 중입니다. 완료되면 바로 재생할 수 있습니다.'
+                    : '선택한 구간을 조립해 실제 재생 가능한 숏폼으로 저장합니다.'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         <div className="mt-4 space-y-1.5">
           {selectedClips.map((clip, index) => {
@@ -184,19 +199,19 @@ export function ShortformWizardStep3({
 
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={onSave} className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white">
-          숏폼 저장
+          숏폼 생성
         </button>
         <button
           type="button"
           onClick={onShare}
-          disabled={!createdCourseId}
+          disabled={!createdVideoId}
           className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:pointer-events-none disabled:opacity-50"
         >
           공유하기
         </button>
       </div>
       <p className="text-[12px] leading-6 text-slate-500">{status}</p>
-      {createdCourseId ? <p className="text-[11px] text-slate-400">생성 ID: {createdCourseId}</p> : null}
+      {createdVideoId ? <p className="text-[11px] text-slate-400">생성 ID: {createdVideoId}</p> : null}
     </article>
   );
 }

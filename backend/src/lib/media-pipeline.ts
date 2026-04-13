@@ -12,6 +12,7 @@ import {
 } from '@myway/shared';
 import { dispatchMediaProcessorJob } from './media-processor';
 import { runTranscriptGeneration, type STTAdapterResult } from './stt-adapter';
+import { persistLectureDuration } from './learning-store';
 import type { RuntimeBindings } from './runtime-env';
 
 export type MediaExtractionRequestResult =
@@ -99,6 +100,7 @@ export async function createMediaExtractionJob(
       };
     }
 
+    await persistLectureDuration(input.lecture_id, Math.max(1, Math.round(transcriptResult.duration_ms / 60_000)), env);
     await ensureAutoTimelineSummary(userId, input.lecture_id, repository);
   }
 
@@ -242,6 +244,7 @@ export async function completeMediaExtractionJob(
     };
   }
 
+  await persistLectureDuration(extraction.lecture_id, Math.max(1, Math.round(transcriptResult.duration_ms / 60_000)), env);
   await ensureAutoTimelineSummary(userId, extraction.lecture_id, repository);
 
   const completed = await updateAudioExtraction({

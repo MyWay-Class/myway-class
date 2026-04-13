@@ -1,11 +1,21 @@
 import {
+  composeShortformVideo,
+  generateShortformExtraction,
+  getShortformExtractionById,
+  getShortformVideoDetail,
   listMyShortformLibrary,
   listShortformCommunity,
   saveShortformVideo,
   shareShortformVideo,
   toggleShortformLike,
+  type ShortformComposeRequest,
+  type ShortformExtraction,
+  type ShortformExtractionDetail,
+  type ShortformGenerateRequest,
   type ShortformLibraryItem,
   type ShortformCommunityItem,
+  type ShortformVideo,
+  type ShortformVideoDetail,
   type ShortformSaveRequest,
   type ShortformShareRequest,
 } from '@myway/shared';
@@ -128,4 +138,78 @@ export async function retryShortformExportDraft(
   );
 
   return Boolean(response?.success);
+}
+
+export async function generateShortformExtractionDraft(
+  input: ShortformGenerateRequest,
+  sessionToken?: string | null,
+): Promise<ShortformExtraction | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+
+  if (!token) {
+    return generateShortformExtraction(userId, input);
+  }
+
+  const response = await request<ShortformExtraction>(
+    '/api/v1/shortform/generate',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return response?.success && response.data ? response.data : generateShortformExtraction(userId, input);
+}
+
+export async function loadShortformExtractionDraft(
+  extractionId: string,
+  sessionToken?: string | null,
+): Promise<ShortformExtractionDetail | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return getShortformExtractionById(extractionId) ?? null;
+  }
+
+  const response = await request<ShortformExtractionDetail>(`/api/v1/shortform/extraction/${encodeURIComponent(extractionId)}`, undefined, token);
+  return response?.success && response.data ? response.data : getShortformExtractionById(extractionId) ?? null;
+}
+
+export async function composeShortformDraft(
+  input: ShortformComposeRequest,
+  sessionToken?: string | null,
+): Promise<ShortformVideo | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  const userId = getFallbackUserId();
+
+  if (!token) {
+    return composeShortformVideo(userId, input);
+  }
+
+  const response = await request<ShortformVideo>(
+    '/api/v1/shortform/compose',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+
+  return response?.success && response.data ? response.data : composeShortformVideo(userId, input);
+}
+
+export async function loadShortformVideoDraft(
+  videoId: string,
+  sessionToken?: string | null,
+): Promise<ShortformVideoDetail | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+
+  if (!token) {
+    return getShortformVideoDetail(videoId) ?? null;
+  }
+
+  const response = await request<ShortformVideoDetail>(`/api/v1/shortform/video/${encodeURIComponent(videoId)}`, undefined, token);
+  return response?.success && response.data ? response.data : getShortformVideoDetail(videoId) ?? null;
 }

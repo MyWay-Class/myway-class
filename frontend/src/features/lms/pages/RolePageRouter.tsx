@@ -388,6 +388,18 @@ export function RolePageRouter({
     );
   }
 
+  if (page === 'my-courses') {
+    return (
+      <MyCoursesPage
+        session={session}
+        courses={courseCards}
+        selectedCourse={selectedCourse}
+        onSelectCourse={onSelectCourse}
+        onNavigate={onNavigate}
+      />
+    );
+  }
+
   if (page === 'media-pipeline') {
     return (
       <RolePageFallback

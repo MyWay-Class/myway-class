@@ -26,6 +26,10 @@ export {
 export {
   loadShortformLibrary,
   loadShortformCommunity,
+  generateShortformExtractionDraft,
+  loadShortformExtractionDraft,
+  composeShortformDraft,
+  loadShortformVideoDraft,
   shareShortformDraft,
   saveShortformDraft,
   toggleShortformLikeDraft,

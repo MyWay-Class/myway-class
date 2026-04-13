@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getLectureDisplayDurationMinutes, type CourseCard, type CourseDetail, type LectureDetail, type ShortformCommunityItem } from '@myway/shared';
-import { composeCustomCourseDraft, loadCourseDetail, loadLectureTranscriptDetailed, loadShortformCommunity, shareCustomCourseDraft } from '../../../lib/api';
+import { getLectureDisplayDurationMinutes, type CourseCard, type CourseDetail, type LectureDetail, type ShortformCommunityItem, type ShortformVideo } from '@myway/shared';
+import { loadCourseDetail, loadLectureTranscriptDetailed } from '../../../lib/api';
+import {
+  composeShortformDraft,
+  generateShortformExtractionDraft,
+  loadShortformCommunity,
+  loadShortformExtractionDraft,
+  loadShortformVideoDraft,
+  shareShortformDraft,
+} from '../../../lib/api-shortforms';
 import { ShortformWizardSidebar } from './ShortformWizardSidebar';
 import { ShortformWizardStep1 } from './ShortformWizardStep1';
 import { ShortformWizardStep2 } from './ShortformWizardStep2';
 import { ShortformWizardStep3 } from './ShortformWizardStep3';
+import { normalizeShortformDescription } from '@myway/shared';
+import { resolvePlayableVideoUrl } from '../../../lib/video-url';
 import type { ClipSuggestion, WizardStep } from './ShortformWizardTypes';
 
 type ShortformWizardProps = {
@@ -50,6 +60,10 @@ function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, tra
     const chunk = validSegments.slice(startIndex, startIndex + chunkSize);
     const start = chunk[0]?.start_ms ?? 0;
     const end = chunk[chunk.length - 1]?.end_ms ?? start + 30_000;
+    const description = normalizeShortformDescription(
+      chunk.map((segment) => segment.text).join(' ').slice(0, 120),
+      `${lecture.title} 전사 구간`,
+    );
 
     return {
       lecture_id: lecture.id,
@@ -57,7 +71,7 @@ function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, tra
       start_time_ms: start,
       end_time_ms: Math.max(end, start + 1_000),
       label: `${lecture.title} 전사 ${clipIndex + 1}`,
-      description: chunk.map((segment) => segment.text).join(' ').slice(0, 90) || `${lecture.title} 전사 구간`,
+      description,
     };
   });
 }
@@ -79,6 +93,10 @@ function buildClipSuggestions(course: CourseDetail | null, transcriptMap: Record
     return Array.from({ length: 3 }, (_, clipIndex) => {
       const start_time_ms = Math.min(clipIndex * segment, Math.max(totalMs - segment, 0));
       const end_time_ms = Math.min(start_time_ms + segment, totalMs);
+      const description = normalizeShortformDescription(
+        lecture.content_text.slice(0, 120),
+        `${lecture.title} 요약 구간`,
+      );
 
       return {
         lecture_id: lecture.id,
@@ -86,7 +104,7 @@ function buildClipSuggestions(course: CourseDetail | null, transcriptMap: Record
         start_time_ms,
         end_time_ms,
         label: `${lecture.title} 핵심 ${clipIndex + 1} · ${lectureIndex + 1}차시`,
-        description: lecture.content_text.slice(0, 72) || `${lecture.title} 요약 구간`,
+        description,
       };
     });
   });
@@ -99,9 +117,9 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   const [lectureFilter, setLectureFilter] = useState<string>(highlightedLecture?.id ?? 'all');
   const [selectedClips, setSelectedClips] = useState<ClipSuggestion[]>([]);
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('핵심 구간을 이어 붙여 학습용 개인 코스로 정리합니다.');
-  const [status, setStatus] = useState('아직 조립된 개인 코스가 없습니다.');
-  const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
+  const [description, setDescription] = useState('핵심 구간을 이어 붙여 학습용 숏폼으로 정리합니다.');
+  const [status, setStatus] = useState('아직 조립된 숏폼이 없습니다.');
+  const [createdVideo, setCreatedVideo] = useState<ShortformVideo | null>(null);
   const [communityItems, setCommunityItems] = useState<ShortformCommunityItem[]>([]);
   const [transcriptMap, setTranscriptMap] = useState<Record<string, TranscriptSnapshot>>({});
 
@@ -119,8 +137,8 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   useEffect(() => {
     setSelectedClips([]);
     setLectureFilter('all');
-    setCreatedCourseId(null);
-    setStatus('아직 조립된 개인 코스가 없습니다.');
+    setCreatedVideo(null);
+    setStatus('아직 조립된 숏폼이 없습니다.');
     setStep(1);
   }, [activeCourseId]);
 
@@ -222,6 +240,42 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   const totalDurationMs = selectedClips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
   const totalDurationLabel = formatDuration(totalDurationMs);
   const stepLabel = step === 1 ? '강좌 선택' : step === 2 ? '구간 선택' : '미리보기 / 저장';
+  const transcriptPayload = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(transcriptMap)
+          .filter(([, snapshot]) => Boolean(snapshot?.segments?.length))
+          .map(([lectureId, snapshot]) => [lectureId, snapshot?.segments ?? []]),
+      ),
+    [transcriptMap],
+  );
+  const previewVideoUrl =
+    resolvePlayableVideoUrl(createdVideo?.export_result_url ?? undefined) ??
+    (createdVideo?.video_url && !createdVideo.video_url.startsWith('/static/shortforms/')
+      ? resolvePlayableVideoUrl(createdVideo.video_url)
+      : null);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!createdVideo?.id || createdVideo.export_status === 'COMPLETED' || createdVideo.export_status === 'FAILED') {
+      return undefined;
+    }
+
+    const timer = window.setInterval(async () => {
+      const updated = await loadShortformVideoDraft(createdVideo.id, sessionToken);
+      if (!active || !updated) {
+        return;
+      }
+
+      setCreatedVideo(updated as ShortformVideo);
+    }, 3000);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [createdVideo?.export_status, createdVideo?.id, sessionToken]);
 
   async function handleCompose() {
     if (!courseDetail || selectedClips.length === 0) {
@@ -229,42 +283,67 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
       return;
     }
 
-    const result = await composeCustomCourseDraft(
+    setStatus('숏폼 후보를 생성하는 중입니다.');
+
+    const extraction = await generateShortformExtractionDraft(
       {
         course_id: courseDetail.id,
-        title: title.trim() || `${courseDetail.title} 개인 코스`,
-        description,
-        clips: selectedClips.map((clip) => ({
-          lecture_id: clip.lecture_id,
-          start_time_ms: clip.start_time_ms,
-          end_time_ms: clip.end_time_ms,
-          label: clip.label,
-          description: clip.description,
-        })),
+        mode: 'cross',
+        style: 'highlight',
+        language: 'ko',
+        transcript_segments_by_lecture: transcriptPayload,
       },
       sessionToken,
     );
 
-    if (!result) {
-      setStatus('개인 코스를 조립하지 못했습니다.');
+    if (!extraction) {
+      setStatus('숏폼 후보를 생성하지 못했습니다.');
       return;
     }
 
-    setCreatedCourseId(result.id);
-    setStatus(`개인 코스 ${result.title}를 만들었습니다. 공유하거나 복사할 수 있습니다.`);
+    const extractionDetail = await loadShortformExtractionDraft(extraction.id, sessionToken);
+    const selectedKeys = new Set(selectedClips.map((clip) => clipKey(clip)));
+    const candidateIds =
+      extractionDetail?.candidates
+        .filter((candidate) => selectedKeys.has(`${candidate.lecture_id}:${candidate.start_time_ms}:${candidate.end_time_ms}`))
+        .map((candidate) => candidate.id) ?? [];
+
+    if (candidateIds.length === 0) {
+      setStatus('선택한 구간과 일치하는 숏폼 후보를 찾지 못했습니다.');
+      return;
+    }
+
+    setStatus('선택한 구간으로 숏폼을 생성하는 중입니다.');
+    const video = await composeShortformDraft(
+      {
+        extraction_id: extraction.id,
+        title: title.trim() || `${courseDetail.title} 숏폼`,
+        candidate_ids: candidateIds,
+        description,
+      },
+      sessionToken,
+    );
+
+    if (!video) {
+      setStatus('숏폼을 생성하지 못했습니다.');
+      return;
+    }
+
+    setCreatedVideo(video);
+    setStatus(video.export_status === 'COMPLETED' || video.export_result_url ? '숏폼이 생성되어 재생 가능합니다.' : '숏폼이 생성되었고 export를 처리 중입니다.');
     const refreshed = await loadShortformCommunity(courseDetail.id, sessionToken);
     setCommunityItems(refreshed.slice(0, 4));
     setStep(3);
   }
 
   async function handleShare() {
-    if (!createdCourseId || !courseDetail) {
-      setStatus('먼저 개인 코스를 만들어야 공유할 수 있습니다.');
+    if (!createdVideo || !courseDetail) {
+      setStatus('먼저 숏폼을 만들어야 공유할 수 있습니다.');
       return;
     }
 
-    const shared = await shareCustomCourseDraft(createdCourseId, { message: '개인 코스를 코스 참여자와 공유합니다.' }, sessionToken);
-    setStatus(shared ? '개인 코스를 공유했습니다.' : '공유에 실패했습니다.');
+    const shared = await shareShortformDraft({ video_id: createdVideo.id, course_id: createdVideo.course_id, message: '학습용 숏폼을 공유합니다.' }, sessionToken);
+    setStatus(shared ? '숏폼을 공유했습니다.' : '공유에 실패했습니다.');
     const refreshed = await loadShortformCommunity(courseDetail.id, sessionToken);
     setCommunityItems(refreshed.slice(0, 4));
   }
@@ -422,7 +501,9 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
               selectedClips={selectedClips}
               title={title}
               description={description}
-              createdCourseId={createdCourseId}
+              createdVideoId={createdVideo?.id ?? null}
+              previewVideoUrl={previewVideoUrl}
+              exportStatus={createdVideo?.export_status ?? null}
               status={status}
               onBack={() => setStep(2)}
               onSave={() => void handleCompose()}

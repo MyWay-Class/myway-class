@@ -59,6 +59,23 @@ export function buildCandidateText(lectureTitle: string, style: ShortformStyle, 
   return styleLabels[style][index % styleLabels[style].length] ?? lectureTitle;
 }
 
+export function normalizeShortformDescription(text: string, fallback: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return fallback;
+  }
+
+  const questionCount = (normalized.match(/\?/g) ?? []).length;
+  const readableCount = normalized.replace(/[^\p{L}\p{N}\p{Script=Hangul}\s]/gu, '').length;
+  const readability = readableCount / Math.max(normalized.length, 1);
+
+  if (questionCount >= 3 || readability < 0.45) {
+    return fallback;
+  }
+
+  return normalized;
+}
+
 export function getExtraction(extractionId: string): ShortformExtraction | undefined {
   return demoShortformExtractions.find((item) => item.id === extractionId);
 }

@@ -45,6 +45,18 @@ type LectureRow = {
   updated_at: string;
 };
 
+type TranscriptDurationRow = {
+  lecture_id: string;
+  duration_ms: number;
+  created_at: string;
+};
+
+type ExtractionDurationRow = {
+  lecture_id: string;
+  audio_duration_ms: number;
+  created_at: string;
+};
+
 type MaterialRow = {
   id: string;
   course_id: string;
@@ -122,6 +134,10 @@ function ensureLectureContentType(value: string): Lecture['content_type'] {
   return value === 'text' ? 'text' : 'video';
 }
 
+function resolveDurationMinutes(durationMs: number): number {
+  return Math.max(1, Math.round(durationMs / 60_000));
+}
+
 function resetMemoryState(): void {
   demoCourses.splice(0, demoCourses.length, ...clone(seedDemoCourses));
   demoLectures.splice(0, demoLectures.length, ...clone(seedDemoLectures));
@@ -159,6 +175,55 @@ function mapLectureRow(row: LectureRow): Lecture {
     video_url: row.video_url ?? undefined,
     video_asset_key: row.video_asset_key ?? undefined,
   };
+}
+
+function syncLectureDurationMemory(lectureId: string, durationMinutes: number): void {
+  const lecture = demoLectures.find((item) => item.id === lectureId);
+  if (lecture) {
+    lecture.duration_minutes = durationMinutes;
+  }
+}
+
+async function updateLectureDuration(db: D1Database, lectureId: string, durationMinutes: number): Promise<void> {
+  const timestamp = nowIso();
+  await db
+    .prepare('UPDATE lectures SET duration_minutes = ?, updated_at = ? WHERE id = ?')
+    .bind(durationMinutes, timestamp, lectureId)
+    .run();
+}
+
+async function syncLectureDurationsFromMedia(db: D1Database): Promise<void> {
+  const [transcriptRows, extractionRows] = await Promise.all([
+    db
+      .prepare('SELECT lecture_id, duration_ms, created_at FROM lecture_transcripts ORDER BY created_at DESC, id DESC')
+      .all<TranscriptDurationRow>(),
+    db
+      .prepare('SELECT lecture_id, audio_duration_ms, created_at FROM audio_extractions ORDER BY created_at DESC, id DESC')
+      .all<ExtractionDurationRow>(),
+  ]);
+
+  const resolved = new Map<string, number>();
+
+  for (const row of transcriptRows.results) {
+    if (resolved.has(row.lecture_id) || row.duration_ms <= 0) {
+      continue;
+    }
+
+    resolved.set(row.lecture_id, resolveDurationMinutes(row.duration_ms));
+  }
+
+  for (const row of extractionRows.results) {
+    if (resolved.has(row.lecture_id) || row.audio_duration_ms <= 0) {
+      continue;
+    }
+
+    resolved.set(row.lecture_id, resolveDurationMinutes(row.audio_duration_ms));
+  }
+
+  for (const [lectureId, durationMinutes] of resolved.entries()) {
+    await updateLectureDuration(db, lectureId, durationMinutes);
+    syncLectureDurationMemory(lectureId, durationMinutes);
+  }
 }
 
 function mapMaterialRow(row: MaterialRow): Material {
@@ -542,6 +607,7 @@ export async function ensureLearningStore(env?: RuntimeBindings): Promise<void> 
   if (!learningStorePromise) {
     learningStorePromise = (async () => {
       await hydrateMemory(db);
+      await syncLectureDurationsFromMedia(db);
       learningStoreReady = true;
     })().catch((error) => {
       learningStorePromise = null;
@@ -576,6 +642,7 @@ export async function refreshLearningStoreFromDatabase(env?: RuntimeBindings): P
   if (!learningStorePromise) {
     learningStorePromise = (async () => {
       await hydrateMemory(db);
+      await syncLectureDurationsFromMedia(db);
       learningStoreReady = true;
     })().catch((error) => {
       learningStorePromise = null;
@@ -649,4 +716,21 @@ export async function persistLectureVideoAsset(
     lecture.video_url = videoUrl;
     lecture.video_asset_key = videoAssetKey;
   }
+}
+
+export async function persistLectureDuration(
+  lectureId: string,
+  durationMinutes: number,
+  env?: RuntimeBindings,
+): Promise<void> {
+  const normalizedDuration = Math.max(1, Math.round(durationMinutes));
+  const db = env?.MEDIA_DB;
+  syncLectureDurationMemory(lectureId, normalizedDuration);
+
+  if (!db) {
+    return;
+  }
+
+  await ensureLearningStore(env);
+  await updateLectureDuration(db, lectureId, normalizedDuration);
 }

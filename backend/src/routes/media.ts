@@ -19,7 +19,7 @@ import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { readLectureVideoAsset, uploadLectureVideoAsset } from '../lib/media-assets';
 import { completeMediaExtractionJob, createMediaExtractionJob } from '../lib/media-pipeline';
 import { createMediaRepository } from '../lib/media-repository';
-import { persistLectureVideoAsset } from '../lib/learning-store';
+import { persistLectureDuration, persistLectureVideoAsset } from '../lib/learning-store';
 import {
   loadMediaProcessorHealth,
   normalizeMediaCallbackPayload,
@@ -153,6 +153,8 @@ media.post('/transcribe', async (c) => {
 
     return jsonFailure('TRANSCRIPT_FAILED', '트랜스크립트를 생성할 수 없습니다.', 400);
   }
+
+  await persistLectureDuration(lectureId, Math.max(1, Math.round(result.duration_ms / 60_000)), c.env as RuntimeBindings | undefined);
 
   await createLectureSummaryNote(
     user.id,

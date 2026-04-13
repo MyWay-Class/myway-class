@@ -12,6 +12,7 @@ import {
   demoShortformClips,
   demoShortformVideos,
   isEnrolled,
+  normalizeShortformDescription,
   now,
 } from './data';
 
@@ -107,7 +108,7 @@ export function createShortformVideoFromCandidates(
       start_time_ms: candidate.start_time_ms,
       end_time_ms: candidate.end_time_ms,
       label: candidate.label,
-      description: candidate.description,
+      description: normalizeShortformDescription(candidate.description, buildCandidateText(candidate.lecture_title, 'highlight', index)),
       order_index: index,
       source_video_url: lectureVideoUrl,
     });
