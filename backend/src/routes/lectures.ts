@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { completeLectureProgress, getLectureDetail } from '@myway/shared';
 import { getAuthenticatedUser } from '../lib/auth';
 import { jsonFailure, jsonSuccess } from '../lib/http';
+import { persistLectureProgress } from '../lib/learning-store';
+import type { RuntimeBindings } from '../lib/runtime-env';
 
 const lectures = new Hono();
 
@@ -17,7 +19,7 @@ lectures.get('/:lectureId', (c) => {
   return jsonSuccess(detail);
 });
 
-lectures.post('/:lectureId/complete', (c) => {
+lectures.post('/:lectureId/complete', async (c) => {
   const lectureId = c.req.param('lectureId');
   const user = getAuthenticatedUser(c.req.raw);
 
@@ -34,6 +36,8 @@ lectures.post('/:lectureId/complete', (c) => {
 
     return jsonFailure('ENROLLMENT_REQUIRED', '수강 신청 후에 진도를 저장할 수 있습니다.', 409);
   }
+
+  await persistLectureProgress(user.id, lectureId, c.env as RuntimeBindings | undefined);
 
   return jsonSuccess(
     {

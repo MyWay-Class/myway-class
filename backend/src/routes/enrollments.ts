@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { demoCourses, demoEnrollments, enrollUser, getCourseDetail } from '@myway/shared';
 import { getAuthenticatedUser, hasRole } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
+import { persistEnrollment } from '../lib/learning-store';
+import type { RuntimeBindings } from '../lib/runtime-env';
 
 type EnrollmentRequest = {
   userId?: string;
@@ -54,6 +56,7 @@ enrollments.post('/', async (c) => {
 
   const enrollment = enrollUser(user.id, courseId);
   const courseDetail = getCourseDetail(courseId, user.id);
+  await persistEnrollment(enrollment, c.env as RuntimeBindings | undefined);
 
   return jsonSuccess(
     {

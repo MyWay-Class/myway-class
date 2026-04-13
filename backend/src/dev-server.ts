@@ -1,9 +1,63 @@
 import http from 'node:http';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { Readable } from 'node:stream';
 import app from './index';
+import type { R2BucketLike } from './lib/runtime-env';
 
 const port = Number(process.env.PORT ?? '8787');
 const host = process.env.HOST ?? '127.0.0.1';
+const assetDir = process.env.MYWAY_MEDIA_ASSET_DIR ?? path.join(process.cwd(), 'tmp', 'media-assets');
+
+function encodeAssetKey(assetKey: string): string {
+  return Buffer.from(assetKey, 'utf8').toString('base64url');
+}
+
+function getAssetPaths(assetKey: string): { bodyPath: string; metaPath: string } {
+  const encoded = encodeAssetKey(assetKey);
+  return {
+    bodyPath: path.join(assetDir, `${encoded}.bin`),
+    metaPath: path.join(assetDir, `${encoded}.json`),
+  };
+}
+
+function createFileAssetBucket(): R2BucketLike {
+  return {
+    async put(key, value, options) {
+      const { bodyPath, metaPath } = getAssetPaths(key);
+      await fs.mkdir(assetDir, { recursive: true });
+      const body = Buffer.from(await new Response(value as BodyInit).arrayBuffer());
+      const metadata = {
+        contentType: options?.httpMetadata?.contentType ?? 'application/octet-stream',
+        contentDisposition: options?.httpMetadata?.contentDisposition ?? null,
+      };
+
+      await Promise.all([
+        fs.writeFile(bodyPath, body),
+        fs.writeFile(metaPath, JSON.stringify(metadata), 'utf8'),
+      ]);
+    },
+    async get(key) {
+      const { bodyPath, metaPath } = getAssetPaths(key);
+      try {
+        const [body, metaText] = await Promise.all([
+          fs.readFile(bodyPath),
+          fs.readFile(metaPath, 'utf8'),
+        ]);
+        const meta = JSON.parse(metaText) as { contentType?: string; contentDisposition?: string | null };
+        return {
+          body: Readable.toWeb(Readable.from([body])) as ReadableStream<Uint8Array>,
+          httpMetadata: {
+            contentType: meta.contentType,
+            contentDisposition: meta.contentDisposition ?? undefined,
+          },
+        };
+      } catch {
+        return null;
+      }
+    },
+  };
+}
 
 const runtimeEnv = {
   APP_ENV: 'development',
@@ -27,6 +81,7 @@ const runtimeEnv = {
   MYWAY_MEDIA_CALLBACK_SECRET: 'local-media-callback-secret',
   MYWAY_OLLAMA_BASE_URL: 'http://127.0.0.1:11434',
   MYWAY_OLLAMA_MODEL: 'llama3.1:8b',
+  ASSETS: createFileAssetBucket(),
 };
 
 function buildRequestUrl(req: http.IncomingMessage): string {

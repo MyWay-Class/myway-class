@@ -354,7 +354,7 @@ export function LectureWatchPage({
               </div>
             ) : null}
 
-            {activePanelTab === 'chat' ? <LectureSideChatPanel highlightedLecture={currentLecture} sessionToken={sessionToken} /> : null}
+            {activePanelTab === 'chat' ? <LectureSideChatPanel highlightedLecture={highlightedLecture} sessionToken={sessionToken} /> : null}
           </div>
         </aside>
       </section>
