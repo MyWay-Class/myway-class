@@ -34,8 +34,8 @@ function circularProgress(value: number) {
 export function HomePage({ session, dashboard, courses, highlightedLecture, onNavigate, onSelectCourse }: HomePageProps) {
   const averageProgress =
     dashboard?.average_progress ?? Math.round(courses.reduce((sum, course) => sum + course.progress_percent, 0) / Math.max(courses.length, 1));
-  const categories = [...new Set(courses.map((item) => item.category).filter((category): category is string => Boolean(category)))];
-  const tags = [...new Set(courses.flatMap((course) => (Array.isArray(course.tags) ? course.tags : [])))].slice(0, 5);
+  const categories = [...new Set(courses.map((item) => item.category))];
+  const tags = [...new Set(courses.flatMap((course) => course.tags))].slice(0, 5);
   const continueCourse = highlightedLecture
     ? courses.find((course) => course.id === highlightedLecture.course_id) ?? courses[0] ?? null
     : courses[0] ?? null;
@@ -43,14 +43,14 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[30px] bg-[linear-gradient(135deg,#082f49_0%,#0f766e_54%,#1f2937_100%)] px-6 py-8 text-white shadow-[0_22px_48px_rgba(15,23,42,0.18)] lg:px-8 lg:py-10">
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_70%_30%,rgba(34,211,238,0.24),transparent_55%)]" />
+      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-6 py-8 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)] lg:px-8 lg:py-10">
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_70%_30%,rgba(168,85,247,0.30),transparent_55%)]" />
         <div className="relative z-10 max-w-2xl">
           <span className="inline-flex rounded-full bg-white/10 px-4 py-2 text-[12px] font-semibold text-white/90 backdrop-blur">
             AI 기반 학습 플랫폼 · {session.user.name}
           </span>
-          <h2 className="mt-6 text-[2.25rem] font-extrabold tracking-[-0.04em] leading-[1.05] text-white lg:text-[3.4rem]">
-            찾기 쉽고
+          <h2 className="mt-6 text-[2.45rem] font-extrabold tracking-[-0.06em] leading-[1.05] text-white lg:text-[4rem]">
+            찾기 쉽고,
             <br />
             보기 쉬운 학습 화면
           </h2>
@@ -63,17 +63,17 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
             <button
               type="button"
               onClick={() => onNavigate('courses')}
-              className="min-h-11 rounded-xl bg-white px-5 py-3 text-[13px] font-semibold text-cyan-800 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition hover:-translate-y-0.5"
+              className="rounded-full bg-white px-5 py-3 text-[13px] font-semibold text-indigo-700 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition hover:-translate-y-0.5"
             >
               강의 탐색하기
             </button>
-              <button
-                type="button"
-                onClick={() => onNavigate('dashboard')}
-                className="min-h-11 rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-[13px] font-semibold text-white backdrop-blur transition hover:bg-white/15"
-              >
-                대시보드 보기
-              </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('dashboard')}
+              className="rounded-full border border-white/25 bg-white/10 px-5 py-3 text-[13px] font-semibold text-white backdrop-blur transition hover:bg-white/15"
+            >
+              로그인 후 계속
+            </button>
           </div>
 
           <div className="mt-8 flex flex-wrap gap-2">
@@ -96,9 +96,9 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
             key={action.page}
             type="button"
             onClick={() => onNavigate(action.page)}
-            className="group rounded-[28px] border border-[var(--app-border)] bg-white px-5 py-5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
+            className="group rounded-[28px] border border-[var(--app-border)] bg-white px-5 py-5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-[var(--app-border-focus)] hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-[22px] text-cyan-700 transition group-hover:bg-cyan-600 group-hover:text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-[22px] text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
               <i className={action.icon} />
             </div>
             <div className="mt-4 text-[14px] font-bold text-[var(--app-text)]">{action.label}</div>
@@ -114,14 +114,14 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
               <h3 className="text-[15px] font-bold text-[var(--app-text)]">지금 이어볼 강의</h3>
               <p className="mt-1 text-[12px] text-[var(--app-text-muted)]">로그인 후 처음 보는 홈에서도 바로 다음 학습으로 이동합니다.</p>
             </div>
-            <div className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
-              {dashboard?.courses?.filter((course) => course.enrolled).length ?? 0}개 수강 중
+            <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
+              {dashboard?.courses.filter((course) => course.enrolled).length ?? 0}개 수강 중
             </div>
           </div>
 
           {highlightedLecture && continueCourse ? (
             <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-              <div className="rounded-[26px] bg-[linear-gradient(135deg,#082f49_0%,#0e7490_60%,#1f2937_100%)] px-5 py-5 text-white">
+              <div className="rounded-[26px] bg-[linear-gradient(135deg,#070b1b_0%,#1d4ed8_60%,#312e81_100%)] px-5 py-5 text-white">
                 <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90">
                   홈 시작
                 </div>
@@ -136,14 +136,14 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
                       onSelectCourse(highlightedLecture.course_id);
                       onNavigate('courses');
                     }}
-                    className="min-h-10 rounded-xl bg-white px-4 py-2 text-[12px] font-semibold text-cyan-800 transition hover:bg-cyan-50"
+                    className="rounded-full bg-white px-4 py-2 text-[12px] font-semibold text-indigo-700 transition hover:bg-indigo-50"
                   >
                     내 강의 보기
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate('ai-chat')}
-                    className="min-h-10 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-white/15"
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-white/15"
                   >
                     챗봇으로 질문
                   </button>
@@ -153,7 +153,7 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
               <div className="rounded-[26px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-5">
                 <div className="flex items-center justify-between">
                   <div>
-                      <div className="text-[12px] font-semibold text-cyan-700">진도</div>
+                    <div className="text-[12px] font-semibold text-indigo-600">진도</div>
                     <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-[var(--app-text)]">
                       {continueCourse.progress_percent}%
                     </div>
@@ -166,7 +166,7 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
                   </div>
                 </div>
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                  <div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(continueCourse.progress_percent, 8)}%` }} />
+                  <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.max(continueCourse.progress_percent, 8)}%` }} />
                 </div>
                 <div className="mt-4 space-y-2">
                   <div className="rounded-2xl bg-white px-4 py-3">
@@ -209,7 +209,7 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
                   cy="18"
                   r="16"
                   fill="none"
-                  stroke="rgb(8, 145, 178)"
+                  stroke="rgb(79, 70, 229)"
                   strokeWidth="2.5"
                   strokeDasharray={`${progress.circumference} ${progress.circumference}`}
                   strokeDashoffset={progress.offset}
@@ -221,7 +221,7 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
               <div className="rounded-2xl bg-[var(--app-surface-soft)] px-4 py-3">
                 <div className="text-[11px] text-[var(--app-text-muted)]">수강 중</div>
                 <div className="mt-1 text-[18px] font-extrabold text-[var(--app-text)]">
-                  {dashboard?.courses?.filter((course) => course.enrolled).length ?? 0}
+                  {dashboard?.courses.filter((course) => course.enrolled).length ?? 0}
                 </div>
               </div>
               <div className="rounded-2xl bg-[var(--app-surface-soft)] px-4 py-3">
