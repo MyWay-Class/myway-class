@@ -8,23 +8,13 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "cmd /c scripts\\dev.bat",
+    "dev": "npm run dev:frontend",
     "dev:frontend": "npm --workspace @myway/frontend run dev",
-    "dev:backend": "npm --workspace @myway/backend run dev",
-    "dev:media-processor": "npx esbuild scripts/media-processor/server.ts --bundle --platform=node --format=esm --external:ffmpeg-static --outfile=dist/media-processor.bundle.mjs && node dist/media-processor.bundle.mjs",
-    "check:media-processor": "tsc -p scripts/media-processor/tsconfig.json --noEmit",
-    "check:frontend-deps": "npm ls --workspace @myway/frontend --depth=0",
-    "check:backend-deps": "npm ls --workspace @myway/backend --depth=0",
-    "check:deps": "npm run check:frontend-deps && npm run check:backend-deps",
+    "dev:backend": "cd backend-spring && mvn spring-boot:run",
+    "dev:backend:legacy": "npm --workspace @myway/backend run dev",
     "build:frontend": "npm --workspace @myway/frontend run build",
-    "build:backend": "npm --workspace @myway/backend run build",
-    "build": "npm run build:frontend && npm run build:backend",
-    "verify": "npm run check:deps && npm run check:media-processor && npm run build:backend && npm exec --workspace @myway/frontend -- tsc -p tsconfig.json --noEmit"
-  },
-  "devDependencies": {
-    "@cspotcode/source-map-support": "^0.8.1"
-  },
-  "dependencies": {
-    "ffmpeg-static": "^5.3.0"
+    "build:backend": "cd backend-spring && mvn -DskipTests package",
+    "build:backend:legacy": "npm --workspace @myway/backend run build",
+    "build": "npm run build:frontend && npm run build:backend"
   }
 }
