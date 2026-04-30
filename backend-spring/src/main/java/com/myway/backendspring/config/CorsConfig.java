@@ -1,4 +1,4 @@
-﻿package com.myway.backendspring.config;
+package com.myway.backendspring.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;

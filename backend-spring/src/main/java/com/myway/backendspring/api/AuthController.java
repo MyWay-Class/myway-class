@@ -1,4 +1,4 @@
-﻿package com.myway.backendspring.api;
+package com.myway.backendspring.api;
 
 import com.myway.backendspring.auth.DemoUser;
 import com.myway.backendspring.auth.DemoUsers;

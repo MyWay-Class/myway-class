@@ -1,4 +1,4 @@
-﻿package com.myway.backendspring.common;
+package com.myway.backendspring.common;
 
 public record ApiResponse<T>(boolean success, T data, ApiError error, String message) {
     public static <T> ApiResponse<T> success(T data, String message) {

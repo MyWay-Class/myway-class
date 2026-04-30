@@ -1,4 +1,4 @@
-﻿package com.myway.backendspring.auth;
+package com.myway.backendspring.auth;
 
 public record DemoUser(
         String id,
