@@ -4,6 +4,7 @@ import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.feature.FeatureStoreService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +17,16 @@ import java.util.Map;
 public class ShortformController {
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
+    private final String callbackToken;
 
-    public ShortformController(SessionService sessionService, FeatureStoreService featureStore) {
+    public ShortformController(
+            SessionService sessionService,
+            FeatureStoreService featureStore,
+            @Value("${myway.shortform.callback.token:dev-shortform-callback-token}") String callbackToken
+    ) {
         this.sessionService = sessionService;
         this.featureStore = featureStore;
+        this.callbackToken = callbackToken;
     }
 
     private SessionView require(String auth) { return sessionService.me(auth); }
@@ -115,7 +122,13 @@ public class ShortformController {
     ) {}
 
     @PostMapping("/export/callback")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> exportCallback(@RequestBody ExportCallbackRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> exportCallback(
+            @RequestHeader(value = "X-Callback-Token", required = false) String token,
+            @RequestBody ExportCallbackRequest body
+    ) {
+        if (token == null || token.isBlank() || !token.equals(callbackToken)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "유효한 callback token이 필요합니다."));
+        }
         if (body == null) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "요청 본문이 올바르지 않습니다."));
         }
