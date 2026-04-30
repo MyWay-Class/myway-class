@@ -2,8 +2,13 @@
 
 ## Runtime
 - Java: 21
-- Build: Maven (`backend-spring/pom.xml`)
+- Build: Maven Wrapper (`backend-spring/mvnw.cmd`, `backend-spring/pom.xml`)
 - API Port: 8787
+
+## Local Commands
+- Run: `mvnw.cmd spring-boot:run`
+- Test: `mvnw.cmd test`
+- Package: `mvnw.cmd -DskipTests package`
 
 ## Implemented Endpoints
 - GET `/`
