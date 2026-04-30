@@ -15,10 +15,15 @@ permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: auto-pr-review-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   review:
     name: auto-pr-review
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
