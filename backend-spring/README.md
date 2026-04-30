@@ -10,6 +10,16 @@
 - Test: `mvnw.cmd test`
 - Package: `mvnw.cmd -DskipTests package`
 
+## JAVA_HOME Setup (Windows)
+- one-time setup script:
+  - `powershell -ExecutionPolicy Bypass -File ..\\scripts\\setup\\set-java-home.ps1 -JavaHome "C:\\Program Files\\Java\\jdk-21"`
+- then reopen terminal and validate:
+  - `mvnw.cmd -v`
+
+## CI
+- GitHub Actions workflow: `.github/workflows/backend-spring-tests.yml`
+- trigger: push/pull_request to `dev`
+
 ## Implemented Endpoints
 - GET `/`
 - GET `/api/v1/health`
