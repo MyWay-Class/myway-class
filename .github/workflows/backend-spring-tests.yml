@@ -5,6 +5,7 @@ on:
     branches: [ dev ]
   push:
     branches: [ dev ]
+  workflow_dispatch:
 
 concurrency:
   group: backend-spring-tests-${{ github.workflow }}-${{ github.ref }}
