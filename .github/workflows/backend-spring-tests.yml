@@ -6,9 +6,14 @@ on:
   push:
     branches: [ dev ]
 
+concurrency:
+  group: backend-spring-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test-backend-spring:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend-spring
