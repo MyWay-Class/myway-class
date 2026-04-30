@@ -1,4 +1,4 @@
-﻿package com.myway.backendspring.auth;
+package com.myway.backendspring.auth;
 
 import java.util.List;
 import java.util.Map;

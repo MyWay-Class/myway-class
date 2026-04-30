@@ -1,4 +1,4 @@
-﻿package com.myway.backendspring.api;
+package com.myway.backendspring.api;
 
 import com.myway.backendspring.common.ApiResponse;
 import org.springframework.http.HttpStatus;

@@ -1,4 +1,4 @@
-﻿package com.myway.backendspring.domain;
+package com.myway.backendspring.domain;
 
 import org.springframework.stereotype.Service;
 

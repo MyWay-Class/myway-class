@@ -1,4 +1,4 @@
-﻿package com.myway.backendspring.integration;
+package com.myway.backendspring.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -64,7 +64,7 @@ class ShortformRetryStateIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         JsonNode staleRoot = objectMapper.readTree(staleCb);
-        assertThat(staleRoot.path("message").asText()).contains("무시");
+        assertThat(staleRoot.path("data").path("callback_ignored").asBoolean()).isTrue();
 
         String okCb = mockMvc.perform(post("/api/v1/shortform/export/callback")
                         .header("X-Callback-Token", "dev-shortform-callback-token")
