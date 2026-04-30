@@ -1,4 +1,4 @@
-﻿## 하네스: myway-class
+## 하네스: myway-class
 
 **목표:** myway-class 워크스페이스의 프론트/백엔드/QA 협업 작업을 에이전트 팀 방식으로 표준화한다.
 
@@ -8,3 +8,8 @@
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |------|----------|------|------|
 | 2026-04-29 | 프로젝트 전용 하네스 초기 구성 | agents/, skills/, AGENTS.md | 하네스 세분화 및 트리거 검증 요청 |
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
