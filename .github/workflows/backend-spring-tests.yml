@@ -23,5 +23,8 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Grant execute permission for Maven Wrapper
+        run: chmod +x mvnw
+
       - name: Run tests (Maven Wrapper)
         run: ./mvnw test
