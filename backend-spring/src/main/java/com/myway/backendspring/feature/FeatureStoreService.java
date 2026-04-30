@@ -20,6 +20,7 @@ public class FeatureStoreService {
     private static final String SHORTFORM_EXTRACTION_SCOPE = "shortform_extraction";
     private static final String SHORTFORM_VIDEO_SCOPE = "shortform_video";
     private static final String CUSTOM_COURSE_SCOPE = "custom_course";
+    private static final int SHORTFORM_MAX_RETRY = 3;
 
     private final FeatureJdbcStore store;
 
@@ -150,8 +151,13 @@ public class FeatureStoreService {
         video.put("user_id", userId);
         video.put("title", payload.getOrDefault("title", "untitled"));
         video.put("description", payload.getOrDefault("description", ""));
-        video.put("export_status", "COMPLETED");
         video.put("video_url", "https://example.com/shortform/" + id + ".mp4");
+        video.put("export_status", "COMPLETED");
+        video.put("retry_count", 0);
+        video.put("last_event_version", 0L);
+        video.put("export_result_url", video.get("video_url"));
+        video.put("error_message", null);
+        video.put("updated_at", Instant.now().toString());
 
         store.upsertKv(SHORTFORM_VIDEO_SCOPE, id, video);
         store.insertEvent(SHORTFORM_VIDEO_SCOPE + "_library", userId, id, video);
@@ -161,6 +167,67 @@ public class FeatureStoreService {
 
     public Map<String, Object> shortformVideo(String id) {
         return store.getKv(SHORTFORM_VIDEO_SCOPE, id);
+    }
+
+    public Map<String, Object> retryShortformExport(String userId, String shortformId) {
+        Map<String, Object> video = store.getKv(SHORTFORM_VIDEO_SCOPE, shortformId);
+        if (video == null) {
+            return null;
+        }
+        if (!userId.equals(String.valueOf(video.getOrDefault("user_id", "")))) {
+            return Map.of("error", "FORBIDDEN");
+        }
+
+        int retryCount = asInt(video.get("retry_count"));
+        if (retryCount >= SHORTFORM_MAX_RETRY) {
+            video.put("export_status", "FAILED_PERMANENT");
+            video.put("updated_at", Instant.now().toString());
+            store.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
+            return video;
+        }
+
+        video.put("retry_count", retryCount + 1);
+        video.put("export_status", "PROCESSING");
+        video.put("error_message", null);
+        video.put("updated_at", Instant.now().toString());
+        store.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
+        return video;
+    }
+
+    public Map<String, Object> applyShortformExportCallback(String shortformId, String status, long eventVersion, String videoUrl, String errorMessage) {
+        Map<String, Object> video = store.getKv(SHORTFORM_VIDEO_SCOPE, shortformId);
+        if (video == null) {
+            return null;
+        }
+
+        long currentVersion = asLong(video.get("last_event_version"));
+        if (eventVersion <= currentVersion) {
+            video.put("callback_ignored", true);
+            return video;
+        }
+
+        video.put("last_event_version", eventVersion);
+        video.put("updated_at", Instant.now().toString());
+
+        if ("FAILED".equalsIgnoreCase(status)) {
+            int retryCount = asInt(video.get("retry_count"));
+            if (retryCount >= SHORTFORM_MAX_RETRY) {
+                video.put("export_status", "FAILED_PERMANENT");
+            } else {
+                video.put("export_status", "FAILED");
+            }
+            video.put("error_message", errorMessage != null ? errorMessage : "export callback failure");
+        } else {
+            video.put("export_status", "COMPLETED");
+            if (videoUrl != null && !videoUrl.isBlank()) {
+                video.put("video_url", videoUrl);
+                video.put("export_result_url", videoUrl);
+            }
+            video.put("error_message", null);
+        }
+
+        store.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
+        return video;
     }
 
     public List<Map<String, Object>> shortformLibrary(String userId) {
@@ -198,5 +265,33 @@ public class FeatureStoreService {
 
     public List<Map<String, Object>> communityCustomCourses(String courseId) {
         return store.listEventsByScope(CUSTOM_COURSE_SCOPE + "_community");
+    }
+
+    private int asInt(Object value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value instanceof Number n) {
+            return n.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private long asLong(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number n) {
+            return n.longValue();
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (Exception ignored) {
+            return 0L;
+        }
     }
 }
