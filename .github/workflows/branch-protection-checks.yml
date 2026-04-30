@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - dev
+  workflow_dispatch:
 
 concurrency:
   group: branch-protection-checks-${{ github.workflow }}-${{ github.ref }}
