@@ -1,4 +1,4 @@
-﻿name: backend-spring-tests
+name: backend-spring-tests
 
 on:
   pull_request:
