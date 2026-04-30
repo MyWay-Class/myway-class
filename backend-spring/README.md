@@ -18,7 +18,9 @@
 
 ## CI
 - GitHub Actions workflow: `.github/workflows/backend-spring-tests.yml`
-- trigger: push/pull_request to `dev`
+- trigger: push/pull_request to `dev`, `workflow_dispatch`(수동 실행)
+- concurrency: 동일 브랜치에서 새 실행 시작 시 이전 실행 자동 취소(`cancel-in-progress: true`)
+- timeout: job 기준 15분(`timeout-minutes: 15`)
 
 ## Implemented Endpoints
 - GET `/`
