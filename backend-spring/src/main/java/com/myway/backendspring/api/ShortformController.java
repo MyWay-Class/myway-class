@@ -87,7 +87,70 @@ public class ShortformController {
 
     @PostMapping("/{shortformId}/export/retry")
     public ResponseEntity<ApiResponse<Map<String, Object>>> retry(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String shortformId) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.success(Map.of("id", shortformId, "export_status", "PROCESSING"), "숏폼 export job이 다시 시작되었습니다."));
+        SessionView s = require(auth);
+        if (s == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+
+        Map<String, Object> updated = featureStore.retryShortformExport(s.user().id(), shortformId);
+        if (updated == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("SHORTFORM_NOT_FOUND", "숏폼을 찾을 수 없습니다."));
+        }
+        if ("FORBIDDEN".equals(updated.get("error"))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "본인 숏폼만 다시 내보낼 수 있습니다."));
+        }
+
+        String status = String.valueOf(updated.getOrDefault("export_status", "PROCESSING"));
+        if ("FAILED_PERMANENT".equals(status)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.success(updated, "최대 재시도 횟수를 초과했습니다."));
+        }
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.success(updated, "숏폼 export job이 다시 시작되었습니다."));
+    }
+
+    public record ExportCallbackRequest(
+            String shortform_id,
+            String video_id,
+            String status,
+            String video_url,
+            String error_message,
+            Long event_version
+    ) {}
+
+    @PostMapping("/export/callback")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> exportCallback(@RequestBody ExportCallbackRequest body) {
+        if (body == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "요청 본문이 올바르지 않습니다."));
+        }
+        String shortformId = body.shortform_id() != null && !body.shortform_id().isBlank()
+                ? body.shortform_id().trim()
+                : (body.video_id() != null ? body.video_id().trim() : "");
+        if (shortformId.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_ID_REQUIRED", "shortform_id가 필요합니다."));
+        }
+
+        long eventVersion = body.event_version() != null ? body.event_version() : 1L;
+        String status = body.status() != null ? body.status() : "COMPLETED";
+
+        Map<String, Object> updated = featureStore.applyShortformExportCallback(
+                shortformId,
+                status,
+                eventVersion,
+                body.video_url(),
+                body.error_message()
+        );
+
+        if (updated == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("SHORTFORM_NOT_FOUND", "숏폼을 찾을 수 없습니다."));
+        }
+
+        if (Boolean.TRUE.equals(updated.get("callback_ignored"))) {
+            return ResponseEntity.ok(ApiResponse.success(updated, "오래된 callback 이벤트를 무시했습니다."));
+        }
+
+        if ("FAILED_PERMANENT".equals(updated.get("export_status"))) {
+            return ResponseEntity.ok(ApiResponse.success(updated, "숏폼 export가 영구 실패 상태로 전환되었습니다."));
+        }
+        if ("FAILED".equals(updated.get("export_status"))) {
+            return ResponseEntity.ok(ApiResponse.success(updated, "숏폼 export가 실패했습니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(updated, "숏폼 export가 완료되었습니다."));
     }
 }
