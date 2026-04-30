@@ -47,6 +47,7 @@ class ShortformRetryStateIntegrationTest {
         assertThat(retryRoot.path("data").path("export_status").asText()).isEqualTo("PROCESSING");
 
         String failedCb = mockMvc.perform(post("/api/v1/shortform/export/callback")
+                        .header("X-Callback-Token", "dev-shortform-callback-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"shortform_id\":\"" + shortformId + "\",\"status\":\"FAILED\",\"error_message\":\"boom\",\"event_version\":2}"))
                 .andExpect(status().isOk())
@@ -56,6 +57,7 @@ class ShortformRetryStateIntegrationTest {
         assertThat(failedRoot.path("data").path("export_status").asText()).isEqualTo("FAILED");
 
         String staleCb = mockMvc.perform(post("/api/v1/shortform/export/callback")
+                        .header("X-Callback-Token", "dev-shortform-callback-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"shortform_id\":\"" + shortformId + "\",\"status\":\"COMPLETED\",\"video_url\":\"https://old\",\"event_version\":1}"))
                 .andExpect(status().isOk())
@@ -65,6 +67,7 @@ class ShortformRetryStateIntegrationTest {
         assertThat(staleRoot.path("message").asText()).contains("무시");
 
         String okCb = mockMvc.perform(post("/api/v1/shortform/export/callback")
+                        .header("X-Callback-Token", "dev-shortform-callback-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"shortform_id\":\"" + shortformId + "\",\"status\":\"COMPLETED\",\"video_url\":\"https://new\",\"event_version\":3}"))
                 .andExpect(status().isOk())
@@ -73,6 +76,11 @@ class ShortformRetryStateIntegrationTest {
         JsonNode okRoot = objectMapper.readTree(okCb);
         assertThat(okRoot.path("data").path("export_status").asText()).isEqualTo("COMPLETED");
         assertThat(okRoot.path("data").path("video_url").asText()).isEqualTo("https://new");
+
+        mockMvc.perform(post("/api/v1/shortform/export/callback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"shortform_id\":\"" + shortformId + "\",\"status\":\"COMPLETED\",\"event_version\":4}"))
+                .andExpect(status().isForbidden());
     }
 
     private String loginAndGetToken() throws Exception {

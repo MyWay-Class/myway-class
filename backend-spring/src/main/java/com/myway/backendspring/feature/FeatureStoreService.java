@@ -1,6 +1,7 @@
 package com.myway.backendspring.feature;
 
 import com.myway.backendspring.persistence.FeatureJdbcStore;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -20,12 +21,15 @@ public class FeatureStoreService {
     private static final String SHORTFORM_EXTRACTION_SCOPE = "shortform_extraction";
     private static final String SHORTFORM_VIDEO_SCOPE = "shortform_video";
     private static final String CUSTOM_COURSE_SCOPE = "custom_course";
-    private static final int SHORTFORM_MAX_RETRY = 3;
-
     private final FeatureJdbcStore store;
+    private final int shortformMaxRetry;
 
-    public FeatureStoreService(FeatureJdbcStore store) {
+    public FeatureStoreService(
+            FeatureJdbcStore store,
+            @Value("${myway.shortform.retry.max-attempts:3}") int shortformMaxRetry
+    ) {
         this.store = store;
+        this.shortformMaxRetry = Math.max(1, shortformMaxRetry);
         ensureDefaults();
     }
 
@@ -179,7 +183,7 @@ public class FeatureStoreService {
         }
 
         int retryCount = asInt(video.get("retry_count"));
-        if (retryCount >= SHORTFORM_MAX_RETRY) {
+        if (retryCount >= shortformMaxRetry) {
             video.put("export_status", "FAILED_PERMANENT");
             video.put("updated_at", Instant.now().toString());
             store.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
@@ -211,7 +215,7 @@ public class FeatureStoreService {
 
         if ("FAILED".equalsIgnoreCase(status)) {
             int retryCount = asInt(video.get("retry_count"));
-            if (retryCount >= SHORTFORM_MAX_RETRY) {
+            if (retryCount >= shortformMaxRetry) {
                 video.put("export_status", "FAILED_PERMANENT");
             } else {
                 video.put("export_status", "FAILED");
