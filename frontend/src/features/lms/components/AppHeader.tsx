@@ -7,8 +7,8 @@ type AppHeaderProps = {
 
 export function AppHeader({ title, theme, onToggleTheme, onOpenMobile }: AppHeaderProps) {
   return (
-    <header className="glass sticky top-0 z-10 border-b border-[var(--app-border)]">
-      <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="glass sticky top-0 z-10 border-b border-[var(--app-border)]/80">
+      <div className="mx-auto flex h-16 max-w-[1480px] items-center justify-between px-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -17,15 +17,20 @@ export function AppHeader({ title, theme, onToggleTheme, onOpenMobile }: AppHead
           >
             <i className="ri-menu-line text-lg" />
           </button>
-          <div>
-            <h1 className="text-[15px] font-bold tracking-tight text-[var(--app-text)]">{title}</h1>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--app-text-muted)]">Workspace</p>
+            <h1 className="truncate text-[15px] font-bold tracking-tight text-[var(--app-text)]">{title}</h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="hidden items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-500 sm:inline-flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            LIVE
+          </span>
           <button
             type="button"
             title="알림"
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl text-[var(--app-text-muted)] transition-all hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] active:scale-95"
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-transparent text-[var(--app-text-muted)] transition-all hover:border-[var(--app-border)] hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] active:scale-95"
           >
             <i className="ri-notification-3-line text-[16px]" />
             <span className="absolute right-[5px] top-[5px] h-[7px] w-[7px] rounded-full border border-white bg-red-500" />
@@ -34,7 +39,7 @@ export function AppHeader({ title, theme, onToggleTheme, onOpenMobile }: AppHead
             type="button"
             onClick={onToggleTheme}
             title={theme === 'light' ? '다크 모드 전환' : '라이트 모드 전환'}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--app-text-muted)] transition-all hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] active:scale-95"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-transparent text-[var(--app-text-muted)] transition-all hover:border-[var(--app-border)] hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] active:scale-95"
           >
             <i className={theme === 'light' ? 'ri-moon-line text-[16px]' : 'ri-sun-line text-[16px]'} />
           </button>
