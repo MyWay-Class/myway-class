@@ -51,6 +51,21 @@ public class ShortformController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.createShortformExtraction(s.user().id(), body), "숏폼 후보가 생성되었습니다."));
     }
 
+    @PutMapping("/candidates/select")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> select(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String extractionId = String.valueOf(body.getOrDefault("extraction_id", "")).trim();
+        if (extractionId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("EXTRACTION_ID_REQUIRED", "extraction_id가 필요합니다."));
+        Object candidateIdsRaw = body.get("candidate_ids");
+        if (!(candidateIdsRaw instanceof List<?> candidateIdsList) || candidateIdsList.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("CANDIDATE_IDS_REQUIRED", "candidate_ids가 필요합니다."));
+        }
+        List<String> candidateIds = candidateIdsList.stream().map(String::valueOf).toList();
+        Map<String, Object> updated = featureStore.selectShortformCandidates(extractionId, candidateIds);
+        if (updated == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "추출 결과를 찾을 수 없습니다."));
+        return ResponseEntity.ok(ApiResponse.success(updated, "후보 선택이 반영되었습니다."));
+    }
+
     @GetMapping("/extraction/{id}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> extraction(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String id) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
@@ -74,22 +89,40 @@ public class ShortformController {
         return ResponseEntity.ok(ApiResponse.success(row));
     }
 
+    @GetMapping("/videos/my")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> videos(@RequestHeader(value = "Authorization", required = false) String auth) {
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        return ResponseEntity.ok(ApiResponse.success(featureStore.shortformVideos(session.user().id())));
+    }
+
     @PostMapping("/share")
     public ResponseEntity<ApiResponse<Map<String, Object>>> share(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(Map.of("shared", true, "video_id", body.get("video_id")), "숏폼이 공유되었습니다."));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        Map<String, Object> row = featureStore.shareShortform(session.user().id(), body);
+        if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SHARE_FAILED", "숏폼을 공유할 수 없습니다."));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(row, "숏폼이 공유되었습니다."));
     }
 
     @PostMapping("/save")
     public ResponseEntity<ApiResponse<Map<String, Object>>> save(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(Map.of("saved", true, "video_id", body.get("video_id")), "숏폼이 담아가기 되었습니다."));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        Map<String, Object> row = featureStore.saveShortform(session.user().id(), body);
+        if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SAVE_FAILED", "숏폼을 담아갈 수 없습니다."));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(row, "숏폼이 담아가기 되었습니다."));
     }
 
     @PostMapping("/like")
     public ResponseEntity<ApiResponse<Map<String, Object>>> like(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(Map.of("liked", true, "video_id", body.get("video_id")), "좋아요 상태가 반영되었습니다."));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String videoId = String.valueOf(body.getOrDefault("video_id", "")).trim();
+        if (videoId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("VIDEO_ID_REQUIRED", "video_id가 필요합니다."));
+        Map<String, Object> row = featureStore.toggleShortformLike(session.user().id(), videoId);
+        if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_LIKE_FAILED", "좋아요를 처리할 수 없습니다."));
+        return ResponseEntity.ok(ApiResponse.success(row, "좋아요 상태가 반영되었습니다."));
     }
 
     @PostMapping("/{shortformId}/export/retry")
