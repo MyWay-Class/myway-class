@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -23,11 +24,41 @@ public class CoursesController {
 
     public record MaterialInput(String title, String summary, String file_name) {}
     public record NoticeInput(String title, String content, Boolean pinned) {}
+    public record CourseCreateInput(String title, String description, String category, String difficulty, List<String> lecture_titles) {}
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<CourseDetail>> create(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody CourseCreateInput body) {
+        SessionView session = sessionService.me(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (!canManageCourses(session.user().role())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의를 개설할 권한이 없습니다."));
+        if (body == null || isBlank(body.title()) || isBlank(body.description()) || isBlank(body.category()) || isBlank(body.difficulty())) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("COURSE_CREATE_FIELDS_REQUIRED", "강의 제목, 설명, 카테고리, 난이도가 필요합니다."));
+        }
+
+        List<String> lectureTitles = new ArrayList<>();
+        if (body.lecture_titles() != null) {
+            for (String lectureTitle : body.lecture_titles()) {
+                if (!isBlank(lectureTitle)) {
+                    lectureTitles.add(lectureTitle.trim());
+                }
+            }
+        }
+        CourseDetail created = learningService.createCourse(session.user().id(), body.title().trim(), lectureTitles);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(created, "새 강의가 개설되었습니다."));
+    }
 
     @GetMapping
     public ApiResponse<List<CourseCard>> list(@RequestHeader(value = "Authorization", required = false) String auth) {
         String userId = sessionService.me(auth) != null ? sessionService.me(auth).user().id() : "guest";
         return ApiResponse.success(learningService.listCourseCards(userId));
+    }
+
+    @GetMapping("/manage")
+    public ResponseEntity<ApiResponse<List<CourseCard>>> manage(@RequestHeader(value = "Authorization", required = false) String auth) {
+        SessionView session = sessionService.me(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (!canManageCourses(session.user().role())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의 관리 페이지를 사용할 권한이 없습니다."));
+        return ResponseEntity.ok(ApiResponse.success(learningService.listManagedCourseCards(session.user().id(), session.user().role()), "내 강의 목록을 조회했습니다."));
     }
 
     @GetMapping("/{courseId}")
@@ -79,5 +110,9 @@ public class CoursesController {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private boolean canManageCourses(String role) {
+        return "admin".equals(role) || "instructor".equals(role);
     }
 }
