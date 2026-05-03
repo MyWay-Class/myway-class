@@ -32,6 +32,7 @@ function readStorageValue<T extends string>(key: string, allowed: readonly T[], 
 export function AppShell({ session, activePage, activeNavKey, title, onNavigate, onHome, onLogout, children }: AppShellProps) {
   const [theme, setTheme] = useState<ThemeMode>(() => readStorageValue(themeStorageKey, ['light', 'dark'], 'light'));
   const [dock, setDock] = useState<SidebarDock>(() => readStorageValue(dockStorageKey, ['left', 'right'], 'left'));
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') {
       return false;
@@ -53,6 +54,21 @@ export function AppShell({ session, activePage, activeNavKey, title, onNavigate,
   useEffect(() => {
     window.localStorage.setItem(sidebarStorageKey, String(collapsed));
   }, [collapsed]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [mobileOpen]);
 
   const sidebarWidthClass = collapsed ? 'lg:w-20' : 'lg:w-72';
   const shellOffsetClass = dock === 'right' ? (collapsed ? 'lg:mr-20' : 'lg:mr-72') : (collapsed ? 'lg:ml-20' : 'lg:ml-72');
@@ -83,8 +99,10 @@ export function AppShell({ session, activePage, activeNavKey, title, onNavigate,
           onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
           onOpenMobile={() => setMobileOpen(true)}
         />
-        <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
-          <div className="animate-fade-in">{children}</div>
+        <main className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 lg:px-10">
+          <div className="animate-fade-in rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)]/70 p-4 shadow-[var(--app-shadow)] backdrop-blur-sm sm:p-5 lg:p-6">
+            {children}
+          </div>
         </main>
       </div>
     </div>
