@@ -14,7 +14,6 @@ import java.util.UUID;
 @Service
 public class FeatureStoreService {
     private static final String AI_SETTINGS_SCOPE = "ai_settings";
-    private static final String AI_SETTINGS_ID = "global";
     private static final String TRANSCRIPT_SCOPE = "media_transcript";
     private static final String EXTRACTION_SCOPE = "media_extraction";
     private static final String PIPELINE_SCOPE = "media_pipeline";
@@ -39,9 +38,9 @@ public class FeatureStoreService {
     }
 
     private void ensureDefaults() {
-        Map<String, Object> settings = store.getKv(AI_SETTINGS_SCOPE, AI_SETTINGS_ID);
+        Map<String, Object> settings = store.getKv(AI_SETTINGS_SCOPE, "global");
         if (settings == null) {
-            store.upsertKv(AI_SETTINGS_SCOPE, AI_SETTINGS_ID, new HashMap<>(Map.of(
+            store.upsertKv(AI_SETTINGS_SCOPE, "global", new HashMap<>(Map.of(
                     "daily_limit", 100,
                     "provider", "demo",
                     "model", "demo-v1"
@@ -63,38 +62,55 @@ public class FeatureStoreService {
             changed = true;
         }
         if (changed) {
-            store.upsertKv(AI_SETTINGS_SCOPE, AI_SETTINGS_ID, settings);
+            store.upsertKv(AI_SETTINGS_SCOPE, "global", settings);
         }
     }
 
-    public Map<String, Object> aiInsights() {
-        return Map.of("total_requests", 0, "success_rate", 1.0, "last_updated", Instant.now().toString());
+    public Map<String, Object> aiInsights(String userId) {
+        Map<String, Object> settings = aiSettings(userId);
+        return Map.of(
+                "user_id", userId,
+                "total_requests", 0,
+                "success_rate", 1.0,
+                "provider", settings.getOrDefault("provider", "demo"),
+                "model", settings.getOrDefault("model", "demo-v1"),
+                "last_updated", Instant.now().toString()
+        );
     }
 
-    public Map<String, Object> aiLogs() {
-        return Map.of("items", List.of(), "count", 0);
+    public Map<String, Object> aiLogs(String userId) {
+        return Map.of("user_id", userId, "items", List.of(), "count", 0);
     }
 
-    public Map<String, Object> aiRecommendations() {
-        return Map.of("items", List.of(), "count", 0);
+    public Map<String, Object> aiRecommendations(String userId) {
+        return Map.of("user_id", userId, "items", List.of(), "count", 0);
     }
 
-    public Map<String, Object> aiSettings() {
-        Map<String, Object> settings = store.getKv(AI_SETTINGS_SCOPE, AI_SETTINGS_ID);
-        return settings != null ? settings : Map.of();
+    public Map<String, Object> aiSettings(String userId) {
+        Map<String, Object> global = store.getKv(AI_SETTINGS_SCOPE, "global");
+        Map<String, Object> settings = store.getKv(AI_SETTINGS_SCOPE, userId);
+        if (settings == null) {
+            return global != null ? global : Map.of();
+        }
+        Map<String, Object> merged = new HashMap<>();
+        if (global != null) {
+            merged.putAll(global);
+        }
+        merged.putAll(settings);
+        return merged;
     }
 
-    public Map<String, Object> updateAiSettings(Map<String, Object> patch) {
-        Map<String, Object> settings = new HashMap<>(aiSettings());
+    public Map<String, Object> updateAiSettings(String userId, Map<String, Object> patch) {
+        Map<String, Object> settings = new HashMap<>(aiSettings(userId));
         if (patch != null) {
             settings.putAll(patch);
         }
-        store.upsertKv(AI_SETTINGS_SCOPE, AI_SETTINGS_ID, settings);
+        store.upsertKv(AI_SETTINGS_SCOPE, userId, settings);
         return settings;
     }
 
-    public Map<String, Object> aiProviders() {
-        return Map.of("providers", List.of("demo", "ollama", "gemini"), "current", aiSettings().getOrDefault("provider", "demo"));
+    public Map<String, Object> aiProviders(String userId) {
+        return Map.of("providers", List.of("demo", "ollama", "gemini"), "current", aiSettings(userId).getOrDefault("provider", "demo"));
     }
 
     public Map<String, Object> mediaUpload(String lectureId, String fileName) {
@@ -253,11 +269,12 @@ public class FeatureStoreService {
         video.put("user_id", userId);
         video.put("title", payload.getOrDefault("title", "untitled"));
         video.put("description", payload.getOrDefault("description", ""));
-        video.put("video_url", "https://example.com/shortform/" + id + ".mp4");
-        video.put("export_status", "COMPLETED");
+        video.put("video_url", null);
+        video.put("export_status", "PROCESSING");
         video.put("retry_count", 0);
         video.put("last_event_version", 0L);
-        video.put("export_result_url", video.get("video_url"));
+        video.put("export_result_url", null);
+        video.put("export_job_id", "job_" + id);
         video.put("error_message", null);
         video.put("updated_at", Instant.now().toString());
 

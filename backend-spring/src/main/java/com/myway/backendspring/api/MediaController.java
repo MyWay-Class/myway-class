@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.HandlerMapping;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -34,10 +36,17 @@ public class MediaController {
     }
 
     private SessionView require(String auth) { return sessionService.me(auth); }
+    private boolean canManageMedia(SessionView session) {
+        if (session == null) return false;
+        String role = session.user().role();
+        return "admin".equals(role) || "instructor".equals(role);
+    }
 
     @PostMapping("/upload-video")
     public ResponseEntity<ApiResponse<Map<String, Object>>> upload(@RequestHeader(value = "Authorization", required = false) String auth, @RequestParam("lecture_id") String lectureId, @RequestParam(value = "video_file", required = false) org.springframework.web.multipart.MultipartFile file) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "영상 업로드는 강사와 운영자만 사용할 수 있습니다."));
         if (lectureId == null || lectureId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         String fileName = file != null ? file.getOriginalFilename() : "uploaded.mp4";
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.mediaUpload(lectureId.trim(), fileName), "강의 영상이 업로드되었습니다."));
@@ -45,7 +54,9 @@ public class MediaController {
 
     @PostMapping("/extract-audio")
     public ResponseEntity<ApiResponse<Map<String, Object>>> extract(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
         String lectureId = String.valueOf(body.getOrDefault("lecture_id", "")).trim();
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.createExtraction(lectureId), "오디오 추출 job이 생성되었습니다."));
@@ -120,9 +131,21 @@ public class MediaController {
         return ResponseEntity.ok(ApiResponse.success(Map.of("status", "ok", "service", "spring-media-processor")));
     }
 
-    @GetMapping("/assets/{assetKey}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> assets(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String assetKey) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+    @GetMapping("/assets/**")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> assets(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestHeader(value = "X-Processor-Token", required = false) String processorToken,
+            HttpServletRequest request
+    ) {
+        String path = String.valueOf(request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE));
+        String prefix = "/api/v1/media/assets/";
+        String assetKey = path.startsWith(prefix) ? path.substring(prefix.length()) : "";
+        if (assetKey.isBlank()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
+        }
+        if (processorToken == null || !processorToken.equals(callbackToken)) {
+            if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        }
         Map<String, Object> asset = featureStore.mediaAsset(assetKey);
         if (asset == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(asset));

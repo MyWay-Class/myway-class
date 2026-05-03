@@ -1,6 +1,7 @@
 package com.myway.backendspring.api;
 
 import com.myway.backendspring.common.ApiResponse;
+import com.myway.backendspring.domain.LearningStoreAdminService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,9 +15,11 @@ import java.util.Map;
 @RequestMapping("/api/v1/dev")
 public class DevController {
     private final String appEnv;
+    private final LearningStoreAdminService learningStoreAdminService;
 
-    public DevController(@Value("${myway.app.env:development}") String appEnv) {
+    public DevController(@Value("${myway.app.env:production}") String appEnv, LearningStoreAdminService learningStoreAdminService) {
         this.appEnv = appEnv;
+        this.learningStoreAdminService = learningStoreAdminService;
     }
 
     @PostMapping("/learning-store/reload")
@@ -24,6 +27,6 @@ public class DevController {
         if (!"development".equalsIgnoreCase(appEnv)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("NOT_FOUND", "요청한 리소스를 찾을 수 없습니다."));
         }
-        return ResponseEntity.ok(ApiResponse.success(Map.of("reloaded", true), "학습 저장소를 다시 불러왔습니다."));
+        return ResponseEntity.ok(ApiResponse.success(learningStoreAdminService.reload(), "학습 저장소를 다시 불러왔습니다."));
     }
 }
