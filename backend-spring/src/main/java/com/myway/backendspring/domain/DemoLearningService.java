@@ -38,6 +38,25 @@ public class DemoLearningService {
         return courses.values().stream().map(c -> new CourseCard(c.id(), c.title(), c.instructor_id(), progressPercent(userId, c.id()))).toList();
     }
 
+    public List<CourseCard> listManagedCourseCards(String userId, String role) {
+        return courses.values().stream()
+                .filter(c -> "admin".equals(role) || c.instructor_id().equals(userId))
+                .map(c -> new CourseCard(c.id(), c.title(), c.instructor_id(), progressPercent(userId, c.id())))
+                .toList();
+    }
+
+    public CourseDetail createCourse(String instructorId, String title, List<String> lectureTitles) {
+        String courseId = "crs_" + UUID.randomUUID();
+        List<String> titles = lectureTitles == null || lectureTitles.isEmpty() ? List.of(title) : lectureTitles;
+        List<LectureItem> lectures = new ArrayList<>();
+        for (int i = 0; i < titles.size(); i++) {
+            lectures.add(new LectureItem("lec_" + UUID.randomUUID(), courseId, titles.get(i), 25 + (i * 5)));
+        }
+        CourseDetail detail = new CourseDetail(courseId, title, instructorId, List.copyOf(lectures), 0);
+        courses.put(courseId, detail);
+        return detail;
+    }
+
     public CourseDetail getCourseDetail(String courseId, String userId) {
         CourseDetail base = courses.get(courseId);
         if (base == null) return null;
@@ -51,6 +70,10 @@ public class DemoLearningService {
 
     public LectureItem getLecture(String lectureId) {
         return courses.values().stream().flatMap(c -> c.lectures().stream()).filter(l -> l.id().equals(lectureId)).findFirst().orElse(null);
+    }
+
+    public LectureItem getCourseLecture(String courseId, String lectureId) {
+        return getCourseLectures(courseId).stream().filter(l -> l.id().equals(lectureId)).findFirst().orElse(null);
     }
 
     public DashboardView getDashboard(String userId) {
