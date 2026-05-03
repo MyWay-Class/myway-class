@@ -25,6 +25,8 @@ public class FeatureStoreService {
     private static final String SHORTFORM_SHARE_SCOPE = "shortform_share";
     private static final String SHORTFORM_LIKE_SCOPE = "shortform_like";
     private static final String CUSTOM_COURSE_SCOPE = "custom_course";
+    private static final String AI_USAGE_SCOPE = "ai_usage_daily";
+    private static final String AI_LOG_SCOPE = "ai_log";
     private final FeatureJdbcStore store;
     private final int shortformMaxRetry;
 
@@ -79,11 +81,18 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> aiLogs(String userId) {
-        return Map.of("user_id", userId, "items", List.of(), "count", 0);
+        List<Map<String, Object>> rows = store.listEventsByOwner(AI_LOG_SCOPE, userId);
+        return Map.of("user_id", userId, "items", rows, "count", rows.size());
     }
 
     public Map<String, Object> aiRecommendations(String userId) {
-        return Map.of("user_id", userId, "items", List.of(), "count", 0);
+        return Map.of(
+                "user_id", userId,
+                "items", List.of(
+                        Map.of("id", "rec-1", "type", "study", "title", "최근 질문 기반 복습 추천")
+                ),
+                "count", 1
+        );
     }
 
     public Map<String, Object> aiSettings(String userId) {
@@ -111,6 +120,52 @@ public class FeatureStoreService {
 
     public Map<String, Object> aiProviders(String userId) {
         return Map.of("providers", List.of("demo", "ollama", "gemini"), "current", aiSettings(userId).getOrDefault("provider", "demo"));
+    }
+
+    public boolean canConsumeAi(String userId) {
+        Map<String, Object> settings = aiSettings(userId);
+        int limit = asInt(settings.get("daily_limit"));
+        if (limit <= 0) {
+            limit = 100;
+        }
+        String key = usageKey(userId);
+        Map<String, Object> row = store.getKv(AI_USAGE_SCOPE, key);
+        int used = row == null ? 0 : asInt(row.get("count"));
+        return used < limit;
+    }
+
+    public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
+        String key = usageKey(userId);
+        Map<String, Object> row = store.getKv(AI_USAGE_SCOPE, key);
+        int used = row == null ? 0 : asInt(row.get("count"));
+        Map<String, Object> next = new HashMap<>();
+        next.put("user_id", userId);
+        next.put("day", java.time.LocalDate.now().toString());
+        next.put("count", used + 1);
+        next.put("updated_at", Instant.now().toString());
+        store.upsertKv(AI_USAGE_SCOPE, key, next);
+
+        Map<String, Object> log = new HashMap<>();
+        log.put("id", UUID.randomUUID().toString());
+        log.put("feature", feature);
+        log.put("success", success);
+        log.put("input_text", inputText);
+        log.put("created_at", Instant.now().toString());
+        store.insertEvent(AI_LOG_SCOPE, userId, String.valueOf(log.get("id")), log);
+    }
+
+    public Map<String, Object> ragOverview(String query, String lectureId, String courseId, Integer limit) {
+        List<Map<String, Object>> hits = List.of(
+                Map.of("id", "hit-rag-1", "score", 0.92, "snippet", "RAG 샘플 컨텍스트")
+        );
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("query", query);
+        payload.put("lecture_id", lectureId);
+        payload.put("course_id", courseId);
+        payload.put("limit", limit == null ? 3 : limit);
+        payload.put("hits", hits);
+        payload.put("answer", "RAG 샘플 응답");
+        return payload;
     }
 
     public Map<String, Object> mediaUpload(String lectureId, String fileName) {
@@ -477,5 +532,9 @@ public class FeatureStoreService {
         } catch (Exception ignored) {
             return 0L;
         }
+    }
+
+    private String usageKey(String userId) {
+        return userId + ":" + java.time.LocalDate.now();
     }
 }
