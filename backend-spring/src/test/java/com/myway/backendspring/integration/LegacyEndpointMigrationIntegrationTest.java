@@ -120,6 +120,12 @@ class LegacyEndpointMigrationIntegrationTest {
     void aiCoreEndpoints_shouldReturnLegacyCompatibleSuccessShapes() throws Exception {
         String auth = "Bearer " + loginAndGetToken("usr_std_001");
 
+        mockMvc.perform(put("/api/v1/ai/settings")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"daily_limit\":999999,\"provider\":\"demo\",\"model\":\"demo-v1\"}"))
+                .andExpect(status().isOk());
+
         String intent = mockMvc.perform(post("/api/v1/ai/intent")
                         .header("Authorization", auth)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -208,6 +208,82 @@ class AdminEndpointMigrationIntegrationTest {
         assertThat(objectMapper.readTree(studentSettings).path("data").path("model").asText()).isEqualTo("student-model");
     }
 
+    @Test
+    void aiRag_shouldValidateQueryAndLectureOrCourse() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_std_001");
+
+        mockMvc.perform(put("/api/v1/ai/settings")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"daily_limit\":999999,\"provider\":\"demo\",\"model\":\"demo-v1\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/ai/rag")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/v1/ai/rag")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"spring\"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/v1/ai/rag")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"spring\",\"lecture_id\":\"lec_missing\"}"))
+                .andExpect(status().isNotFound());
+
+        String ok = mockMvc.perform(post("/api/v1/ai/rag")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"spring\",\"course_id\":\"crs_java_01\",\"limit\":5}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(ok).path("data").path("answer").asText()).isNotBlank();
+        assertThat(objectMapper.readTree(ok).path("data").path("limit").asInt()).isEqualTo(5);
+    }
+
+    @Test
+    void aiUsage_shouldApplyDailyLimitAndWriteLogs() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_std_001");
+
+        String beforeLogs = mockMvc.perform(get("/api/v1/ai/logs")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        int usedBefore = objectMapper.readTree(beforeLogs).path("data").path("count").asInt();
+
+        mockMvc.perform(put("/api/v1/ai/settings")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"daily_limit\":" + (usedBefore + 1) + ",\"provider\":\"demo\",\"model\":\"demo-v1\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/ai/intent")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"추천해줘\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/ai/intent")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"한 번 더\"}"))
+                .andExpect(status().isTooManyRequests());
+
+        String logs = mockMvc.perform(get("/api/v1/ai/logs")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode data = objectMapper.readTree(logs).path("data");
+        assertThat(data.path("count").asInt()).isGreaterThanOrEqualTo(1);
+        assertThat(data.path("items").isArray()).isTrue();
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
