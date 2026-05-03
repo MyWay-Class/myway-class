@@ -29,32 +29,37 @@ public class AiController {
 
     @GetMapping("/insights")
     public ResponseEntity<ApiResponse<Map<String, Object>>> insights(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiInsights()));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        return ResponseEntity.ok(ApiResponse.success(featureStore.aiInsights(session.user().id())));
     }
 
     @GetMapping("/logs")
     public ResponseEntity<ApiResponse<Map<String, Object>>> logs(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiLogs()));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        return ResponseEntity.ok(ApiResponse.success(featureStore.aiLogs(session.user().id())));
     }
 
     @GetMapping("/recommendations")
     public ResponseEntity<ApiResponse<Map<String, Object>>> recs(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiRecommendations()));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        return ResponseEntity.ok(ApiResponse.success(featureStore.aiRecommendations(session.user().id())));
     }
 
     @GetMapping("/settings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> settings(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiSettings()));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        return ResponseEntity.ok(ApiResponse.success(featureStore.aiSettings(session.user().id())));
     }
 
     @PostMapping("/settings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateSettings(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.updateAiSettings(body), "설정이 저장되었습니다."));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        return ResponseEntity.ok(ApiResponse.success(featureStore.updateAiSettings(session.user().id(), body), "설정이 저장되었습니다."));
     }
 
     @PutMapping("/settings")
@@ -64,8 +69,9 @@ public class AiController {
 
     @GetMapping("/providers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> providers(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiProviders()));
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        return ResponseEntity.ok(ApiResponse.success(featureStore.aiProviders(session.user().id())));
     }
 
     @PostMapping("/rag")
