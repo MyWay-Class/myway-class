@@ -79,7 +79,7 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
   const visualCourses = courseCards.slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-[#f8f9fb]">
+    <div className="min-h-screen bg-[var(--app-bg)]">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
@@ -142,9 +142,9 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1320px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-10">
         <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-7 py-8 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)] lg:px-8 lg:py-9">
+          <div className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#0f172a_0%,#0f4c81_52%,#1f2937_100%)] px-7 py-8 text-white shadow-[0_24px_48px_rgba(15,23,42,0.18)] lg:px-8 lg:py-9">
             <div className="pointer-events-none absolute -right-8 top-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-cyan-300/10 blur-3xl" />
 
@@ -152,8 +152,8 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
               <span className="inline-flex rounded-full bg-white/14 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
                 강의 탐색 허브
               </span>
-              <h1 className="mt-5 text-[2.1rem] font-extrabold tracking-[-0.05em] text-white lg:text-[3.2rem]">
-                찾기 쉽고,
+              <h1 className="mt-5 text-[2rem] font-extrabold tracking-[-0.04em] text-white lg:text-[2.7rem]">
+                찾기 쉽고
                 <br />
                 보기 쉬운 학습 화면
               </h1>
@@ -196,7 +196,7 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
           </div>
 
           <div className="grid gap-4">
-            <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Search</div>
@@ -244,7 +244,7 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
                 visualCourses.map((course) => (
                   <article
                     key={course.id}
-                    className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5"
+                    className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5"
                   >
                     <div className="relative h-32 bg-[linear-gradient(135deg,#4338ca,#1d4ed8)]">
                       <div className="absolute inset-0 opacity-20">
