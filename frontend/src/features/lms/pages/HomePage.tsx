@@ -43,14 +43,14 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-6 py-8 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)] lg:px-8 lg:py-10">
+      <section className="overflow-hidden rounded-[30px] bg-[linear-gradient(135deg,#0b1220_0%,#1d4ed8_52%,#1f2937_100%)] px-6 py-8 text-white shadow-[0_22px_48px_rgba(15,23,42,0.18)] lg:px-8 lg:py-10">
         <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_70%_30%,rgba(168,85,247,0.30),transparent_55%)]" />
         <div className="relative z-10 max-w-2xl">
           <span className="inline-flex rounded-full bg-white/10 px-4 py-2 text-[12px] font-semibold text-white/90 backdrop-blur">
             AI 기반 학습 플랫폼 · {session.user.name}
           </span>
-          <h2 className="mt-6 text-[2.45rem] font-extrabold tracking-[-0.06em] leading-[1.05] text-white lg:text-[4rem]">
-            찾기 쉽고,
+          <h2 className="mt-6 text-[2.25rem] font-extrabold tracking-[-0.04em] leading-[1.05] text-white lg:text-[3.4rem]">
+            찾기 쉽고
             <br />
             보기 쉬운 학습 화면
           </h2>
@@ -67,13 +67,13 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
             >
               강의 탐색하기
             </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('dashboard')}
-              className="rounded-full border border-white/25 bg-white/10 px-5 py-3 text-[13px] font-semibold text-white backdrop-blur transition hover:bg-white/15"
-            >
-              로그인 후 계속
-            </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('dashboard')}
+                className="rounded-full border border-white/25 bg-white/10 px-5 py-3 text-[13px] font-semibold text-white backdrop-blur transition hover:bg-white/15"
+              >
+                대시보드 보기
+              </button>
           </div>
 
           <div className="mt-8 flex flex-wrap gap-2">

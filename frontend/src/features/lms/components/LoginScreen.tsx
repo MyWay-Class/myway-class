@@ -29,14 +29,14 @@ const iconClass: Record<'student' | 'instructor' | 'admin', string> = {
 
 export function LoginScreen({ demoUsers, busy, onLogin, onBackToHome }: LoginScreenProps) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f8f9fb]">
-      <div className="pointer-events-none absolute -right-28 -top-36 h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle,rgba(79,70,229,0.06)_0%,transparent_68%)]" />
-      <div className="pointer-events-none absolute -bottom-36 -left-24 h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.05)_0%,transparent_68%)]" />
+    <div className="relative min-h-screen overflow-hidden bg-[var(--app-bg)]">
+      <div className="pointer-events-none absolute -right-28 -top-36 h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle,rgba(20,184,166,0.07)_0%,transparent_68%)]" />
+      <div className="pointer-events-none absolute -bottom-36 -left-24 h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.06)_0%,transparent_68%)]" />
 
       <header className="relative z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <button type="button" onClick={onBackToHome} className="text-[15px] font-extrabold tracking-[-0.03em] text-slate-900">
-            로그인
+            내맘대로클래스
           </button>
           <div className="flex items-center gap-2">
             <button
@@ -44,14 +44,7 @@ export function LoginScreen({ demoUsers, busy, onLogin, onBackToHome }: LoginScr
               onClick={onBackToHome}
               className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
             >
-              로그인
-            </button>
-            <button
-              type="button"
-              onClick={onBackToHome}
-              className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
-            >
-              회원가입
+              홈으로
             </button>
           </div>
         </div>
@@ -66,7 +59,7 @@ export function LoginScreen({ demoUsers, busy, onLogin, onBackToHome }: LoginScr
             <p className="mt-1.5 text-[15px] text-slate-500">AI 기반 맞춤형 학습 플랫폼</p>
           </div>
 
-          <div className="rounded-[22px] border border-slate-200 bg-white px-8 py-8 shadow-[0_20px_48px_rgba(15,23,42,0.08)]">
+          <div className="rounded-3xl border border-slate-200 bg-white px-8 py-8 shadow-[0_16px_36px_rgba(15,23,42,0.10)]">
             <h2 className="text-[1.1rem] font-bold tracking-[-0.02em] text-slate-900">로그인</h2>
             <p className="mt-1 text-[13px] leading-6 text-slate-500">이메일과 비밀번호로 로그인하세요.</p>
 
