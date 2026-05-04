@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/Cloudflare_Workers-ready-F38020?logo=cloudflare&logoColor=white" alt="Cloudflare Workers" />
+  <img src="https://img.shields.io/badge/Spring_Boot-3.4-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot" />
 </p>
 
 [English README](./README.en.md)
@@ -87,9 +87,9 @@
 | 구분 | 기술 |
 |------|------|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS |
-| Backend | Hono, TypeScript, Cloudflare Workers 계열 도구 |
+| Backend | Spring Boot (Java 21), Maven |
 | Shared | `packages/shared` 기반 공용 타입, 데이터, AI/LMS 로직 |
-| Build | npm workspaces, esbuild, wrangler, TypeScript |
+| Build | npm workspaces, Vite, Maven, TypeScript |
 | Media | `ffmpeg-static` 기반 미디어 처리 |
 
 ## 프로젝트 구조
@@ -144,24 +144,23 @@ npm run dev:backend
 ### 검증 및 빌드
 
 ```bash
-npm run verify
 npm run build
+npm run test:backend
 ```
 
-- `npm run verify`는 의존성 확인, 미디어 프로세서 타입 체크, 백엔드 빌드, 프론트엔드 타입 체크를 묶어서 검사합니다.
-- `npm run build`는 프론트엔드와 백엔드 빌드를 수행합니다.
+- `npm run build`는 프론트엔드 빌드 + Spring 백엔드 패키징을 수행합니다.
+- `npm run test:backend`는 Spring 백엔드 테스트를 실행합니다.
 
 ## 스크립트
 
 | 명령어 | 설명 |
 |------|------|
-| `npm run dev` | 전체 로컬 개발 실행 |
+| `npm run dev` | 프론트엔드 개발 서버 실행 |
 | `npm run dev:frontend` | 프론트엔드만 실행 |
-| `npm run dev:backend` | 백엔드만 실행 |
-| `npm run dev:media-processor` | 미디어 프로세서 번들 실행 |
+| `npm run dev:backend` | Spring 백엔드 실행 |
+| `npm run dev:backend:legacy` | 레거시(TypeScript) 백엔드 실행 |
 | `npm run build` | 프론트엔드 + 백엔드 빌드 |
-| `npm run verify` | 의존성, 타입, 빌드 검증 |
-| `npm run check:media-processor` | 미디어 프로세서 타입 체크 |
+| `npm run test:backend` | Spring 백엔드 테스트 |
 
 ## CI 운영
 
