@@ -24,9 +24,9 @@ const courseTabs: { key: '강의' | '공지' | '자료'; label: string; icon: st
 ];
 
 const primaryButtonClass =
-  'rounded-xl bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500';
+  'inline-flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-[12px] font-semibold text-white transition hover:bg-indigo-500';
 const secondaryButtonClass =
-  'rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600';
+  'inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600';
 
 function formatDisplayDate(value: string): string {
   const date = new Date(value);
@@ -141,9 +141,9 @@ export function CourseExploreDetailPanel({
   const safeRating = Number.isFinite(course?.rating) ? course.rating : 0;
 
   return (
-    <section className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
+    <section className="overflow-hidden rounded-[28px] border border-[var(--app-border)] bg-white shadow-sm">
       {course ? (
-        <div className="bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-5 py-5 text-white">
+        <div className="bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-5 py-4 text-white">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold opacity-90">
@@ -152,7 +152,7 @@ export function CourseExploreDetailPanel({
                   {course.difficulty === 'beginner' ? '입문' : course.difficulty === 'intermediate' ? '중급' : '고급'}
                 </span>
               </div>
-              <h1 className="mt-3 text-[24px] font-extrabold tracking-[-0.04em]">{course.title}</h1>
+              <h1 className="mt-3 text-[23px] font-bold tracking-[-0.02em]">{course.title}</h1>
               <p className="mt-2 text-[13px] leading-6 text-white/80">{course.description}</p>
               <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-white/80">
                 <span>{course.instructor_name}</span>
@@ -198,7 +198,7 @@ export function CourseExploreDetailPanel({
       )}
 
       {course ? (
-        <div className="grid grid-cols-2 gap-3 border-t border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-5 text-[var(--app-text)] md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 border-t border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-4 text-[var(--app-text)] md:grid-cols-4">
           <div className="rounded-2xl bg-white px-4 py-4">
             <div className="text-[12px] text-[var(--app-text-muted)]">총 강의 수</div>
             <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{course.lecture_count}</div>
@@ -218,7 +218,7 @@ export function CourseExploreDetailPanel({
         </div>
       ) : null}
 
-      <div className="px-5 py-5">
+      <div className="px-5 py-4">
         {course ? (
           <>
             <div className="flex gap-1 overflow-x-auto border-b border-[var(--app-border)] pb-0.5">
@@ -229,7 +229,7 @@ export function CourseExploreDetailPanel({
                     key={tab.key}
                     type="button"
                     onClick={() => onTabChange(tab.key)}
-                    className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm transition-colors ${
+                    className={`flex h-10 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-[13px] font-semibold transition-colors ${
                       active ? 'border-indigo-500 text-[var(--app-text)]' : 'border-transparent text-[var(--app-text-muted)] hover:border-slate-300 hover:text-[var(--app-text-secondary)]'
                     }`}
                   >

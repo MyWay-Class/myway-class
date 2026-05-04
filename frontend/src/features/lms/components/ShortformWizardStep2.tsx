@@ -53,7 +53,7 @@ export function ShortformWizardStep2({
         <button
           type="button"
           onClick={() => onFilterChange('all')}
-          className={`rounded-lg px-3 py-1 text-[12px] font-semibold whitespace-nowrap ${
+          className={`inline-flex h-9 items-center rounded-lg px-3 text-[12px] font-semibold whitespace-nowrap ${
             lectureFilter === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
           }`}
         >
@@ -64,7 +64,7 @@ export function ShortformWizardStep2({
             key={tab.id}
             type="button"
             onClick={() => onFilterChange(tab.id)}
-            className={`rounded-lg px-3 py-1 text-[12px] font-semibold whitespace-nowrap ${
+            className={`inline-flex h-9 items-center rounded-lg px-3 text-[12px] font-semibold whitespace-nowrap ${
               lectureFilter === tab.id ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
             }`}
           >
@@ -75,7 +75,7 @@ export function ShortformWizardStep2({
 
       <p className="mt-4 text-[12px] text-slate-500">AI가 추천한 핵심 구간입니다. 클릭하여 선택/해제하세요.</p>
 
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 space-y-2.5">
         {filteredSuggestions.length > 0 ? (
           filteredSuggestions.map((clip, index) => {
             const key = `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;

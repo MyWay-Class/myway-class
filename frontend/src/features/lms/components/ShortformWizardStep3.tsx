@@ -75,7 +75,7 @@ export function ShortformWizardStep3({
   const totalDurationMs = selectedClips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
 
   return (
-    <article className="space-y-5 rounded-2xl border border-slate-200 bg-white px-5 py-5">
+    <article className="space-y-4 rounded-2xl border border-slate-200 bg-white px-5 py-5">
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ export function ShortformWizardStep3({
             </div>
           )}
         </div>
-        <div className="mt-4 space-y-1.5">
+        <div className="mt-4 space-y-2">
           {selectedClips.map((clip, index) => {
             const key = `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
             return (

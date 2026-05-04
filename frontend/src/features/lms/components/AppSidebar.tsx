@@ -65,15 +65,15 @@ export function AppSidebar({
           className={`flex items-center gap-2.5 ${collapsed ? 'mx-auto' : ''}`}
           title="메인 화면으로 이동"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25">
             <i className="ri-play-circle-fill text-[18px]" />
           </div>
-          {!collapsed ? <span className="text-[15px] font-extrabold tracking-tight text-[var(--app-text)]">내맘대로</span> : null}
+          {!collapsed ? <span className="text-[15px] font-semibold tracking-tight text-[var(--app-text)]">내맘대로</span> : null}
         </button>
         <button
           type="button"
           onClick={onToggleCollapsed}
-          className="hidden h-8 w-8 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] lg:flex"
+          className="hidden h-10 w-10 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] lg:flex"
           title={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
         >
           <i className={collapsed ? 'ri-arrow-right-s-line text-[17px]' : 'ri-arrow-left-s-line text-[17px]'} />
@@ -81,18 +81,18 @@ export function AppSidebar({
         <button
           type="button"
           onClick={onCloseMobile}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] lg:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] lg:hidden"
           title="메뉴 닫기"
         >
           <i className="ri-close-line text-lg" />
         </button>
       </div>
 
-      <nav className={`flex-1 overflow-y-auto ${collapsed ? 'px-2' : 'px-3'} py-4`}>
+      <nav className={`flex-1 overflow-y-auto ${collapsed ? 'px-2.5' : 'px-3'} py-4`}>
         {groups.map((group) => (
           <div key={group.label} className="mb-5">
             {!collapsed ? (
-              <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]">
+              <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--app-text-muted)]">
                 {group.label}
               </div>
             ) : null}
@@ -105,7 +105,7 @@ export function AppSidebar({
                     type="button"
                     onClick={() => handleNavClick(item.page)}
                     title={collapsed ? item.label : undefined}
-                    className={`relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition-all duration-150 ${
+                    className={`relative flex h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[13px] font-medium transition-all duration-150 ${
                       active
                         ? 'bg-[var(--app-accent-soft)] text-[var(--app-accent)] shadow-sm'
                         : 'text-[var(--app-text-secondary)] hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)]'
@@ -123,8 +123,8 @@ export function AppSidebar({
       </nav>
 
       <div className="border-t border-[var(--app-border)] px-3 py-3">
-        <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${collapsed ? 'justify-center' : ''}`}>
-          <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-[13px] font-bold text-white shadow-sm ${avatarTone}`}>
+        <div className={`flex items-center gap-2.5 rounded-lg px-3 py-2 ${collapsed ? 'justify-center' : ''}`}>
+          <div className={`flex h-10 w-10 items-center justify-center rounded-lg text-[13px] font-bold text-white shadow-sm ${avatarTone}`}>
             {session.user.name[0]}
           </div>
           {!collapsed ? (
@@ -140,7 +140,7 @@ export function AppSidebar({
                 onLogout();
                 onCloseMobile();
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-red-500"
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-red-500"
               title="로그아웃"
             >
               <i className="ri-logout-box-r-line text-[16px]" />
@@ -152,14 +152,14 @@ export function AppSidebar({
             <button
               type="button"
               onClick={onToggleDock}
-              className="flex-1 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-2 text-[11px] font-semibold text-[var(--app-text-secondary)] transition hover:bg-[var(--app-surface-hover)]"
+              className="h-10 flex-1 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 text-[12px] font-medium text-[var(--app-text-secondary)] transition hover:bg-[var(--app-surface-hover)]"
             >
               {dock === 'left' ? '오른쪽 고정' : '왼쪽 고정'}
             </button>
             <button
               type="button"
               onClick={onToggleTheme}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text)]"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text)]"
               title={theme === 'light' ? '다크 모드' : '라이트 모드'}
             >
               <i className={theme === 'light' ? 'ri-moon-line text-[15px]' : 'ri-sun-line text-[15px]'} />
@@ -171,7 +171,7 @@ export function AppSidebar({
       <button
         type="button"
         onClick={onToggleCollapsed}
-        className="absolute right-3 top-[15px] hidden h-8 w-8 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] lg:flex"
+        className="absolute right-3 top-[13px] hidden h-10 w-10 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] lg:flex"
         title={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
       >
         <i className={collapsed ? 'ri-arrow-right-s-line text-[17px]' : 'ri-arrow-left-s-line text-[17px]'} />

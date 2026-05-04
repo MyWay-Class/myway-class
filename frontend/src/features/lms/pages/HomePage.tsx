@@ -34,7 +34,7 @@ function circularProgress(value: number) {
 export function HomePage({ session, dashboard, courses, highlightedLecture, onNavigate, onSelectCourse }: HomePageProps) {
   const averageProgress =
     dashboard?.average_progress ?? Math.round(courses.reduce((sum, course) => sum + course.progress_percent, 0) / Math.max(courses.length, 1));
-  const categories = [...new Set(courses.map((item) => item.category))];
+  const categories = [...new Set(courses.map((item) => item.category).filter((category): category is string => Boolean(category)))];
   const tags = [...new Set(courses.flatMap((course) => (Array.isArray(course.tags) ? course.tags : [])))].slice(0, 5);
   const continueCourse = highlightedLecture
     ? courses.find((course) => course.id === highlightedLecture.course_id) ?? courses[0] ?? null
@@ -217,7 +217,7 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
               <div className="rounded-2xl bg-[var(--app-surface-soft)] px-4 py-3">
                 <div className="text-[11px] text-[var(--app-text-muted)]">수강 중</div>
                 <div className="mt-1 text-[18px] font-extrabold text-[var(--app-text)]">
-                  {dashboard?.courses.filter((course) => course.enrolled).length ?? 0}
+                  {dashboard?.courses?.filter((course) => course.enrolled).length ?? 0}
                 </div>
               </div>
               <div className="rounded-2xl bg-[var(--app-surface-soft)] px-4 py-3">
