@@ -90,40 +90,36 @@ export function InstructorDashboardPage({ dashboard, courses, insights }: Instru
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm lg:px-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-end">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
+            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
               <i className="ri-presentation-line" />
               Instructor Dashboard
             </div>
-            <h2 className="mt-4 text-[26px] font-extrabold tracking-[-0.04em] lg:text-[32px]">
-              강의 운영, 진도 확인,
-              <br />
-              AI 보조 작업을 한 화면에서 봅니다.
-            </h2>
-            <p className="mt-3 max-w-2xl text-[14px] leading-7 text-white/78">{nextAction}</p>
+            <h2 className="mt-4 text-[24px] font-bold text-slate-900 lg:text-[28px]">강의 운영 대시보드</h2>
+            <p className="mt-2 max-w-2xl text-[14px] leading-6 text-slate-500">{nextAction}</p>
           </div>
 
-          <div className="rounded-[28px] border border-white/10 bg-white/10 px-5 py-5 backdrop-blur">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">운영 상태</div>
-                <div className="mt-1 text-[20px] font-extrabold tracking-[-0.04em] text-white">{managedCount}개 강의</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">운영 상태</div>
+                <div className="mt-1 text-[20px] font-bold text-slate-900">{managedCount}개 강의</div>
               </div>
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-[24px] text-white">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[24px] text-indigo-600">
                 <i className="ri-dashboard-3-line" />
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 text-[12px] text-white/80">
-              <div className="rounded-2xl bg-white/10 px-3 py-3">
-                <div className="text-white/60">진행 중</div>
-                <div className="mt-1 text-[18px] font-bold text-white">{activeCount}</div>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-[12px] text-slate-600">
+              <div className="rounded-2xl bg-white px-3 py-3">
+                <div className="text-slate-500">진행 중</div>
+                <div className="mt-1 text-[18px] font-bold text-slate-900">{activeCount}</div>
               </div>
-              <div className="rounded-2xl bg-white/10 px-3 py-3">
-                <div className="text-white/60">평균 진도</div>
-                <div className="mt-1 text-[18px] font-bold text-white">{avgProgress}%</div>
+              <div className="rounded-2xl bg-white px-3 py-3">
+                <div className="text-slate-500">평균 진도</div>
+                <div className="mt-1 text-[18px] font-bold text-slate-900">{avgProgress}%</div>
               </div>
             </div>
           </div>
@@ -141,7 +137,7 @@ export function InstructorDashboardPage({ dashboard, courses, insights }: Instru
             emptyMessage="아직 최근 활동이 없습니다. 자료 업로드나 공지 등록이 여기에 표시됩니다."
           />
 
-          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-[15px] font-bold text-slate-900">운영 중인 강의</h3>
@@ -153,7 +149,7 @@ export function InstructorDashboardPage({ dashboard, courses, insights }: Instru
             <div className="mt-4 space-y-3">
               {courses.length ? (
                 courses.map((course) => (
-                  <article key={course.id} className="rounded-[26px] border border-slate-200 bg-slate-50 px-4 py-4">
+                  <article key={course.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500">
@@ -191,14 +187,14 @@ export function InstructorDashboardPage({ dashboard, courses, insights }: Instru
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
               <i className="ri-tools-line text-indigo-600" />
               제작 도구
             </h3>
             <div className="mt-4 grid gap-3">
               {tools.map((tool) => (
-                <article key={tool.title} className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
+                <article key={tool.title} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                   <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl text-[20px] ${tool.iconClass}`}>
                     <i className={tool.icon} />
                   </div>
@@ -210,7 +206,7 @@ export function InstructorDashboardPage({ dashboard, courses, insights }: Instru
           </section>
 
           {insights ? (
-            <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+            <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
               <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
                 <i className="ri-lightbulb-flash-line text-indigo-600" />
                 AI 인사이트

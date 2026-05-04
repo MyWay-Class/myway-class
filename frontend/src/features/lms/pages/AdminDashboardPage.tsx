@@ -67,25 +67,21 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm lg:px-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-end">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
+            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
               <i className="ri-shield-star-line" />
               Admin Dashboard
             </div>
-            <h2 className="mt-4 text-[26px] font-extrabold tracking-[-0.04em] lg:text-[32px]">
-              사용자, 강의, AI 요청을
-              <br />
-              운영 관점에서 한 번에 봅니다.
-            </h2>
-            <p className="mt-3 max-w-2xl text-[14px] leading-7 text-white/78">
+            <h2 className="mt-4 text-[24px] font-bold text-slate-900 lg:text-[28px]">운영 관리자 대시보드</h2>
+            <p className="mt-2 max-w-2xl text-[14px] leading-6 text-slate-500">
               {resolvedDashboard.next_action ?? '운영 통계와 AI 사용량을 확인하고 병목이 생긴 코스를 점검하세요.'}
             </p>
           </div>
 
-          <div className="rounded-[28px] border border-white/10 bg-white/10 px-5 py-5 backdrop-blur">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">역할 분포</div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">역할 분포</div>
             <div className="mt-4 space-y-3">
               {[
                 { label: '운영자', count: roleCounts.ADMIN, color: 'bg-amber-400' },
@@ -93,15 +89,15 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
                 { label: '수강생', count: roleCounts.STUDENT, color: 'bg-indigo-400' },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/15">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
                     <div
                       className={`h-full rounded-full ${item.color}`}
                       style={{ width: `${Math.max((item.count / Math.max(resolvedUsers.length, 1)) * 100, item.count > 0 ? 12 : 0)}%` }}
                     />
                   </div>
-                  <div className="w-12 text-right text-[12px] font-semibold text-white">
+                  <div className="w-12 text-right text-[12px] font-semibold text-slate-700">
                     {item.label}
-                    <span className="ml-1 text-white/65">{item.count}</span>
+                    <span className="ml-1 text-slate-400">{item.count}</span>
                   </div>
                 </div>
               ))}
@@ -121,7 +117,7 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
             emptyMessage="아직 최근 활동이 없습니다. 수강 등록이나 AI 요청이 발생하면 여기에 표시됩니다."
           />
 
-          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-[15px] font-bold text-slate-900">운영 핵심 수치</h3>
@@ -131,19 +127,19 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <article className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
+              <article className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="text-[11px] font-semibold text-slate-400">전체 사용자</div>
                 <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">{resolvedUsers.length}</div>
               </article>
-              <article className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
+              <article className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="text-[11px] font-semibold text-slate-400">전체 강의</div>
                 <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">{resolvedCourses.length}</div>
               </article>
-              <article className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
+              <article className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="text-[11px] font-semibold text-slate-400">활성 수강</div>
                 <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">{resolvedDashboard.active_enrollments ?? 0}</div>
               </article>
-              <article className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
+              <article className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="text-[11px] font-semibold text-slate-400">AI 요청</div>
                 <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">{resolvedInsights.summary.total_requests ?? 0}</div>
               </article>
@@ -152,14 +148,14 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
               <i className="ri-team-line text-indigo-600" />
               최근 사용자
             </h3>
             <div className="mt-4 space-y-2">
               {resolvedUsers.slice(0, 5).map((user) => (
-                <div key={user.id} className="flex items-center gap-3 rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
+                <div key={user.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-[13px] font-bold text-indigo-600">
                     {user.name.slice(0, 1)}
                   </div>
@@ -173,7 +169,7 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
             </div>
           </section>
 
-          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
               <i className="ri-pie-chart-2-line text-indigo-600" />
               역할 비율
@@ -201,7 +197,7 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
           </section>
 
           {resolvedInsights ? (
-            <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+            <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
               <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
                 <i className="ri-lightbulb-flash-line text-indigo-600" />
                 AI 인사이트

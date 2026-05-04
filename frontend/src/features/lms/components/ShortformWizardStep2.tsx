@@ -30,12 +30,12 @@ export function ShortformWizardStep2({
   onFilterChange,
 }: ShortformWizardStep2Props) {
   return (
-    <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
+    <article className="rounded-2xl border border-slate-200 bg-white px-5 py-5">
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <i className="ri-scissors-cut-line text-[18px] text-indigo-500" />
-            <h2 className="text-[15px] font-bold text-slate-900">차시별 구간 선택</h2>
+            <h2 className="text-[16px] font-semibold text-slate-900">2단계 · 구간 선택</h2>
           </div>
           <p className="mt-1 text-[12px] text-slate-500">레퍼런스처럼 차시 필터 탭으로 구간을 좁히고, 핵심 구간을 카드 단위로 선택합니다.</p>
         </div>
@@ -43,7 +43,7 @@ export function ShortformWizardStep2({
           <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
             선택 {selectedClipKeys.length}개
           </span>
-          <button type="button" onClick={onBack} className="rounded-full border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600">
+          <button type="button" onClick={onBack} className="inline-flex h-10 items-center rounded-lg border border-slate-200 px-4 text-[12px] font-semibold text-slate-600">
             이전
           </button>
         </div>
@@ -53,7 +53,7 @@ export function ShortformWizardStep2({
         <button
           type="button"
           onClick={() => onFilterChange('all')}
-          className={`rounded-full px-3 py-1.5 text-[12px] font-semibold whitespace-nowrap ${
+          className={`rounded-lg px-3 py-1 text-[12px] font-semibold whitespace-nowrap ${
             lectureFilter === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
           }`}
         >
@@ -64,7 +64,7 @@ export function ShortformWizardStep2({
             key={tab.id}
             type="button"
             onClick={() => onFilterChange(tab.id)}
-            className={`rounded-full px-3 py-1.5 text-[12px] font-semibold whitespace-nowrap ${
+            className={`rounded-lg px-3 py-1 text-[12px] font-semibold whitespace-nowrap ${
               lectureFilter === tab.id ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
             }`}
           >
@@ -86,7 +86,7 @@ export function ShortformWizardStep2({
                 key={key}
                 type="button"
                 onClick={() => onToggleClip(clip)}
-                className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition ${
+                className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition ${
                   selected ? 'border-indigo-300 bg-indigo-50/70' : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/40'
                 }`}
               >
@@ -113,15 +113,15 @@ export function ShortformWizardStep2({
         )}
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3">
-        <button type="button" onClick={onBack} className="rounded-full border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600">
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        <button type="button" onClick={onBack} className="inline-flex h-10 items-center rounded-lg border border-slate-200 px-4 text-[12px] font-semibold text-slate-600">
           이전
         </button>
         <button
           type="button"
           onClick={onNext}
           disabled={selectedClipKeys.length === 0}
-          className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white disabled:pointer-events-none disabled:opacity-50"
+          className="inline-flex h-10 items-center rounded-lg bg-indigo-600 px-4 text-[12px] font-semibold text-white disabled:pointer-events-none disabled:opacity-50"
         >
           다음: 미리보기 <i className="ri-arrow-right-line ml-1" />
         </button>

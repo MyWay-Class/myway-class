@@ -6,8 +6,8 @@ type AdminStatsLogPanelProps = {
 };
 
 export function AdminStatsLogPanel({ aiLogs }: AdminStatsLogPanelProps) {
-  const intentLogs = aiLogs?.intent_logs.slice(0, 4) ?? [];
-  const questionLogs = aiLogs?.question_logs.slice(0, 4) ?? [];
+  const intentLogs = aiLogs?.intent_logs?.slice(0, 4) ?? [];
+  const questionLogs = aiLogs?.question_logs?.slice(0, 4) ?? [];
 
   return (
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">

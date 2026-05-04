@@ -55,7 +55,7 @@ export function AppSidebar({
     <aside
       className={`fixed inset-y-0 z-30 flex flex-col border-[var(--app-border)] bg-[var(--app-surface)] shadow-[var(--app-shadow-lg)] ${dockClass} ${sidebarWidthClass}`}
     >
-      <div className="flex h-16 items-center justify-between gap-2 border-b border-[var(--app-border)]/80 px-4">
+      <div className="flex h-16 items-center justify-between gap-2 border-b border-[var(--app-border)] px-4">
         <button
           type="button"
           onClick={() => {
@@ -92,7 +92,7 @@ export function AppSidebar({
         {groups.map((group) => (
           <div key={group.label} className="mb-5">
             {!collapsed ? (
-              <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]/90">
+              <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--app-text-muted)]">
                 {group.label}
               </div>
             ) : null}
@@ -122,7 +122,7 @@ export function AppSidebar({
         ))}
       </nav>
 
-      <div className="border-t border-[var(--app-border)]/80 px-3 py-3">
+      <div className="border-t border-[var(--app-border)] px-3 py-3">
         <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${collapsed ? 'justify-center' : ''}`}>
           <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-[13px] font-bold text-white shadow-sm ${avatarTone}`}>
             {session.user.name[0]}

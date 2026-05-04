@@ -303,7 +303,7 @@ export function MediaPipelineStatusBoard({
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-sm font-semibold text-slate-900">STT provider 상태</div>
           <div className="mt-3 space-y-3">
-            {providers?.providers.map((provider) => (
+            {providers?.providers?.map((provider) => (
               <div key={provider.name} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
