@@ -1,85 +1,36 @@
-import { lazy } from 'react';
+import { Suspense, lazy, type ReactNode } from 'react';
 import type { LoginResponse } from '@myway/shared';
 import { RolePageFallback } from '../components/RolePageFallback';
+import { AIChatPage } from './AIChatPage';
+import { AISummaryPage } from './AISummaryPage';
+import { AssignmentCheckPage } from './AssignmentCheckPage';
+import { CourseCreatePage } from './CourseCreatePage';
+import { CoursesPage } from './CoursesPage';
+import { InstructorDashboardPage } from './InstructorDashboardPage';
+import { LectureWatchPage } from './LectureWatchPage';
+import { LectureStudioPage } from './LectureStudioPage';
 import { HomePage } from './HomePage';
+import { MyCoursesPage } from './MyCoursesPage';
+import { QuizGenPage } from './QuizGenPage';
+import { StudentDashboardPage } from './StudentDashboardPage';
 import type { LmsDashboardProps, LmsPageId } from '../types';
 
-const MyCoursesPage = lazy(async () => {
-  const mod = await import('./MyCoursesPage');
-  return { default: mod.MyCoursesPage };
-});
-const CoursesPage = lazy(async () => {
-  const mod = await import('./CoursesPage');
-  return { default: mod.CoursesPage };
-});
-const LectureWatchPage = lazy(async () => {
-  const mod = await import('./LectureWatchPage');
-  return { default: mod.LectureWatchPage };
-});
-const CourseCreatePage = lazy(async () => {
-  const mod = await import('./CourseCreatePage');
-  return { default: mod.CourseCreatePage };
-});
-const MediaPipelinePage = lazy(async () => {
-  const mod = await import('./MediaPipelinePage');
-  return { default: mod.MediaPipelinePage };
-});
-const ShortformHubPage = lazy(async () => {
-  const mod = await import('./ShortformHubPage');
-  return { default: mod.ShortformHubPage };
-});
-const AIChatPage = lazy(async () => {
-  const mod = await import('./AIChatPage');
-  return { default: mod.AIChatPage };
-});
-const StudentDashboardPage = lazy(async () => {
-  const mod = await import('./StudentDashboardPage');
-  return { default: mod.StudentDashboardPage };
-});
-const InstructorDashboardPage = lazy(async () => {
-  const mod = await import('./InstructorDashboardPage');
-  return { default: mod.InstructorDashboardPage };
-});
-const AdminDashboardPage = lazy(async () => {
-  const mod = await import('./AdminDashboardPage');
-  return { default: mod.AdminDashboardPage };
-});
-const AdminUsersPage = lazy(async () => {
-  const mod = await import('./AdminUsersPage');
-  return { default: mod.AdminUsersPage };
-});
-const AdminInstructorsPage = lazy(async () => {
-  const mod = await import('./AdminInstructorsPage');
-  return { default: mod.AdminInstructorsPage };
-});
-const AdminAssignPage = lazy(async () => {
-  const mod = await import('./AdminAssignPage');
-  return { default: mod.AdminAssignPage };
-});
-const AdminStatsPage = lazy(async () => {
-  const mod = await import('./AdminStatsPage');
-  return { default: mod.AdminStatsPage };
-});
-const AdminAutomationPage = lazy(async () => {
-  const mod = await import('./AdminAutomationPage');
-  return { default: mod.AdminAutomationPage };
-});
-const LectureStudioPage = lazy(async () => {
-  const mod = await import('./LectureStudioPage');
-  return { default: mod.LectureStudioPage };
-});
-const AISummaryPage = lazy(async () => {
-  const mod = await import('./AISummaryPage');
-  return { default: mod.AISummaryPage };
-});
-const QuizGenPage = lazy(async () => {
-  const mod = await import('./QuizGenPage');
-  return { default: mod.QuizGenPage };
-});
-const AssignmentCheckPage = lazy(async () => {
-  const mod = await import('./AssignmentCheckPage');
-  return { default: mod.AssignmentCheckPage };
-});
+const AdminAssignPage = lazy(() => import('./AdminAssignPage').then((module) => ({ default: module.AdminAssignPage })));
+const AdminAutomationPage = lazy(() => import('./AdminAutomationPage').then((module) => ({ default: module.AdminAutomationPage })));
+const AdminDashboardPage = lazy(() => import('./AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })));
+const AdminInstructorsPage = lazy(() => import('./AdminInstructorsPage').then((module) => ({ default: module.AdminInstructorsPage })));
+const AdminStatsPage = lazy(() => import('./AdminStatsPage').then((module) => ({ default: module.AdminStatsPage })));
+const AdminUsersPage = lazy(() => import('./AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
+const MediaPipelinePage = lazy(() => import('./MediaPipelinePage').then((module) => ({ default: module.MediaPipelinePage })));
+const ShortformHubPage = lazy(() => import('./ShortformHubPage').then((module) => ({ default: module.ShortformHubPage })));
+
+function withSuspense(node: ReactNode): ReactNode {
+  return (
+    <Suspense fallback={<div className="rounded-2xl border border-slate-200 bg-white px-5 py-8 text-sm text-slate-500">화면을 불러오는 중입니다.</div>}>
+      {node}
+    </Suspense>
+  );
+}
 
 type RolePageRouterProps = Pick<
   LmsDashboardProps,
@@ -154,7 +105,7 @@ export function RolePageRouter({
   if (session.user.role === 'ADMIN') {
     switch (page) {
       case 'dashboard':
-        return <AdminDashboardPage dashboard={dashboard} users={demoUsers} courses={courseCards} insights={insights} />;
+        return withSuspense(<AdminDashboardPage dashboard={dashboard} users={demoUsers} courses={courseCards} insights={insights} />);
       case 'my-courses':
         return (
           <MyCoursesPage
@@ -213,28 +164,28 @@ export function RolePageRouter({
           />
         );
       case 'admin-users':
-        return <AdminUsersPage users={demoUsers} />;
+        return withSuspense(<AdminUsersPage users={demoUsers} />);
       case 'admin-instructors':
-        return <AdminInstructorsPage instructors={demoUsers.filter((user) => user.role === 'INSTRUCTOR')} courses={courseCards} />;
+        return withSuspense(<AdminInstructorsPage instructors={demoUsers.filter((user) => user.role === 'INSTRUCTOR')} courses={courseCards} />);
       case 'admin-assign':
-        return <AdminAssignPage users={demoUsers} courses={courseCards} />;
+        return withSuspense(<AdminAssignPage users={demoUsers} courses={courseCards} />);
       case 'admin-stats':
-        return <AdminStatsPage dashboard={dashboard} courses={courseCards} users={demoUsers} insights={insights} aiLogs={aiLogs} />;
+        return withSuspense(<AdminStatsPage dashboard={dashboard} courses={courseCards} users={demoUsers} insights={insights} aiLogs={aiLogs} />);
       case 'admin-automation':
-        return <AdminAutomationPage providerCatalog={providers} />;
+        return withSuspense(<AdminAutomationPage providerCatalog={providers} />);
       case 'media-pipeline':
-        return (
+        return withSuspense((
           <MediaPipelinePage
             selectedCourse={selectedCourse}
             highlightedLecture={highlightedLecture}
             sessionToken={sessionToken}
             viewerRole={session.user.role}
           />
-        );
+        ));
       case 'shortform':
       case 'my-shortforms':
       case 'community':
-        return (
+        return withSuspense((
           <ShortformHubPage
             session={session}
             highlightedLecture={highlightedLecture}
@@ -244,7 +195,7 @@ export function RolePageRouter({
             recommendations={recommendations}
             initialTab={shortformInitialTab}
           />
-        );
+        ));
       default:
         return (
           <RolePageFallback
@@ -342,14 +293,14 @@ export function RolePageRouter({
     }
 
     if (page === 'media-pipeline') {
-      return (
+      return withSuspense((
         <MediaPipelinePage
           selectedCourse={selectedCourse}
           highlightedLecture={highlightedLecture}
           sessionToken={sessionToken}
           viewerRole={session.user.role}
         />
-      );
+      ));
     }
 
     if (page === 'quiz-gen') {
@@ -367,7 +318,7 @@ export function RolePageRouter({
     }
 
     if (page === 'shortform' || page === 'my-shortforms' || page === 'community') {
-      return (
+      return withSuspense((
         <ShortformHubPage
           session={session}
           highlightedLecture={highlightedLecture}
@@ -377,7 +328,7 @@ export function RolePageRouter({
           recommendations={recommendations}
           initialTab={shortformInitialTab}
         />
-      );
+      ));
     }
 
     return (
@@ -434,7 +385,7 @@ export function RolePageRouter({
   }
 
   if (page === 'shortform' || page === 'my-shortforms' || page === 'community') {
-    return (
+    return withSuspense((
       <ShortformHubPage
         session={session}
         highlightedLecture={highlightedLecture}
@@ -444,7 +395,7 @@ export function RolePageRouter({
         recommendations={recommendations}
         initialTab={shortformInitialTab}
       />
-    );
+    ));
   }
 
   if (page === 'dashboard') {
