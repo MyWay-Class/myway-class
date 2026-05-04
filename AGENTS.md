@@ -1,0 +1,15 @@
+## 하네스: myway-class
+
+**목표:** myway-class 워크스페이스의 프론트/백엔드/QA 협업 작업을 에이전트 팀 방식으로 표준화한다.
+
+**트리거:** myway-class 기능 개발, 버그 수정, API-UI 동기화, 재실행, 보완 요청이 들어오면 `myway-class-orchestrator` 스킬을 사용하라. 단순 질의는 직접 응답 가능.
+
+**변경 이력:**
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|------|----------|------|------|
+| 2026-04-29 | 프로젝트 전용 하네스 초기 구성 | agents/, skills/, AGENTS.md | 하네스 세분화 및 트리거 검증 요청 |
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

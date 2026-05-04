@@ -9,14 +9,20 @@ on:
     branches:
       - main
       - dev
+  workflow_dispatch:
+
+concurrency:
+  group: branch-protection-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   repo-structure:
     name: repo-structure
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check branch scoped directories
         run: |
@@ -64,9 +70,10 @@ jobs:
   docs-integrity:
     name: docs-integrity
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check agent guide size
         run: |
@@ -119,9 +126,10 @@ jobs:
   utf8-check:
     name: utf8-check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Verify UTF-8 text files
         run: |
@@ -155,9 +163,10 @@ jobs:
   ci-checks:
     name: ci-checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check root scripts
         run: |
@@ -186,9 +195,10 @@ jobs:
   cd-checks:
     name: cd-checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check deploy readiness
         run: |

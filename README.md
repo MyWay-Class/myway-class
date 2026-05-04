@@ -25,6 +25,7 @@
 - [주요 화면](#주요-화면)
 - [실행 방법](#실행-방법)
 - [스크립트](#스크립트)
+- [CI 운영](#ci-운영)
 - [문서](#문서)
 - [설계 방향](#설계-방향)
 
@@ -161,6 +162,12 @@ npm run build
 | `npm run build` | 프론트엔드 + 백엔드 빌드 |
 | `npm run verify` | 의존성, 타입, 빌드 검증 |
 | `npm run check:media-processor` | 미디어 프로세서 타입 체크 |
+
+## CI 운영
+
+- 수동 실행: GitHub Actions에서 `backend-spring-tests` 워크플로우를 `Run workflow`로 직접 실행할 수 있습니다(`workflow_dispatch`).
+- 동시 실행 제어: 같은 브랜치/워크플로우 조합으로 새 실행이 시작되면 기존 실행은 자동 취소됩니다(`concurrency`, `cancel-in-progress: true`).
+- 타임아웃: `backend-spring-tests` 잡은 15분 제한이며, 초과 시 실패 처리됩니다(`timeout-minutes: 15`).
 
 ## 문서
 

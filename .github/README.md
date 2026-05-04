@@ -1,169 +1,273 @@
-<p align="center">
-  <img src="./banner.svg" alt="내맘대로 배너" />
+# 내맘대로클래스 (MyWayClass)
+
+<p align="left">
+  <img src="https://img.shields.io/badge/License-MIT-green" />
+  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" />
+  <img src="https://img.shields.io/badge/Hono-Backend-orange" />
+  <img src="https://img.shields.io/badge/Cloudflare_Workers-F38020?logo=cloudflare&logoColor=white" />
+  <img src="https://img.shields.io/badge/2026_KIT_바이브코딩-공모전-6366f1" />
 </p>
 
-<h3 align="center">강의를 “소비”가 아니라 “재구성”하는 AI 교육 플랫폼</h3>
-
-<p align="center">
-  AI 기반으로 강의를 분석하고, 필요한 구간만 추출해 개인화된 학습 경험을 제공합니다.
-</p>
+> 강의를 통째로 다시 보지 않아도 되도록,  
+> **강의 안의 핵심 구간만 골라 바로 학습**할 수 있게 만드는 AI 기반 LMS 플랫폼  
+> 2026 KIT 바이브코딩 공모전 제출작 · 제작자: 신동구
 
 ---
 
-## Overview
+## 📌 해결하는 문제
 
-`.github` 폴더는 이 저장소의 협업 기준과 자동화 규칙을 모아두는 운영 허브입니다.
+온라인 강의는 이미 5~10분 단위로 쪼개져 있습니다.  
+하지만 실제로 다시 봐야 하는 핵심은 그중 **2~3분**에 불과합니다.
 
-제품 소개 문서가 아니라, 아래 항목처럼 **기여 방식과 리뷰 기준을 통일하는 문서/자동화 공간**입니다.
+- 특정 개념 하나를 위해 전체 영상 반복 탐색
+- 영상이 많아질수록 탐색 비용 증가
+- 결국 “짧은 영상 N개짜리 긴 강의”가 됨
 
-- PR/MR 템플릿
-- Issue 템플릿
-- CODEOWNERS
-- GitHub Actions 워크플로
+👉 문제의 본질: **탐색 비용**
 
-## Why This Project Exists
+---
 
-기존 온라인 강의는 짧게 쪼개져 보여도, 실제로 다시 학습할 때는 여전히 원하는 구간을 직접 찾아야 합니다.
+## 💡 핵심 기능
 
-`내맘대로(MyWayClass)`는 이 탐색 비용을 줄이기 위해:
+| 기능 | 설명 |
+|------|------|
+| 강의 시청 | 타임스탬프 기반 스크립트 연동 |
+| 숏폼 생성 | 핵심 구간만 추출 |
+| AI 요약 | 자동 요약 노트 |
+| AI 채팅 | RAG 기반 질의응답 |
+| 퀴즈 생성 | 자동 문제 생성 |
+| STT 파이프라인 | 오디오 → 텍스트 → 청킹 |
+| 강의 스튜디오 | 강의 생성/수정 |
+| 대시보드 | 학생/강사/관리자 분리 |
+| 숏폼 공유 | 수강생 간 공유 |
+| 미디어 파이프라인 | 업로드 → 처리 → 추적 |
 
-- 강의 오디오를 텍스트로 바꾸고
-- 의미 단위로 나누고
-- RAG로 근거 구간을 찾고
-- AI로 요약, 퀴즈, 질문 응답, 숏폼 생성을 수행합니다
+---
 
-핵심 목표는 단순히 영상을 자르는 것이 아니라, **학습 단위 자체를 다시 설계하는 것**입니다.
+## 🔁 동작 흐름
 
-## Problem
 
-기존 LMS의 구조적 한계는 콘텐츠의 부족이 아니라 탐색 비용에 있습니다.
+영상 업로드
+→ 오디오 추출 (ffmpeg)
+→ STT (텍스트 변환)
+→ 의미 단위 청킹
+→ RAG 검색
+→ AI 처리 (요약/퀴즈/QA)
+→ 핵심 구간 추출
+→ 숏폼 생성
 
-- 5분짜리 영상 안에서도 실제 필요한 구간은 2~3분인 경우가 많습니다
-- 원하는 개념을 찾기 위해 전체 영상을 반복 재생해야 합니다
-- 영상 수가 늘수록 복습 경로가 길어집니다
-- 고정된 재생 단위 때문에 개인화가 어렵습니다
 
-## Solution
+👉 결과는 항상 원본 강의와 연결됨
 
-이 프로젝트는 강의를 다음 흐름으로 재구성합니다.
+---
 
-```text
-Lecture video
-  -> STT
-  -> Chunking
-  -> RAG retrieval
-  -> AI reasoning
-  -> Short-form / Summary / Quiz / Q&A
-  -> Linked back to the original lecture
-```
+## ⚙️ 기술 스택
 
-결과적으로 다음과 같은 학습 단위를 제공합니다.
+| 영역 | 기술 |
+|------|------|
+| Frontend | React 19, TypeScript, Vite |
+| Backend | Hono, Cloudflare Workers |
+| AI | Gemini, Whisper, Ollama |
+| DB | Cloudflare D1 |
+| Storage | Cloudflare R2 |
+| Media | ffmpeg |
+| Shared | packages/shared |
 
-- 시험 대비: 핵심 구간만 빠르게 확인
-- 개념 학습: 정의 중심으로 재구성
-- 복습: 요약과 퀴즈 기반 반복 학습
-- 공유: 수강생끼리 학습 자산을 재활용
+---
 
-## Core Features
+## 🧩 프로젝트 구조
 
-- AI 기반 숏폼 자동 생성
-- 커스텀 강의 조립
-- 질문 응답 및 요약
-- 퀴즈 자동 생성
-- 학습 상태 관리
-- 숏폼 커뮤니티 및 공유
 
-## Architecture
+myway-class/
+├── frontend/
+├── backend/
+├── packages/shared/
+├── scripts/
+├── docs/
+├── agent.md
+└── README.md
 
-```mermaid
-flowchart TD
-  I["Input: lecture video / user request"] --> S["STT"]
-  S --> C["Chunking"]
-  C --> R["RAG search"]
-  R --> A["AI reasoning"]
-  A --> O["Structured output"]
-  O --> F["Short-form / summary / quiz / fallback"]
-  F --> L["Linked to original lecture"]
-```
 
-### Design Principle
+---
 
-LMS와 AI 레이어를 분리해, AI가 없더라도 기본 학습 흐름은 유지되도록 설계했습니다.
+## 🚀 실행 방법
 
-## AI Collaboration
+### 요구 사항
+- Node.js 20+
+- npm 10+
 
-이 저장소의 AI 협업 방식은 “프롬프트만 잘 쓰는 방식”이 아니라, **명세와 검증으로 통제하는 방식**입니다.
+### 설치
 
-### Working Rules
+git clone https://github.com/MyWay-Class/myway-class.git
 
-- 작업 전에는 반드시 목적을 먼저 고정합니다
-- 지시는 짧게 쓰되, 범위와 완료 기준은 분명히 씁니다
-- 문서는 단일 진실 원천으로 사용합니다
-- 변경 후에는 `docs/dev-logs/`에 판단 근거를 남깁니다
+cd myway-class
+npm install
 
-### Actual Workflow
 
-```text
-Design -> Document -> Implement -> Validate -> Log
-```
+### 실행
 
-### AI Role Separation
+npm run dev
 
-| Role | Tool | Responsibility |
-|------|------|----------------|
-| 설계 | Claude Opus | 아키텍처, 모듈 경계, 고수준 의사결정 |
-| 구현 | Codex | 코드 수정, 반복 작업, 파일 단위 변경 |
-| 추론 | AI Provider Layer | STT, 요약, 분류, 퀴즈, RAG 기반 응답 |
 
-### Why This Matters
+- frontend: 5173
+- backend: 8787
+- media: 8788
 
-LLM은 확률 기반 시스템이라 같은 입력에도 결과가 달라질 수 있습니다.  
-그래서 이 프로젝트는 AI를 직접 믿는 대신, 다음으로 통제합니다.
+---
 
-- 명세 기반 지시
-- A/B 워킹트리 비교
-- 타입 검증
-- fallback 응답
-- 문서 기록
+## 🤖 AI 활용 전략
 
-실제 서비스 추론 경로는 환경에 따라 `demo`, `Ollama`, `Gemini`, `Cloudflare AI STT`를 조합하고,  
-문서에 정의된 fallback 순서대로 동작합니다.
+### 📌 기본 원칙
 
-## Repository Conventions
+LLM은 **확률 기반 시스템**이다.  
+→ 결과는 신뢰 대상이 아니라 **검증 대상**
 
-이 폴더에서 관리하는 주요 규칙은 다음과 같습니다.
+---
 
-- `pull_request_template.md`: PR 작성 기준
-- `MERGE_REQUEST_TEMPLATE.md`: 머지 요청 기준
-- `ISSUE_TEMPLATE/`: 버그, 문서, 기능, 리팩터링 이슈 템플릿
-- `CODEOWNERS`: 경로별 리뷰 책임
-- `workflows/`: 브랜치 보호와 자동 리뷰 체크
+### 🔥 핵심 구조
 
-## Validation
 
-이 프로젝트는 다음 기준으로 변경을 검증합니다.
+사람 (기준 정의)
+↓
+AI (실행)
+↓
+사람 (검증 및 채택)
 
-- JSON 파싱 검증
-- TypeScript 타입 안정성
-- fallback 동작 확인
-- 사이드 이펙트 점검
-- 관련 문서 동시 갱신
 
-## Docs Structure
+👉 Human-in-the-loop 유지
 
-```text
+---
+
+## ⚙️ AI 협업 시스템
+
+### 1️⃣ 명세 기반 작업
+
+- Pseudo-code 수준 지시
+- 파일 + 라인 지정
+- 모호한 요청 제거
+
+---
+
+### 2️⃣ 워킹트리 병렬 비교
+
+
+A안 / B안 생성 → 비교 → 채택
+
+
+#### 기준
+- 기획 의도 일치
+- 최소 변경
+- 검증 용이성
+- 문서 일치
+
+👉 결과 편차를 구조적으로 제어
+
+---
+
+### 3️⃣ agent.md 기반 제어
+
+AI 행동을 제한하는 계약서
+
+구성:
+- Role
+- Scope
+- Constraints
+- Output
+- Validation
+
+---
+
+### 4️⃣ 검증 시스템
+
+- 타입 체크
+- JSON 파싱
+- fallback 동작
+- 사이드이펙트 검증
+
+---
+
+### 5️⃣ 문서 중심 개발
+
+
 docs/
-├── project/
-├── context/
+├── architecture/
 ├── conventions/
 ├── ai-context/
 ├── dev-logs/
-└── structure/
-```
 
-## Summary
 
-`내맘대로클래스`는 강의를 단순히 재생하는 LMS가 아니라,  
-**강의의 의미 단위를 다시 조합해 학습 효율을 높이는 AI 교육 플랫폼**입니다.
+👉 문서 = 기준 / 코드 = 결과
 
-이 `.github` 폴더는 그 철학을 실제 협업 규칙과 리뷰 자동화로 고정하는 운영 허브입니다.
+---
+
+### 6️⃣ 토큰 최적화
+
+- 문서 참조 방식
+- 병렬 생성 후 선택
+- agent.md 최소화
+
+---
+
+### 7️⃣ 재현성 확보
+
+
+docs/dev-logs/
+
+A안 vs B안
+선택 근거
+
+👉 동일 문제 재사용 가능
+
+---
+
+## 🧑‍💻 역할
+
+> Product Architect & Implementation Orchestrator
+
+- AI 사용 ❌  
+- AI 시스템 설계 ✅
+
+---
+
+## 🔁 개발 프로세스
+
+
+설계 → 문서화 → 구현 → 검증 → 기록
+
+
+---
+
+## 📚 문서
+
+| 문서 | 설명 |
+|------|------|
+| agent.md | AI 협업 기준 |
+| docs/dev-logs | 의사결정 기록 |
+| docs/ai-context | AI 컨텍스트 |
+| docs/conventions | 코드 규칙 |
+
+---
+
+## 🚀 배포
+
+| 환경 | Frontend | Backend |
+|------|----------|--------|
+| dev | Vite | Wrangler |
+| prod | Cloudflare Pages | Workers |
+
+---
+
+## 🎯 핵심 철학
+
+- AI는 대체자가 아니라 **실행 도구**
+- 사람은 기준을 정의
+- 결과는 항상 검증
+- 강의는 “재생”이 아니라 “재구성”
+
+---
+
+## 📜 라이선스
+
+MIT License  
+2026 KIT 바이브코딩 공모전 제출작
