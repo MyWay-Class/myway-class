@@ -32,6 +32,7 @@ function readStorageValue<T extends string>(key: string, allowed: readonly T[], 
 export function AppShell({ session, activePage, activeNavKey, title, onNavigate, onHome, onLogout, children }: AppShellProps) {
   const [theme, setTheme] = useState<ThemeMode>(() => readStorageValue(themeStorageKey, ['light', 'dark'], 'light'));
   const [dock, setDock] = useState<SidebarDock>(() => readStorageValue(dockStorageKey, ['left', 'right'], 'left'));
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') {
       return false;
@@ -58,7 +59,7 @@ export function AppShell({ session, activePage, activeNavKey, title, onNavigate,
   const shellOffsetClass = dock === 'right' ? (collapsed ? 'lg:mr-20' : 'lg:mr-72') : (collapsed ? 'lg:ml-20' : 'lg:ml-72');
 
   return (
-    <div className="hero-pattern min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
+    <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
       <AppSidebar
         session={session}
         activePage={activePage}
@@ -83,7 +84,7 @@ export function AppShell({ session, activePage, activeNavKey, title, onNavigate,
           onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
           onOpenMobile={() => setMobileOpen(true)}
         />
-        <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8">
           <div className="animate-fade-in">{children}</div>
         </main>
       </div>

@@ -27,8 +27,10 @@ export function CourseExploreFilters({
   onStatusChange,
   resultCount,
 }: CourseExploreFiltersProps) {
+  const uniqueCategories = [...new Set(categories.filter((category) => category.trim().length > 0))];
+
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+    <section className="rounded-[26px] border border-slate-200 bg-white px-5 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="text-[12px] font-semibold text-slate-900">카테고리와 상태로 빠르게 거르기</div>
@@ -65,7 +67,7 @@ export function CourseExploreFilters({
           <i className="ri-apps-2-line text-base" />
           전체
         </button>
-        {categories.map((category) => {
+        {uniqueCategories.map((category) => {
           const active = activeCategory === category;
           return (
             <button

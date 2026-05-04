@@ -65,9 +65,11 @@ export function splitLectureStudioLines(text: string): string[] {
 }
 
 export function buildLectureStudioDraft(course: CourseDetail | null, highlightedLecture: LectureDetail | Lecture | null): LectureStudioDraft {
-  const baseLecture = highlightedLecture ?? course?.lectures[0] ?? null;
-  const lectureTitles = course?.lectures.slice(0, 6).map((lecture) => `${lecture.order_index + 1}. ${lecture.title}`) ?? [];
-  const materialTitles = course?.materials.slice(0, 5).map((material) => `${material.title} — ${material.summary}`) ?? [];
+  const courseLectures = Array.isArray(course?.lectures) ? course.lectures : [];
+  const courseMaterials = Array.isArray(course?.materials) ? course.materials : [];
+  const baseLecture = highlightedLecture ?? courseLectures[0] ?? null;
+  const lectureTitles = courseLectures.slice(0, 6).map((lecture) => `${lecture.order_index + 1}. ${lecture.title}`);
+  const materialTitles = courseMaterials.slice(0, 5).map((material) => `${material.title} — ${material.summary}`);
 
   return {
     courseId: course?.id ?? '',

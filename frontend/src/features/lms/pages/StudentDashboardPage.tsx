@@ -77,6 +77,7 @@ export function StudentDashboardPage({
       },
     ];
   const activities = dashboard?.recent_activities ?? [];
+  const recommendationItems = Array.isArray(recommendations?.recommendations) ? recommendations.recommendations : [];
   const nextAction = dashboard?.next_action ?? '로그인 후 개인 학습 흐름을 확인할 수 있습니다.';
   const continueCourse = highlightedLecture
     ? courses.find((course) => course.id === highlightedLecture.course_id) ?? courses[0] ?? null
@@ -85,7 +86,7 @@ export function StudentDashboardPage({
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white px-6 py-6 shadow-sm lg:px-8 lg:py-8">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] lg:items-center">
           <div className="flex items-center gap-5">
             <div className="relative flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-[30px] bg-[linear-gradient(135deg,#6366f1,#22c55e)] text-white shadow-[0_18px_40px_rgba(79,70,229,0.22)]">
@@ -95,15 +96,11 @@ export function StudentDashboardPage({
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">
+              <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
                 <i className="ri-dashboard-3-line" />
                 마이페이지
               </div>
-              <h2 className="mt-4 text-[26px] font-extrabold tracking-[-0.04em] lg:text-[32px] text-slate-900">
-                {session.user.name}님, 오늘 학습을
-                <br />
-                이어갈 준비가 되어 있습니다.
-              </h2>
+              <h2 className="mt-4 text-[24px] font-bold lg:text-[28px] text-slate-900">{session.user.name}님의 학습 대시보드</h2>
               <p className="mt-3 max-w-2xl text-[14px] leading-7 text-slate-500">{nextAction}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">{session.user.email}</span>
@@ -157,7 +154,7 @@ export function StudentDashboardPage({
             key={action.page}
             type="button"
             onClick={() => onNavigate(action.page)}
-            className="group rounded-[28px] border border-slate-200 bg-white px-5 py-5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
+            className="group rounded-2xl border border-slate-200 bg-white px-5 py-5 text-left shadow-sm transition hover:border-indigo-200"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-[22px] text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
               <i className={action.icon} />
@@ -170,7 +167,7 @@ export function StudentDashboardPage({
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <div className="space-y-6">
-          <div className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-[15px] font-bold text-slate-900">최근 학습</h3>
@@ -192,10 +189,10 @@ export function StudentDashboardPage({
 
             {highlightedLecture && continueCourse ? (
               <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-                <div className="rounded-[26px] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_60%,#312e81_100%)] px-5 py-5 text-white">
-                  <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90">지금 이어볼 강의</div>
-                  <div className="mt-4 text-[22px] font-extrabold tracking-[-0.04em]">{highlightedLecture.title}</div>
-                  <div className="mt-2 text-[13px] leading-6 text-white/75">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
+                  <div className="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-[11px] font-semibold text-indigo-700">지금 이어볼 강의</div>
+                  <div className="mt-4 text-[20px] font-bold text-slate-900">{highlightedLecture.title}</div>
+                  <div className="mt-2 text-[13px] leading-6 text-slate-500">
                     {highlightedLecture.course_title} · {highlightedLecture.course_instructor}
                   </div>
                   <div className="mt-6 flex flex-wrap gap-2">
@@ -205,21 +202,21 @@ export function StudentDashboardPage({
                         onSelectCourse(highlightedLecture.course_id);
                         onNavigate('courses');
                       }}
-                      className="rounded-full bg-white px-4 py-2 text-[12px] font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                      className="rounded-lg bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
                     >
                       상세/진도율 보기
                     </button>
                     <button
                       type="button"
                       onClick={() => onNavigate('ai-chat')}
-                      className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-white/15"
+                      className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
                     >
                       챗봇으로 질문
                     </button>
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-slate-200 bg-slate-50 px-5 py-5">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-[12px] font-semibold text-indigo-600">진도</div>
@@ -264,7 +261,7 @@ export function StudentDashboardPage({
             )}
           </div>
 
-          <div className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-[15px] font-bold text-slate-900">수강 중인 강의</h3>
@@ -297,14 +294,14 @@ export function StudentDashboardPage({
             emptyMessage="최근 활동이 아직 없습니다. 첫 수강 신청이나 강의 완료가 생기면 여기에 표시됩니다."
           />
 
-          {recommendations?.recommendations.length ? (
-            <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          {recommendationItems.length ? (
+            <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
               <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
                 <i className="ri-robot-line text-indigo-600" />
                 AI 추천
               </h3>
               <div className="mt-3 grid gap-3">
-                {recommendations.recommendations.slice(0, 3).map((item) => (
+                {recommendationItems.slice(0, 3).map((item) => (
                   <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                     <div className="text-[13px] font-semibold text-slate-900">{item.title}</div>
                     <div className="mt-1 text-[12px] leading-6 text-slate-500">{item.reason}</div>
