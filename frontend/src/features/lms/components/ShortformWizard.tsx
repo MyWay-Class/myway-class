@@ -124,6 +124,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   const [createdVideo, setCreatedVideo] = useState<ShortformVideo | null>(null);
   const [communityItems, setCommunityItems] = useState<ShortformCommunityItem[]>([]);
   const [transcriptMap, setTranscriptMap] = useState<Record<string, TranscriptSnapshot>>({});
+  const courseLectures = Array.isArray(courseDetail?.lectures) ? courseDetail.lectures : [];
 
   useEffect(() => {
     if (selectedCourse?.id) {
@@ -171,13 +172,13 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   useEffect(() => {
     let alive = true;
 
-    if (!courseDetail?.lectures.length) {
+    if (courseLectures.length === 0) {
       setTranscriptMap({});
       return undefined;
     }
 
     Promise.all(
-      courseDetail.lectures.map(async (lecture) => {
+      courseLectures.map(async (lecture) => {
         const transcript = await loadLectureTranscriptDetailed(lecture.id, sessionToken);
         return [
           lecture.id,
@@ -200,14 +201,14 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
     return () => {
       alive = false;
     };
-  }, [courseDetail?.id, courseDetail?.lectures, sessionToken]);
+  }, [courseDetail?.id, courseLectures, sessionToken]);
 
   useEffect(() => {
     let alive = true;
 
     loadShortformCommunity(activeCourseId, sessionToken).then((items) => {
       if (alive) {
-        setCommunityItems(items.slice(0, 4));
+        setCommunityItems((Array.isArray(items) ? items : []).slice(0, 4));
       }
     });
 
@@ -222,12 +223,12 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
       return [];
     }
 
-    return courseDetail.lectures.map((lecture, index) => ({
+    return courseLectures.map((lecture, index) => ({
       id: lecture.id,
       title: lecture.title,
       label: `${lecture.week_number ?? 1}주차 · ${lecture.session_number ?? index + 1}차시`,
     }));
-  }, [courseDetail]);
+  }, [courseLectures, courseDetail]);
 
   const filteredSuggestions = useMemo(() => {
     if (lectureFilter === 'all') {
@@ -334,7 +335,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
     setCreatedVideo(video);
     setStatus(video.export_status === 'COMPLETED' || video.export_result_url ? '숏폼이 생성되어 재생 가능합니다.' : '숏폼이 생성되었고 export를 처리 중입니다.');
     const refreshed = await loadShortformCommunity(courseDetail.id, sessionToken);
-    setCommunityItems(refreshed.slice(0, 4));
+    setCommunityItems((Array.isArray(refreshed) ? refreshed : []).slice(0, 4));
     setStep(3);
   }
 
@@ -347,7 +348,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
     const shared = await shareShortformDraft({ video_id: createdVideo.id, course_id: createdVideo.course_id, message: '학습용 숏폼을 공유합니다.' }, sessionToken);
     setStatus(shared ? '숏폼을 공유했습니다.' : '공유에 실패했습니다.');
     const refreshed = await loadShortformCommunity(courseDetail.id, sessionToken);
-    setCommunityItems(refreshed.slice(0, 4));
+    setCommunityItems((Array.isArray(refreshed) ? refreshed : []).slice(0, 4));
   }
 
   function toggleClip(clip: ClipSuggestion) {
@@ -480,7 +481,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
                 setStep(2);
               }}
               onNext={() => setStep(2)}
-              canContinue={Boolean(courseDetail?.lectures.length)}
+              canContinue={courseLectures.length > 0}
             />
           ) : null}
 

@@ -66,11 +66,11 @@ export function CourseExploreCard({ course, selected, onSelect, onOpen }: Course
         onSelect(course.id);
         onOpen?.(course.id);
       }}
-      className={`group overflow-hidden rounded-[24px] border bg-white text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)] ${
+      className={`group overflow-hidden rounded-[22px] border bg-white text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.08)] ${
         selected ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-[var(--app-border)]'
       }`}
     >
-      <div className={`relative flex h-32 flex-col justify-between px-5 py-4 text-white ${palette.panel}`}>
+      <div className={`relative flex h-[120px] min-h-[116px] flex-col justify-between px-5 py-4 text-white ${palette.panel}`}>
         <div className="absolute inset-0 opacity-15">
           <i className={`${palette.icon} absolute -right-4 -bottom-4 text-[104px]`} />
         </div>
@@ -90,7 +90,7 @@ export function CourseExploreCard({ course, selected, onSelect, onOpen }: Course
       </div>
 
       <div className="px-5 py-4">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
           <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${palette.chip}`}>{safeRating.toFixed(1)}점</span>
           <span className="rounded-full bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--app-text-secondary)]">
             수강생 {safeStudentCount}명
@@ -100,7 +100,7 @@ export function CourseExploreCard({ course, selected, onSelect, onOpen }: Course
           </span>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[12px] text-[var(--app-text-secondary)]">
             <span>{safeLectureCount}개 강의</span>
             <span>{course.enrolled ? `${safeProgressPercent}% 진행` : '수강 대기'}</span>
@@ -110,10 +110,10 @@ export function CourseExploreCard({ course, selected, onSelect, onOpen }: Course
           </div>
         </div>
 
-        <p className="mt-4 line-clamp-2 text-[13px] leading-6 text-[var(--app-text-secondary)]">{course.description}</p>
+        <p className="mt-3 line-clamp-2 text-[13px] leading-6 text-[var(--app-text-secondary)]">{course.description}</p>
 
         {tags.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {tags.slice(0, 3).map((tag) => (
               <span key={tag} className="rounded-full bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-text-secondary)]">
                 #{tag}
