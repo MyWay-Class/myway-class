@@ -42,8 +42,9 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
     const query = searchQuery.trim().toLowerCase();
 
     return courseCards.filter((course) => {
+      const tags = Array.isArray(course.tags) ? course.tags : [];
       const queryMatch = query
-        ? [course.title, course.description, course.category, course.instructor_name, ...course.tags].join(' ').toLowerCase().includes(query)
+        ? [course.title, course.description, course.category, course.instructor_name, ...tags].join(' ').toLowerCase().includes(query)
         : true;
       const categoryMatch = activeCategory ? course.category === activeCategory : true;
       const statusMatch =
@@ -62,7 +63,8 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
     const counts = new Map<string, number>();
 
     courseCards.forEach((course) => {
-      course.tags.forEach((tag) => {
+      const tags = Array.isArray(course.tags) ? course.tags : [];
+      tags.forEach((tag) => {
         counts.set(tag, (counts.get(tag) ?? 0) + 1);
       });
     });
@@ -234,7 +236,7 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
                 </div>
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                   <div className="text-[11px] text-slate-500">태그</div>
-                  <div className="mt-1 text-[18px] font-extrabold text-slate-900">{countUnique(courseCards.flatMap((course) => course.tags))}</div>
+                  <div className="mt-1 text-[18px] font-extrabold text-slate-900">{countUnique(courseCards.flatMap((course) => (Array.isArray(course.tags) ? course.tags : [])))}</div>
                 </div>
               </div>
             </div>
@@ -287,7 +289,7 @@ export function PublicHomePage({ courseCards, busy, onOpenLogin }: PublicHomePag
             title="추천 흐름"
             description={notice}
             tone="indigo"
-            meta={`${totalProgress}% 평균 진도 · ${countUnique(courseCards.flatMap((course) => course.tags))}개 태그`}
+            meta={`${totalProgress}% 평균 진도 · ${countUnique(courseCards.flatMap((course) => (Array.isArray(course.tags) ? course.tags : [])))}개 태그`}
           />
         </section>
 

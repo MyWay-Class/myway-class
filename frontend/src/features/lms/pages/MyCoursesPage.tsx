@@ -61,8 +61,8 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
   const currentCourses = session.user.role === 'STUDENT' ? enrolledCourses : instructorCourses;
   const visibleCourses = currentCourses.length > 0 ? currentCourses : demoCourses;
   const primaryCourse = selectedCourse ?? visibleCourses[0] ?? null;
-  const categories = ['all', ...new Set(visibleCourses.map((course) => course.category))];
   const primaryCourseTags = Array.isArray(primaryCourse?.tags) ? primaryCourse.tags : [];
+  const categories = ['all', ...new Set(visibleCourses.map((course) => course.category))];
 
   const filteredCourses = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
