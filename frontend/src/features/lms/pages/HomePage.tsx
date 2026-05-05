@@ -43,42 +43,46 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm lg:px-8">
+      <section className="overflow-hidden rounded-[30px] bg-[linear-gradient(135deg,#0b1220_0%,#1d4ed8_52%,#1f2937_100%)] px-6 py-8 text-white shadow-[0_22px_48px_rgba(15,23,42,0.18)] lg:px-8 lg:py-10">
         <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_70%_30%,rgba(168,85,247,0.30),transparent_55%)]" />
         <div className="relative z-10 max-w-2xl">
-          <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+          <span className="inline-flex rounded-full bg-white/10 px-4 py-2 text-[12px] font-semibold text-white/90 backdrop-blur">
             AI 기반 학습 플랫폼 · {session.user.name}
           </span>
-          <h2 className="mt-4 text-[26px] font-bold text-slate-900 lg:text-[30px]">학습 홈</h2>
-          <p className="mt-2 max-w-xl text-[14px] leading-6 text-slate-500">
+          <h2 className="mt-6 text-[2.25rem] font-extrabold tracking-[-0.04em] leading-[1.05] text-white lg:text-[3.4rem]">
+            찾기 쉽고
+            <br />
+            보기 쉬운 학습 화면
+          </h2>
+          <p className="mt-5 max-w-xl text-[15px] leading-7 text-white/78">
             강의, 스크립트, 타임스탬프, 숏폼, AI 챗봇까지 한 곳에서 이어집니다.
             홈에서 시작해 바로 학습 흐름으로 들어가세요.
           </p>
 
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-8 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => onNavigate('courses')}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-indigo-500"
+              className="rounded-full bg-white px-5 py-3 text-[13px] font-semibold text-indigo-700 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition hover:-translate-y-0.5"
             >
               강의 탐색하기
             </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('dashboard')}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
-            >
-              로그인 후 계속
-            </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('dashboard')}
+                className="rounded-full border border-white/25 bg-white/10 px-5 py-3 text-[13px] font-semibold text-white backdrop-blur transition hover:bg-white/15"
+              >
+                대시보드 보기
+              </button>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-8 flex flex-wrap gap-2">
             {tags.length > 0 ? tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-600">
+              <span key={tag} className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-medium text-white/85 backdrop-blur">
                 #{tag}
               </span>
             )) : (
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-600">
+              <span className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-medium text-white/75 backdrop-blur">
                 추천 태그가 없습니다.
               </span>
             )}
@@ -92,7 +96,7 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
             key={action.page}
             type="button"
             onClick={() => onNavigate(action.page)}
-            className="group rounded-2xl border border-slate-200 bg-white px-5 py-5 text-left shadow-sm transition hover:border-indigo-200"
+            className="group rounded-[28px] border border-[var(--app-border)] bg-white px-5 py-5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-[var(--app-border-focus)] hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-[22px] text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
               <i className={action.icon} />
@@ -104,7 +108,7 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+        <div className="rounded-[30px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-[15px] font-bold text-[var(--app-text)]">지금 이어볼 강의</h3>
@@ -117,12 +121,12 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
 
           {highlightedLecture && continueCourse ? (
             <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
-                <div className="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-[11px] font-semibold text-indigo-700">
+              <div className="rounded-[26px] bg-[linear-gradient(135deg,#070b1b_0%,#1d4ed8_60%,#312e81_100%)] px-5 py-5 text-white">
+                <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90">
                   홈 시작
                 </div>
-                <div className="mt-4 text-[20px] font-bold text-slate-900">{highlightedLecture.title}</div>
-                <div className="mt-2 text-[13px] leading-6 text-slate-500">
+                <div className="mt-4 text-[22px] font-extrabold tracking-[-0.04em]">{highlightedLecture.title}</div>
+                <div className="mt-2 text-[13px] leading-6 text-white/75">
                   {highlightedLecture.course_title} · {highlightedLecture.course_instructor}
                 </div>
                 <div className="mt-6 flex flex-wrap gap-2">
@@ -132,21 +136,21 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
                       onSelectCourse(highlightedLecture.course_id);
                       onNavigate('courses');
                     }}
-                    className="rounded-lg bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                    className="rounded-full bg-white px-4 py-2 text-[12px] font-semibold text-indigo-700 transition hover:bg-indigo-50"
                   >
                     내 강의 보기
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate('ai-chat')}
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-white/15"
                   >
                     챗봇으로 질문
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
+              <div className="rounded-[26px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-5">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-[12px] font-semibold text-indigo-600">진도</div>
@@ -192,7 +196,7 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <div className="rounded-[30px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-[15px] font-bold text-[var(--app-text)]">학습 요약</h3>
@@ -231,7 +235,7 @@ export function HomePage({ session, dashboard, courses, highlightedLecture, onNa
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <div className="rounded-[30px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm">
             <h3 className="text-[15px] font-bold text-[var(--app-text)]">추천 카테고리</h3>
             <div className="mt-4 flex flex-wrap gap-2">
               {categories.length > 0 ? categories.map((category) => (
