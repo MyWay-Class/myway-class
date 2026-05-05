@@ -185,6 +185,7 @@ public class FeatureStoreService {
         item.put("created_at", Instant.now().toString());
 
         store.insertEvent(EXTRACTION_SCOPE, lectureId, id, item);
+        store.upsertKv(EXTRACTION_SCOPE, id, item);
 
         Map<String, Object> transcript = Map.of(
                 "lecture_id", lectureId,
@@ -227,11 +228,16 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion) {
-        Map<String, Object> extraction = null;
-        for (Map<String, Object> row : store.listEventsByScope(EXTRACTION_SCOPE)) {
-            if (extractionId.equals(String.valueOf(row.getOrDefault("id", "")))) {
-                extraction = new HashMap<>(row);
-                break;
+        Map<String, Object> extraction = store.getKv(EXTRACTION_SCOPE, extractionId);
+        if (extraction != null) {
+            extraction = new HashMap<>(extraction);
+        }
+        if (extraction == null) {
+            for (Map<String, Object> row : store.listEventsByScope(EXTRACTION_SCOPE)) {
+                if (extractionId.equals(String.valueOf(row.getOrDefault("id", "")))) {
+                    extraction = new HashMap<>(row);
+                    break;
+                }
             }
         }
         if (extraction == null) {
