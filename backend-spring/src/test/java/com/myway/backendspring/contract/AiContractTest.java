@@ -104,13 +104,19 @@ class AiContractTest {
         mockMvc.perform(put("/api/v1/ai/settings")
                         .header("Authorization", authHeader)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"daily_limit\":0}"))
+                        .content("{\"daily_limit\":1}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/ai/intent")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"1차 호출\"}"))
                 .andExpect(status().isOk());
 
         assertFailureEnvelope(mockMvc.perform(post("/api/v1/ai/intent")
                         .header("Authorization", authHeader)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"message\":\"쿼터 테스트\"}"))
+                        .content("{\"message\":\"2차 호출\"}"))
                         .andExpect(status().isTooManyRequests())
                         .andReturn(),
                 "DAILY_LIMIT_EXCEEDED");
