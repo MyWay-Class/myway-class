@@ -181,9 +181,11 @@ public class FeatureStoreService {
         item.put("id", id);
         item.put("lecture_id", lectureId);
         item.put("status", "COMPLETED");
+        item.put("last_event_version", 0L);
         item.put("created_at", Instant.now().toString());
 
         store.insertEvent(EXTRACTION_SCOPE, lectureId, id, item);
+        store.upsertKv(EXTRACTION_SCOPE, id, item);
 
         Map<String, Object> transcript = Map.of(
                 "lecture_id", lectureId,
@@ -225,18 +227,30 @@ public class FeatureStoreService {
         return store.listEventsByOwner(EXTRACTION_SCOPE, lectureId);
     }
 
-    public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage) {
-        Map<String, Object> extraction = null;
-        for (Map<String, Object> row : store.listEventsByScope(EXTRACTION_SCOPE)) {
-            if (extractionId.equals(String.valueOf(row.getOrDefault("id", "")))) {
-                extraction = new HashMap<>(row);
-                break;
+    public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion) {
+        Map<String, Object> extraction = store.getKv(EXTRACTION_SCOPE, extractionId);
+        if (extraction != null) {
+            extraction = new HashMap<>(extraction);
+        }
+        if (extraction == null) {
+            for (Map<String, Object> row : store.listEventsByScope(EXTRACTION_SCOPE)) {
+                if (extractionId.equals(String.valueOf(row.getOrDefault("id", "")))) {
+                    extraction = new HashMap<>(row);
+                    break;
+                }
             }
         }
         if (extraction == null) {
             return null;
         }
 
+        long currentVersion = asLong(extraction.get("last_event_version"));
+        if (eventVersion <= currentVersion) {
+            extraction.put("callback_ignored", true);
+            return extraction;
+        }
+
+        extraction.put("last_event_version", eventVersion);
         extraction.put("status", status == null || status.isBlank() ? "COMPLETED" : status.toUpperCase());
         extraction.put("error_message", errorMessage);
         extraction.put("updated_at", Instant.now().toString());

@@ -35,6 +35,13 @@ public class MediaController {
         this.callbackToken = callbackToken;
     }
 
+    public record ExtractionCallbackRequest(
+            String extraction_id,
+            String status,
+            String error_message,
+            Long event_version
+    ) {}
+
     private SessionView require(String auth) { return sessionService.me(auth); }
     private boolean canManageMedia(SessionView session) {
         if (session == null) return false;
@@ -154,7 +161,7 @@ public class MediaController {
     @PostMapping("/extract-audio/callback")
     public ResponseEntity<ApiResponse<Map<String, Object>>> callback(
             @RequestHeader(value = "X-Callback-Token", required = false) String token,
-            @RequestBody Map<String, Object> body
+            @RequestBody ExtractionCallbackRequest body
     ) {
         if (token == null || token.isBlank() || !token.equals(callbackToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "유효한 callback token이 필요합니다."));
@@ -162,15 +169,22 @@ public class MediaController {
         if (body == null) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID", "callback payload가 올바르지 않습니다."));
         }
-        String extractionId = String.valueOf(body.getOrDefault("extraction_id", "")).trim();
+        String extractionId = body.extraction_id() == null ? "" : body.extraction_id().trim();
         if (extractionId.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID", "callback payload가 올바르지 않습니다."));
         }
-        String status = String.valueOf(body.getOrDefault("status", "COMPLETED"));
-        String errorMessage = body.get("error_message") == null ? null : String.valueOf(body.get("error_message"));
-        Map<String, Object> result = featureStore.completeExtractionCallback(extractionId, status, errorMessage);
+        long eventVersion = body.event_version() != null ? body.event_version() : 1L;
+        String status = body.status() == null ? "COMPLETED" : body.status();
+        String errorMessage = body.error_message();
+        Map<String, Object> result = featureStore.completeExtractionCallback(extractionId, status, errorMessage, eventVersion);
         if (result == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "오디오 추출 기록을 찾을 수 없습니다."));
+        }
+        if (Boolean.TRUE.equals(result.get("callback_ignored"))) {
+            return ResponseEntity.ok(ApiResponse.success(
+                    Map.of("extraction", result, "pipeline", featureStore.pipeline(String.valueOf(result.getOrDefault("lecture_id", "")))),
+                    "오래된 callback 이벤트를 무시했습니다."
+            ));
         }
         return ResponseEntity.ok(ApiResponse.success(Map.of("extraction", result, "pipeline", featureStore.pipeline(String.valueOf(result.getOrDefault("lecture_id", "")))), "오디오 추출 callback이 반영되었습니다."));
     }
