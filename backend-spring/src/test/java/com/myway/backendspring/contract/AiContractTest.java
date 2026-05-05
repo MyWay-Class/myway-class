@@ -29,6 +29,7 @@ class AiContractTest {
     @Test
     void aiEndpoints_shouldReturnSuccessEnvelope_whenAuthenticated() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+        setDailyLimit(authHeader, 999999);
 
         assertSuccessEnvelope(mockMvc.perform(get("/api/v1/ai/insights")
                         .header("Authorization", authHeader))
@@ -101,30 +102,31 @@ class AiContractTest {
     @Test
     void aiEndpoints_shouldReturnQuotaEnvelope_whenDailyLimitExceeded() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
-        mockMvc.perform(put("/api/v1/ai/settings")
-                        .header("Authorization", authHeader)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"daily_limit\":1}"))
-                .andExpect(status().isOk());
+        try {
+            setDailyLimit(authHeader, 1);
 
-        mockMvc.perform(post("/api/v1/ai/intent")
-                        .header("Authorization", authHeader)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"message\":\"1차 호출\"}"))
-                .andExpect(status().isOk());
+            mockMvc.perform(post("/api/v1/ai/intent")
+                            .header("Authorization", authHeader)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"message\":\"1차 호출\"}"))
+                    .andExpect(status().isOk());
 
-        assertFailureEnvelope(mockMvc.perform(post("/api/v1/ai/intent")
-                        .header("Authorization", authHeader)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"message\":\"2차 호출\"}"))
-                        .andExpect(status().isTooManyRequests())
-                        .andReturn(),
-                "DAILY_LIMIT_EXCEEDED");
+            assertFailureEnvelope(mockMvc.perform(post("/api/v1/ai/intent")
+                            .header("Authorization", authHeader)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"message\":\"2차 호출\"}"))
+                            .andExpect(status().isTooManyRequests())
+                            .andReturn(),
+                    "DAILY_LIMIT_EXCEEDED");
+        } finally {
+            setDailyLimit(authHeader, 999999);
+        }
     }
 
     @Test
     void aiEndpoints_shouldReturnNotFoundEnvelope_whenLectureOrCourseMissing() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+        setDailyLimit(authHeader, 999999);
 
         assertFailureEnvelope(mockMvc.perform(post("/api/v1/ai/summary")
                         .header("Authorization", authHeader)
@@ -152,6 +154,14 @@ class AiContractTest {
                 .getResponse()
                 .getContentAsString();
         return objectMapper.readTree(response).path("data").path("session_token").asText();
+    }
+
+    private void setDailyLimit(String authHeader, int dailyLimit) throws Exception {
+        mockMvc.perform(put("/api/v1/ai/settings")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"daily_limit\":" + dailyLimit + "}"))
+                .andExpect(status().isOk());
     }
 
     private void assertSuccessEnvelope(MvcResult result) throws Exception {
