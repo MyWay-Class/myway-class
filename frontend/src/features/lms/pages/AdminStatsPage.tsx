@@ -71,11 +71,21 @@ function getTokenTotal(logs: Array<{ input_tokens: number; output_tokens: number
 export function AdminStatsPage({ dashboard, courses, users, insights, aiLogs }: AdminStatsPageProps) {
   return (
     <div className="space-y-5">
-      <AdminStatsOverviewCards dashboard={dashboard} courses={courses} users={users} insights={insights} aiLogs={aiLogs} />
-      <AdminStatsComparisonPanel aiLogs={aiLogs} />
-      <AdminStatsOperationalPanel courses={courses} users={users} insights={insights} aiLogs={aiLogs} />
-      <AdminStatsDistributionPanel aiLogs={aiLogs} />
-      <AdminStatsLogPanel aiLogs={aiLogs} />
+      <section className="overflow-hidden rounded-[28px] border border-cyan-200 bg-[linear-gradient(135deg,#ecfeff_0%,#f0fdfa_56%,#f8fafc_100%)] p-3 sm:p-4">
+        <AdminStatsOverviewCards dashboard={dashboard} courses={courses} users={users} insights={insights} aiLogs={aiLogs} />
+      </section>
+      <section className="rounded-[28px] border border-cyan-100 bg-white p-3 shadow-sm sm:p-4">
+        <AdminStatsComparisonPanel aiLogs={aiLogs} />
+      </section>
+      <section className="rounded-[28px] border border-teal-100 bg-white p-3 shadow-sm sm:p-4">
+        <AdminStatsOperationalPanel courses={courses} users={users} insights={insights} aiLogs={aiLogs} />
+      </section>
+      <section className="rounded-[28px] border border-cyan-100 bg-white p-3 shadow-sm sm:p-4">
+        <AdminStatsDistributionPanel aiLogs={aiLogs} />
+      </section>
+      <section className="rounded-[28px] border border-cyan-100 bg-white p-3 shadow-sm sm:p-4">
+        <AdminStatsLogPanel aiLogs={aiLogs} />
+      </section>
     </div>
   );
 }

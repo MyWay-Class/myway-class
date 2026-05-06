@@ -1,4 +1,4 @@
-import type { AIReference, AIIntentResult } from '@myway/shared';
+﻿import type { AIReference, AIIntentResult } from '@myway/shared';
 
 type ChatRole = 'assistant' | 'user';
 
@@ -31,19 +31,19 @@ export function AIChatThread({ messages, loading }: AIChatThreadProps) {
           <div key={message.id} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
             <div
               className={`mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-                isUser ? 'bg-indigo-600 text-white' : 'bg-[var(--app-surface-soft)] text-[var(--app-text-secondary)]'
+                isUser ? 'bg-cyan-600 text-white' : 'bg-[var(--app-surface-soft)] text-[var(--app-text-secondary)]'
               }`}
             >
               <i className={isUser ? 'ri-user-3-line' : 'ri-robot-2-line'} />
             </div>
-            <div className={`max-w-[85%] rounded-[22px] px-4 py-3 text-[13px] leading-6 ${isUser ? 'bg-indigo-600 text-white' : 'bg-[var(--app-surface-soft)] text-[var(--app-text-secondary)]'}`}>
+            <div className={`max-w-[85%] rounded-[22px] px-4 py-3 text-[13px] leading-6 ${isUser ? 'bg-cyan-600 text-white' : 'bg-[var(--app-surface-soft)] text-[var(--app-text-secondary)]'}`}>
               <p>{sanitizeDisplayText(message.content)}</p>
               {message.references?.length ? (
                 <div className="mt-3 space-y-2">
                   {message.references.slice(0, 3).map((reference) => (
                     <div key={reference.id} className="rounded-xl bg-white/70 px-3 py-2 text-[11px] text-[var(--app-text-secondary)]">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-indigo-600">{sanitizeDisplayText(reference.title)}</span>
+                        <span className="font-semibold text-cyan-600">{sanitizeDisplayText(reference.title)}</span>
                         <span className="text-[var(--app-text-muted)]">{Math.round(reference.similarity * 100)}%</span>
                       </div>
                       <p className="mt-1 text-[var(--app-text-secondary)]">{sanitizeDisplayText(reference.excerpt)}</p>
@@ -78,3 +78,4 @@ export function AIChatThread({ messages, loading }: AIChatThreadProps) {
     </div>
   );
 }
+

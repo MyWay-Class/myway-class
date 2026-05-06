@@ -1,4 +1,4 @@
-type AIChatComposerProps = {
+﻿type AIChatComposerProps = {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
@@ -39,13 +39,13 @@ export function AIChatComposer({ value, onChange, onSubmit, quickPrompts, onQuic
           disabled={disabled}
           rows={2}
           placeholder="핵심 개념, 시험 대비, 이전 강의와 연결 같은 질문을 입력하세요..."
-          className="min-h-[56px] flex-1 resize-none rounded-[22px] border border-slate-200 bg-white px-4 py-3 text-[13px] leading-6 text-slate-700 outline-none transition focus:border-indigo-300 disabled:bg-slate-50"
+          className="min-h-[56px] flex-1 resize-none rounded-[22px] border border-slate-200 bg-white px-4 py-3 text-[13px] leading-6 text-slate-700 outline-none transition focus:border-cyan-300 disabled:bg-slate-50"
         />
         <button
           type="button"
           onClick={onSubmit}
           disabled={disabled}
-          className="flex h-[56px] w-[56px] items-center justify-center rounded-[22px] bg-indigo-600 text-white transition hover:bg-indigo-500 disabled:opacity-50"
+          className="flex h-[56px] w-[56px] items-center justify-center rounded-[22px] bg-cyan-600 text-white transition hover:bg-cyan-500 disabled:opacity-50"
         >
           <i className="ri-send-plane-fill" />
         </button>
@@ -53,3 +53,4 @@ export function AIChatComposer({ value, onChange, onSubmit, quickPrompts, onQuic
     </div>
   );
 }
+

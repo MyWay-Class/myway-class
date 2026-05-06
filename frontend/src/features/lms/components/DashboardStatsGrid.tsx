@@ -6,8 +6,8 @@ type DashboardStatsGridProps = {
 
 const toneClasses: Record<DashboardStat['tone'], { panel: string; icon: string; value: string }> = {
   indigo: {
-    panel: 'bg-indigo-50 text-indigo-600',
-    icon: 'bg-indigo-100 text-indigo-600',
+    panel: 'bg-cyan-50 text-cyan-700',
+    icon: 'bg-cyan-100 text-cyan-700',
     value: 'text-slate-900',
   },
   emerald: {
@@ -39,7 +39,7 @@ export function DashboardStatsGrid({ stats }: DashboardStatsGridProps) {
         const tone = toneClasses[stat.tone];
 
         return (
-          <article key={stat.id} className="rounded-[28px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+          <article key={stat.id} className="rounded-[28px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
             <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl text-[20px] ${tone.icon}`}>
               <i className={stat.icon} />
             </div>

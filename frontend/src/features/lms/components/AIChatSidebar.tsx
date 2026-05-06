@@ -1,4 +1,4 @@
-import type { AIInsights, LectureDetail } from '@myway/shared';
+﻿import type { AIInsights, LectureDetail } from '@myway/shared';
 import type { AIRagResult } from '@myway/shared';
 
 type AIChatSidebarProps = {
@@ -60,7 +60,7 @@ export function AIChatSidebar({
               </div>
             </div>
             {ragOverview ? (
-              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
+              <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-600">
                 {sanitizeDisplayText(ragOverview.provider.search_provider)}
               </span>
             ) : null}
@@ -79,7 +79,7 @@ export function AIChatSidebar({
                 {ragOverview.chunks.slice(0, 2).map((chunk) => (
                   <div key={chunk.id} className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-[11px] font-semibold text-indigo-600">{sanitizeDisplayText(chunk.title)}</div>
+                      <div className="text-[11px] font-semibold text-cyan-600">{sanitizeDisplayText(chunk.title)}</div>
                       <div className="text-[11px] text-[var(--app-text-muted)]">{Math.round(chunk.similarity * 100)}%</div>
                     </div>
                     <p className="mt-1 text-[12px] leading-5 text-[var(--app-text-secondary)]">{sanitizeDisplayText(chunk.excerpt)}</p>
@@ -107,3 +107,4 @@ export function AIChatSidebar({
     </aside>
   );
 }
+

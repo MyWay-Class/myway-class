@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import type { CourseCard, CourseCreateRequest, CourseDetail, LectureDetail } from '@myway/shared';
 import { CourseCreateCard } from '../components/CourseCreateCard';
 import { LectureStudioPage } from './LectureStudioPage';
@@ -189,7 +189,7 @@ export function CourseCreatePage({
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={`rounded-2xl border px-4 py-4 text-left transition ${
-                  active ? 'border-indigo-400 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200 bg-slate-50/70 hover:bg-white'
+                  active ? 'border-cyan-400 bg-cyan-50 ring-2 ring-cyan-100' : 'border-slate-200 bg-slate-50/70 hover:bg-white'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -200,7 +200,7 @@ export function CourseCreatePage({
                     </div>
                     <div className="mt-1 text-[12px] leading-6 text-slate-500">{tab.hint}</div>
                   </div>
-                  {active ? <i className="ri-checkbox-circle-fill text-[18px] text-indigo-600" /> : <i className="ri-checkbox-blank-circle-line text-[18px] text-slate-300" />}
+                  {active ? <i className="ri-checkbox-circle-fill text-[18px] text-cyan-600" /> : <i className="ri-checkbox-blank-circle-line text-[18px] text-slate-300" />}
                 </div>
               </button>
             );
@@ -245,7 +245,7 @@ export function CourseCreatePage({
                     type="file"
                     accept="video/*"
                     onChange={(event) => setVideoFile(event.target.files?.[0] ?? null)}
-                    className="block w-full cursor-pointer rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+                    className="block w-full cursor-pointer rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
                   />
                   <div className="text-[11px] leading-5 text-slate-500">
                     선택된 영상은 개설 후 자동 처리 단계로 넘어갑니다. 업로드가 끝나면 오디오 추출과 STT가 이어집니다.
@@ -284,7 +284,7 @@ export function CourseCreatePage({
               </div>
             </section>
 
-            <section className="rounded-3xl border border-dashed border-indigo-200 bg-indigo-50 px-5 py-5 text-[12px] leading-6 text-indigo-900">
+            <section className="rounded-3xl border border-dashed border-cyan-200 bg-cyan-50 px-5 py-5 text-[12px] leading-6 text-indigo-900">
               <div className="font-bold">권한 안내</div>
               <p className="mt-2 text-indigo-800">
                 {canManageCurrent
@@ -317,7 +317,7 @@ export function CourseCreatePage({
                 type="button"
                 onClick={() => void handleFinalizeCreate()}
                 disabled={busy}
-                className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+                className="rounded-full bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {busy ? '개설 중...' : '강의 개설하고 스튜디오 열기'}
               </button>
@@ -334,7 +334,7 @@ export function CourseCreatePage({
                   <div className="rounded-2xl bg-slate-50 px-4 py-3 text-[12px] leading-6 text-slate-600">난이도: {pendingSummary.difficulty}</div>
                   <div className="rounded-2xl bg-slate-50 px-4 py-3 text-[12px] leading-6 text-slate-600">첫 차시 수: {pendingSummary.lectureCount}개</div>
                 </div>
-                <div className="mt-4 rounded-2xl border border-dashed border-indigo-200 bg-indigo-50 px-4 py-4 text-[12px] leading-6 text-indigo-900">
+                <div className="mt-4 rounded-2xl border border-dashed border-cyan-200 bg-cyan-50 px-4 py-4 text-[12px] leading-6 text-indigo-900">
                   강의 개설 버튼을 누르면 입력값으로 실제 강의가 만들어지고, 첫 차시 영상이 있으면 업로드와 오디오 추출이 자동으로 이어집니다.
                 </div>
               </section>
@@ -367,7 +367,7 @@ export function CourseCreatePage({
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-dashed border-indigo-200 bg-indigo-50 px-5 py-5 text-[12px] leading-6 text-indigo-900">
+              <section className="rounded-3xl border border-dashed border-cyan-200 bg-cyan-50 px-5 py-5 text-[12px] leading-6 text-indigo-900">
                 <div className="font-bold">현재 상태</div>
                 <p className="mt-2 text-indigo-800">{workspaceNote}</p>
                 <div className="mt-3 rounded-2xl bg-white/70 px-4 py-3 text-slate-600">
@@ -383,3 +383,4 @@ export function CourseCreatePage({
     </div>
   );
 }
+
