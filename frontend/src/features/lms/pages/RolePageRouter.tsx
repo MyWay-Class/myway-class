@@ -1,26 +1,85 @@
+import { lazy } from 'react';
 import type { LoginResponse } from '@myway/shared';
 import { RolePageFallback } from '../components/RolePageFallback';
-import { AdminAssignPage } from './AdminAssignPage';
-import { AdminAutomationPage } from './AdminAutomationPage';
-import { AdminDashboardPage } from './AdminDashboardPage';
-import { AdminInstructorsPage } from './AdminInstructorsPage';
-import { AdminStatsPage } from './AdminStatsPage';
-import { AdminUsersPage } from './AdminUsersPage';
-import { AIChatPage } from './AIChatPage';
-import { AISummaryPage } from './AISummaryPage';
-import { AssignmentCheckPage } from './AssignmentCheckPage';
-import { CourseCreatePage } from './CourseCreatePage';
-import { CoursesPage } from './CoursesPage';
-import { InstructorDashboardPage } from './InstructorDashboardPage';
-import { LectureWatchPage } from './LectureWatchPage';
-import { LectureStudioPage } from './LectureStudioPage';
 import { HomePage } from './HomePage';
-import { MyCoursesPage } from './MyCoursesPage';
-import { MediaPipelinePage } from './MediaPipelinePage';
-import { QuizGenPage } from './QuizGenPage';
-import { ShortformHubPage } from './ShortformHubPage';
-import { StudentDashboardPage } from './StudentDashboardPage';
 import type { LmsDashboardProps, LmsPageId } from '../types';
+
+const MyCoursesPage = lazy(async () => {
+  const mod = await import('./MyCoursesPage');
+  return { default: mod.MyCoursesPage };
+});
+const CoursesPage = lazy(async () => {
+  const mod = await import('./CoursesPage');
+  return { default: mod.CoursesPage };
+});
+const LectureWatchPage = lazy(async () => {
+  const mod = await import('./LectureWatchPage');
+  return { default: mod.LectureWatchPage };
+});
+const CourseCreatePage = lazy(async () => {
+  const mod = await import('./CourseCreatePage');
+  return { default: mod.CourseCreatePage };
+});
+const MediaPipelinePage = lazy(async () => {
+  const mod = await import('./MediaPipelinePage');
+  return { default: mod.MediaPipelinePage };
+});
+const ShortformHubPage = lazy(async () => {
+  const mod = await import('./ShortformHubPage');
+  return { default: mod.ShortformHubPage };
+});
+const AIChatPage = lazy(async () => {
+  const mod = await import('./AIChatPage');
+  return { default: mod.AIChatPage };
+});
+const StudentDashboardPage = lazy(async () => {
+  const mod = await import('./StudentDashboardPage');
+  return { default: mod.StudentDashboardPage };
+});
+const InstructorDashboardPage = lazy(async () => {
+  const mod = await import('./InstructorDashboardPage');
+  return { default: mod.InstructorDashboardPage };
+});
+const AdminDashboardPage = lazy(async () => {
+  const mod = await import('./AdminDashboardPage');
+  return { default: mod.AdminDashboardPage };
+});
+const AdminUsersPage = lazy(async () => {
+  const mod = await import('./AdminUsersPage');
+  return { default: mod.AdminUsersPage };
+});
+const AdminInstructorsPage = lazy(async () => {
+  const mod = await import('./AdminInstructorsPage');
+  return { default: mod.AdminInstructorsPage };
+});
+const AdminAssignPage = lazy(async () => {
+  const mod = await import('./AdminAssignPage');
+  return { default: mod.AdminAssignPage };
+});
+const AdminStatsPage = lazy(async () => {
+  const mod = await import('./AdminStatsPage');
+  return { default: mod.AdminStatsPage };
+});
+const AdminAutomationPage = lazy(async () => {
+  const mod = await import('./AdminAutomationPage');
+  return { default: mod.AdminAutomationPage };
+});
+const LectureStudioPage = lazy(async () => {
+  const mod = await import('./LectureStudioPage');
+  return { default: mod.LectureStudioPage };
+});
+const AISummaryPage = lazy(async () => {
+  const mod = await import('./AISummaryPage');
+  return { default: mod.AISummaryPage };
+});
+const QuizGenPage = lazy(async () => {
+  const mod = await import('./QuizGenPage');
+  return { default: mod.QuizGenPage };
+});
+const AssignmentCheckPage = lazy(async () => {
+  const mod = await import('./AssignmentCheckPage');
+  return { default: mod.AssignmentCheckPage };
+});
 
 type RolePageRouterProps = Pick<
   LmsDashboardProps,

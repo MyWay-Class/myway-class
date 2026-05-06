@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import type { AIRecommendationOverview, CourseCard, CourseDetail, LectureDetail, LoginResponse } from '@myway/shared';
 import { CommunityPage } from './CommunityPage';
 import { MyShortformsPage } from './MyShortformsPage';
@@ -77,7 +77,7 @@ export function ShortformHubPage({
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
                 className={`min-w-[180px] rounded-xl border px-4 py-2.5 text-left transition ${
-                  active ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-[var(--app-border)] bg-white text-[var(--app-text-secondary)] hover:border-indigo-300 hover:bg-indigo-50'
+                  active ? 'border-cyan-600 bg-cyan-600 text-white shadow-sm' : 'border-[var(--app-border)] bg-white text-[var(--app-text-secondary)] hover:border-cyan-300 hover:bg-cyan-50'
                 }`}
               >
                 <div className="flex items-center gap-2 text-[13px] font-semibold">
@@ -118,3 +118,4 @@ export function ShortformHubPage({
     </div>
   );
 }
+

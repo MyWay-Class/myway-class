@@ -24,9 +24,9 @@ const courseTabs: { key: '강의' | '공지' | '자료'; label: string; icon: st
 ];
 
 const primaryButtonClass =
-  'inline-flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-[12px] font-semibold text-white transition hover:bg-indigo-500';
+  'inline-flex min-h-11 items-center rounded-xl bg-cyan-600 px-4 text-[12px] font-semibold text-white transition hover:bg-cyan-500';
 const secondaryButtonClass =
-  'inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600';
+  'inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700';
 
 function formatDisplayDate(value: string): string {
   const date = new Date(value);
@@ -70,11 +70,11 @@ function renderNoticeList(course: CourseDetail) {
       {notices.map((notice) => (
         <article key={notice.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
           <div className="flex items-start gap-3">
-            <i className={`${notice.pinned ? 'ri-pushpin-fill text-indigo-500' : 'ri-megaphone-line text-slate-400'} mt-0.5 flex-shrink-0`} />
+            <i className={`${notice.pinned ? 'ri-pushpin-fill text-cyan-600' : 'ri-megaphone-line text-slate-400'} mt-0.5 flex-shrink-0`} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="text-[13px] font-semibold text-slate-900">{notice.title}</p>
-                {notice.pinned ? <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600">고정</span> : null}
+                {notice.pinned ? <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-medium text-cyan-700">고정</span> : null}
               </div>
               <p className="mt-1 whitespace-pre-line text-[12px] leading-6 text-slate-500">{notice.content}</p>
               <p className="mt-2 text-[11px] text-slate-400">{formatDisplayDate(notice.created_at)}</p>
@@ -105,7 +105,7 @@ function renderMaterialList(course: CourseDetail) {
       {materials.map((material) => (
         <article key={material.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[18px] text-indigo-500 shadow-sm">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[18px] text-cyan-600 shadow-sm">
               <i className="ri-file-pdf-2-line" />
             </div>
             <div className="min-w-0 flex-1">
@@ -143,7 +143,7 @@ export function CourseExploreDetailPanel({
   return (
     <section className="overflow-hidden rounded-[28px] border border-[var(--app-border)] bg-white shadow-sm">
       {course ? (
-        <div className="bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-5 py-4 text-white">
+        <div className="bg-[linear-gradient(135deg,#082f49_0%,#0f766e_52%,#1f2937_100%)] px-5 py-5 text-white">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold opacity-90">
@@ -152,7 +152,7 @@ export function CourseExploreDetailPanel({
                   {course.difficulty === 'beginner' ? '입문' : course.difficulty === 'intermediate' ? '중급' : '고급'}
                 </span>
               </div>
-              <h1 className="mt-3 text-[23px] font-bold tracking-[-0.02em]">{course.title}</h1>
+              <h1 className="mt-3 text-[24px] font-extrabold tracking-[-0.03em]">{course.title}</h1>
               <p className="mt-2 text-[13px] leading-6 text-white/80">{course.description}</p>
               <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-white/80">
                 <span>{course.instructor_name}</span>
@@ -165,7 +165,7 @@ export function CourseExploreDetailPanel({
               </div>
             </div>
 
-            <div className="flex-shrink-0 rounded-3xl bg-white/10 px-4 py-4 text-center backdrop-blur">
+            <div className="flex-shrink-0 rounded-3xl border border-white/20 bg-white/10 px-4 py-4 text-center backdrop-blur">
               <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/5">
                 <svg className="h-16 w-16 -rotate-90" viewBox="0 0 36 36">
                   <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" />
@@ -218,10 +218,10 @@ export function CourseExploreDetailPanel({
         </div>
       ) : null}
 
-      <div className="px-5 py-4">
+      <div className="px-5 py-5">
         {course ? (
           <>
-            <div className="flex gap-1 overflow-x-auto border-b border-[var(--app-border)] pb-0.5">
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
               {courseTabs.map((tab) => {
                 const active = activeTab === tab.key;
                 return (
@@ -229,9 +229,10 @@ export function CourseExploreDetailPanel({
                     key={tab.key}
                     type="button"
                     onClick={() => onTabChange(tab.key)}
-                    className={`flex h-10 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-[13px] font-semibold transition-colors ${
-                      active ? 'border-indigo-500 text-[var(--app-text)]' : 'border-transparent text-[var(--app-text-muted)] hover:border-slate-300 hover:text-[var(--app-text-secondary)]'
+                    className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[13px] font-semibold transition-colors ${
+                      active ? 'bg-white text-slate-900 shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-secondary)]'
                     }`}
+                    aria-pressed={active}
                   >
                     <i className={`${tab.icon} text-[15px]`} />
                     {tab.label}
@@ -266,7 +267,7 @@ export function CourseExploreDetailPanel({
                             <span>{formatDuration(getLectureDisplayDurationMinutes(detailLecture))}</span>
                           </div>
                         </div>
-                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-white text-[18px] text-indigo-500 shadow-sm">
+                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-white text-[18px] text-cyan-600 shadow-sm">
                           <i className="ri-play-circle-line" />
                         </div>
                       </div>
@@ -323,17 +324,17 @@ export function CourseExploreDetailPanel({
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => onNavigate('courses')}
-                                  className={secondaryButtonClass}
-                                >
-                                  강의 상세로 돌아가기
-                                </button>
-                                <button
-                                  type="button"
                                   onClick={() => onNavigate('shortform')}
                                   className={primaryButtonClass}
                                 >
                                   숏폼 만들기
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onNavigate('courses')}
+                                  className={secondaryButtonClass}
+                                >
+                                  강의 상세로 돌아가기
                                 </button>
                                 {canManageCurrent ? (
                                   <button
@@ -369,11 +370,7 @@ export function CourseExploreDetailPanel({
                                 >
                                   강의 시청으로 이동
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => onNavigate('ai-chat')}
-                                  className={secondaryButtonClass}
-                                >
+                                <button type="button" onClick={() => onNavigate('ai-chat')} className={secondaryButtonClass}>
                                   챗봇으로 질문
                                 </button>
                               </>

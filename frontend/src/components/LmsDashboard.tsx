@@ -1,11 +1,19 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { defaultPageForRole, pageTitle } from '../features/lms/config';
 import { AppShell } from '../features/lms/components/AppShell';
 import { StatePanel } from '../features/lms/components/StatePanel';
 import { LoginScreen } from '../features/lms/components/LoginScreen';
-import { PublicHomePage } from '../features/lms/pages/PublicHomePage';
-import { RolePageRouter } from '../features/lms/pages/RolePageRouter';
 import type { LmsDashboardProps, LmsPageId } from '../features/lms/types';
+
+const PublicHomePage = lazy(async () => {
+  const mod = await import('../features/lms/pages/PublicHomePage');
+  return { default: mod.PublicHomePage };
+});
+
+const RolePageRouter = lazy(async () => {
+  const mod = await import('../features/lms/pages/RolePageRouter');
+  return { default: mod.RolePageRouter };
+});
 
 export function LmsDashboard(props: LmsDashboardProps) {
   const [activePage, setActivePage] = useState<LmsPageId>(defaultPageForRole(props.session));
@@ -57,11 +65,13 @@ export function LmsDashboard(props: LmsDashboardProps) {
         onBackToHome={() => setShowAuthPage(false)}
       />
     ) : (
-      <PublicHomePage
-        courseCards={props.courseCards}
-        busy={props.busy}
-        onOpenLogin={() => setShowAuthPage(true)}
-      />
+      <Suspense fallback={<PageLoadingFallback />}>
+        <PublicHomePage
+          courseCards={props.courseCards}
+          busy={props.busy}
+          onOpenLogin={() => setShowAuthPage(true)}
+        />
+      </Suspense>
     );
   }
 
@@ -91,28 +101,45 @@ export function LmsDashboard(props: LmsDashboardProps) {
           />
         </div>
       ) : null}
-      <RolePageRouter
-        busy={props.busy}
-        session={props.session}
-        page={activePage}
-        loading={props.loading}
-        dashboard={props.dashboard}
-        aiLogs={props.aiLogs}
-        enrolledCourses={props.enrolledCourses}
-        highlightedLecture={props.highlightedLecture}
-        recommendations={props.recommendations}
-        courseCards={props.courseCards}
-        insights={props.insights}
-        providers={props.providers}
-        onCreateCourse={props.onCreateCourse}
-        onEnroll={props.onEnroll}
-        onSelectCourse={props.onSelectCourse}
-        onSelectLecture={props.onSelectLecture}
-        demoUsers={props.demoUsers}
-        selectedCourse={props.selectedCourse}
-        selectedLectureId={props.selectedLectureId}
-        onNavigate={setActivePage}
-      />
+      <Suspense fallback={<PageLoadingFallback compact />}>
+        <RolePageRouter
+          busy={props.busy}
+          session={props.session}
+          page={activePage}
+          loading={props.loading}
+          dashboard={props.dashboard}
+          aiLogs={props.aiLogs}
+          enrolledCourses={props.enrolledCourses}
+          highlightedLecture={props.highlightedLecture}
+          recommendations={props.recommendations}
+          courseCards={props.courseCards}
+          insights={props.insights}
+          providers={props.providers}
+          onCreateCourse={props.onCreateCourse}
+          onEnroll={props.onEnroll}
+          onSelectCourse={props.onSelectCourse}
+          onSelectLecture={props.onSelectLecture}
+          demoUsers={props.demoUsers}
+          selectedCourse={props.selectedCourse}
+          selectedLectureId={props.selectedLectureId}
+          onNavigate={setActivePage}
+        />
+      </Suspense>
     </AppShell>
+  );
+}
+
+function PageLoadingFallback({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`${compact ? 'py-4' : 'flex min-h-screen items-center justify-center bg-[#f8f9fb] px-4'}`}>
+      <div className={`${compact ? 'w-full' : 'w-full max-w-2xl'}`}>
+        <StatePanel
+          icon="ri-loader-4-line animate-spin"
+          tone="indigo"
+          title="화면을 준비하고 있습니다."
+          description="코드와 데이터를 불러오는 중입니다. 잠시만 기다려 주세요."
+        />
+      </div>
+    </div>
   );
 }

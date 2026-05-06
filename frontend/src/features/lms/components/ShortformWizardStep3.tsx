@@ -1,4 +1,4 @@
-import type { ClipSuggestion } from './ShortformWizardTypes';
+﻿import type { ClipSuggestion } from './ShortformWizardTypes';
 
 type ShortformWizardStep3Props = {
   courseTitle?: string | null;
@@ -79,7 +79,7 @@ export function ShortformWizardStep3({
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <i className="ri-edit-line text-[18px] text-indigo-500" />
+            <i className="ri-edit-line text-[18px] text-cyan-500" />
             <h2 className="text-[16px] font-semibold text-slate-900">3단계 · 미리보기 / 저장</h2>
           </div>
           <p className="mt-1 text-[12px] text-slate-500">선택한 클립을 미리보고 제목과 설명을 입력한 뒤 저장합니다.</p>
@@ -123,7 +123,7 @@ export function ShortformWizardStep3({
             return (
               <div key={key} className="space-y-3 rounded-xl bg-white/5 px-3 py-3 text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-indigo-100 text-[10px] font-bold text-indigo-600">
+                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-cyan-100 text-[10px] font-bold text-cyan-600">
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
@@ -148,7 +148,7 @@ export function ShortformWizardStep3({
                         onUpdateClipTimes(key, nextStart, clip.end_time_ms);
                       }}
                       placeholder="00:00"
-                      className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[12px] text-white outline-none transition focus:border-indigo-300"
+                      className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[12px] text-white outline-none transition focus:border-cyan-300"
                     />
                   </label>
                   <label className="space-y-1">
@@ -164,7 +164,7 @@ export function ShortformWizardStep3({
                         onUpdateClipTimes(key, clip.start_time_ms, nextEnd);
                       }}
                       placeholder="00:30"
-                      className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[12px] text-white outline-none transition focus:border-indigo-300"
+                      className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[12px] text-white outline-none transition focus:border-cyan-300"
                     />
                   </label>
                 </div>
@@ -182,7 +182,7 @@ export function ShortformWizardStep3({
           <input
             value={title}
             onChange={(event) => onTitleChange(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] outline-none transition focus:border-indigo-300 focus:bg-white"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] outline-none transition focus:border-cyan-300 focus:bg-white"
             placeholder="예: AI 1주차 핵심 요약"
           />
         </div>
@@ -191,14 +191,14 @@ export function ShortformWizardStep3({
           <textarea
             value={description}
             onChange={(event) => onDescriptionChange(event.target.value)}
-            className="h-24 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] leading-6 outline-none transition focus:border-indigo-300 focus:bg-white"
+            className="h-24 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] leading-6 outline-none transition focus:border-cyan-300 focus:bg-white"
             placeholder="숏폼에 대한 간단한 설명"
           />
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-        <button type="button" onClick={onSave} className="inline-flex h-10 items-center rounded-lg bg-indigo-600 px-4 text-[12px] font-semibold text-white">
+        <button type="button" onClick={onSave} className="inline-flex h-10 items-center rounded-lg bg-cyan-600 px-4 text-[12px] font-semibold text-white">
           숏폼 생성
         </button>
         <button
@@ -215,3 +215,4 @@ export function ShortformWizardStep3({
     </article>
   );
 }
+

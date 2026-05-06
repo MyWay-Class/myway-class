@@ -91,14 +91,14 @@ export function StudentDashboardPage({
       <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white px-6 py-6 shadow-sm lg:px-8 lg:py-8">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] lg:items-center">
           <div className="flex items-center gap-5">
-            <div className="relative flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-[30px] bg-[linear-gradient(135deg,#6366f1,#22c55e)] text-white shadow-[0_18px_40px_rgba(79,70,229,0.22)]">
+            <div className="relative flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-[30px] bg-[linear-gradient(135deg,#0891b2,#14b8a6)] text-white shadow-[0_18px_40px_rgba(8,145,178,0.26)]">
               <span className="text-[28px] font-extrabold">{session.user.name.slice(0, 1)}</span>
               <span className="absolute -bottom-2 -right-2 rounded-full border border-white bg-white p-1 text-[16px] text-indigo-600 shadow-sm">
                 <i className="ri-user-3-line" />
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">
+              <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
                 <i className="ri-dashboard-3-line" />
                 마이페이지
               </div>
@@ -111,7 +111,7 @@ export function StudentDashboardPage({
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">{session.user.email}</span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">{session.user.role}</span>
-                <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">수강 중 {courses.length}개</span>
+                <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">수강 중 {courses.length}개</span>
               </div>
             </div>
           </div>
@@ -125,7 +125,7 @@ export function StudentDashboardPage({
                   cy="18"
                   r="16"
                   fill="none"
-                  stroke="rgb(79, 70, 229)"
+                  stroke="rgb(8, 145, 178)"
                   strokeWidth="2.5"
                   strokeDasharray={`${progress.circumference} ${progress.circumference}`}
                   strokeDashoffset={progress.offset}
@@ -160,9 +160,9 @@ export function StudentDashboardPage({
             key={action.page}
             type="button"
             onClick={() => onNavigate(action.page)}
-            className="group rounded-[28px] border border-slate-200 bg-white px-5 py-5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
+            className="group rounded-[28px] border border-slate-200 bg-white px-5 py-5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-[22px] text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-[22px] text-cyan-700 transition group-hover:bg-cyan-600 group-hover:text-white">
               <i className={action.icon} />
             </div>
             <div className="mt-4 text-[14px] font-bold text-slate-900">{action.label}</div>
@@ -186,7 +186,7 @@ export function StudentDashboardPage({
                     onSelectCourse(highlightedLecture.course_id);
                     onNavigate('courses');
                   }}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700"
                 >
                   상세 열기
                 </button>
@@ -195,7 +195,7 @@ export function StudentDashboardPage({
 
             {highlightedLecture && continueCourse ? (
               <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-                <div className="rounded-[26px] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_60%,#312e81_100%)] px-5 py-5 text-white">
+                <div className="rounded-[26px] bg-[linear-gradient(135deg,#082f49_0%,#0e7490_60%,#1f2937_100%)] px-5 py-5 text-white">
                   <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90">지금 이어볼 강의</div>
                   <div className="mt-4 text-[22px] font-extrabold tracking-[-0.04em]">{highlightedLecture.title}</div>
                   <div className="mt-2 text-[13px] leading-6 text-white/75">
@@ -208,14 +208,14 @@ export function StudentDashboardPage({
                         onSelectCourse(highlightedLecture.course_id);
                         onNavigate('courses');
                       }}
-                      className="rounded-full bg-white px-4 py-2 text-[12px] font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                      className="min-h-10 rounded-xl bg-white px-4 py-2 text-[12px] font-semibold text-cyan-800 transition hover:bg-cyan-50"
                     >
                       상세/진도율 보기
                     </button>
                     <button
                       type="button"
                       onClick={() => onNavigate('ai-chat')}
-                      className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-white/15"
+                      className="min-h-10 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-white/15"
                     >
                       챗봇으로 질문
                     </button>
@@ -225,7 +225,7 @@ export function StudentDashboardPage({
                 <div className="rounded-[26px] border border-slate-200 bg-slate-50 px-5 py-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-[12px] font-semibold text-indigo-600">진도</div>
+                      <div className="text-[12px] font-semibold text-cyan-700">진도</div>
                       <div className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-slate-900">
                         {continueCourse.progress_percent}%
                       </div>
@@ -238,7 +238,7 @@ export function StudentDashboardPage({
                     </div>
                   </div>
                   <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                    <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.max(continueCourse.progress_percent, 8)}%` }} />
+                    <div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(continueCourse.progress_percent, 8)}%` }} />
                   </div>
                   <div className="mt-4 space-y-2">
                     <div className="rounded-2xl bg-white px-4 py-3">
@@ -273,7 +273,7 @@ export function StudentDashboardPage({
                 <h3 className="text-[15px] font-bold text-slate-900">수강 중인 강의</h3>
                 <p className="mt-1 text-[12px] text-slate-500">카드를 눌러 강의 상세로 이동합니다.</p>
               </div>
-              <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">{courses.length}개</div>
+              <div className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">{courses.length}개</div>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               {courses.slice(0, 4).map((course) => (
@@ -303,7 +303,7 @@ export function StudentDashboardPage({
           {recommendationItems.length > 0 ? (
             <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
               <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
-                <i className="ri-robot-line text-indigo-600" />
+                <i className="ri-robot-line text-cyan-700" />
                 AI 추천
               </h3>
               <div className="mt-3 grid gap-3">

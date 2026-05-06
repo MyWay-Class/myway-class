@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import type { AIRagResult, AIInsights, LectureDetail, SmartChatResult } from '@myway/shared';
 import { loadAIRAGOverview } from '../../../lib/ai-rag';
 import { sendSmartChatDetailed } from '../../../lib/api';
@@ -198,7 +198,7 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
                 질문, 요약, 퀴즈, 복습 순서로 이어가면 레퍼런스처럼 흐름이 안정적입니다.
               </p>
             </div>
-            <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
+            <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-600">
               {messages.length}개 메시지
             </span>
           </div>
@@ -213,7 +213,7 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
                     <div className="text-[12px] font-semibold text-[var(--app-text-muted)]">RAG 파이프라인</div>
                     <div className="mt-1 text-[14px] font-bold text-[var(--app-text)]">{ragOverview.query}</div>
                   </div>
-                  <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
+                  <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-600">
                     {ragOverview.provider.search_provider}
                   </span>
                 </div>
@@ -248,3 +248,4 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
     </div>
   );
 }
+
