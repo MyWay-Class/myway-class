@@ -83,6 +83,8 @@ export function StudentDashboardPage({
     ? courses.find((course) => course.id === highlightedLecture.course_id) ?? courses[0] ?? null
     : courses[0] ?? null;
   const progress = circularProgress(averageProgress);
+  const primaryQuickActions = quickActions.slice(0, 2);
+  const secondaryQuickActions = quickActions.slice(2);
 
   return (
     <div className="space-y-6">
@@ -148,8 +150,9 @@ export function StudentDashboardPage({
 
       <DashboardStatsGrid stats={stats} />
 
-      <section className="grid gap-4 lg:grid-cols-4">
-        {quickActions.map((action) => (
+      <section className="space-y-3">
+        <div className="grid gap-4 md:grid-cols-2">
+        {primaryQuickActions.map((action) => (
           <button
             key={action.page}
             type="button"
@@ -163,6 +166,19 @@ export function StudentDashboardPage({
             <div className="mt-1 text-[12px] leading-6 text-slate-500">{action.hint}</div>
           </button>
         ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {secondaryQuickActions.map((action) => (
+            <button
+              key={action.page}
+              type="button"
+              onClick={() => onNavigate(action.page)}
+              className="rounded-full border border-[#d6e6f5] bg-white px-4 py-2 text-[12px] font-semibold text-slate-600 transition hover:border-cyan-300 hover:text-cyan-700"
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">

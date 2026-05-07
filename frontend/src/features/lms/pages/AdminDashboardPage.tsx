@@ -64,6 +64,9 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
       },
     ];
   const activities = resolvedDashboard.recent_activities ?? [];
+  const lowProgressCourses = [...resolvedCourses]
+    .sort((left, right) => left.progress_percent - right.progress_percent)
+    .slice(0, 3);
 
   return (
     <div className="space-y-6">
@@ -171,24 +174,20 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
 
           <section className="rounded-2xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
-              <i className="ri-pie-chart-2-line text-cyan-700" />
-              역할 비율
+              <i className="ri-alert-line text-cyan-700" />
+              집중 관리 코스
             </h3>
             <div className="mt-4 space-y-3">
-              {[
-                { label: '운영자', count: roleCounts.ADMIN, tone: 'bg-amber-500' },
-                { label: '교강사', count: roleCounts.INSTRUCTOR, tone: 'bg-emerald-500' },
-                { label: '수강생', count: roleCounts.STUDENT, tone: 'bg-cyan-500' },
-              ].map((item) => (
-                <div key={item.label}>
+              {lowProgressCourses.map((course) => (
+                <div key={course.id}>
                   <div className="mb-1 flex items-center justify-between text-[12px] text-slate-500">
-                    <span>{item.label}</span>
-                    <span>{item.count}명</span>
+                    <span className="truncate">{course.title}</span>
+                    <span>{course.progress_percent}%</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className={`h-full rounded-full ${item.tone}`}
-                      style={{ width: `${Math.max((item.count / Math.max(resolvedUsers.length, 1)) * 100, item.count > 0 ? 12 : 0)}%` }}
+                      className="h-full rounded-full bg-cyan-500"
+                      style={{ width: `${Math.max(course.progress_percent, 6)}%` }}
                     />
                   </div>
                 </div>

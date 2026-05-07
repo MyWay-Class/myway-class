@@ -389,11 +389,16 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> createExtraction(String lectureId) {
+        return createExtraction(lectureId, null);
+    }
+
+    public Map<String, Object> createExtraction(String lectureId, String audioUrl) {
         String id = UUID.randomUUID().toString();
         Map<String, Object> item = new HashMap<>();
         item.put("id", id);
         item.put("lecture_id", lectureId);
         item.put("status", "COMPLETED");
+        item.put("audio_url", audioUrl);
         item.put("last_event_version", 0L);
         item.put("created_at", Instant.now().toString());
 
@@ -416,7 +421,11 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> transcribe(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel) {
-        Map<String, Object> extraction = createExtraction(lectureId);
+        return transcribe(lectureId, language, durationMsInput, sttProvider, sttModel, null);
+    }
+
+    public Map<String, Object> transcribe(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl) {
+        Map<String, Object> extraction = createExtraction(lectureId, audioUrl);
         LectureItem lecture = learningService.getLecture(lectureId);
         int lectureDurationMs = lecture == null
                 ? FALLBACK_TRANSCRIPT_DURATION_MS
@@ -425,8 +434,8 @@ public class FeatureStoreService {
         int durationMs = Math.min(requestedDurationMs, PUBLIC_STT_MAX_DURATION_MS);
 
         String normalizedLanguage = language == null || language.isBlank() ? "ko" : language;
-        String resolvedProvider = sttProvider == null || sttProvider.isBlank() ? "spring-stt" : sttProvider.trim();
-        String resolvedModel = sttModel == null || sttModel.isBlank() ? "spring-stt-v1" : sttModel.trim();
+        String resolvedProvider = sttProvider == null || sttProvider.isBlank() ? "demo" : sttProvider.trim();
+        String resolvedModel = sttModel == null || sttModel.isBlank() ? "demo-stt-v1" : sttModel.trim();
         String baseText = buildLectureNarrative(lectureId);
         List<Map<String, Object>> segments = splitIntoSegments(baseText, durationMs);
         String transcriptId = String.valueOf(extraction.getOrDefault("id", UUID.randomUUID().toString()));
@@ -467,19 +476,21 @@ public class FeatureStoreService {
         extractionPayload.put("language", normalizedLanguage);
         extractionPayload.put("requested_stt_provider", resolvedProvider);
         extractionPayload.put("requested_stt_model", resolvedModel);
+        extractionPayload.put("audio_url", audioUrl);
         store.upsertKv(EXTRACTION_SCOPE, transcriptId, extractionPayload);
 
-        return Map.of(
-                "transcript_id", transcriptId,
-                "lecture_id", lectureId,
-                "segment_count", segments.size(),
-                "duration_ms", durationMs,
-                "word_count", wordCount,
-                "stt_provider", resolvedProvider,
-                "stt_model", resolvedModel,
-                "pipeline", pipeline(lectureId),
-                "language", normalizedLanguage
-        );
+        Map<String, Object> response = new HashMap<>();
+        response.put("transcript_id", transcriptId);
+        response.put("lecture_id", lectureId);
+        response.put("segment_count", segments.size());
+        response.put("duration_ms", durationMs);
+        response.put("word_count", wordCount);
+        response.put("stt_provider", resolvedProvider);
+        response.put("stt_model", resolvedModel);
+        response.put("audio_url", audioUrl);
+        response.put("pipeline", pipeline(lectureId));
+        response.put("language", normalizedLanguage);
+        return response;
     }
 
     public List<Map<String, Object>> extractions(String lectureId) {
@@ -487,6 +498,10 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion) {
+        return completeExtractionCallback(extractionId, status, errorMessage, eventVersion, null);
+    }
+
+    public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion, String audioUrl) {
         Map<String, Object> extraction = store.getKv(EXTRACTION_SCOPE, extractionId);
         if (extraction != null) {
             extraction = new HashMap<>(extraction);
@@ -512,6 +527,9 @@ public class FeatureStoreService {
         extraction.put("last_event_version", eventVersion);
         extraction.put("status", status == null || status.isBlank() ? "COMPLETED" : status.toUpperCase());
         extraction.put("error_message", errorMessage);
+        if (audioUrl != null && !audioUrl.isBlank()) {
+            extraction.put("audio_url", audioUrl);
+        }
         extraction.put("updated_at", Instant.now().toString());
         store.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
         return extraction;

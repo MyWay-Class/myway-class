@@ -47,7 +47,7 @@ export function AdminInstructorsPage({ instructors, courses }: AdminInstructorsP
       <section className="overflow-hidden rounded-2xl border border-cyan-200/20 bg-[radial-gradient(circle_at_12%_8%,rgba(34,211,238,0.16),transparent_30%),linear-gradient(135deg,#f8fcff_0%,#f0f9ff_45%,#ecfeff_100%)] px-6 py-5 shadow-sm">
         <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
           <i className="ri-user-star-line" />
-          Instructor Detail
+          강사 운영
         </div>
         <h2 className="mt-3 text-[22px] font-extrabold tracking-[-0.03em] text-slate-900">강사 운영 상세</h2>
         <p className="mt-1 text-[13px] text-slate-600">강사별 담당 과목과 소속을 빠르게 비교해 운영 우선순위를 조정합니다.</p>
@@ -77,6 +77,7 @@ export function AdminInstructorsPage({ instructors, courses }: AdminInstructorsP
         {filteredInstructors.length > 0 ? (
           filteredInstructors.map((instructor) => {
             const ownCourses = visibleCourses.filter((course) => course.instructor_name === instructor.name);
+            const averageProgress = ownCourses.length > 0 ? Math.round(ownCourses.reduce((sum, course) => sum + course.progress_percent, 0) / ownCourses.length) : 0;
             return (
               <article key={instructor.id} className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
                 <div className="flex items-start gap-3">
@@ -98,6 +99,16 @@ export function AdminInstructorsPage({ instructors, courses }: AdminInstructorsP
                       ) : (
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">배정 과목 없음</span>
                       )}
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <div className="text-[10px] font-semibold text-slate-400">담당 과목</div>
+                        <div className="mt-1 text-[13px] font-bold text-slate-900">{ownCourses.length}개</div>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <div className="text-[10px] font-semibold text-slate-400">평균 진도</div>
+                        <div className="mt-1 text-[13px] font-bold text-slate-900">{averageProgress}%</div>
+                      </div>
                     </div>
                   </div>
                 </div>
