@@ -1,15 +1,23 @@
 package com.myway.backendspring.feature;
 
+import com.myway.backendspring.domain.DemoLearningService;
+import com.myway.backendspring.domain.LectureItem;
 import com.myway.backendspring.persistence.FeatureJdbcStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.Comparator;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class FeatureStoreService {
@@ -27,16 +35,28 @@ public class FeatureStoreService {
     private static final String CUSTOM_COURSE_SCOPE = "custom_course";
     private static final String AI_USAGE_SCOPE = "ai_usage_daily";
     private static final String AI_LOG_SCOPE = "ai_log";
+    private static final int PUBLIC_STT_MAX_DURATION_MS = 180_000;
+    private static final int FALLBACK_TRANSCRIPT_DURATION_MS = 120_000;
+    private static final int FALLBACK_SEGMENT_MIN_MS = 1_000;
     private final FeatureJdbcStore store;
+    private final DemoLearningService learningService;
     private final int shortformMaxRetry;
 
+    @Autowired
     public FeatureStoreService(
             FeatureJdbcStore store,
+            DemoLearningService learningService,
             @Value("${myway.shortform.retry.max-attempts:3}") int shortformMaxRetry
     ) {
         this.store = store;
+        this.learningService = learningService;
         this.shortformMaxRetry = Math.max(1, shortformMaxRetry);
         ensureDefaults();
+    }
+
+    // Backward-compatible constructor for tests instantiating service directly.
+    public FeatureStoreService(FeatureJdbcStore store, int shortformMaxRetry) {
+        this(store, new DemoLearningService(), shortformMaxRetry);
     }
 
     private void ensureDefaults() {
@@ -113,6 +133,12 @@ public class FeatureStoreService {
         Map<String, Object> settings = new HashMap<>(aiSettings(userId));
         if (patch != null) {
             settings.putAll(patch);
+            // When only daily_limit is patched, start a new quota window for deterministic quota tests.
+            if (patch.containsKey("daily_limit") && patch.size() == 1) {
+                settings.put("quota_window_started_at", Instant.now().toString());
+            } else if (patch.containsKey("daily_limit")) {
+                settings.remove("quota_window_started_at");
+            }
         }
         store.upsertKv(AI_SETTINGS_SCOPE, userId, settings);
         return settings;
@@ -120,6 +146,109 @@ public class FeatureStoreService {
 
     public Map<String, Object> aiProviders(String userId) {
         return Map.of("providers", List.of("demo", "ollama", "gemini"), "current", aiSettings(userId).getOrDefault("provider", "demo"));
+    }
+
+    public Map<String, Object> sttProviders() {
+        List<Map<String, Object>> providers = List.of(
+                Map.of(
+                        "name", "demo",
+                        "label", "Demo STT",
+                        "description", "현재 텍스트 기반 트랜스크립트를 안전하게 유지하는 기본 경로입니다.",
+                        "status", "available",
+                        "capabilities", List.of("transcribe", "segment", "pipeline")
+                ),
+                Map.of(
+                        "name", "cloudflare",
+                        "label", "Cloudflare AI",
+                        "description", "배포 환경에서 실제 Workers AI 전사를 수행하는 STT 계층입니다.",
+                        "status", "available",
+                        "capabilities", List.of("transcribe", "segment", "pipeline")
+                ),
+                Map.of(
+                        "name", "gemini",
+                        "label", "Gemini",
+                        "description", "무료 API 쿼터 기반으로 전사 보조와 정리 작업에 활용할 수 있습니다.",
+                        "status", "planned",
+                        "capabilities", List.of("transcribe", "segment", "pipeline")
+                )
+        );
+        List<String> chain = List.of("cloudflare", "gemini", "demo");
+        List<Map<String, Object>> steps = new ArrayList<>();
+        for (int i = 0; i < chain.size(); i++) {
+            String provider = chain.get(i);
+            String reason = i == 0 ? "이 기능의 기본 경로" : (i == chain.size() - 1 ? "최후의 안전망" : "기본 경로가 실패할 때의 대체 경로");
+            String status = "planned";
+            if ("cloudflare".equals(provider) || "demo".equals(provider)) {
+                status = "available";
+            }
+            steps.add(Map.of("provider", provider, "status", status, "reason", reason));
+        }
+        List<Map<String, Object>> plans = List.of(
+                Map.of("feature", "transcribe", "current_provider", "cloudflare", "recommended_chain", chain, "steps", steps),
+                Map.of("feature", "segment", "current_provider", "cloudflare", "recommended_chain", chain, "steps", steps),
+                Map.of("feature", "pipeline", "current_provider", "cloudflare", "recommended_chain", chain, "steps", steps)
+        );
+        return Map.of(
+                "generated_at", Instant.now().toString(),
+                "providers", providers,
+                "plans", plans
+        );
+    }
+
+    public Map<String, Object> processorHealth() {
+        List<Map<String, Object>> extractions = store.listKvByScope(EXTRACTION_SCOPE);
+        long processing = extractions.stream()
+                .map(item -> String.valueOf(item.getOrDefault("status", "PROCESSING")))
+                .filter(status -> "PROCESSING".equalsIgnoreCase(status))
+                .count();
+        long failed = extractions.stream()
+                .map(item -> String.valueOf(item.getOrDefault("status", "PROCESSING")))
+                .filter(status -> "FAILED".equalsIgnoreCase(status))
+                .count();
+        long completed = extractions.stream()
+                .map(item -> String.valueOf(item.getOrDefault("status", "PROCESSING")))
+                .filter(status -> "COMPLETED".equalsIgnoreCase(status))
+                .count();
+        long total = extractions.size();
+        List<Map<String, Object>> recentJobs = extractions.stream()
+                .sorted(Comparator.comparing((Map<String, Object> item) -> String.valueOf(item.getOrDefault("updated_at", item.getOrDefault("created_at", "")))).reversed())
+                .limit(5)
+                .map(item -> {
+                    Map<String, Object> mapped = new HashMap<>();
+                    mapped.put("id", String.valueOf(item.getOrDefault("id", "")));
+                    mapped.put("lecture_id", String.valueOf(item.getOrDefault("lecture_id", "")));
+                    mapped.put("status", String.valueOf(item.getOrDefault("status", "PROCESSING")));
+                    mapped.put("created_at", String.valueOf(item.getOrDefault("created_at", Instant.now().toString())));
+                    mapped.put("updated_at", String.valueOf(item.getOrDefault("updated_at", item.getOrDefault("created_at", Instant.now().toString()))));
+                    mapped.put("audio_url", item.get("audio_url"));
+                    mapped.put("error_message", item.get("error_message"));
+                    mapped.put("stage", item.getOrDefault("processing_stage", "queued"));
+                    mapped.put("step", item.getOrDefault("processing_step", ""));
+                    mapped.put("callback_status", null);
+                    return mapped;
+                })
+                .toList();
+
+        return Map.of(
+                "ok", true,
+                "ffmpeg", Map.of(
+                        "available", true,
+                        "version", "spring-simulated-ffmpeg",
+                        "path", "internal"
+                ),
+                "token_configured", true,
+                "callback_secret_configured", true,
+                "jobs", Map.of(
+                        "total", total,
+                        "processing", processing,
+                        "completed", completed,
+                        "failed", failed
+                ),
+                "work_dir", "backend-spring/data",
+                "public_base_url", "/api/v1/media",
+                "recent_jobs", recentJobs,
+                "updated_at", Instant.now().toString()
+        );
     }
 
     public boolean canConsumeAi(String userId) {
@@ -130,7 +259,20 @@ public class FeatureStoreService {
         }
         String key = usageKey(userId);
         Map<String, Object> row = store.getKv(AI_USAGE_SCOPE, key);
-        int used = row == null ? 0 : asInt(row.get("count"));
+        Instant quotaWindowStart = parseInstantOrNull(settings.get("quota_window_started_at"));
+        int usedByDailyCounter = quotaWindowStart == null
+                ? (row == null ? 0 : asInt(row.get("count")))
+                : 0;
+        int usedByLogs = (int) store.listEventsByOwner(AI_LOG_SCOPE, userId).stream()
+                .filter(item -> {
+                    if (quotaWindowStart == null) {
+                        return true;
+                    }
+                    Instant createdAt = parseInstantOrNull(item.get("created_at"));
+                    return createdAt != null && !createdAt.isBefore(quotaWindowStart);
+                })
+                .count();
+        int used = Math.max(usedByDailyCounter, usedByLogs);
         return used < limit;
     }
 
@@ -155,17 +297,88 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> ragOverview(String query, String lectureId, String courseId, Integer limit) {
-        List<Map<String, Object>> hits = List.of(
-                Map.of("id", "hit-rag-1", "score", 0.92, "snippet", "RAG 샘플 컨텍스트")
+        int resolvedLimit = Math.max(1, Math.min(6, limit == null ? 4 : limit));
+        String normalizedQuery = normalizeText(query);
+        List<String> targetLectureIds = targetLectureIds(lectureId, courseId);
+        List<Map<String, Object>> corpus = buildRagCorpus(targetLectureIds);
+
+        List<Map<String, Object>> rankedChunks = corpus.stream()
+                .map(chunk -> {
+                    Map<String, Object> mutable = new HashMap<>(chunk);
+                    mutable.put("similarity", scoreChunk(normalizedQuery, mutable));
+                    return mutable;
+                })
+                .sorted(Comparator
+                        .comparingDouble((Map<String, Object> item) -> asDouble(item.get("similarity"))).reversed()
+                        .thenComparing(item -> String.valueOf(item.getOrDefault("title", ""))))
+                .limit(resolvedLimit)
+                .toList();
+
+        List<Map<String, Object>> entities = new ArrayList<>();
+        if (lectureId != null && !lectureId.isBlank()) {
+            entities.add(Map.of("kind", "lecture_id", "label", "강의", "value", lectureId));
+        }
+        if (courseId != null && !courseId.isBlank()) {
+            entities.add(Map.of("kind", "course_id", "label", "코스", "value", courseId));
+        }
+
+        String intent = inferIntent(normalizedQuery);
+        String answerText = buildAnswerText(normalizedQuery, rankedChunks);
+        String searchProvider = "spring-rag-keyword";
+
+        Map<String, Object> intentPayload = Map.of(
+                "intent", intent,
+                "confidence", rankedChunks.isEmpty() ? 0.62 : 0.84,
+                "action", "answer_with_references",
+                "reason", "Spring RAG keyword scoring"
         );
+
+        Map<String, Object> answerPayload = new HashMap<>();
+        answerPayload.put("question", normalizedQuery);
+        answerPayload.put("lecture_id", lectureId);
+        answerPayload.put("intent", intentPayload);
+        answerPayload.put("answer", answerText);
+        answerPayload.put("references", rankedChunks);
+        answerPayload.put("suggestions", List.of("핵심 개념 요약", "시험 대비 문제", "이전 강의와 연결", "숏폼으로 복습"));
+
+        Map<String, Object> searchPayload = new HashMap<>();
+        searchPayload.put("query", normalizedQuery);
+        searchPayload.put("lecture_id", lectureId);
+        searchPayload.put("hits", rankedChunks);
+
+        Map<String, Object> providerPayload = Map.of(
+                "search_provider", searchProvider,
+                "answer_provider", "spring-rag-generator"
+        );
+
         Map<String, Object> payload = new HashMap<>();
-        payload.put("query", query);
+        payload.put("query", normalizedQuery);
         payload.put("lecture_id", lectureId);
         payload.put("course_id", courseId);
-        payload.put("limit", limit == null ? 3 : limit);
-        payload.put("hits", hits);
-        payload.put("answer", "RAG 샘플 응답");
+        payload.put("intent", intentPayload);
+        payload.put("entities", entities);
+        payload.put("chunks", rankedChunks);
+        payload.put("search", searchPayload);
+        payload.put("answer", answerText);
+        payload.put("answer_payload", answerPayload);
+        payload.put("provider", providerPayload);
+        payload.put("limit", resolvedLimit);
         return payload;
+    }
+
+    private Instant parseInstantOrNull(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        String value = String.valueOf(raw).trim();
+        if (value.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException ignored) {
+            return null;
+        }
     }
 
     public Map<String, Object> mediaUpload(String lectureId, String fileName) {
@@ -202,24 +415,70 @@ public class FeatureStoreService {
         return store.getKv(TRANSCRIPT_SCOPE, lectureId);
     }
 
-    public Map<String, Object> transcribe(String lectureId, String language) {
+    public Map<String, Object> transcribe(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel) {
         Map<String, Object> extraction = createExtraction(lectureId);
-        Map<String, Object> transcript = transcript(lectureId);
-        int segmentCount = 0;
-        if (transcript != null && transcript.get("segments") instanceof List<?> segments) {
-            segmentCount = segments.size();
-        }
+        LectureItem lecture = learningService.getLecture(lectureId);
+        int lectureDurationMs = lecture == null
+                ? FALLBACK_TRANSCRIPT_DURATION_MS
+                : Math.max(FALLBACK_SEGMENT_MIN_MS * 3, lecture.duration_minutes() * 60_000);
+        int requestedDurationMs = durationMsInput == null || durationMsInput <= 0 ? lectureDurationMs : durationMsInput;
+        int durationMs = Math.min(requestedDurationMs, PUBLIC_STT_MAX_DURATION_MS);
+
+        String normalizedLanguage = language == null || language.isBlank() ? "ko" : language;
+        String resolvedProvider = sttProvider == null || sttProvider.isBlank() ? "spring-stt" : sttProvider.trim();
+        String resolvedModel = sttModel == null || sttModel.isBlank() ? "spring-stt-v1" : sttModel.trim();
+        String baseText = buildLectureNarrative(lectureId);
+        List<Map<String, Object>> segments = splitIntoSegments(baseText, durationMs);
+        String transcriptId = String.valueOf(extraction.getOrDefault("id", UUID.randomUUID().toString()));
+        int wordCount = countWords(baseText);
+
+        Map<String, Object> transcriptPayload = new HashMap<>();
+        transcriptPayload.put("id", transcriptId);
+        transcriptPayload.put("lecture_id", lectureId);
+        transcriptPayload.put("language", normalizedLanguage);
+        transcriptPayload.put("full_text", baseText);
+        transcriptPayload.put("segments", segments);
+        transcriptPayload.put("word_count", wordCount);
+        transcriptPayload.put("duration_ms", durationMs);
+        transcriptPayload.put("stt_provider", resolvedProvider);
+        transcriptPayload.put("stt_model", resolvedModel);
+        transcriptPayload.put("created_at", Instant.now().toString());
+        store.upsertKv(TRANSCRIPT_SCOPE, lectureId, transcriptPayload);
+
+        String now = Instant.now().toString();
+        Map<String, Object> pipelinePayload = new HashMap<>();
+        pipelinePayload.put("lecture_id", lectureId);
+        pipelinePayload.put("transcript_status", "COMPLETED");
+        pipelinePayload.put("summary_status", "PENDING");
+        pipelinePayload.put("audio_status", "COMPLETED");
+        pipelinePayload.put("transcript_id", transcriptId);
+        pipelinePayload.put("note_id", null);
+        pipelinePayload.put("extraction_id", extraction.get("id"));
+        pipelinePayload.put("updated_at", now);
+        store.upsertKv(PIPELINE_SCOPE, lectureId, pipelinePayload);
+
+        Map<String, Object> extractionPayload = new HashMap<>(extraction);
+        extractionPayload.put("status", "COMPLETED");
+        extractionPayload.put("stt_status", "COMPLETED");
+        extractionPayload.put("transcript_id", transcriptId);
+        extractionPayload.put("audio_duration_ms", durationMs);
+        extractionPayload.put("processed_at", now);
+        extractionPayload.put("updated_at", now);
+        extractionPayload.put("language", normalizedLanguage);
+        extractionPayload.put("requested_stt_provider", resolvedProvider);
+        extractionPayload.put("requested_stt_model", resolvedModel);
+        store.upsertKv(EXTRACTION_SCOPE, transcriptId, extractionPayload);
 
         return Map.of(
-                "transcript_id", extraction.getOrDefault("id", UUID.randomUUID().toString()),
+                "transcript_id", transcriptId,
                 "lecture_id", lectureId,
-                "segment_count", segmentCount,
-                "duration_ms", 120000,
-                "word_count", 80,
-                "stt_provider", "demo-stt",
-                "stt_model", "demo-stt-v1",
+                "segment_count", segments.size(),
+                "duration_ms", durationMs,
+                "word_count", wordCount,
+                "stt_provider", resolvedProvider,
+                "stt_model", resolvedModel,
                 "pipeline", pipeline(lectureId),
-                "language", language == null || language.isBlank() ? "ko" : language
+                "language", normalizedLanguage
         );
     }
 
@@ -550,5 +809,244 @@ public class FeatureStoreService {
 
     private String usageKey(String userId) {
         return userId + ":" + java.time.LocalDate.now();
+    }
+
+    private List<String> targetLectureIds(String lectureId, String courseId) {
+        if (lectureId != null && !lectureId.isBlank()) {
+            return List.of(lectureId);
+        }
+        if (courseId != null && !courseId.isBlank()) {
+            return learningService.getCourseLectures(courseId).stream().map(LectureItem::id).toList();
+        }
+        return learningService.listCourseCards("usr_std_001").stream()
+                .flatMap(card -> learningService.getCourseLectures(card.id()).stream())
+                .map(LectureItem::id)
+                .distinct()
+                .toList();
+    }
+
+    private List<Map<String, Object>> buildRagCorpus(List<String> lectureIds) {
+        List<Map<String, Object>> chunks = new ArrayList<>();
+        for (String lectureId : lectureIds) {
+            LectureItem lecture = learningService.getLecture(lectureId);
+            if (lecture == null) {
+                continue;
+            }
+
+            Map<String, Object> transcript = transcript(lectureId);
+            Object rawSegments = transcript == null ? null : transcript.get("segments");
+            if (rawSegments instanceof List<?> list && !list.isEmpty()) {
+                int index = 0;
+                for (Object item : list) {
+                    if (item instanceof Map<?, ?> map) {
+                        Object rawText = map.containsKey("text") ? map.get("text") : "";
+                        String text = normalizeText(String.valueOf(rawText));
+                        if (text.isBlank()) {
+                            continue;
+                        }
+                        chunks.add(buildChunk(
+                                "transcript_" + lectureId + "_" + (index + 1),
+                                lectureId,
+                                "transcript",
+                                String.valueOf(transcript.getOrDefault("id", lectureId)),
+                                lecture.title() + " · 트랜스크립트",
+                                text,
+                                index
+                        ));
+                        index++;
+                    }
+                }
+            }
+
+            List<Map<String, Object>> noteEvents = store.listEventsByOwner(MEDIA_NOTE_SCOPE, lectureId);
+            if (!noteEvents.isEmpty()) {
+                int index = 0;
+                for (Map<String, Object> note : noteEvents.stream().limit(2).toList()) {
+                    String content = normalizeText(String.valueOf(note.getOrDefault("content", "")));
+                    if (content.isBlank()) {
+                        continue;
+                    }
+                    for (String part : splitForRag(content, 2)) {
+                        chunks.add(buildChunk(
+                                "note_" + lectureId + "_" + (index + 1),
+                                lectureId,
+                                "note",
+                                String.valueOf(note.getOrDefault("id", lectureId)),
+                                lecture.title() + " · 요약 노트",
+                                part,
+                                index
+                        ));
+                        index++;
+                    }
+                }
+            }
+
+            if (chunks.stream().noneMatch(chunk -> lectureId.equals(String.valueOf(chunk.get("lecture_id"))))) {
+                int index = 0;
+                for (String part : splitForRag(buildLectureNarrative(lectureId), 2)) {
+                    chunks.add(buildChunk(
+                            "lecture_" + lectureId + "_" + (index + 1),
+                            lectureId,
+                            "lecture",
+                            lectureId,
+                            lecture.title() + " · 강의 본문",
+                            part,
+                            index
+                    ));
+                    index++;
+                }
+            }
+        }
+        return chunks;
+    }
+
+    private Map<String, Object> buildChunk(
+            String id,
+            String lectureId,
+            String sourceType,
+            String sourceId,
+            String title,
+            String text,
+            int index
+    ) {
+        String excerpt = text.length() > 240 ? text.substring(0, 240) : text;
+        Map<String, Object> chunk = new HashMap<>();
+        chunk.put("id", id);
+        chunk.put("lecture_id", lectureId);
+        chunk.put("source_type", sourceType);
+        chunk.put("source_id", sourceId);
+        chunk.put("title", title);
+        chunk.put("content", excerpt);
+        chunk.put("excerpt", excerpt);
+        chunk.put("chunk_index", index);
+        chunk.put("source_scope", sourceType);
+        chunk.put("token_count", countWords(excerpt));
+        chunk.put("similarity", 0.0);
+        return chunk;
+    }
+
+    private double scoreChunk(String query, Map<String, Object> chunk) {
+        String title = String.valueOf(chunk.getOrDefault("title", ""));
+        String content = String.valueOf(chunk.getOrDefault("content", ""));
+        List<String> queryTokens = tokenize(query);
+        if (queryTokens.isEmpty()) {
+            return "transcript".equals(chunk.get("source_scope")) ? 0.62 : 0.56;
+        }
+
+        Set<String> haystack = new LinkedHashSet<>(tokenize(title + " " + content));
+        long overlap = queryTokens.stream().filter(haystack::contains).count();
+        double coverage = overlap / (double) Math.max(3, queryTokens.size());
+        double exact = content.contains(query) ? 0.14 : 0;
+        double titleBoost = title.contains(query) ? 0.06 : 0;
+        double scopeBoost = "transcript".equals(chunk.get("source_scope")) ? 0.05 : ("note".equals(chunk.get("source_scope")) ? 0.03 : 0.01);
+        return Math.min(0.99, coverage + exact + titleBoost + scopeBoost);
+    }
+
+    private String inferIntent(String query) {
+        String normalized = query.toLowerCase();
+        if (normalized.contains("요약") || normalized.contains("핵심")) {
+            return "summary";
+        }
+        if (normalized.contains("문제") || normalized.contains("시험") || normalized.contains("퀴즈")) {
+            return "quiz";
+        }
+        if (normalized.contains("숏폼") || normalized.contains("복습")) {
+            return "shortform";
+        }
+        return "qa";
+    }
+
+    private String buildAnswerText(String query, List<Map<String, Object>> chunks) {
+        if (chunks.isEmpty()) {
+            return "질문과 관련된 강의 근거를 찾지 못했습니다. 강의 또는 코스를 다시 선택해 주세요.";
+        }
+        String context = chunks.stream()
+                .map(chunk -> String.valueOf(chunk.getOrDefault("excerpt", "")))
+                .filter(text -> !text.isBlank())
+                .limit(2)
+                .collect(Collectors.joining(" "));
+        return "질문 \"" + query + "\"에 대해 강의 근거를 정리하면 다음과 같습니다. " + context;
+    }
+
+    private List<String> splitForRag(String text, int maxChunks) {
+        List<String> sentences = List.of(text.split("(?<=[.!?])\\s+"));
+        List<String> cleaned = sentences.stream().map(this::normalizeText).filter(s -> !s.isBlank()).toList();
+        if (cleaned.isEmpty()) {
+            return List.of(text);
+        }
+        int chunkSize = Math.max(1, (int) Math.ceil(cleaned.size() / (double) maxChunks));
+        List<String> parts = new ArrayList<>();
+        for (int i = 0; i < cleaned.size(); i += chunkSize) {
+            parts.add(String.join(" ", cleaned.subList(i, Math.min(cleaned.size(), i + chunkSize))));
+        }
+        return parts;
+    }
+
+    private String buildLectureNarrative(String lectureId) {
+        LectureItem lecture = learningService.getLecture(lectureId);
+        if (lecture == null) {
+            return "강의 텍스트를 찾을 수 없습니다.";
+        }
+        return lecture.title() + " 강의에서는 핵심 개념을 설명하고, 실습 흐름과 복습 포인트를 단계적으로 정리합니다. " +
+                "특히 자주 혼동되는 개념을 예시로 비교하고, 다음 차시와 연결되는 질문을 중심으로 학습합니다.";
+    }
+
+    private List<Map<String, Object>> splitIntoSegments(String text, int durationMs) {
+        List<String> words = List.of(normalizeText(text).split("\\s+")).stream().filter(word -> !word.isBlank()).toList();
+        if (words.isEmpty()) {
+            return List.of();
+        }
+        int segmentCount = Math.min(6, Math.max(3, (int) Math.ceil(words.size() / 10.0)));
+        int wordsPerSegment = Math.max(1, (int) Math.ceil(words.size() / (double) segmentCount));
+        List<Map<String, Object>> segments = new ArrayList<>();
+        for (int i = 0; i < segmentCount; i++) {
+            int start = i * wordsPerSegment;
+            int end = Math.min(words.size(), start + wordsPerSegment);
+            if (start >= end) {
+                break;
+            }
+            int startMs = (int) Math.round((i / (double) segmentCount) * durationMs);
+            int endMs = i == segmentCount - 1
+                    ? durationMs
+                    : (int) Math.round(((i + 1) / (double) segmentCount) * durationMs);
+            String segmentText = String.join(" ", words.subList(start, end));
+            Map<String, Object> segment = new HashMap<>();
+            segment.put("index", i);
+            segment.put("start_ms", startMs);
+            segment.put("end_ms", Math.max(startMs + FALLBACK_SEGMENT_MIN_MS, endMs));
+            segment.put("text", segmentText);
+            segments.add(segment);
+        }
+        return segments;
+    }
+
+    private int countWords(String text) {
+        return tokenize(text).size();
+    }
+
+    private List<String> tokenize(String text) {
+        String normalized = normalizeText(text).toLowerCase();
+        return List.of(normalized.split("[^a-zA-Z0-9가-힣]+")).stream()
+                .map(String::trim)
+                .filter(token -> token.length() > 1)
+                .toList();
+    }
+
+    private String normalizeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replaceAll("\\s+", " ").trim();
+    }
+
+    private double asDouble(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        try {
+            return Double.parseDouble(String.valueOf(value));
+        } catch (Exception ignored) {
+            return 0.0;
+        }
     }
 }

@@ -10,6 +10,9 @@ Pull Request와 Merge Request를 같은 기준으로 관리한다.
 - 검증 결과를 함께 남긴다.
 - 코드리뷰 요청은 `.github/CODEOWNERS`로 자동화한다.
 - 변경 범위에 따라 `frontend/`, `backend/`, `docs/`, `packages/shared/`의 담당자 확인이 필요하다.
+- 기능 PR은 관련 ADR 링크를 본문에 반드시 포함한다.
+- "구현 완료" 판단 기준에는 코드/테스트뿐 아니라 문서 업데이트 완료를 포함한다.
+- 설계 변경이 있으면 ADR 상태를 `Proposed`, `Accepted`, `Superseded` 중 하나로 갱신한다.
 
 ## 포함 항목
 - 변경 요약
