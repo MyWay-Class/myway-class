@@ -108,7 +108,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
+      <section className="overflow-hidden rounded-[32px] border border-cyan-200/20 bg-[radial-gradient(circle_at_15%_10%,rgba(34,211,238,0.2),transparent_28%),linear-gradient(135deg,#08203a_0%,#12436a_52%,#1b587a_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
@@ -197,7 +197,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                 {primaryCourse.category} · {primaryCourse.lecture_count}차시 · {primaryCourse.progress_percent}% 진행
               </p>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${Math.max(primaryCourse.progress_percent, 8)}%` }} />
+                <div className="h-2 rounded-full bg-cyan-500" style={{ width: `${Math.max(primaryCourse.progress_percent, 8)}%` }} />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button

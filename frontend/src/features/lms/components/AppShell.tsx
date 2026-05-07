@@ -57,6 +57,13 @@ export function AppShell({ session, activePage, activeNavKey, title, onNavigate,
 
   const sidebarWidthClass = collapsed ? 'lg:w-20' : 'lg:w-72';
   const shellOffsetClass = dock === 'right' ? (collapsed ? 'lg:mr-20' : 'lg:mr-72') : (collapsed ? 'lg:ml-20' : 'lg:ml-72');
+  const mobileTabs: Array<{ key: string; label: string; icon: string; page: LmsPageId }> = [
+    { key: 'home', label: '홈', icon: 'ri-home-5-line', page: 'home' },
+    { key: 'my-courses', label: '강의 탐색', icon: 'ri-book-open-line', page: 'my-courses' },
+    { key: 'ai-chat', label: 'AI 도구', icon: 'ri-robot-line', page: 'ai-chat' },
+    { key: 'dashboard', label: '내 학습', icon: 'ri-pie-chart-2-line', page: 'dashboard' },
+    { key: 'menu', label: '마이페이지', icon: 'ri-user-3-line', page: activePage },
+  ];
 
   return (
     <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
@@ -84,9 +91,35 @@ export function AppShell({ session, activePage, activeNavKey, title, onNavigate,
           onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
           onOpenMobile={() => setMobileOpen(true)}
         />
-        <main className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8">
+        <main className="mx-auto max-w-[1280px] px-4 py-5 pb-24 sm:px-6 lg:px-8 lg:pb-5">
           <div className="animate-fade-in">{children}</div>
         </main>
+        <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-2 py-2 backdrop-blur lg:hidden">
+          <div className="mx-auto grid max-w-[560px] grid-cols-5 gap-1">
+            {mobileTabs.map((tab) => {
+              const active = tab.key === 'menu' ? mobileOpen : activePage === tab.page || activeNavKey === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => {
+                    if (tab.key === 'menu') {
+                      setMobileOpen(true);
+                      return;
+                    }
+                    onNavigate(tab.page);
+                  }}
+                  className={`flex flex-col items-center justify-center rounded-xl px-1 py-2 text-[10px] font-semibold transition ${
+                    active ? 'bg-cyan-50 text-cyan-700' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <i className={`${tab.icon} text-[18px]`} />
+                  <span className="mt-0.5">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </div>
     </div>
   );

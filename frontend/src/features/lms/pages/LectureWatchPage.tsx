@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CourseCard, CourseDetail, LectureDetail, LectureTranscript } from '@myway/shared';
 import { CourseSessionTimeline } from '../components/CourseSessionTimeline';
 import { LectureSideChatPanel } from '../components/LectureSideChatPanel';
@@ -119,7 +119,7 @@ export function LectureWatchPage({
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-6 py-7 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)]">
+      <section className="overflow-hidden rounded-[32px] border border-cyan-200/20 bg-[radial-gradient(circle_at_18%_10%,rgba(34,211,238,0.24),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(14,116,144,0.32),transparent_42%),linear-gradient(135deg,#071a35_0%,#123f66_52%,#175479_100%)] px-6 py-7 text-white shadow-[0_30px_70px_rgba(8,47,73,0.28)]">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
@@ -142,7 +142,7 @@ export function LectureWatchPage({
           <div className="border-b border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[12px] font-semibold text-cyan-600">내 강의 / 영상 시청</div>
+                <div className="text-[12px] font-semibold text-cyan-700">내 강의 / 영상 시청</div>
                 <h2 className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{selectedCourse.title}</h2>
                 <p className="mt-2 text-[13px] leading-6 text-[var(--app-text-muted)]">
                   {selectedCourse.category} · {selectedCourse.difficulty} · {selectedCourse.lecture_count}차시 · {selectedCourse.progress_percent}% 진행
@@ -219,13 +219,13 @@ export function LectureWatchPage({
 
             <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
               <div className="rounded-[24px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-5">
-                <div className="text-[12px] font-semibold text-cyan-600">현재 차시</div>
+                    <div className="text-[12px] font-semibold text-cyan-700">현재 차시</div>
                 <div className="mt-1 text-[18px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{currentLecture?.title ?? '차시를 선택하세요'}</div>
                 <p className="mt-3 text-[13px] leading-7 text-[var(--app-text-muted)]">
                   {highlightedLecture?.transcript_excerpt ?? currentLecture?.content_text ?? '선택한 차시의 핵심 내용과 메모를 이곳에서 확인합니다.'}
                 </p>
                 {transcript?.duration_ms ? (
-                  <div className="mt-3 inline-flex rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
+                  <div className="mt-3 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">
                     실제 재생 길이 {formatTimecode(transcript.duration_ms)}
                   </div>
                 ) : null}
@@ -288,7 +288,7 @@ export function LectureWatchPage({
               <button
                 type="button"
                 onClick={() => onEnroll(selectedCourse.id)}
-                className="mt-4 w-full rounded-full bg-cyan-600 px-4 py-3 text-[12px] font-semibold text-white transition hover:bg-cyan-500"
+                className="mt-4 w-full rounded-full bg-indigo-600 px-4 py-3 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
               >
                 수강 신청하기
               </button>
@@ -310,7 +310,7 @@ export function LectureWatchPage({
                         onClick={() => setActivePanelTab(tab.key as RightTab)}
                         className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-[12px] font-semibold transition ${
                           active
-                            ? 'bg-cyan-600 text-white shadow-sm'
+                            ? 'bg-indigo-600 text-white shadow-sm'
                             : 'border border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-text-muted)] hover:text-[var(--app-text)]'
                         }`}
                       >
@@ -326,7 +326,7 @@ export function LectureWatchPage({
                 {activePanelTab === 'sessions' ? (
                   <div className="space-y-4">
                     <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
-                      <div className="text-[12px] font-semibold text-cyan-600">다음 차시 선택</div>
+                      <div className="text-[12px] font-semibold text-indigo-600">다음 차시 선택</div>
                       <div className="mt-1 text-[14px] font-bold text-[var(--app-text)]">현재 강의의 차시 목록을 바로 전환합니다.</div>
                       <p className="mt-2 text-[12px] leading-6 text-[var(--app-text-muted)]">
                         원하는 주차를 눌러 선택하고, 이어서 영상 시청과 챗봇 질문으로 연결할 수 있습니다.
@@ -347,7 +347,7 @@ export function LectureWatchPage({
                 {activePanelTab === 'script' ? (
                   <div className="space-y-4">
                     <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
-                      <div className="text-[12px] font-semibold text-cyan-600">스크립트</div>
+                      <div className="text-[12px] font-semibold text-indigo-600">스크립트</div>
                       <div className="mt-1 text-[16px] font-bold text-[var(--app-text)]">타임스탬프 기준으로 바로 찾아볼 수 있습니다.</div>
                       <p className="mt-2 text-[12px] leading-6 text-[var(--app-text-muted)]">
                         필요한 구간의 시작 시간을 눌러 복사하거나, 차시 이동 전에 먼저 확인할 수 있습니다.
@@ -366,7 +366,7 @@ export function LectureWatchPage({
                                 onClick={() => {
                                   void navigator.clipboard.writeText(formatTimecode(segment.start_ms));
                                 }}
-                                className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-cyan-600"
+                                className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-indigo-600"
                               >
                                 {formatTimecode(segment.start_ms)} - {formatTimecode(segment.end_ms)}
                               </button>
@@ -397,4 +397,3 @@ export function LectureWatchPage({
     </div>
   );
 }
-

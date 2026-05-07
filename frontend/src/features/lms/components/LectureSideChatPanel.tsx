@@ -109,7 +109,7 @@ export function LectureSideChatPanel({ highlightedLecture, sessionToken }: Lectu
 
   if (!highlightedLecture) {
     return (
-      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+      <section className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
         <StatePanel
           compact
           icon="ri-chat-3-line"
@@ -122,21 +122,21 @@ export function LectureSideChatPanel({ highlightedLecture, sessionToken }: Lectu
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
-      <div className="border-b border-slate-200 px-5 py-4">
+    <section className="rounded-3xl border border-[#d6e6f5] bg-white shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
+      <div className="border-b border-[#dce9f7] px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[12px] font-semibold text-indigo-600">강의 시청 챗봇</div>
+            <div className="text-[12px] font-semibold text-cyan-700">강의 시청 챗봇</div>
             <h3 className="mt-1 text-[15px] font-bold text-slate-900">우측 사이드 질문</h3>
             <p className="mt-1 text-[12px] leading-5 text-slate-500">{statusText}</p>
           </div>
-          <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
+          <div className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
             {highlightedLecture.week_number ?? 1}주차 · {highlightedLecture.session_number ?? highlightedLecture.order_index + 1}차시
           </div>
         </div>
 
-        <div className="mt-3 grid gap-2 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-[12px] text-slate-600">
-          <div className="flex items-center gap-2 font-semibold text-indigo-700">
+        <div className="mt-3 grid gap-2 rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-[12px] text-[#355777]">
+          <div className="flex items-center gap-2 font-semibold text-cyan-700">
             <i className="ri-lightbulb-flash-line" />
             지금 강의에 바로 물어보기
           </div>
@@ -145,7 +145,7 @@ export function LectureSideChatPanel({ highlightedLecture, sessionToken }: Lectu
       </div>
 
       <div className="px-5 py-5">
-        <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
+        <div className="space-y-4 rounded-3xl border border-[#dce9f7] bg-[#f4faff] px-4 py-4">
           <div>
             <div className="text-[12px] font-semibold text-slate-500">{highlightedLecture.course_title}</div>
             <div className="mt-1 text-[15px] font-bold tracking-[-0.03em] text-slate-900">{highlightedLecture.title}</div>

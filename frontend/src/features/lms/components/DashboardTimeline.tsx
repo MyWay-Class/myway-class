@@ -19,9 +19,9 @@ const toneClasses: Record<DashboardActivity['tone'], { icon: string; line: strin
     badge: 'bg-emerald-50 text-emerald-600',
   },
   violet: {
-    icon: 'bg-violet-100 text-violet-600',
-    line: 'border-violet-200',
-    badge: 'bg-violet-50 text-violet-600',
+    icon: 'bg-sky-100 text-sky-700',
+    line: 'border-sky-200',
+    badge: 'bg-sky-50 text-sky-700',
   },
   amber: {
     icon: 'bg-amber-100 text-amber-700',
@@ -57,7 +57,7 @@ function formatRelativeTime(timestamp: string): string {
 
 export function DashboardTimeline({ title, subtitle, activities, emptyMessage }: DashboardTimelineProps) {
   return (
-    <section className="rounded-[30px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm">
+    <section className="rounded-[30px] border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-[15px] font-bold text-[var(--app-text)]">{title}</h3>

@@ -90,10 +90,10 @@ export function InstructorDashboardPage({ dashboard, courses, insights }: Instru
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm lg:px-8">
+      <section className="overflow-hidden rounded-2xl border border-cyan-200/20 bg-[radial-gradient(circle_at_12%_8%,rgba(34,211,238,0.16),transparent_30%),linear-gradient(135deg,#f8fcff_0%,#f0f9ff_45%,#ecfeff_100%)] px-6 py-6 shadow-sm lg:px-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-end">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+            <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
               <i className="ri-presentation-line" />
               Instructor Dashboard
             </div>

@@ -16,8 +16,8 @@ const toneClasses: Record<DashboardStat['tone'], { panel: string; icon: string; 
     value: 'text-slate-900',
   },
   violet: {
-    panel: 'bg-violet-50 text-violet-600',
-    icon: 'bg-violet-100 text-violet-600',
+    panel: 'bg-sky-50 text-sky-700',
+    icon: 'bg-sky-100 text-sky-700',
     value: 'text-slate-900',
   },
   amber: {
@@ -39,7 +39,10 @@ export function DashboardStatsGrid({ stats }: DashboardStatsGridProps) {
         const tone = toneClasses[stat.tone];
 
         return (
-          <article key={stat.id} className="rounded-[28px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+          <article
+            key={stat.id}
+            className="rounded-[28px] border border-[#d6e6f5] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(6,31,57,0.12)]"
+          >
             <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl text-[20px] ${tone.icon}`}>
               <i className={stat.icon} />
             </div>

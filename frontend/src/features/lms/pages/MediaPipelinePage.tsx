@@ -348,7 +348,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-6 text-white shadow-sm">
+      <section className="rounded-3xl border border-cyan-100 bg-[linear-gradient(135deg,#03162a_0%,#005d93_48%,#0bc5ea_100%)] px-6 py-6 text-white shadow-[0_22px_50px_rgba(4,49,84,0.24)]">
         <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80">
           Cloudflare R2 · Workers AI · media pipeline
         </div>
@@ -370,14 +370,14 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
         />
 
         <section className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">대상 강의</div>
                 <div className="mt-1 text-lg font-bold text-slate-900">{selectedLecture?.title ?? displayCourse.title}</div>
                 <div className="mt-1 text-sm text-slate-500">{displayCourse.title} · {displayCourse.instructor_name}</div>
               </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
+              <div className="rounded-2xl bg-[#f4faff] px-4 py-3 text-right">
                 <div className="text-xs text-slate-400">업로드 가능한 파일</div>
                 <div className="mt-1 text-sm font-semibold text-slate-900">3분 ~ 1시간 내외 영상</div>
               </div>
@@ -389,7 +389,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
                 <select
                   value={lectureId}
                   onChange={(event) => setLectureId(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400"
+                  className="w-full rounded-2xl border border-[#cce0f2] bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-400"
                 >
                   {lectureOptions.map((lecture) => (
                     <option key={lecture.id} value={lecture.id}>
@@ -405,7 +405,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
                   value={audioUrl}
                   onChange={(event) => setAudioUrl(event.target.value)}
                   placeholder="이미 추출된 audio_url이 있으면 바로 입력"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400"
+                  className="w-full rounded-2xl border border-[#cce0f2] bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-400"
                 />
                 </label>
               </div>
@@ -416,7 +416,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
                   type="file"
                   accept="video/*"
                   onChange={(event) => setVideoFile(event.target.files?.[0] ?? null)}
-                  className="block w-full cursor-pointer rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+                  className="block w-full cursor-pointer rounded-2xl border border-dashed border-[#b9d7ef] bg-[#f4faff] px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
                 />
                 {videoFile ? (
                   <div className="text-xs text-slate-500">
@@ -432,7 +432,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
                 type="button"
                 onClick={handleSubmit}
                 disabled={busy || demoMode}
-                className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#00b8e6_0%,#0077b6_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(0,119,182,0.35)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
               >
                   <i className={`${busy ? 'ri-loader-4-line animate-spin' : 'ri-upload-2-line'}`} />
                 {busy ? '진행 중' : demoMode ? '데모 모드' : '업로드 및 추출 요청'}
@@ -441,22 +441,22 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
             <div className="text-sm font-semibold text-slate-900">현재 선택 정보</div>
             <div className="mt-3 space-y-3 text-sm text-slate-600">
-              <div className="rounded-2xl bg-slate-50 p-4">
+              <div className="rounded-2xl bg-[#f4faff] p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">강의</div>
                 <div className="mt-1 font-semibold text-slate-900">{selectedLecture?.title ?? '선택된 강의 없음'}</div>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
+              <div className="rounded-2xl bg-[#f4faff] p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">영상 업로드 결과</div>
                 <div className="mt-1 break-all font-semibold text-slate-900">{uploadResult?.video_url ?? '아직 없음'}</div>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
+              <div className="rounded-2xl bg-[#f4faff] p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">전사 결과</div>
                 <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.transcript_id ?? pipeline?.transcript_id ?? '아직 없음'}</div>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
+              <div className="rounded-2xl bg-[#f4faff] p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 서비스 job</div>
                 <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.processing_job_id ?? '아직 없음'}</div>
                 {latestExtraction?.processing_error ? (

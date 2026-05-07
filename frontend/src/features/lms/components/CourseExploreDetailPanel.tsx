@@ -24,9 +24,9 @@ const courseTabs: { key: '강의' | '공지' | '자료'; label: string; icon: st
 ];
 
 const primaryButtonClass =
-  'rounded-xl bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500';
+  'rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500';
 const secondaryButtonClass =
-  'rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600';
+  'rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700';
 
 function formatDisplayDate(value: string): string {
   const date = new Date(value);
@@ -66,19 +66,27 @@ function renderNoticeList(course: CourseDetail) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-cyan-200/30 bg-cyan-50/70 px-4 py-3">
+        <div className="text-[12px] font-semibold text-cyan-800">공지 요약</div>
+        <div className="mt-1 text-[12px] text-cyan-700">총 {notices.length}건 · 중요 공지는 상단 고정되어 먼저 보입니다.</div>
+      </div>
       {notices.map((notice) => (
         <article key={notice.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
-          <div className="flex items-start gap-3">
-            <i className={`${notice.pinned ? 'ri-pushpin-fill text-indigo-500' : 'ri-megaphone-line text-slate-400'} mt-0.5 flex-shrink-0`} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="text-[13px] font-semibold text-slate-900">{notice.title}</p>
-                {notice.pinned ? <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600">고정</span> : null}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <div className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${notice.pinned ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500'}`}>
+                <i className={notice.pinned ? 'ri-pushpin-fill' : 'ri-megaphone-line'} />
               </div>
-              <p className="mt-1 whitespace-pre-line text-[12px] leading-6 text-slate-500">{notice.content}</p>
-              <p className="mt-2 text-[11px] text-slate-400">{formatDisplayDate(notice.created_at)}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[14px] font-semibold text-slate-900">{notice.title}</p>
+                  {notice.pinned ? <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-medium text-cyan-700">고정</span> : null}
+                </div>
+                <p className="mt-2 whitespace-pre-line text-[12px] leading-6 text-slate-500">{notice.content}</p>
+              </div>
             </div>
+            <div className="flex-shrink-0 text-[11px] text-slate-400">{formatDisplayDate(notice.created_at)}</div>
           </div>
         </article>
       ))}
@@ -101,19 +109,29 @@ function renderMaterialList(course: CourseDetail) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-cyan-200/30 bg-cyan-50/70 px-4 py-3">
+        <div className="text-[12px] font-semibold text-cyan-800">자료실</div>
+        <div className="mt-1 text-[12px] text-cyan-700">총 {materials.length}건 · 파일명과 업로드일을 기준으로 빠르게 찾을 수 있습니다.</div>
+      </div>
       {materials.map((material) => (
         <article key={material.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[18px] text-indigo-500 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[18px] text-cyan-700 shadow-sm">
               <i className="ri-file-pdf-2-line" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold text-slate-900">{material.title}</p>
-              <p className="mt-1 text-[12px] leading-6 text-slate-500">{material.summary}</p>
-              <p className="mt-1 text-[11px] text-slate-400">
-                {material.file_name} · {formatDisplayDate(material.uploaded_at)}
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="truncate text-[13px] font-semibold text-slate-900">{material.title}</p>
+                <span className="text-[11px] text-slate-400">{formatDisplayDate(material.uploaded_at)}</span>
+              </div>
+              <p className="mt-1 text-[11px] font-medium text-cyan-700">{material.file_name}</p>
+              <p className="mt-2 text-[12px] leading-6 text-slate-500">{material.summary}</p>
+              <div className="mt-3">
+                <button type="button" className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-cyan-200 hover:text-cyan-700">
+                  자료 보기
+                </button>
+              </div>
             </div>
           </div>
         </article>
@@ -143,7 +161,7 @@ export function CourseExploreDetailPanel({
   return (
     <section className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
       {course ? (
-        <div className="bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-5 py-5 text-white">
+        <div className="bg-[radial-gradient(circle_at_18%_10%,rgba(34,211,238,0.24),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(14,116,144,0.32),transparent_42%),linear-gradient(135deg,#071a35_0%,#123f66_52%,#175479_100%)] px-5 py-5 text-white">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold opacity-90">
@@ -230,7 +248,7 @@ export function CourseExploreDetailPanel({
                     type="button"
                     onClick={() => onTabChange(tab.key)}
                     className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm transition-colors ${
-                      active ? 'border-indigo-500 text-[var(--app-text)]' : 'border-transparent text-[var(--app-text-muted)] hover:border-slate-300 hover:text-[var(--app-text-secondary)]'
+                      active ? 'border-cyan-500 text-[var(--app-text)]' : 'border-transparent text-[var(--app-text-muted)] hover:border-slate-300 hover:text-[var(--app-text-secondary)]'
                     }`}
                   >
                     <i className={`${tab.icon} text-[15px]`} />

@@ -21,7 +21,7 @@ export function AISummaryPage({ highlightedLecture, insights }: AISummaryPagePro
         meta="로그인 + quota 적용"
       />
 
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
+      <section className="overflow-hidden rounded-[32px] border border-cyan-100 bg-[linear-gradient(135deg,#03162a_0%,#005d93_48%,#0bc5ea_100%)] px-6 py-6 text-white shadow-[0_22px_50px_rgba(4,49,84,0.24)] lg:px-8 lg:py-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-end">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
@@ -60,7 +60,7 @@ export function AISummaryPage({ highlightedLecture, insights }: AISummaryPagePro
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <article className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+        <article className="rounded-[30px] border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-[15px] font-bold text-slate-900">강의 요약</h2>
@@ -68,7 +68,7 @@ export function AISummaryPage({ highlightedLecture, insights }: AISummaryPagePro
                 {lectureCourse} · {highlightedLecture ? highlightedLecture.course_instructor : '강의 선택 필요'}
               </p>
             </div>
-            <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">요약 우선</div>
+            <div className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">요약 우선</div>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -77,15 +77,15 @@ export function AISummaryPage({ highlightedLecture, insights }: AISummaryPagePro
               { label: '복습 포인트', value: '자주 놓치는 개념 우선' },
               { label: '읽는 순서', value: '제목 → 요약 → 전사' },
             ].map((item) => (
-              <div key={item.label} className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
-                <div className="text-[11px] font-semibold text-slate-400">{item.label}</div>
+              <div key={item.label} className="rounded-[24px] border border-[#dce9f7] bg-[#f4faff] px-4 py-4">
+                <div className="text-[11px] font-semibold text-[#6c86a0]">{item.label}</div>
                 <div className="mt-1 text-[14px] font-bold text-slate-900">{item.value}</div>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 rounded-[26px] border border-slate-200 bg-slate-50 px-5 py-5">
-            <div className="text-[12px] font-semibold text-indigo-600">선택된 강의</div>
+          <div className="mt-4 rounded-[26px] border border-[#dce9f7] bg-[#f4faff] px-5 py-5">
+            <div className="text-[12px] font-semibold text-cyan-700">선택된 강의</div>
             <div className="mt-1 text-[20px] font-extrabold tracking-[-0.03em] text-slate-900">{lectureTitle}</div>
             <p className="mt-3 text-[13px] leading-7 text-slate-600">{lectureExcerpt}</p>
           </div>
@@ -104,32 +104,32 @@ export function AISummaryPage({ highlightedLecture, insights }: AISummaryPagePro
         </article>
 
         <aside className="space-y-5">
-          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <section className="rounded-[30px] border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
-              <i className="ri-robot-line text-indigo-600" />
+              <i className="ri-robot-line text-cyan-700" />
               AI 인사이트
             </h3>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-slate-50 px-4 py-4">
+              <div className="rounded-2xl bg-[#f4faff] px-4 py-4">
                 <div className="text-[11px] text-slate-400">최근 AI 사용량</div>
                 <div className="mt-1 text-[24px] font-extrabold tracking-[-0.03em] text-slate-900">{insights?.summary.total_requests ?? 0}</div>
               </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-4">
+              <div className="rounded-2xl bg-[#f4faff] px-4 py-4">
                 <div className="text-[11px] text-slate-400">성공률</div>
                 <div className="mt-1 text-[24px] font-extrabold tracking-[-0.03em] text-slate-900">{insights?.summary.success_rate ?? 0}%</div>
               </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-4">
+              <div className="rounded-2xl bg-[#f4faff] px-4 py-4">
                 <div className="text-[11px] text-slate-400">추천 창</div>
                 <div className="mt-1 text-[24px] font-extrabold tracking-[-0.03em] text-slate-900">{insights?.summary.recent_window_days ?? 0}일</div>
               </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-4">
+              <div className="rounded-2xl bg-[#f4faff] px-4 py-4">
                 <div className="text-[11px] text-slate-400">강의 인지</div>
                 <div className="mt-1 text-[24px] font-extrabold tracking-[-0.03em] text-slate-900">{highlightedLecture ? 'ON' : 'OFF'}</div>
               </div>
             </div>
           </section>
 
-          <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <section className="rounded-[30px] border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
             <h3 className="text-[15px] font-bold text-slate-900">사용 팁</h3>
             <div className="mt-3 space-y-2 text-[12px] leading-6 text-slate-500">
               <p>1. 강의 상세에서 차시를 먼저 선택한 뒤 요약을 보면 맥락이 더 잘 보입니다.</p>

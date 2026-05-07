@@ -15,19 +15,19 @@ export function AdminStatsOverviewCards({ dashboard, courses, users, insights, a
 
   return (
     <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <article className="rounded-3xl border border-cyan-100 bg-white px-5 py-5 shadow-sm">
+      <article className="rounded-3xl border border-[#d6e6f5] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 py-5 shadow-[0_10px_24px_rgba(6,31,57,0.08)]">
         <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{users.length}</div>
         <div className="mt-1 text-[12px] text-slate-500">전체 사용자</div>
       </article>
-      <article className="rounded-3xl border border-cyan-100 bg-white px-5 py-5 shadow-sm">
+      <article className="rounded-3xl border border-[#d6e6f5] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 py-5 shadow-[0_10px_24px_rgba(6,31,57,0.08)]">
         <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{courses.length}</div>
         <div className="mt-1 text-[12px] text-slate-500">전체 강의</div>
       </article>
-      <article className="rounded-3xl border border-cyan-100 bg-white px-5 py-5 shadow-sm">
+      <article className="rounded-3xl border border-[#d6e6f5] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 py-5 shadow-[0_10px_24px_rgba(6,31,57,0.08)]">
         <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{averageProgress}%</div>
         <div className="mt-1 text-[12px] text-slate-500">평균 진도</div>
       </article>
-      <article className="rounded-3xl border border-cyan-100 bg-white px-5 py-5 shadow-sm">
+      <article className="rounded-3xl border border-[#d6e6f5] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 py-5 shadow-[0_10px_24px_rgba(6,31,57,0.08)]">
         <div className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">{aiSummary?.total_requests ?? insights?.summary.total_requests ?? 0}</div>
         <div className="mt-1 text-[12px] text-slate-500">AI 요청 수</div>
       </article>

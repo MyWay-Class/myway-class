@@ -44,6 +44,14 @@ export function AdminInstructorsPage({ instructors, courses }: AdminInstructorsP
 
   return (
     <div className="space-y-5">
+      <section className="overflow-hidden rounded-2xl border border-cyan-200/20 bg-[radial-gradient(circle_at_12%_8%,rgba(34,211,238,0.16),transparent_30%),linear-gradient(135deg,#f8fcff_0%,#f0f9ff_45%,#ecfeff_100%)] px-6 py-5 shadow-sm">
+        <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
+          <i className="ri-user-star-line" />
+          Instructor Detail
+        </div>
+        <h2 className="mt-3 text-[22px] font-extrabold tracking-[-0.03em] text-slate-900">강사 운영 상세</h2>
+        <p className="mt-1 text-[13px] text-slate-600">강사별 담당 과목과 소속을 빠르게 비교해 운영 우선순위를 조정합니다.</p>
+      </section>
       <AdminFilterBar
         title="강사 관리"
         subtitle="담당 과목, 소속, 이름을 기준으로 찾아보고 운영 우선순위가 높은 강사를 빠르게 확인합니다."
@@ -72,7 +80,7 @@ export function AdminInstructorsPage({ instructors, courses }: AdminInstructorsP
             return (
               <article key={instructor.id} className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-[16px] font-bold text-violet-600">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100 text-[16px] font-bold text-cyan-700">
                     {instructor.name[0]}
                   </div>
                   <div className="min-w-0 flex-1">

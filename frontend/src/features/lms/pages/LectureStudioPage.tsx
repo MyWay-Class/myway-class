@@ -169,10 +169,10 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-6 text-white shadow-sm">
+      <section className="rounded-3xl border border-cyan-200/20 bg-[radial-gradient(circle_at_18%_10%,rgba(34,211,238,0.24),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(14,116,144,0.32),transparent_42%),linear-gradient(135deg,#071a35_0%,#123f66_52%,#175479_100%)] px-6 py-6 text-white shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="text-[12px] font-semibold uppercase tracking-[0.2em] text-indigo-200">Instructor Studio</div>
+            <div className="text-[12px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Instructor Studio</div>
             <h1 className="mt-2 text-[26px] font-extrabold tracking-[-0.04em]">강의 제작 스튜디오</h1>
             <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-300">
               수강 인원, 강의실, 온라인/오프라인, 과제, 시험, 퀴즈, AI 연계 옵션까지 한 화면에서 조정하는 강사 전용 제작 공간입니다.

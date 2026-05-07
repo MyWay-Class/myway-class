@@ -1,4 +1,4 @@
-﻿import type { ShortformCommunityItem } from '@myway/shared';
+import type { ShortformCommunityItem } from '@myway/shared';
 
 type ShortformCommunityCardProps = {
   item: ShortformCommunityItem;
@@ -36,7 +36,7 @@ export function ShortformCommunityCard({ item, active, onOpen, onPreview }: Shor
         active ? 'border-cyan-400 ring-2 ring-cyan-100' : 'border-slate-200'
       }`}
     >
-      <div className="bg-[linear-gradient(135deg,#1e293b,#475569)] px-5 py-4 text-white">
+      <div className="bg-[linear-gradient(135deg,#0f3b5f,#0e7490,#06b6d4)] px-5 py-4 text-white">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-semibold opacity-90">{item.shared_by_name}</div>
@@ -60,7 +60,7 @@ export function ShortformCommunityCard({ item, active, onOpen, onPreview }: Shor
         <div className="space-y-1.5">
           {item.clips.slice(0, 3).map((clip, index) => (
             <div key={`${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[12px]">
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-cyan-100 text-[10px] font-bold text-cyan-600">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-cyan-100 text-[10px] font-bold text-cyan-700">
                 {index + 1}
               </span>
               <span className="min-w-0 flex-1 truncate text-slate-600">{clip.lecture_title}</span>
@@ -87,7 +87,7 @@ export function ShortformCommunityCard({ item, active, onOpen, onPreview }: Shor
                 event.stopPropagation();
                 onPreview(item);
               }}
-              className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-cyan-200 hover:text-cyan-600"
+              className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-cyan-200 hover:text-cyan-700"
             >
               미리보기
             </button>
@@ -97,4 +97,3 @@ export function ShortformCommunityCard({ item, active, onOpen, onPreview }: Shor
     </article>
   );
 }
-

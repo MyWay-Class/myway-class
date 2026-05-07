@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AIRagResult, AIInsights, LectureDetail, SmartChatResult } from '@myway/shared';
 import { loadAIRAGOverview } from '../../../lib/ai-rag';
 import { sendSmartChatDetailed } from '../../../lib/api';
@@ -162,7 +162,7 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
         />
       ) : null}
 
-      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-6 py-7 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)] lg:px-8">
+      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#03162a_0%,#004e7d_42%,#00a7c8_100%)] px-6 py-7 text-white shadow-[0_30px_70px_rgba(5,44,74,0.25)] lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">AI 학습 챗</span>
@@ -198,7 +198,7 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
                 질문, 요약, 퀴즈, 복습 순서로 이어가면 레퍼런스처럼 흐름이 안정적입니다.
               </p>
             </div>
-            <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-600">
+            <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
               {messages.length}개 메시지
             </span>
           </div>
@@ -213,7 +213,7 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
                     <div className="text-[12px] font-semibold text-[var(--app-text-muted)]">RAG 파이프라인</div>
                     <div className="mt-1 text-[14px] font-bold text-[var(--app-text)]">{ragOverview.query}</div>
                   </div>
-                  <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-600">
+                  <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
                     {ragOverview.provider.search_provider}
                   </span>
                 </div>
@@ -248,4 +248,3 @@ export function AIChatPage({ highlightedLecture, insights, selectedCourse, canMa
     </div>
   );
 }
-

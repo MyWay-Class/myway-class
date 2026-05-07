@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getLectureDisplayDurationMinutes, type CourseCard, type CourseDetail, type LectureDetail, type ShortformCommunityItem, type ShortformVideo } from '@myway/shared';
 import { loadCourseDetail, loadLectureTranscriptDetailed } from '../../../lib/api';
 import {
@@ -381,7 +381,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
 
   return (
     <div className="space-y-4">
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-cyan-200/20 bg-[radial-gradient(circle_at_18%_10%,rgba(34,211,238,0.24),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(14,116,144,0.32),transparent_42%),linear-gradient(135deg,#071a35_0%,#123f66_52%,#175479_100%)] px-6 py-6 text-white shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
@@ -433,7 +433,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
               강좌 선택 → 차시별 구간 선택 → 제목/미리보기/저장의 3단계로 정리했습니다.
             </p>
           </div>
-          <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-600">
+          <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
             {selectedClips.length}개 클립
           </span>
         </div>
@@ -457,7 +457,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
                   >
                     {completed ? <i className="ri-check-line" /> : index + 1}
                   </div>
-                  <span className={`hidden text-xs font-medium sm:inline ${active ? 'text-cyan-600' : 'text-slate-400'}`}>{label}</span>
+                  <span className={`hidden text-xs font-medium sm:inline ${active ? 'text-cyan-700' : 'text-slate-400'}`}>{label}</span>
                 </div>
               </div>
             );
@@ -531,4 +531,3 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
     </div>
   );
 }
-

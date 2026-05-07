@@ -35,14 +35,14 @@ export function AdminFilterBar({
   chips,
 }: AdminFilterBarProps) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+    <section className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-[15px] font-bold text-slate-900">{title}</h2>
           <p className="mt-1 text-[12px] leading-6 text-slate-500">{subtitle}</p>
         </div>
 
-        <label className="flex min-w-[240px] items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] text-slate-500">
+        <label className="flex min-w-[240px] items-center gap-2 rounded-2xl border border-[#cce0f2] bg-[#f4faff] px-4 py-3 text-[12px] text-slate-500">
           <i className="ri-search-line text-slate-400" />
           <input
             className="w-full bg-transparent text-[13px] text-slate-900 outline-none placeholder:text-slate-400"
@@ -61,7 +61,7 @@ export function AdminFilterBar({
               type="button"
               onClick={chip.onSelect}
               className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
-                chip.active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                chip.active ? 'bg-cyan-600 text-white' : 'bg-[#f4faff] text-[#3e5d7b] hover:bg-cyan-50'
               }`}
             >
               {chip.label}
@@ -72,7 +72,7 @@ export function AdminFilterBar({
         <label className="flex items-center gap-2 text-[12px] font-medium text-slate-500">
           {sortLabel}
           <select
-            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-900 outline-none"
+            className="rounded-2xl border border-[#cce0f2] bg-white px-3 py-2 text-[12px] text-slate-900 outline-none"
             value={sortValue}
             onChange={(event) => onSortChange(event.target.value)}
           >

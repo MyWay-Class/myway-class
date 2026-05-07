@@ -1,4 +1,4 @@
-﻿import type { ClipSuggestion } from './ShortformWizardTypes';
+import type { ClipSuggestion } from './ShortformWizardTypes';
 
 type ShortformWizardStep3Props = {
   courseTitle?: string | null;
@@ -79,7 +79,7 @@ export function ShortformWizardStep3({
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <i className="ri-edit-line text-[18px] text-cyan-500" />
+            <i className="ri-edit-line text-[18px] text-cyan-600" />
             <h2 className="text-[16px] font-semibold text-slate-900">3단계 · 미리보기 / 저장</h2>
           </div>
           <p className="mt-1 text-[12px] text-slate-500">선택한 클립을 미리보고 제목과 설명을 입력한 뒤 저장합니다.</p>
@@ -123,7 +123,7 @@ export function ShortformWizardStep3({
             return (
               <div key={key} className="space-y-3 rounded-xl bg-white/5 px-3 py-3 text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-cyan-100 text-[10px] font-bold text-cyan-600">
+                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-cyan-100 text-[10px] font-bold text-cyan-700">
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
@@ -215,4 +215,3 @@ export function ShortformWizardStep3({
     </article>
   );
 }
-

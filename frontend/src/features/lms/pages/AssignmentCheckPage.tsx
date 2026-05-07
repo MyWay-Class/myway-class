@@ -75,7 +75,7 @@ export function AssignmentCheckPage({ courses }: AssignmentCheckPageProps) {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
+      <section className="overflow-hidden rounded-[32px] border border-cyan-100 bg-[linear-gradient(135deg,#03162a_0%,#005d93_48%,#0bc5ea_100%)] px-6 py-6 text-white shadow-[0_22px_50px_rgba(4,49,84,0.24)] lg:px-8 lg:py-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-end">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
@@ -113,7 +113,7 @@ export function AssignmentCheckPage({ courses }: AssignmentCheckPageProps) {
         </div>
       </section>
 
-      <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+      <section className="rounded-[30px] border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
           <label className="block">
             <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">검색</span>
@@ -121,7 +121,7 @@ export function AssignmentCheckPage({ courses }: AssignmentCheckPageProps) {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="과제명, 강의명, 강사명, 피드백 검색"
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400"
+              className="h-11 w-full rounded-2xl border border-[#cce0f2] bg-[#f4faff] px-4 text-[13px] text-slate-900 outline-none transition placeholder:text-[#7e94ad] focus:border-cyan-400"
             />
           </label>
 
@@ -139,7 +139,9 @@ export function AssignmentCheckPage({ courses }: AssignmentCheckPageProps) {
                   type="button"
                   onClick={() => setReviewStatus(item.key as ReviewStatus)}
                   className={`rounded-full px-4 py-2 text-[12px] font-semibold transition ${
-                    active ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-600'
+                    active
+                      ? 'bg-[linear-gradient(135deg,#00b8e6_0%,#0077b6_100%)] text-white'
+                      : 'border border-[#cce0f2] bg-white text-[#4a6885] hover:border-cyan-300 hover:text-cyan-700'
                   }`}
                 >
                   {item.label}
@@ -150,13 +152,13 @@ export function AssignmentCheckPage({ courses }: AssignmentCheckPageProps) {
         </div>
       </section>
 
-      <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+      <section className="rounded-[30px] border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-[15px] font-bold text-slate-900">과제 목록</h3>
             <p className="mt-1 text-[12px] text-slate-500">상태별 아이콘과 점수, 제출 시점을 함께 확인합니다.</p>
           </div>
-          <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">검색 결과 {filteredAssignments.length}개</div>
+          <div className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">검색 결과 {filteredAssignments.length}개</div>
         </div>
 
         <div className="mt-4 space-y-3">
@@ -164,7 +166,7 @@ export function AssignmentCheckPage({ courses }: AssignmentCheckPageProps) {
             filteredAssignments.map((item) => {
               const meta = statusMeta[item.status];
               return (
-                <article key={item.id} className="rounded-[26px] border border-slate-200 bg-slate-50 px-4 py-4">
+                <article key={item.id} className="rounded-[26px] border border-[#dce9f7] bg-[#f4faff] px-4 py-4">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                     <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border ${meta.tone} bg-white text-[20px]`}>
                       <i className={meta.icon} />

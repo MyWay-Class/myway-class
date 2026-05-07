@@ -37,7 +37,7 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
+      <section className="overflow-hidden rounded-[32px] border border-cyan-200/20 bg-[radial-gradient(circle_at_18%_10%,rgba(34,211,238,0.24),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(14,116,144,0.32),transparent_42%),linear-gradient(135deg,#071a35_0%,#123f66_52%,#175479_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-end">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
@@ -76,7 +76,7 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
         <div className="space-y-6">
           <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
-              <i className="ri-book-open-line text-indigo-600" />
+              <i className="ri-book-open-line text-cyan-700" />
               강의 선택
             </h3>
             <div className="mt-4 space-y-2">
@@ -88,10 +88,10 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
                     type="button"
                     onClick={() => setSelectedCourseId(course.id)}
                     className={`flex w-full items-center gap-3 rounded-[24px] border px-4 py-4 text-left transition ${
-                      active ? 'border-indigo-300 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200 bg-slate-50 hover:border-indigo-200 hover:bg-white'
+                      active ? 'border-cyan-300 bg-cyan-50 ring-2 ring-cyan-100' : 'border-slate-200 bg-slate-50 hover:border-cyan-200 hover:bg-white'
                     }`}
                   >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-[20px] text-indigo-600">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100 text-[20px] text-cyan-700">
                       <i className="ri-play-circle-line" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -100,7 +100,7 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
                         {course.category} · {course.instructor_name} · {course.lecture_count}차시
                       </div>
                     </div>
-                    <div className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-indigo-600">{course.progress_percent}%</div>
+                    <div className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-cyan-700">{course.progress_percent}%</div>
                   </button>
                 );
               })}
@@ -109,7 +109,7 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
 
           <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
-              <i className="ri-settings-3-line text-indigo-600" />
+              <i className="ri-settings-3-line text-cyan-700" />
               생성 조건
             </h3>
             <div className="mt-4 space-y-4">
@@ -125,7 +125,7 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
                   step={1}
                   value={questionCount}
                   onChange={(event) => setQuestionCount(Number(event.target.value))}
-                  className="w-full accent-indigo-600"
+                  className="w-full accent-cyan-600"
                 />
               </div>
 
@@ -140,7 +140,7 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
                         type="button"
                         onClick={() => setDifficulty(item)}
                         className={`rounded-2xl px-3 py-3 text-[12px] font-semibold transition ${
-                          active ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-200 hover:text-indigo-600'
+                          active ? 'bg-cyan-600 text-white' : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-cyan-200 hover:text-cyan-700'
                         }`}
                       >
                         {difficultyLabels[item]}
@@ -165,7 +165,7 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
                           )
                         }
                         className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition ${
-                          active ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-600'
+                          active ? 'bg-cyan-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:text-cyan-700'
                         }`}
                       >
                         {type}
@@ -185,23 +185,23 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
                 <h3 className="text-[15px] font-bold text-slate-900">생성 미리보기</h3>
                 <p className="mt-1 text-[12px] text-slate-500">선택한 강의와 조건을 반영한 결과 구조를 먼저 보여줍니다.</p>
               </div>
-              <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">{estimatedMinutes}분 예상</div>
+              <div className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">{estimatedMinutes}분 예상</div>
             </div>
 
             {selectedCourse ? (
               <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="rounded-[26px] bg-[linear-gradient(135deg,#eff6ff_0%,#eef2ff_50%,#f5f3ff_100%)] px-5 py-5">
-                  <div className="text-[12px] font-semibold text-indigo-600">선택 강의</div>
+                  <div className="text-[12px] font-semibold text-cyan-700">선택 강의</div>
                   <div className="mt-1 text-[20px] font-extrabold tracking-[-0.03em] text-slate-900">{selectedCourse.title}</div>
                   <div className="mt-2 text-[13px] leading-6 text-slate-600">
                     {selectedCourse.category} · {selectedCourse.lecture_count}차시 · {selectedCourse.total_duration_minutes}분
                   </div>
                   <p className="mt-4 text-[13px] leading-7 text-slate-600">{coverageSummary}</p>
                   <div className="mt-5 flex flex-wrap gap-2">
-                    <button type="button" className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500">
+                    <button type="button" className="rounded-full bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500">
                       퀴즈 생성
                     </button>
-                    <button type="button" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600">
+                    <button type="button" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700">
                       저장하기
                     </button>
                   </div>
@@ -223,7 +223,7 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
                       <div className="mt-1 flex flex-wrap gap-2">
                         {activeTypes.length ? (
                           activeTypes.map((type) => (
-                            <span key={type} className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
+                            <span key={type} className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
                               {type}
                             </span>
                           ))
@@ -250,7 +250,7 @@ export function QuizGenPage({ courses }: QuizGenPageProps) {
 
           <section className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
-              <i className="ri-list-check-2 text-indigo-600" />
+              <i className="ri-list-check-2 text-cyan-700" />
               추천 구성
             </h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">

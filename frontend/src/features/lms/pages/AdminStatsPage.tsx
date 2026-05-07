@@ -71,21 +71,23 @@ function getTokenTotal(logs: Array<{ input_tokens: number; output_tokens: number
 export function AdminStatsPage({ dashboard, courses, users, insights, aiLogs }: AdminStatsPageProps) {
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-[28px] border border-cyan-200 bg-[linear-gradient(135deg,#ecfeff_0%,#f0fdfa_56%,#f8fafc_100%)] p-3 sm:p-4">
-        <AdminStatsOverviewCards dashboard={dashboard} courses={courses} users={users} insights={insights} aiLogs={aiLogs} />
+      <section className="overflow-hidden rounded-2xl border border-cyan-200/20 bg-[radial-gradient(circle_at_12%_8%,rgba(34,211,238,0.16),transparent_30%),linear-gradient(135deg,#f8fcff_0%,#f0f9ff_45%,#ecfeff_100%)] px-6 py-6 shadow-sm lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
+              <i className="ri-bar-chart-box-line" />
+              Admin Stats
+            </div>
+            <h2 className="mt-3 text-[24px] font-extrabold tracking-[-0.03em] text-slate-900">운영 통계 상세</h2>
+            <p className="mt-1 text-[13px] text-slate-600">사용자/강의/AI 로그를 비교해 운영 병목과 이상치를 빠르게 확인합니다.</p>
+          </div>
+        </div>
       </section>
-      <section className="rounded-[28px] border border-cyan-100 bg-white p-3 shadow-sm sm:p-4">
-        <AdminStatsComparisonPanel aiLogs={aiLogs} />
-      </section>
-      <section className="rounded-[28px] border border-teal-100 bg-white p-3 shadow-sm sm:p-4">
-        <AdminStatsOperationalPanel courses={courses} users={users} insights={insights} aiLogs={aiLogs} />
-      </section>
-      <section className="rounded-[28px] border border-cyan-100 bg-white p-3 shadow-sm sm:p-4">
-        <AdminStatsDistributionPanel aiLogs={aiLogs} />
-      </section>
-      <section className="rounded-[28px] border border-cyan-100 bg-white p-3 shadow-sm sm:p-4">
-        <AdminStatsLogPanel aiLogs={aiLogs} />
-      </section>
+      <AdminStatsOverviewCards dashboard={dashboard} courses={courses} users={users} insights={insights} aiLogs={aiLogs} />
+      <AdminStatsComparisonPanel aiLogs={aiLogs} />
+      <AdminStatsOperationalPanel courses={courses} users={users} insights={insights} aiLogs={aiLogs} />
+      <AdminStatsDistributionPanel aiLogs={aiLogs} />
+      <AdminStatsLogPanel aiLogs={aiLogs} />
     </div>
   );
 }
