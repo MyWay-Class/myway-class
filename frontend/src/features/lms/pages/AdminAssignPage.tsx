@@ -10,14 +10,23 @@ export function AdminAssignPage({ users, courses }: AdminAssignPageProps) {
   const instructors = users.filter((user) => user.role === 'INSTRUCTOR');
 
   return (
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-2xl border border-cyan-200/20 bg-[radial-gradient(circle_at_12%_8%,rgba(34,211,238,0.16),transparent_30%),linear-gradient(135deg,#f8fcff_0%,#f0f9ff_45%,#ecfeff_100%)] px-6 py-5 shadow-sm">
+        <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
+          <i className="ri-links-line" />
+          Assignment Detail
+        </div>
+        <h2 className="mt-3 text-[22px] font-extrabold tracking-[-0.03em] text-slate-900">강사/수강생 배정 상세</h2>
+        <p className="mt-1 text-[13px] text-slate-600">강의별 담당 교강사와 수강생 그룹 분포를 한 번에 확인합니다.</p>
+      </section>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
       <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
         <h2 className="text-[15px] font-bold text-slate-900">강사 배정</h2>
         <p className="mt-1 text-[12px] text-slate-500">강의별 담당 교강사를 정리한 운영용 매핑 화면입니다.</p>
         <div className="mt-4 space-y-2">
           {courses.map((course) => (
             <div key={course.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
-              <div className="flex h-[34px] w-[34px] items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <div className="flex h-[34px] w-[34px] items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
                 <i className="ri-book-open-line" />
               </div>
               <div className="min-w-0 flex-1">
@@ -56,6 +65,7 @@ export function AdminAssignPage({ users, courses }: AdminAssignPageProps) {
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

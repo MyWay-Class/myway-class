@@ -1,4 +1,4 @@
-﻿import type { ShortformCommunityItem } from '@myway/shared';
+import type { ShortformCommunityItem } from '@myway/shared';
 
 type ShortformWizardSidebarProps = {
   courseTitle?: string | null;
@@ -17,7 +17,7 @@ export function ShortformWizardSidebar({
 }: ShortformWizardSidebarProps) {
   return (
     <aside className="space-y-4 lg:sticky lg:top-20">
-      <article className="rounded-2xl border border-slate-200 bg-white px-5 py-5">
+      <article className="rounded-2xl border border-cyan-200/20 bg-[radial-gradient(circle_at_15%_10%,rgba(34,211,238,0.12),transparent_28%),linear-gradient(135deg,#f8fcff_0%,#f0f9ff_45%,#ecfeff_100%)] px-5 py-5">
         <h3 className="text-[15px] font-semibold text-slate-900">선택 요약</h3>
         <div className="mt-4 space-y-3">
           <div className="rounded-xl bg-slate-50 px-4 py-4">
@@ -62,7 +62,7 @@ export function ShortformWizardSidebar({
           {communityItems.length > 0 ? (
             communityItems.map((item) => (
               <article key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <div className="text-[12px] font-semibold text-cyan-600">{item.shared_by_name}</div>
+                <div className="text-[12px] font-semibold text-cyan-700">{item.shared_by_name}</div>
                 <div className="mt-1 text-[14px] font-bold text-slate-900">{item.title}</div>
                 <p className="mt-2 line-clamp-2 text-[12px] leading-6 text-slate-500">{item.description}</p>
                 <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400">
@@ -88,4 +88,3 @@ export function ShortformWizardSidebar({
     </aside>
   );
 }
-

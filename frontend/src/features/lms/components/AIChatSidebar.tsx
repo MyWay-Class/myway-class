@@ -1,4 +1,4 @@
-﻿import type { AIInsights, LectureDetail } from '@myway/shared';
+import type { AIInsights, LectureDetail } from '@myway/shared';
 import type { AIRagResult } from '@myway/shared';
 
 type AIChatSidebarProps = {
@@ -25,7 +25,7 @@ export function AIChatSidebar({
 }: AIChatSidebarProps) {
   return (
     <aside className={`${openOnMobile ? 'block' : 'hidden'} lg:block`}>
-      <div className="rounded-[30px] border border-[var(--app-border)] bg-white px-5 py-5 shadow-sm lg:sticky lg:top-6 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+      <div className="rounded-[30px] border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)] lg:sticky lg:top-6 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="text-[15px] font-bold text-[var(--app-text)]">추천 질문</h3>
@@ -38,20 +38,20 @@ export function AIChatSidebar({
 
         <div className="mt-4 flex flex-wrap gap-2">
           {['핵심 개념 요약', '시험 대비 문제', '이전 강의와 연결', '숏폼으로 복습'].map((chip) => (
-            <span key={chip} className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-1.5 text-[12px] text-[var(--app-text-secondary)]">
+            <span key={chip} className="rounded-full border border-[#cce0f2] bg-[#f4faff] px-3 py-1.5 text-[12px] text-[#355777]">
               {sanitizeDisplayText(chip)}
             </span>
           ))}
         </div>
 
         {insights ? (
-          <div className="mt-6 rounded-[24px] border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
+          <div className="mt-6 rounded-[24px] border border-[#dce9f7] bg-[#f4faff] px-4 py-4">
             <div className="text-[12px] font-semibold text-[var(--app-text-muted)]">최근 AI 사용량</div>
             <div className="mt-2 text-[28px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{insights.summary.total_requests}</div>
           </div>
         ) : null}
 
-        <div className="mt-6 rounded-[24px] border border-[var(--app-border)] bg-white px-4 py-4">
+        <div className="mt-6 rounded-[24px] border border-[#dce9f7] bg-white px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-[12px] font-semibold text-[var(--app-text-muted)]">RAG 파이프라인</div>
@@ -60,7 +60,7 @@ export function AIChatSidebar({
               </div>
             </div>
             {ragOverview ? (
-              <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-600">
+              <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
                 {sanitizeDisplayText(ragOverview.provider.search_provider)}
               </span>
             ) : null}
@@ -77,9 +77,9 @@ export function AIChatSidebar({
               <p className="mt-4 text-[12px] leading-5 text-[var(--app-text-secondary)]">{sanitizeDisplayText(ragOverview.answer.answer)}</p>
               <div className="mt-4 space-y-2">
                 {ragOverview.chunks.slice(0, 2).map((chunk) => (
-                  <div key={chunk.id} className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-3">
+                  <div key={chunk.id} className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] px-3 py-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-[11px] font-semibold text-cyan-600">{sanitizeDisplayText(chunk.title)}</div>
+                      <div className="text-[11px] font-semibold text-cyan-700">{sanitizeDisplayText(chunk.title)}</div>
                       <div className="text-[11px] text-[var(--app-text-muted)]">{Math.round(chunk.similarity * 100)}%</div>
                     </div>
                     <p className="mt-1 text-[12px] leading-5 text-[var(--app-text-secondary)]">{sanitizeDisplayText(chunk.excerpt)}</p>
@@ -90,7 +90,7 @@ export function AIChatSidebar({
                 {ragOverview.entities.slice(0, 4).map((entity) => (
                   <span
                     key={`${entity.kind}-${entity.value}`}
-                    className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] text-[var(--app-text-secondary)]"
+                    className="rounded-full border border-[#cce0f2] bg-[#f4faff] px-2.5 py-1 text-[11px] text-[#355777]"
                   >
                     {sanitizeDisplayText(entity.label)}: {sanitizeDisplayText(entity.value)}
                   </span>
@@ -107,4 +107,3 @@ export function AIChatSidebar({
     </aside>
   );
 }
-

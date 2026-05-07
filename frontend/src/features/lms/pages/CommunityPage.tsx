@@ -191,7 +191,7 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="제목, 강의명, 강사명, 클립 제목 검색"
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-400"
             />
           </label>
 
@@ -209,7 +209,7 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
                   type="button"
                   onClick={() => setFilter(item.key as FeedFilter)}
                   className={`rounded-full px-4 py-2 text-[12px] font-semibold transition ${
-                    active ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-600'
+                    active ? 'bg-cyan-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:text-cyan-700'
                   }`}
                 >
                   {item.label}
@@ -279,7 +279,7 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
                     type="button"
                     onClick={() => setPreviewItem(selectedItem)}
                     disabled={!selectedItem}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] font-semibold text-slate-600 transition hover:border-cyan-200 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     미리보기
                   </button>
@@ -290,7 +290,7 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
                       setDetailTab('video');
                     }}
                     disabled={!selectedItem}
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-[18px] text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-[18px] text-slate-500 transition hover:border-cyan-200 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
                     title="다시 보기"
                   >
                     <i className="ri-refresh-line" />
@@ -428,7 +428,7 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
                   {selectedItem.clips.length > 0 ? (
                     selectedItem.clips.slice(0, 4).map((clip, index) => (
                       <div key={`${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`} className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100 text-[11px] font-bold text-indigo-600">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-100 text-[11px] font-bold text-cyan-700">
                           {index + 1}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -453,7 +453,7 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
                 <button
                   type="button"
                   onClick={() => setPreviewItem(selectedItem)}
-                  className="mt-4 w-full rounded-full bg-indigo-600 px-4 py-3 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                  className="mt-4 w-full rounded-full bg-cyan-600 px-4 py-3 text-[12px] font-semibold text-white transition hover:bg-cyan-500"
                 >
                   전체 보기
                 </button>

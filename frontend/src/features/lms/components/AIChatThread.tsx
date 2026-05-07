@@ -1,4 +1,4 @@
-﻿import type { AIReference, AIIntentResult } from '@myway/shared';
+import type { AIReference, AIIntentResult } from '@myway/shared';
 
 type ChatRole = 'assistant' | 'user';
 
@@ -31,22 +31,30 @@ export function AIChatThread({ messages, loading }: AIChatThreadProps) {
           <div key={message.id} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
             <div
               className={`mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-                isUser ? 'bg-cyan-600 text-white' : 'bg-[var(--app-surface-soft)] text-[var(--app-text-secondary)]'
+                isUser
+                  ? 'bg-[linear-gradient(135deg,#01bee8_0%,#0079b8_100%)] text-white'
+                  : 'bg-[linear-gradient(135deg,#f1f8ff_0%,#e9f4ff_100%)] text-[#1c3f60]'
               }`}
             >
               <i className={isUser ? 'ri-user-3-line' : 'ri-robot-2-line'} />
             </div>
-            <div className={`max-w-[85%] rounded-[22px] px-4 py-3 text-[13px] leading-6 ${isUser ? 'bg-cyan-600 text-white' : 'bg-[var(--app-surface-soft)] text-[var(--app-text-secondary)]'}`}>
+            <div
+              className={`max-w-[85%] rounded-[22px] px-4 py-3 text-[13px] leading-6 ${
+                isUser
+                  ? 'bg-[linear-gradient(135deg,#01bee8_0%,#0079b8_100%)] text-white'
+                  : 'border border-[#d7e6f5] bg-[linear-gradient(135deg,#ffffff_0%,#f3f9ff_100%)] text-[#1c3f60]'
+              }`}
+            >
               <p>{sanitizeDisplayText(message.content)}</p>
               {message.references?.length ? (
                 <div className="mt-3 space-y-2">
                   {message.references.slice(0, 3).map((reference) => (
-                    <div key={reference.id} className="rounded-xl bg-white/70 px-3 py-2 text-[11px] text-[var(--app-text-secondary)]">
+                    <div key={reference.id} className="rounded-xl border border-[#c9e0f2] bg-white/90 px-3 py-2 text-[11px] text-[#31516f]">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-cyan-600">{sanitizeDisplayText(reference.title)}</span>
-                        <span className="text-[var(--app-text-muted)]">{Math.round(reference.similarity * 100)}%</span>
+                        <span className="font-semibold text-[#0079b8]">{sanitizeDisplayText(reference.title)}</span>
+                        <span className="text-[#6988a7]">{Math.round(reference.similarity * 100)}%</span>
                       </div>
-                      <p className="mt-1 text-[var(--app-text-secondary)]">{sanitizeDisplayText(reference.excerpt)}</p>
+                      <p className="mt-1 text-[#3a5d7d]">{sanitizeDisplayText(reference.excerpt)}</p>
                     </div>
                   ))}
                 </div>
@@ -54,7 +62,10 @@ export function AIChatThread({ messages, loading }: AIChatThreadProps) {
               {message.suggestions?.length ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {message.suggestions.slice(0, 4).map((suggestion) => (
-                    <span key={suggestion} className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] text-[var(--app-text-secondary)]">
+                    <span
+                      key={suggestion}
+                      className="rounded-full border border-[#cae0f2] bg-white/90 px-2.5 py-1 text-[11px] text-[#31516f]"
+                    >
                       {sanitizeDisplayText(suggestion)}
                     </span>
                   ))}
@@ -67,10 +78,10 @@ export function AIChatThread({ messages, loading }: AIChatThreadProps) {
 
       {loading ? (
         <div className="flex gap-3">
-          <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--app-surface-soft)] text-[var(--app-text-muted)]">
+          <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#e6f4ff] text-[#5a7a99]">
             <i className="ri-robot-2-line" />
           </div>
-          <div className="max-w-[85%] rounded-[22px] bg-[var(--app-surface-soft)] px-4 py-4 text-[13px] text-[var(--app-text-muted)]">
+          <div className="max-w-[85%] rounded-[22px] border border-[#d7e6f5] bg-[linear-gradient(135deg,#ffffff_0%,#f3f9ff_100%)] px-4 py-4 text-[13px] text-[#5a7a99]">
             답변을 준비하고 있습니다...
           </div>
         </div>
@@ -78,4 +89,3 @@ export function AIChatThread({ messages, loading }: AIChatThreadProps) {
     </div>
   );
 }
-

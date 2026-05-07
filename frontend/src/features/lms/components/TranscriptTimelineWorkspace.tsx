@@ -46,7 +46,7 @@ export function TranscriptTimelineWorkspace({ selectedLecture, transcript }: Tra
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-slate-900">타임라인 작업 공간</div>
@@ -56,7 +56,7 @@ export function TranscriptTimelineWorkspace({ selectedLecture, transcript }: Tra
               : '강의를 선택하면 전사 타임라인이 표시됩니다.'}
           </div>
         </div>
-        <div className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+        <div className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
           {transcript ? `${segments.length}개 세그먼트` : '전사 대기'}
         </div>
       </div>
@@ -64,34 +64,34 @@ export function TranscriptTimelineWorkspace({ selectedLecture, transcript }: Tra
       {transcript ? (
         <div className="mt-4 space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <div className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">전사 길이</div>
               <div className="mt-2 text-sm font-semibold text-slate-900">{totalDurationLabel}</div>
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <div className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">언어</div>
               <div className="mt-2 text-sm font-semibold text-slate-900">{transcript.language}</div>
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <div className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">단어 수</div>
               <div className="mt-2 text-sm font-semibold text-slate-900">{transcript.word_count.toLocaleString('ko-KR')}</div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm text-slate-700">
+          <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 text-sm text-[#2f5473]">
             타임스탬프는 요약, 검색, 숏폼에서 같은 기준으로 사용합니다. 아래 구간을 복사해 바로 메모나 클립 선택에 쓸 수 있습니다.
           </div>
 
           <div className="max-h-[560px] space-y-3 overflow-auto pr-1">
             {segments.map((segment) => (
-              <article key={segment.index} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <article key={segment.index} className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <button
                     type="button"
                     onClick={() => {
                       void copySegmentStart(segment.start_ms);
                     }}
-                    className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-indigo-500"
+                    className="rounded-full bg-[linear-gradient(135deg,#00b8e6_0%,#0077b6_100%)] px-3 py-1 text-xs font-semibold text-white transition hover:brightness-105"
                   >
                     {formatTimecode(segment.start_ms)} - {formatTimecode(segment.end_ms)}
                   </button>

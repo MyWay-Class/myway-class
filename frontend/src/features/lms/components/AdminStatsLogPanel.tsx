@@ -11,12 +11,12 @@ export function AdminStatsLogPanel({ aiLogs }: AdminStatsLogPanelProps) {
 
   return (
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-      <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
+      <article className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
         <h2 className="text-[15px] font-bold text-slate-900">인텐트 로그</h2>
         <div className="mt-4 space-y-3">
           {intentLogs.length > 0 ? (
             intentLogs.map((log) => (
-              <div key={log.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div key={log.id} className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[13px] font-semibold text-slate-900">{log.detected_intent}</div>
@@ -37,12 +37,12 @@ export function AdminStatsLogPanel({ aiLogs }: AdminStatsLogPanelProps) {
         </div>
       </article>
 
-      <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
+      <article className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
         <h2 className="text-[15px] font-bold text-slate-900">질문/답변 로그</h2>
         <div className="mt-4 space-y-3">
           {questionLogs.length > 0 ? (
             questionLogs.map((log) => (
-              <div key={log.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div key={log.id} className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[13px] font-semibold text-slate-900">{log.question}</div>

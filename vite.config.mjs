@@ -9,13 +9,27 @@ const frontendRoot = resolve(repoRoot, 'frontend');
 export default defineConfig({
   root: frontendRoot,
   plugins: [react()],
-   resolve: {
+  resolve: {
     alias: {
       '@myway/shared': resolve(repoRoot, 'packages/shared/src'),
     },
-    dedupe: ['react', 'react-dom'], 
+    dedupe: ['react', 'react-dom'],
   },
-  
+  build: {
+    chunkSizeWarningLimit: 550,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/frontend/src/features/lms/pages/')) return 'lms-pages';
+          if (!id.includes('node_modules')) return;
+          if (id.includes('react') || id.includes('react-dom')) return 'react-vendor';
+          if (id.includes('recharts')) return 'charts-vendor';
+          if (id.includes('remixicon')) return 'icon-vendor';
+          return 'vendor';
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     host: '0.0.0.0',

@@ -1,4 +1,4 @@
-﻿import { StatePanel } from './StatePanel';
+import { StatePanel } from './StatePanel';
 import type { ClipSuggestion } from './ShortformWizardTypes';
 
 type ShortformWizardStep2Props = {
@@ -34,13 +34,13 @@ export function ShortformWizardStep2({
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <i className="ri-scissors-cut-line text-[18px] text-cyan-500" />
+            <i className="ri-scissors-cut-line text-[18px] text-cyan-600" />
             <h2 className="text-[16px] font-semibold text-slate-900">2단계 · 구간 선택</h2>
           </div>
           <p className="mt-1 text-[12px] text-slate-500">레퍼런스처럼 차시 필터 탭으로 구간을 좁히고, 핵심 구간을 카드 단위로 선택합니다.</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-600">
+          <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
             선택 {selectedClipKeys.length}개
           </span>
           <button type="button" onClick={onBack} className="inline-flex h-10 items-center rounded-lg border border-slate-200 px-4 text-[12px] font-semibold text-slate-600">
@@ -53,7 +53,7 @@ export function ShortformWizardStep2({
         <button
           type="button"
           onClick={() => onFilterChange('all')}
-          className={`inline-flex h-9 items-center rounded-lg px-3 text-[12px] font-semibold whitespace-nowrap ${
+          className={`rounded-lg px-3 py-1 text-[12px] font-semibold whitespace-nowrap ${
             lectureFilter === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
           }`}
         >
@@ -64,8 +64,8 @@ export function ShortformWizardStep2({
             key={tab.id}
             type="button"
             onClick={() => onFilterChange(tab.id)}
-            className={`inline-flex h-9 items-center rounded-lg px-3 text-[12px] font-semibold whitespace-nowrap ${
-              lectureFilter === tab.id ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            className={`rounded-lg px-3 py-1 text-[12px] font-semibold whitespace-nowrap ${
+              lectureFilter === tab.id ? 'bg-cyan-700 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
             }`}
           >
             {tab.label}
@@ -75,7 +75,7 @@ export function ShortformWizardStep2({
 
       <p className="mt-4 text-[12px] text-slate-500">AI가 추천한 핵심 구간입니다. 클릭하여 선택/해제하세요.</p>
 
-      <div className="mt-4 space-y-2.5">
+      <div className="mt-4 space-y-2">
         {filteredSuggestions.length > 0 ? (
           filteredSuggestions.map((clip, index) => {
             const key = `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
@@ -129,4 +129,3 @@ export function ShortformWizardStep2({
     </article>
   );
 }
-

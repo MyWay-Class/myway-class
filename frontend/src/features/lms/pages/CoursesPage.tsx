@@ -38,21 +38,21 @@ export function CoursesPage({
   }, [selectedCourse?.id]);
 
   return (
-    <div className="space-y-4">
-      <section className="overflow-hidden rounded-[26px] border border-slate-200 bg-white px-6 py-5 shadow-sm lg:px-8">
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-[28px] border border-cyan-200/20 bg-[radial-gradient(circle_at_12%_8%,rgba(34,211,238,0.16),transparent_30%),linear-gradient(135deg,#f8fcff_0%,#f0f9ff_45%,#ecfeff_100%)] px-6 py-6 shadow-sm lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">강의 상세</span>
-            <h3 className="mt-3 text-[22px] font-bold text-slate-900 lg:text-[26px]">선택한 강의의 상세 정보와 차시를 한 화면에서 봅니다.</h3>
-            <p className="mt-2 text-[13px] leading-6 text-slate-600">차시, 공지, 자료, 시청으로 이어지는 핵심 흐름을 유지합니다.</p>
+            <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">강의 상세</span>
+            <h3 className="mt-3 text-[24px] font-extrabold tracking-[-0.03em] text-slate-900 lg:text-[28px]">강의 정보와 차시를 레퍼런스 톤으로 집중해서 확인합니다.</h3>
+            <p className="mt-2 text-[13px] leading-6 text-slate-600">차시, 공지, 자료, 시청으로 이어지는 흐름은 유지하고 시각 밀도만 정리했습니다.</p>
           </div>
           {selectedCourse ? (
-            <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-700">
+            <div className="rounded-full border border-cyan-100 bg-white px-3 py-1 text-[11px] font-semibold text-cyan-700">
               현재 선택: {selectedCourse.title}
             </div>
           ) : null}
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
           {selectedCourse ? (
             <CourseExploreDetailPanel
               course={selectedCourse}

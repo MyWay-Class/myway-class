@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { CourseCard, CourseCreateRequest, CourseDetail, LectureDetail } from '@myway/shared';
 import { CourseCreateCard } from '../components/CourseCreateCard';
 import { LectureStudioPage } from './LectureStudioPage';
@@ -146,7 +146,7 @@ export function CourseCreatePage({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_58%,#4338ca_100%)] px-6 py-6 text-white shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
+      <section className="rounded-3xl border border-cyan-100 bg-[linear-gradient(135deg,#03162a_0%,#005d93_48%,#0bc5ea_100%)] px-6 py-6 text-white shadow-[0_22px_50px_rgba(4,49,84,0.24)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
@@ -179,7 +179,7 @@ export function CourseCreatePage({
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+      <section className="rounded-3xl border border-[#d6e6f5] bg-white p-2 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
         <div className="grid gap-2 md:grid-cols-2">
           {tabList.map((tab) => {
             const active = activeTab === tab.id;
@@ -208,7 +208,7 @@ export function CourseCreatePage({
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+      <section className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-4 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400">진행 단계</div>
@@ -232,7 +232,7 @@ export function CourseCreatePage({
               onCreate={onCreateCourse}
             />
 
-            <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+            <section className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
               <h2 className="text-[15px] font-bold text-slate-900">자동 전사 안내</h2>
               <p className="mt-1 text-[12px] leading-6 text-slate-500">
                 첫 차시 영상이 준비되어 있으면, 강의가 개설된 뒤 곧바로 업로드와 오디오 추출, STT 전사가 자동으로 이어집니다.
@@ -245,7 +245,7 @@ export function CourseCreatePage({
                     type="file"
                     accept="video/*"
                     onChange={(event) => setVideoFile(event.target.files?.[0] ?? null)}
-                    className="block w-full cursor-pointer rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+                    className="block w-full cursor-pointer rounded-2xl border border-dashed border-[#b9d7ef] bg-[#f4faff] px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
                   />
                   <div className="text-[11px] leading-5 text-slate-500">
                     선택된 영상은 개설 후 자동 처리 단계로 넘어갑니다. 업로드가 끝나면 오디오 추출과 STT가 이어집니다.
@@ -273,7 +273,7 @@ export function CourseCreatePage({
           </div>
 
           <aside className="space-y-5">
-            <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+            <section className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
               <h2 className="text-[15px] font-bold text-slate-900">입력된 개설 정보</h2>
               <div className="mt-4 space-y-3 text-[12px] leading-6 text-slate-600">
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">강의명: {pendingSummary.title}</div>
@@ -284,9 +284,9 @@ export function CourseCreatePage({
               </div>
             </section>
 
-            <section className="rounded-3xl border border-dashed border-cyan-200 bg-cyan-50 px-5 py-5 text-[12px] leading-6 text-indigo-900">
+            <section className="rounded-3xl border border-dashed border-cyan-200 bg-cyan-50 px-5 py-5 text-[12px] leading-6 text-cyan-900">
               <div className="font-bold">권한 안내</div>
-              <p className="mt-2 text-indigo-800">
+              <p className="mt-2 text-cyan-800">
                 {canManageCurrent
                   ? '현재 계정은 강의 개설 권한이 있습니다.'
                   : '현재 계정은 강의 개설 권한이 없습니다. 관리자 또는 강사 계정으로 전환해 주세요.'}
@@ -317,7 +317,7 @@ export function CourseCreatePage({
                 type="button"
                 onClick={() => void handleFinalizeCreate()}
                 disabled={busy}
-                className="rounded-full bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-70"
+                className="rounded-full bg-[linear-gradient(135deg,#00b8e6_0%,#0077b6_100%)] px-4 py-2 text-[12px] font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {busy ? '개설 중...' : '강의 개설하고 스튜디오 열기'}
               </button>
@@ -326,7 +326,7 @@ export function CourseCreatePage({
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.75fr)]">
             <div className="space-y-5">
-              <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+              <section className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
                 <h3 className="text-[14px] font-bold text-slate-900">강의 개설 전 확인</h3>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl bg-slate-50 px-4 py-3 text-[12px] leading-6 text-slate-600">제목: {pendingSummary.title}</div>
@@ -334,7 +334,7 @@ export function CourseCreatePage({
                   <div className="rounded-2xl bg-slate-50 px-4 py-3 text-[12px] leading-6 text-slate-600">난이도: {pendingSummary.difficulty}</div>
                   <div className="rounded-2xl bg-slate-50 px-4 py-3 text-[12px] leading-6 text-slate-600">첫 차시 수: {pendingSummary.lectureCount}개</div>
                 </div>
-                <div className="mt-4 rounded-2xl border border-dashed border-cyan-200 bg-cyan-50 px-4 py-4 text-[12px] leading-6 text-indigo-900">
+                <div className="mt-4 rounded-2xl border border-dashed border-cyan-200 bg-cyan-50 px-4 py-4 text-[12px] leading-6 text-cyan-900">
                   강의 개설 버튼을 누르면 입력값으로 실제 강의가 만들어지고, 첫 차시 영상이 있으면 업로드와 오디오 추출이 자동으로 이어집니다.
                 </div>
               </section>
@@ -347,7 +347,7 @@ export function CourseCreatePage({
                   onSelectCourse={onSelectCourse}
                 />
               ) : (
-                <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+                <section className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
                   <h3 className="text-[14px] font-bold text-slate-900">스튜디오 대기 상태</h3>
                   <p className="mt-2 text-[12px] leading-6 text-slate-500">
                     아직 개설된 강의가 없습니다. 위의 버튼으로 강의를 개설해야 스튜디오 설정이 활성화됩니다.
@@ -357,7 +357,7 @@ export function CourseCreatePage({
             </div>
 
             <aside className="space-y-5">
-              <section className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+              <section className="rounded-3xl border border-[#d6e6f5] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
                 <h2 className="text-[15px] font-bold text-slate-900">자동 처리 순서</h2>
                 <div className="mt-4 space-y-3 text-[12px] leading-6 text-slate-600">
                   <div className="rounded-2xl bg-slate-50 px-4 py-3">1. 강의 개설</div>
@@ -367,7 +367,7 @@ export function CourseCreatePage({
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-dashed border-cyan-200 bg-cyan-50 px-5 py-5 text-[12px] leading-6 text-indigo-900">
+              <section className="rounded-3xl border border-dashed border-cyan-200 bg-cyan-50 px-5 py-5 text-[12px] leading-6 text-cyan-900">
                 <div className="font-bold">현재 상태</div>
                 <p className="mt-2 text-indigo-800">{workspaceNote}</p>
                 <div className="mt-3 rounded-2xl bg-white/70 px-4 py-3 text-slate-600">
@@ -383,4 +383,3 @@ export function CourseCreatePage({
     </div>
   );
 }
-
