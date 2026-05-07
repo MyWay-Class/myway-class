@@ -64,7 +64,8 @@ public class MediaController {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
-        String lectureId = String.valueOf(body.getOrDefault("lecture_id", "")).trim();
+        if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
+        String lectureId = text(body, "lecture_id");
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.createExtraction(lectureId), "오디오 추출 job이 생성되었습니다."));
     }
@@ -72,21 +73,39 @@ public class MediaController {
     @PostMapping("/transcribe")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String lectureId = String.valueOf(body.getOrDefault("lecture_id", "")).trim();
+        if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
+        String lectureId = text(body, "lecture_id");
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        String language = String.valueOf(body.getOrDefault("language", "ko"));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.transcribe(lectureId, language), "트랜스크립트가 생성되었습니다."));
+        String language = text(body, "language").isBlank() ? "ko" : text(body, "language");
+        Integer durationMs = null;
+        Object durationRaw = body.get("duration_ms");
+        if (durationRaw instanceof Number number) {
+            durationMs = number.intValue();
+        } else if (durationRaw != null) {
+            try {
+                durationMs = Integer.parseInt(String.valueOf(durationRaw));
+            } catch (NumberFormatException ignored) {
+                durationMs = null;
+            }
+        }
+        String sttProvider = text(body, "stt_provider");
+        String sttModel = text(body, "stt_model");
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                featureStore.transcribe(lectureId, language, durationMs, sttProvider.isBlank() ? null : sttProvider, sttModel.isBlank() ? null : sttModel),
+                "트랜스크립트가 생성되었습니다."
+        ));
     }
 
     @PostMapping("/summarize")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String lectureId = String.valueOf(body.getOrDefault("lecture_id", "")).trim();
+        if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
+        String lectureId = text(body, "lecture_id");
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        String style = String.valueOf(body.getOrDefault("style", "brief"));
-        String language = String.valueOf(body.getOrDefault("language", "ko"));
+        String style = text(body, "style").isBlank() ? "brief" : text(body, "style");
+        String language = text(body, "language").isBlank() ? "ko" : text(body, "language");
         Map<String, Object> note = featureStore.summarizeLecture(lectureId, style, language);
         Map<String, Object> response = Map.of(
                 "note_id", note.get("id"),
@@ -129,13 +148,13 @@ public class MediaController {
     @GetMapping("/providers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> providers(@RequestHeader(value = "Authorization", required = false) String auth) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(Map.of("providers", List.of("demo-stt"), "default", "demo-stt")));
+        return ResponseEntity.ok(ApiResponse.success(featureStore.sttProviders()));
     }
 
     @GetMapping("/processor-health")
     public ResponseEntity<ApiResponse<Map<String, Object>>> processorHealth(@RequestHeader(value = "Authorization", required = false) String auth) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(Map.of("status", "ok", "service", "spring-media-processor")));
+        return ResponseEntity.ok(ApiResponse.success(featureStore.processorHealth()));
     }
 
     @GetMapping("/assets/**")
@@ -187,5 +206,10 @@ public class MediaController {
             ));
         }
         return ResponseEntity.ok(ApiResponse.success(Map.of("extraction", result, "pipeline", featureStore.pipeline(String.valueOf(result.getOrDefault("lecture_id", "")))), "오디오 추출 callback이 반영되었습니다."));
+    }
+
+    private String text(Map<String, Object> body, String key) {
+        if (body == null || body.get(key) == null) return "";
+        return String.valueOf(body.get(key)).trim();
     }
 }

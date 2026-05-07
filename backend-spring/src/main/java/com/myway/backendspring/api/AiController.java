@@ -97,7 +97,7 @@ public class AiController {
         }
 
         Integer limit = intOrNull(body, "limit");
-        Map<String, Object> data = featureStore.ragOverview(query, textOrNull(body, "lecture_id") == null ? null : lectureId, textOrNull(body, "course_id") == null ? null : courseId, limit);
+        Map<String, Object> data = featureStore.ragOverview(query, lectureId.isBlank() ? null : lectureId, courseId.isBlank() ? null : courseId, limit);
         featureStore.recordAiUsage(session.user().id(), "rag", true, query);
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 응답을 생성했습니다."));
     }
@@ -210,7 +210,7 @@ public class AiController {
         return String.valueOf(body.get(key)).trim();
     }
 
-    private Object textOrNull(Map<String, Object> body, String key) {
+    private String textOrNull(Map<String, Object> body, String key) {
         String value = text(body, key);
         return value.isBlank() ? null : value;
     }
