@@ -51,7 +51,13 @@ function formatDuration(minutes: number): string {
 }
 
 export function CourseExploreCard({ course, selected, onSelect, onOpen }: CourseExploreCardProps) {
-  const palette = paletteClasses[course.thumbnail_palette];
+  const palette = paletteClasses[course.thumbnail_palette] ?? paletteClasses.indigo;
+  const tags = Array.isArray(course.tags) ? course.tags : [];
+  const safeRating = Number.isFinite(course.rating) ? course.rating : 0;
+  const safeStudentCount = Number.isFinite(course.student_count) ? course.student_count : 0;
+  const safeDurationMinutes = Number.isFinite(course.total_duration_minutes) ? course.total_duration_minutes : 0;
+  const safeLectureCount = Number.isFinite(course.lecture_count) ? course.lecture_count : 0;
+  const safeProgressPercent = Number.isFinite(course.progress_percent) ? course.progress_percent : 0;
 
   return (
     <button
@@ -60,11 +66,11 @@ export function CourseExploreCard({ course, selected, onSelect, onOpen }: Course
         onSelect(course.id);
         onOpen?.(course.id);
       }}
-      className={`group overflow-hidden rounded-[28px] border bg-white text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)] ${
+      className={`group overflow-hidden rounded-[24px] border bg-white text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)] ${
         selected ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-[var(--app-border)]'
       }`}
     >
-      <div className={`relative flex h-36 flex-col justify-between px-5 py-4 text-white ${palette.panel}`}>
+      <div className={`relative flex h-32 flex-col justify-between px-5 py-4 text-white ${palette.panel}`}>
         <div className="absolute inset-0 opacity-15">
           <i className={`${palette.icon} absolute -right-4 -bottom-4 text-[104px]`} />
         </div>
@@ -75,7 +81,7 @@ export function CourseExploreCard({ course, selected, onSelect, onOpen }: Course
         <div className="relative z-10 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[13px] font-semibold opacity-90">{course.instructor_name}</div>
-            <div className="mt-1 line-clamp-2 text-[20px] font-extrabold tracking-[-0.03em]">{course.title}</div>
+            <div className="mt-1 line-clamp-2 text-[18px] font-extrabold">{course.title}</div>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 text-[24px]">
             <i className={palette.icon} />
@@ -85,30 +91,30 @@ export function CourseExploreCard({ course, selected, onSelect, onOpen }: Course
 
       <div className="px-5 py-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${palette.chip}`}>{course.rating.toFixed(1)}점</span>
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${palette.chip}`}>{safeRating.toFixed(1)}점</span>
           <span className="rounded-full bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--app-text-secondary)]">
-            수강생 {course.student_count}명
+            수강생 {safeStudentCount}명
           </span>
           <span className="rounded-full bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--app-text-secondary)]">
-            {formatDuration(course.total_duration_minutes)}
+            {formatDuration(safeDurationMinutes)}
           </span>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-[12px] text-[var(--app-text-secondary)]">
-            <span>{course.lecture_count}개 강의</span>
-            <span>{course.enrolled ? `${course.progress_percent}% 진행` : '수강 대기'}</span>
+            <span>{safeLectureCount}개 강의</span>
+            <span>{course.enrolled ? `${safeProgressPercent}% 진행` : '수강 대기'}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-[var(--app-surface-soft)]">
-            <div className={`h-2 ${palette.line}`} style={{ width: `${Math.max(course.progress_percent, 12)}%` }} />
+            <div className={`h-2 ${palette.line}`} style={{ width: `${Math.max(safeProgressPercent, 12)}%` }} />
           </div>
         </div>
 
         <p className="mt-4 line-clamp-2 text-[13px] leading-6 text-[var(--app-text-secondary)]">{course.description}</p>
 
-        {course.tags.length > 0 ? (
+        {tags.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
-            {course.tags.slice(0, 3).map((tag) => (
+            {tags.slice(0, 3).map((tag) => (
               <span key={tag} className="rounded-full bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-text-secondary)]">
                 #{tag}
               </span>

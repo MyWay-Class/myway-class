@@ -39,15 +39,15 @@ export function CoursesPage({
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#070b1b_0%,#1b2250_48%,#5b21b6_100%)] px-6 py-7 text-white shadow-[0_30px_70px_rgba(15,23,42,0.16)] lg:px-8">
+      <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white px-6 py-6 shadow-sm lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">강의 상세</span>
-            <h3 className="mt-3 text-[26px] font-extrabold tracking-[-0.05em] lg:text-[32px]">선택한 강의의 상세 정보와 차시를 한 화면에서 봅니다.</h3>
-            <p className="mt-2 text-[13px] leading-6 text-white/78">차시, 공지, 자료, 시청으로 이어지는 핵심 흐름을 유지합니다.</p>
+            <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">강의 상세</span>
+            <h3 className="mt-3 text-[24px] font-extrabold text-slate-900 lg:text-[28px]">선택한 강의의 상세 정보와 차시를 한 화면에서 봅니다.</h3>
+            <p className="mt-2 text-[13px] leading-6 text-slate-600">차시, 공지, 자료, 시청으로 이어지는 핵심 흐름을 유지합니다.</p>
           </div>
           {selectedCourse ? (
-            <div className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-700">
               현재 선택: {selectedCourse.title}
             </div>
           ) : null}

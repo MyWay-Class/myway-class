@@ -17,6 +17,11 @@ type ViewMode = 'grid' | 'list';
 type StatusFilter = 'all' | 'progress' | 'completed';
 type SortMode = 'progress' | 'title' | 'duration';
 
+const primaryButtonClass =
+  'inline-flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-[12px] font-semibold text-white transition hover:bg-indigo-500';
+const secondaryButtonClass =
+  'inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600';
+
 export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse, onNavigate }: MyCoursesPageProps) {
   const [managedCourses, setManagedCourses] = useState<CourseCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +62,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
   const visibleCourses = currentCourses.length > 0 ? currentCourses : demoCourses;
   const primaryCourse = selectedCourse ?? visibleCourses[0] ?? null;
   const categories = ['all', ...new Set(visibleCourses.map((course) => course.category))];
+  const primaryCourseTags = Array.isArray(primaryCourse?.tags) ? primaryCourse.tags : [];
 
   const filteredCourses = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -166,7 +172,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
             <button
               type="button"
               onClick={() => onNavigate(session.user.role === 'STUDENT' ? 'dashboard' : 'course-create')}
-              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+              className={secondaryButtonClass}
             >
               {session.user.role === 'STUDENT' ? '대시보드로 이동' : '새 강의 개설'}
             </button>
@@ -174,7 +180,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
               <button
                 type="button"
                 onClick={() => onNavigate('lecture-studio')}
-                className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                className={primaryButtonClass}
               >
                 제작 스튜디오
               </button>
@@ -184,7 +190,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
 
         {primaryCourse ? (
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-            <div className="rounded-[26px] bg-[linear-gradient(135deg,#eff6ff_0%,#eef2ff_50%,#f5f3ff_100%)] px-5 py-5">
+            <div className="rounded-[26px] border border-slate-200 bg-slate-50 px-5 py-5">
               <div className="text-[12px] font-semibold text-indigo-600">선택 강의 미리보기</div>
               <div className="mt-1 text-[20px] font-extrabold tracking-[-0.03em] text-slate-900">{primaryCourse.title}</div>
               <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-600">
@@ -200,7 +206,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                     onSelectCourse(primaryCourse.id);
                     onNavigate('courses');
                   }}
-                  className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                  className={primaryButtonClass}
                 >
                   상세/진도율 보기
                 </button>
@@ -210,7 +216,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                     onSelectCourse(primaryCourse.id);
                     onNavigate('lecture-watch');
                   }}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                  className={secondaryButtonClass}
                 >
                   차시 시청으로 이동
                 </button>
@@ -232,7 +238,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                   <div className="text-[11px] font-semibold text-slate-400">태그</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {primaryCourse.tags.slice(0, 3).map((tag) => (
+                    {primaryCourseTags.slice(0, 3).map((tag) => (
                       <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
                         #{tag}
                       </span>
@@ -245,7 +251,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
         ) : null}
 
         <div className="mt-5 rounded-[26px] border border-slate-200 bg-slate-50 px-4 py-4">
-          <div className="grid gap-3 lg:grid-cols-[minmax(180px,1fr)_minmax(160px,180px)_minmax(160px,180px)_minmax(180px,220px)]">
+          <div className="grid gap-3 lg:grid-cols-[minmax(180px,1fr)_minmax(160px,180px)_minmax(160px,180px)_minmax(240px,280px)]">
             <label className="block">
               <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">검색</span>
               <input
@@ -287,12 +293,12 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
             <div className="flex items-end justify-between gap-2">
               <div className="block">
                 <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">뷰</span>
-                <div className="flex rounded-2xl border border-slate-200 bg-white p-1">
+                <div className="flex rounded-xl border border-slate-200 bg-white p-1">
                   <button
                     type="button"
                     onClick={() => setViewMode('grid')}
                     className={`rounded-xl px-3 py-2 text-[12px] font-semibold ${
-                      viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'text-slate-500'
+                      viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     그리드
@@ -301,47 +307,36 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                     type="button"
                     onClick={() => setViewMode('list')}
                     className={`rounded-xl px-3 py-2 text-[12px] font-semibold ${
-                      viewMode === 'list' ? 'bg-indigo-600 text-white' : 'text-slate-500'
+                      viewMode === 'list' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     리스트
                   </button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setStatusFilter(statusFilter === 'all' ? 'progress' : statusFilter === 'progress' ? 'completed' : 'all')}
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
-              >
-                {statusFilter === 'all' ? '전체' : statusFilter === 'progress' ? '진행 중' : '완료'}
-              </button>
+              <div className="block">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">상태</span>
+                <div className="flex rounded-xl border border-slate-200 bg-white p-1">
+                  {(['all', 'progress', 'completed'] as const).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => setStatusFilter(status)}
+                      className={`rounded-xl px-3 py-2 text-[12px] font-semibold ${
+                        statusFilter === status ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {status === 'all' ? '전체' : status === 'progress' ? '진행 중' : '완료'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setStatusFilter('all')}
-            className={`rounded-full px-3.5 py-1.5 text-[12px] font-semibold ${statusFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-          >
-            전체
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('progress')}
-            className={`rounded-full px-3.5 py-1.5 text-[12px] font-semibold ${statusFilter === 'progress' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-          >
-            진행 중
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('completed')}
-            className={`rounded-full px-3.5 py-1.5 text-[12px] font-semibold ${statusFilter === 'completed' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-          >
-            완료
-          </button>
-          <div className="ml-auto rounded-full bg-indigo-50 px-3.5 py-1.5 text-[12px] font-semibold text-indigo-600">
+          <div className="ml-auto rounded-xl bg-indigo-50 px-3.5 py-1.5 text-[12px] font-semibold text-indigo-600">
             검색 결과 {filteredCourses.length}개
           </div>
         </div>
@@ -406,7 +401,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                       <button
                         type="button"
                         onClick={() => onSelectCourse(course.id)}
-                        className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                        className={primaryButtonClass}
                       >
                         선택
                       </button>
@@ -416,7 +411,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                           onSelectCourse(course.id);
                           onNavigate('lecture-watch');
                         }}
-                        className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                        className={secondaryButtonClass}
                       >
                         시청하기
                       </button>

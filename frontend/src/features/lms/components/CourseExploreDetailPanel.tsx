@@ -23,6 +23,11 @@ const courseTabs: { key: '강의' | '공지' | '자료'; label: string; icon: st
   { key: '자료', label: '자료', icon: 'ri-folder-line' },
 ];
 
+const primaryButtonClass =
+  'rounded-xl bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500';
+const secondaryButtonClass =
+  'rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600';
+
 function formatDisplayDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -47,7 +52,8 @@ function formatDuration(minutes: number): string {
 }
 
 function renderNoticeList(course: CourseDetail) {
-  if (course.notices.length === 0) {
+  const notices = Array.isArray(course.notices) ? course.notices : [];
+  if (notices.length === 0) {
     return (
       <StatePanel
         compact
@@ -61,7 +67,7 @@ function renderNoticeList(course: CourseDetail) {
 
   return (
     <div className="space-y-2">
-      {course.notices.map((notice) => (
+      {notices.map((notice) => (
         <article key={notice.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
           <div className="flex items-start gap-3">
             <i className={`${notice.pinned ? 'ri-pushpin-fill text-indigo-500' : 'ri-megaphone-line text-slate-400'} mt-0.5 flex-shrink-0`} />
@@ -81,7 +87,8 @@ function renderNoticeList(course: CourseDetail) {
 }
 
 function renderMaterialList(course: CourseDetail) {
-  if (course.materials.length === 0) {
+  const materials = Array.isArray(course.materials) ? course.materials : [];
+  if (materials.length === 0) {
     return (
       <StatePanel
         compact
@@ -95,7 +102,7 @@ function renderMaterialList(course: CourseDetail) {
 
   return (
     <div className="space-y-2">
-      {course.materials.map((material) => (
+      {materials.map((material) => (
         <article key={material.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[18px] text-indigo-500 shadow-sm">
@@ -131,6 +138,7 @@ export function CourseExploreDetailPanel({
   const detailLecture = highlightedLecture;
   const isLocked = Boolean(course && !course.enrolled && !canManageCurrent);
   const protectedVideoUrl = buildProtectedVideoUrl(detailLecture?.video_url, sessionToken);
+  const safeRating = Number.isFinite(course?.rating) ? course.rating : 0;
 
   return (
     <section className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
@@ -201,7 +209,7 @@ export function CourseExploreDetailPanel({
           </div>
           <div className="rounded-2xl bg-white px-4 py-4">
             <div className="text-[12px] text-[var(--app-text-muted)]">평점</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{course.rating.toFixed(1)}</div>
+            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{safeRating.toFixed(1)}</div>
           </div>
           <div className="rounded-2xl bg-white px-4 py-4">
             <div className="text-[12px] text-[var(--app-text-muted)]">수강생</div>
@@ -276,14 +284,14 @@ export function CourseExploreDetailPanel({
                               <button
                                 type="button"
                                 onClick={() => course && onEnroll(course.id)}
-                                className="rounded-full bg-amber-500 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-amber-400"
+                                className={primaryButtonClass}
                               >
                                 수강 신청하기
                               </button>
                               <button
                                 type="button"
                                 onClick={() => onNavigate('my-courses')}
-                                className="rounded-full border border-amber-200 bg-white px-4 py-2 text-[12px] font-semibold text-amber-700 transition hover:bg-amber-100"
+                                className={secondaryButtonClass}
                               >
                                 내 강의로 이동
                               </button>
@@ -307,7 +315,7 @@ export function CourseExploreDetailPanel({
                               <button
                                 type="button"
                                 onClick={() => course && onEnroll(course.id)}
-                                className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                                className={primaryButtonClass}
                               >
                                 수강 신청하기
                               </button>
@@ -316,14 +324,14 @@ export function CourseExploreDetailPanel({
                                 <button
                                   type="button"
                                   onClick={() => onNavigate('courses')}
-                                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                                  className={secondaryButtonClass}
                                 >
                                   강의 상세로 돌아가기
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => onNavigate('shortform')}
-                                  className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                                  className={primaryButtonClass}
                                 >
                                   숏폼 만들기
                                 </button>
@@ -331,7 +339,7 @@ export function CourseExploreDetailPanel({
                                   <button
                                     type="button"
                                     onClick={() => onNavigate('media-pipeline')}
-                                    className="rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-[12px] font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                                    className={secondaryButtonClass}
                                   >
                                     업로드/전사 관리
                                   </button>
@@ -345,7 +353,7 @@ export function CourseExploreDetailPanel({
                               <button
                                 type="button"
                                 onClick={() => course && onEnroll(course.id)}
-                                className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                                className={primaryButtonClass}
                               >
                                 수강 신청하기
                               </button>
@@ -357,14 +365,14 @@ export function CourseExploreDetailPanel({
                                     onSelectLecture(detailLecture.id);
                                     onNavigate('lecture-watch');
                                   }}
-                                  className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                                  className={primaryButtonClass}
                                 >
                                   강의 시청으로 이동
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => onNavigate('ai-chat')}
-                                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                                  className={secondaryButtonClass}
                                 >
                                   챗봇으로 질문
                                 </button>
@@ -404,7 +412,7 @@ export function CourseExploreDetailPanel({
                       <button
                         type="button"
                         onClick={() => course && onEnroll(course.id)}
-                        className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                        className={primaryButtonClass}
                       >
                         수강 신청하기
                       </button>
@@ -413,14 +421,14 @@ export function CourseExploreDetailPanel({
                         <button
                           type="button"
                           onClick={() => onNavigate('ai-chat')}
-                          className="rounded-full bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-indigo-500"
+                          className={primaryButtonClass}
                         >
                           AI 챗봇으로 질문하기
                         </button>
                         <button
                           type="button"
                           onClick={() => onNavigate('lecture-watch')}
-                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                          className={secondaryButtonClass}
                         >
                           강의 시청으로 이동
                         </button>
