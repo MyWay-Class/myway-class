@@ -50,6 +50,7 @@ export {
   canCurrentUserEnroll,
   getCurrentRoleLabel,
 } from './api-courses';
+export { loadAdminAssignment, saveAdminAssignment } from './api-admin-assignments';
 export {
   uploadLectureVideo,
   uploadLectureVideoDetailed,

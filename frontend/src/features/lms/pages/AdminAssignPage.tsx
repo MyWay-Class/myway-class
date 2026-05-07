@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AuthUser, CourseCard } from '@myway/shared';
+import { loadAdminAssignment, saveAdminAssignment } from '../../../lib/api';
 
 type AdminAssignPageProps = {
   users: AuthUser[];
@@ -11,6 +12,8 @@ export function AdminAssignPage({ users, courses }: AdminAssignPageProps) {
   const instructors = users.filter((user) => user.role === 'INSTRUCTOR');
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id ?? '');
   const [query, setQuery] = useState('');
+  const [assignedStudentIds, setAssignedStudentIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === selectedCourseId) ?? courses[0] ?? null,
@@ -26,6 +29,51 @@ export function AdminAssignPage({ users, courses }: AdminAssignPageProps) {
       return [student.name, student.department, student.email].join(' ').toLowerCase().includes(normalized);
     });
   }, [query, students]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!selectedCourse?.id) {
+      setAssignedStudentIds([]);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    void loadAdminAssignment(selectedCourse.id).then((record) => {
+      if (!mounted) {
+        return;
+      }
+      setAssignedStudentIds(Array.isArray(record.student_ids) ? record.student_ids : []);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedCourse?.id]);
+
+  const assignedSet = useMemo(() => new Set(assignedStudentIds), [assignedStudentIds]);
+
+  const toggleStudent = (studentId: string) => {
+    setAssignedStudentIds((current) => {
+      if (current.includes(studentId)) {
+        return current.filter((id) => id !== studentId);
+      }
+      return [...current, studentId];
+    });
+  };
+
+  const persistAssignment = async () => {
+    if (!selectedCourse?.id || saving) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await saveAdminAssignment(selectedCourse.id, assignedStudentIds);
+      setAssignedStudentIds(saved.student_ids ?? []);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -105,9 +153,10 @@ export function AdminAssignPage({ users, courses }: AdminAssignPageProps) {
               </div>
               <button
                 type="button"
+                onClick={() => toggleStudent(student.id)}
                 className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-cyan-200 hover:text-cyan-700"
               >
-                배정 후보
+                {assignedSet.has(student.id) ? '배정됨' : '배정 후보'}
               </button>
             </div>
           ))}
@@ -118,11 +167,20 @@ export function AdminAssignPage({ users, courses }: AdminAssignPageProps) {
           ) : null}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className="rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500">
-            선택 인원 배정 시뮬레이션
+          <button
+            type="button"
+            onClick={persistAssignment}
+            disabled={!selectedCourse?.id || saving}
+            className="rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? '배정 저장 중...' : `선택 인원 배정 저장 (${assignedStudentIds.length})`}
           </button>
-          <button type="button" className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700">
-            배정 현황 내보내기
+          <button
+            type="button"
+            onClick={() => setAssignedStudentIds([])}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700"
+          >
+            선택 초기화
           </button>
         </div>
       </section>

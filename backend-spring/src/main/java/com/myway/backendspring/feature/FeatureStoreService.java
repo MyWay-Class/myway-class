@@ -33,6 +33,7 @@ public class FeatureStoreService {
     private static final String SHORTFORM_SHARE_SCOPE = "shortform_share";
     private static final String SHORTFORM_LIKE_SCOPE = "shortform_like";
     private static final String CUSTOM_COURSE_SCOPE = "custom_course";
+    private static final String ADMIN_ASSIGNMENT_SCOPE = "admin_assignment";
     private static final String AI_USAGE_SCOPE = "ai_usage_daily";
     private static final String AI_LOG_SCOPE = "ai_log";
     private static final int PUBLIC_STT_MAX_DURATION_MS = 180_000;
@@ -795,6 +796,39 @@ public class FeatureStoreService {
 
     public List<Map<String, Object>> communityCustomCourses(String courseId) {
         return store.listEventsByScope(CUSTOM_COURSE_SCOPE + "_community");
+    }
+
+    public Map<String, Object> getAdminAssignment(String courseId) {
+        Map<String, Object> current = store.getKv(ADMIN_ASSIGNMENT_SCOPE, courseId);
+        if (current != null) {
+            return current;
+        }
+        Map<String, Object> empty = new HashMap<>();
+        empty.put("course_id", courseId);
+        empty.put("student_ids", List.of());
+        empty.put("updated_at", Instant.now().toString());
+        return empty;
+    }
+
+    public Map<String, Object> saveAdminAssignment(String actorUserId, String courseId, List<String> studentIds) {
+        LinkedHashSet<String> deduped = new LinkedHashSet<>();
+        if (studentIds != null) {
+            for (String studentId : studentIds) {
+                if (studentId != null) {
+                    String normalized = studentId.trim();
+                    if (!normalized.isBlank()) {
+                        deduped.add(normalized);
+                    }
+                }
+            }
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("course_id", courseId);
+        payload.put("student_ids", List.copyOf(deduped));
+        payload.put("updated_by", actorUserId);
+        payload.put("updated_at", Instant.now().toString());
+        store.upsertKv(ADMIN_ASSIGNMENT_SCOPE, courseId, payload);
+        return payload;
     }
 
     private int asInt(Object value) {
