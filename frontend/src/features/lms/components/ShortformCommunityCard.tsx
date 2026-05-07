@@ -20,6 +20,7 @@ function formatDuration(ms: number): string {
 
 export function ShortformCommunityCard({ item, active, onOpen, onPreview }: ShortformCommunityCardProps) {
   const totalDuration = item.clips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
+  const primaryClip = item.clips[0];
 
   return (
     <article
@@ -57,6 +58,22 @@ export function ShortformCommunityCard({ item, active, onOpen, onPreview }: Shor
       <div className="px-5 py-4">
         <p className="line-clamp-2 text-[12px] leading-6 text-slate-500">{item.description || '설명이 아직 없습니다.'}</p>
 
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+          {primaryClip ? (
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate font-semibold text-slate-700">{primaryClip.lecture_title}</span>
+              <span className="flex-shrink-0 text-slate-500">
+                {Math.floor(primaryClip.start_time_ms / 1000)}s ~ {Math.floor(primaryClip.end_time_ms / 1000)}s
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-slate-700">대표 클립 없음</span>
+              <span className="text-slate-500">준비 전</span>
+            </div>
+          )}
+        </div>
+
         <div className="space-y-1.5">
           {item.clips.slice(0, 3).map((clip, index) => (
             <div key={`${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[12px]">
@@ -70,7 +87,7 @@ export function ShortformCommunityCard({ item, active, onOpen, onPreview }: Shor
             </div>
           ))}
           {item.clips.length === 0 ? (
-            <div className="rounded-xl bg-slate-50 px-3 py-2 text-[12px] text-slate-500">클립 미리보기 준비 중입니다.</div>
+            <div className="rounded-xl bg-slate-50 px-3 py-2 text-[12px] text-slate-500">클립이 아직 생성되지 않았습니다.</div>
           ) : null}
         </div>
 

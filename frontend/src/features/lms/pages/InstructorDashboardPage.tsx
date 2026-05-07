@@ -95,7 +95,7 @@ export function InstructorDashboardPage({ dashboard, courses, insights }: Instru
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
               <i className="ri-presentation-line" />
-              Instructor Dashboard
+              강사 대시보드
             </div>
             <h2 className="mt-4 text-[24px] font-bold text-slate-900 lg:text-[28px]">강의 운영 대시보드</h2>
             <p className="mt-2 max-w-2xl text-[14px] leading-6 text-slate-500">{nextAction}</p>

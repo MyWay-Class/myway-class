@@ -94,7 +94,12 @@ function renderNoticeList(course: CourseDetail) {
   );
 }
 
-function renderMaterialList(course: CourseDetail) {
+function renderMaterialList(
+  course: CourseDetail,
+  canManageCurrent: boolean,
+  onOpenMaterial: (fileName: string) => void,
+  onNavigateStudio: () => void,
+) {
   const materials = Array.isArray(course.materials) ? course.materials : [];
   if (materials.length === 0) {
     return (
@@ -128,9 +133,24 @@ function renderMaterialList(course: CourseDetail) {
               <p className="mt-1 text-[11px] font-medium text-cyan-700">{material.file_name}</p>
               <p className="mt-2 text-[12px] leading-6 text-slate-500">{material.summary}</p>
               <div className="mt-3">
-                <button type="button" className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-cyan-200 hover:text-cyan-700">
-                  자료 보기
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onOpenMaterial(material.file_name)}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-cyan-200 hover:text-cyan-700"
+                  >
+                    파일명 복사
+                  </button>
+                  {canManageCurrent ? (
+                    <button
+                      type="button"
+                      onClick={onNavigateStudio}
+                      className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700 transition hover:border-cyan-300 hover:bg-cyan-100"
+                    >
+                      강의 스튜디오 이동
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
@@ -157,6 +177,12 @@ export function CourseExploreDetailPanel({
   const isLocked = Boolean(course && !course.enrolled && !canManageCurrent);
   const protectedVideoUrl = buildProtectedVideoUrl(detailLecture?.video_url, sessionToken);
   const safeRating = Number.isFinite(course?.rating) ? course.rating : 0;
+
+  const handleOpenMaterial = (fileName: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      void navigator.clipboard.writeText(fileName);
+    }
+  };
 
   return (
     <section className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
@@ -405,7 +431,7 @@ export function CourseExploreDetailPanel({
               ) : activeTab === '공지' ? (
                 renderNoticeList(course)
               ) : activeTab === '자료' ? (
-                renderMaterialList(course)
+                renderMaterialList(course, canManageCurrent, handleOpenMaterial, () => onNavigate('lecture-studio'))
               ) : (
                 <div className="space-y-3">
                   {isLocked ? (

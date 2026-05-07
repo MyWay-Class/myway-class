@@ -53,7 +53,7 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
         role="dialog"
         aria-modal="true"
         aria-label={item.title}
-        className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.3)]"
+        className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[22px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.3)] md:rounded-[28px]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
@@ -70,9 +70,9 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
           </button>
         </div>
 
-        <div className="grid gap-5 p-5 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid gap-4 p-4 md:gap-5 md:p-5 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-4">
-            <div className="rounded-[24px] bg-slate-950 px-5 py-5 text-white">
+            <div className="rounded-[20px] bg-slate-950 px-4 py-4 text-white md:rounded-[24px] md:px-5 md:py-5">
               {playbackUrl ? (
                 <video className="aspect-video w-full rounded-2xl border border-white/10 bg-black" controls preload="metadata" src={playbackUrl} />
               ) : (
@@ -90,16 +90,16 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
+            <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 md:rounded-[24px] md:px-5 md:py-4">
               <div className="text-[12px] font-semibold text-slate-900">상세 설명</div>
-              <p className="mt-2 text-[13px] leading-7 text-slate-600">{item.description || '설명 없음'}</p>
+              <p className="mt-2 line-clamp-3 text-[12px] leading-6 text-slate-600 md:line-clamp-none md:text-[13px] md:leading-7">{item.description || '설명 없음'}</p>
             </div>
           </div>
 
           <div className="space-y-3 overflow-y-auto pr-1">
             <div className="text-[12px] font-semibold text-slate-500">클립 구성</div>
             {item.clips.length > 0 ? (
-              item.clips.map((clip, index) => (
+              item.clips.slice(0, 4).map((clip, index) => (
                 <article key={`${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                   <div className="flex items-start gap-3">
                     <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-[11px] font-bold text-cyan-700">
@@ -110,7 +110,7 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
                       <p className="mt-1 text-[12px] leading-6 text-slate-500">
                         {clip.label || '구간'} · {formatDuration(clip.end_time_ms - clip.start_time_ms)}
                       </p>
-                      {clip.description ? <p className="mt-1 text-[12px] leading-6 text-slate-500">{clip.description}</p> : null}
+                      {clip.description ? <p className="mt-1 hidden text-[12px] leading-6 text-slate-500 md:block">{clip.description}</p> : null}
                     </div>
                     <div className="flex-shrink-0 text-[11px] text-slate-400">
                       {Math.floor(clip.start_time_ms / 1000)}s ~ {Math.floor(clip.end_time_ms / 1000)}s
@@ -138,6 +138,9 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
                 <div className="text-[11px] text-slate-500">저장</div>
               </div>
             </div>
+            {item.clips.length > 4 ? (
+              <div className="text-center text-[11px] font-semibold text-slate-500">모바일에서는 상위 4개 클립만 표시됩니다.</div>
+            ) : null}
           </div>
         </div>
       </div>

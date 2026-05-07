@@ -76,7 +76,7 @@ export function AdminStatsPage({ dashboard, courses, users, insights, aiLogs }: 
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
               <i className="ri-bar-chart-box-line" />
-              Admin Stats
+              운영 통계
             </div>
             <h2 className="mt-3 text-[24px] font-extrabold tracking-[-0.03em] text-slate-900">운영 통계 상세</h2>
             <p className="mt-1 text-[13px] text-slate-600">사용자/강의/AI 로그를 비교해 운영 병목과 이상치를 빠르게 확인합니다.</p>

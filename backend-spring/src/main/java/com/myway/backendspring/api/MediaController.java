@@ -39,7 +39,8 @@ public class MediaController {
             String extraction_id,
             String status,
             String error_message,
-            Long event_version
+            Long event_version,
+            String audio_url
     ) {}
 
     private SessionView require(String auth) { return sessionService.me(auth); }
@@ -66,8 +67,9 @@ public class MediaController {
         if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
         if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
         String lectureId = text(body, "lecture_id");
+        String audioUrl = text(body, "audio_url");
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.createExtraction(lectureId), "오디오 추출 job이 생성되었습니다."));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.createExtraction(lectureId, audioUrl.isBlank() ? null : audioUrl), "오디오 추출 job이 생성되었습니다."));
     }
 
     @PostMapping("/transcribe")
@@ -91,8 +93,9 @@ public class MediaController {
         }
         String sttProvider = text(body, "stt_provider");
         String sttModel = text(body, "stt_model");
+        String audioUrl = text(body, "audio_url");
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                featureStore.transcribe(lectureId, language, durationMs, sttProvider.isBlank() ? null : sttProvider, sttModel.isBlank() ? null : sttModel),
+                featureStore.transcribe(lectureId, language, durationMs, sttProvider.isBlank() ? null : sttProvider, sttModel.isBlank() ? null : sttModel, audioUrl.isBlank() ? null : audioUrl),
                 "트랜스크립트가 생성되었습니다."
         ));
     }
@@ -195,7 +198,8 @@ public class MediaController {
         long eventVersion = body.event_version() != null ? body.event_version() : 1L;
         String status = body.status() == null ? "COMPLETED" : body.status();
         String errorMessage = body.error_message();
-        Map<String, Object> result = featureStore.completeExtractionCallback(extractionId, status, errorMessage, eventVersion);
+        String audioUrl = body.audio_url() == null ? null : body.audio_url().trim();
+        Map<String, Object> result = featureStore.completeExtractionCallback(extractionId, status, errorMessage, eventVersion, audioUrl);
         if (result == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "오디오 추출 기록을 찾을 수 없습니다."));
         }
@@ -205,7 +209,31 @@ public class MediaController {
                     "오래된 callback 이벤트를 무시했습니다."
             ));
         }
-        return ResponseEntity.ok(ApiResponse.success(Map.of("extraction", result, "pipeline", featureStore.pipeline(String.valueOf(result.getOrDefault("lecture_id", "")))), "오디오 추출 callback이 반영되었습니다."));
+        String lectureId = String.valueOf(result.getOrDefault("lecture_id", "")).trim();
+        Map<String, Object> transcribeResult = null;
+        if ("COMPLETED".equalsIgnoreCase(String.valueOf(result.getOrDefault("status", ""))) && !lectureId.isBlank()) {
+            transcribeResult = featureStore.transcribe(
+                    lectureId,
+                    "ko",
+                    null,
+                    "cloudflare",
+                    "cf-whisper",
+                    audioUrl
+            );
+        }
+
+        if (transcribeResult == null) {
+            return ResponseEntity.ok(ApiResponse.success(Map.of("extraction", result, "pipeline", featureStore.pipeline(lectureId)), "오디오 추출 callback이 반영되었습니다."));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of(
+                        "extraction", result,
+                        "pipeline", featureStore.pipeline(lectureId),
+                        "transcript", transcribeResult
+                ),
+                "오디오 추출 callback이 반영되어 STT가 자동 시작되었습니다."
+        ));
     }
 
     private String text(Map<String, Object> body, String key) {

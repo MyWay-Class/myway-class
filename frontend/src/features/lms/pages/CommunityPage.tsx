@@ -15,41 +15,6 @@ type CommunityPageProps = {
 type FeedFilter = 'all' | 'popular' | 'saved' | 'recent';
 type DetailTab = 'video' | 'clips' | 'info';
 
-function buildFallbackItems(
-  courses: CourseCard[],
-): ShortformCommunityItem[] {
-  return courses.slice(0, 3).map((course) => ({
-      id: course.id,
-      shortform_id: `shortform-${course.id}`,
-      user_id: course.instructor_id,
-      title: course.title,
-      description: course.description,
-      duration_ms: 0,
-      total_segments: 0,
-      course_id: course.id,
-      source_lecture_ids: [],
-      status: 'PUBLIC' as const,
-      video_url: '',
-      export_status: 'COMPLETED' as const,
-      export_job_id: null,
-      export_result_url: null,
-      export_failure_reason: null,
-      export_error_message: null,
-      export_retry_count: 0,
-      updated_at: new Date().toISOString(),
-      share_count: 0,
-      like_count: 12,
-      save_count: 0,
-      view_count: 0,
-      created_at: new Date().toISOString(),
-      clips: [],
-      shared_by_name: course.instructor_name,
-      course_title: course.category,
-      is_saved: false,
-      is_liked: false,
-    }));
-}
-
 function rankItems(items: ShortformCommunityItem[], filter: FeedFilter, query: string): ShortformCommunityItem[] {
   const normalized = query.trim().toLowerCase();
 
@@ -145,9 +110,8 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
   }, [enrolledCourses]);
 
   const items = useMemo(() => {
-    const source = community.length > 0 ? community : buildFallbackItems(enrolledCourses);
-    return rankItems(source, filter, query);
-  }, [community, enrolledCourses, filter, query]);
+    return rankItems(community, filter, query);
+  }, [community, filter, query]);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -169,6 +133,7 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
   const totalLikes = items.reduce((sum, item) => sum + item.like_count, 0);
   const selectedClipCount = selectedItem?.clips.length ?? 0;
   const hasEnrolledCourses = enrolledCourses.length > 0;
+  const hasRealFeed = items.length > 0;
 
   return (
     <div className="space-y-6">
@@ -236,7 +201,7 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {items.length > 0 ? (
+            {hasRealFeed ? (
               items.map((item) => (
                 <ShortformCommunityCard
                   key={item.id}
@@ -253,10 +218,14 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
               <div className="md:col-span-2">
                 <StatePanel
                   compact
-                  icon="ri-search-line"
+                  icon="ri-rss-line"
                   tone="slate"
-                  title="조건에 맞는 숏폼이 없습니다."
-                  description="검색어와 필터를 바꾸면 다른 숏폼을 다시 찾을 수 있습니다."
+                  title={query.trim() ? '조건에 맞는 숏폼이 없습니다.' : '공개된 숏폼 피드가 아직 없습니다.'}
+                  description={
+                    query.trim()
+                      ? '검색어와 필터를 바꾸면 다른 숏폼을 다시 찾을 수 있습니다.'
+                      : '강의의 숏폼이 공유되면 실데이터 피드가 이 영역에 표시됩니다.'
+                  }
                 />
               </div>
             ) : null}
@@ -396,19 +365,8 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
                 ) : null}
               </div>
 
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-2xl bg-slate-50 px-3 py-3">
-                  <div className="text-[18px] font-extrabold text-slate-900">{selectedItem?.view_count ?? 0}</div>
-                  <div className="text-[11px] text-slate-500">조회</div>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-3 py-3">
-                  <div className="text-[18px] font-extrabold text-slate-900">{selectedItem?.like_count ?? 0}</div>
-                  <div className="text-[11px] text-slate-500">좋아요</div>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-3 py-3">
-                  <div className="text-[18px] font-extrabold text-slate-900">{selectedItem?.save_count ?? 0}</div>
-                  <div className="text-[11px] text-slate-500">저장</div>
-                </div>
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] text-slate-600">
+                <span className="font-semibold text-slate-700">요약:</span> {shortformSummary(selectedItem)}
               </div>
             </section>
 

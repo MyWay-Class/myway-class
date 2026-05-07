@@ -43,8 +43,8 @@ export function CoursesPage({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">강의 상세</span>
-            <h3 className="mt-3 text-[24px] font-extrabold tracking-[-0.03em] text-slate-900 lg:text-[28px]">강의 정보와 차시를 레퍼런스 톤으로 집중해서 확인합니다.</h3>
-            <p className="mt-2 text-[13px] leading-6 text-slate-600">차시, 공지, 자료, 시청으로 이어지는 흐름은 유지하고 시각 밀도만 정리했습니다.</p>
+            <h3 className="mt-3 text-[24px] font-extrabold tracking-[-0.03em] text-slate-900 lg:text-[28px]">강의 핵심 정보와 차시를 빠르게 확인하세요.</h3>
+            <p className="mt-2 text-[13px] leading-6 text-slate-600">차시, 공지, 자료, 시청 흐름을 한 화면에서 이어봅니다.</p>
           </div>
           {selectedCourse ? (
             <div className="rounded-full border border-cyan-100 bg-white px-3 py-1 text-[11px] font-semibold text-cyan-700">
