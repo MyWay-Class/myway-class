@@ -42,8 +42,8 @@ export function AppSidebar({
     session.user.role === 'ADMIN'
       ? 'bg-emerald-600'
       : session.user.role === 'INSTRUCTOR'
-        ? 'bg-violet-600'
-        : 'bg-indigo-600';
+        ? 'bg-teal-600'
+        : 'bg-cyan-600';
   const dockClass = dock === 'right' ? 'right-0 border-l border-r-0' : 'left-0 border-r border-l-0';
 
   const handleNavClick = (page: LmsPageId) => {
@@ -65,7 +65,7 @@ export function AppSidebar({
           className={`flex items-center gap-2.5 ${collapsed ? 'mx-auto' : ''}`}
           title="메인 화면으로 이동"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-teal-600 text-white shadow-md shadow-cyan-500/25">
             <i className="ri-play-circle-fill text-[18px]" />
           </div>
           {!collapsed ? <span className="text-[15px] font-semibold tracking-tight text-[var(--app-text)]">내맘대로</span> : null}

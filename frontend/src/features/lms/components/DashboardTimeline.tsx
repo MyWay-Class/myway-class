@@ -9,9 +9,9 @@ type DashboardTimelineProps = {
 
 const toneClasses: Record<DashboardActivity['tone'], { icon: string; line: string; badge: string }> = {
   indigo: {
-    icon: 'bg-indigo-100 text-indigo-600',
-    line: 'border-indigo-200',
-    badge: 'bg-indigo-50 text-indigo-600',
+    icon: 'bg-cyan-100 text-cyan-700',
+    line: 'border-cyan-200',
+    badge: 'bg-cyan-50 text-cyan-700',
   },
   emerald: {
     icon: 'bg-emerald-100 text-emerald-600',

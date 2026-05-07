@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import type { CourseCard, CourseDetail, LoginResponse } from '@myway/shared';
 import { CourseExploreCard } from '../components/CourseExploreCard';
 import { StatePanel } from '../components/StatePanel';
@@ -18,9 +18,9 @@ type StatusFilter = 'all' | 'progress' | 'completed';
 type SortMode = 'progress' | 'title' | 'duration';
 
 const primaryButtonClass =
-  'inline-flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-[12px] font-semibold text-white transition hover:bg-indigo-500';
+  'inline-flex h-10 items-center rounded-xl bg-cyan-600 px-4 text-[12px] font-semibold text-white transition hover:bg-cyan-500';
 const secondaryButtonClass =
-  'inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600';
+  'inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-600';
 
 export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse, onNavigate }: MyCoursesPageProps) {
   const [managedCourses, setManagedCourses] = useState<CourseCard[]>([]);
@@ -192,13 +192,13 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
         {primaryCourse ? (
           <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
             <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-5">
-              <div className="text-[12px] font-semibold text-indigo-600">선택 강의 미리보기</div>
+              <div className="text-[12px] font-semibold text-cyan-600">선택 강의 미리보기</div>
               <div className="mt-1 text-[20px] font-extrabold tracking-[-0.03em] text-slate-900">{primaryCourse.title}</div>
               <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-600">
                 {primaryCourse.category} · {primaryCourse.lecture_count}차시 · {primaryCourse.progress_percent}% 진행
               </p>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${Math.max(primaryCourse.progress_percent, 8)}%` }} />
+                <div className="h-2 rounded-full bg-cyan-500" style={{ width: `${Math.max(primaryCourse.progress_percent, 8)}%` }} />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
@@ -240,7 +240,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                   <div className="text-[11px] font-semibold text-slate-400">태그</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {primaryCourseTags.slice(0, 3).map((tag) => (
-                      <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
+                      <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-cyan-600">
                         #{tag}
                       </span>
                     ))}
@@ -259,7 +259,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="강좌명, 강사, 태그 검색"
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-400"
               />
             </label>
 
@@ -268,7 +268,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
               <select
                 value={activeCategory}
                 onChange={(event) => setActiveCategory(event.target.value)}
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-[13px] text-slate-900 outline-none transition focus:border-indigo-400"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-[13px] text-slate-900 outline-none transition focus:border-cyan-400"
               >
                 {categories.map((category) => (
                   <option key={category} value={category}>
@@ -283,7 +283,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
               <select
                 value={sortMode}
                 onChange={(event) => setSortMode(event.target.value as SortMode)}
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-[13px] text-slate-900 outline-none transition focus:border-indigo-400"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-[13px] text-slate-900 outline-none transition focus:border-cyan-400"
               >
                 <option value="progress">진도순</option>
                 <option value="title">제목순</option>
@@ -299,7 +299,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                     type="button"
                     onClick={() => setViewMode('grid')}
                     className={`h-9 rounded-lg px-3 text-[11px] font-semibold ${
-                      viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'
+                      viewMode === 'grid' ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     그리드
@@ -308,7 +308,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                     type="button"
                     onClick={() => setViewMode('list')}
                     className={`h-9 rounded-lg px-3 text-[11px] font-semibold ${
-                      viewMode === 'list' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'
+                      viewMode === 'list' ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     리스트
@@ -324,7 +324,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                       type="button"
                       onClick={() => setStatusFilter(status)}
                       className={`h-9 rounded-lg px-3 text-[11px] font-semibold ${
-                        statusFilter === status ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'
+                        statusFilter === status ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-700'
                       }`}
                     >
                       {status === 'all' ? '전체' : status === 'progress' ? '진행 중' : '완료'}
@@ -337,7 +337,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <div className="ml-auto rounded-xl bg-indigo-50 px-3.5 py-1.5 text-[12px] font-semibold text-indigo-600">
+          <div className="ml-auto rounded-xl bg-cyan-50 px-3.5 py-1.5 text-[12px] font-semibold text-cyan-600">
             검색 결과 {filteredCourses.length}개
           </div>
         </div>
@@ -379,7 +379,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                 <article
                   key={course.id}
                   className={`flex flex-col gap-3 rounded-[24px] border px-5 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] lg:flex-row lg:items-center ${
-                    active ? 'border-indigo-300 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200 bg-white'
+                    active ? 'border-cyan-300 bg-cyan-50 ring-2 ring-cyan-100' : 'border-slate-200 bg-white'
                   }`}
                 >
                   <div className="flex h-24 w-full flex-shrink-0 items-center justify-center rounded-[24px] bg-[linear-gradient(135deg,#4f46e5,#2563eb,#7c3aed)] text-white lg:w-44">
@@ -393,7 +393,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
                           {course.category} · {course.instructor_name} · {course.lecture_count}차시
                         </div>
                       </div>
-                      <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">
+                      <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-semibold text-cyan-600">
                         {course.progress_percent}%
                       </span>
                     </div>
@@ -427,3 +427,4 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
     </div>
   );
 }
+

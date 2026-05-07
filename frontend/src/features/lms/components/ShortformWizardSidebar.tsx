@@ -1,4 +1,4 @@
-import type { ShortformCommunityItem } from '@myway/shared';
+﻿import type { ShortformCommunityItem } from '@myway/shared';
 
 type ShortformWizardSidebarProps = {
   courseTitle?: string | null;
@@ -62,7 +62,7 @@ export function ShortformWizardSidebar({
           {communityItems.length > 0 ? (
             communityItems.map((item) => (
               <article key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <div className="text-[12px] font-semibold text-indigo-600">{item.shared_by_name}</div>
+                <div className="text-[12px] font-semibold text-cyan-600">{item.shared_by_name}</div>
                 <div className="mt-1 text-[14px] font-bold text-slate-900">{item.title}</div>
                 <p className="mt-2 line-clamp-2 text-[12px] leading-6 text-slate-500">{item.description}</p>
                 <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400">
@@ -88,3 +88,4 @@ export function ShortformWizardSidebar({
     </aside>
   );
 }
+

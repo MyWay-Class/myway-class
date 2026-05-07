@@ -86,7 +86,7 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
               {[
                 { label: '운영자', count: roleCounts.ADMIN, color: 'bg-amber-400' },
                 { label: '교강사', count: roleCounts.INSTRUCTOR, color: 'bg-emerald-400' },
-                { label: '수강생', count: roleCounts.STUDENT, color: 'bg-indigo-400' },
+                { label: '수강생', count: roleCounts.STUDENT, color: 'bg-cyan-500' },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
@@ -123,7 +123,7 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
                 <h3 className="text-[15px] font-bold text-slate-900">운영 핵심 수치</h3>
                 <p className="mt-1 text-[12px] text-slate-500">사용자와 강의의 기본 규모를 운영 흐름에 맞게 정리합니다.</p>
               </div>
-              <div className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">{resolvedUsers.length}명</div>
+              <div className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">{resolvedUsers.length}명</div>
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -150,20 +150,20 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
         <div className="space-y-6">
           <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
-              <i className="ri-team-line text-indigo-600" />
+              <i className="ri-team-line text-cyan-700" />
               최근 사용자
             </h3>
             <div className="mt-4 space-y-2">
               {resolvedUsers.slice(0, 5).map((user) => (
                 <div key={user.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-[13px] font-bold text-indigo-600">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100 text-[13px] font-bold text-cyan-700">
                     {user.name.slice(0, 1)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-semibold text-slate-900">{user.name}</div>
                     <div className="mt-1 text-[11px] text-slate-500">{user.department}</div>
                   </div>
-                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-indigo-600">{user.role}</span>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-cyan-700">{user.role}</span>
                 </div>
               ))}
             </div>
@@ -171,14 +171,14 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
 
           <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
             <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
-              <i className="ri-pie-chart-2-line text-indigo-600" />
+              <i className="ri-pie-chart-2-line text-cyan-700" />
               역할 비율
             </h3>
             <div className="mt-4 space-y-3">
               {[
                 { label: '운영자', count: roleCounts.ADMIN, tone: 'bg-amber-500' },
                 { label: '교강사', count: roleCounts.INSTRUCTOR, tone: 'bg-emerald-500' },
-                { label: '수강생', count: roleCounts.STUDENT, tone: 'bg-indigo-500' },
+                { label: '수강생', count: roleCounts.STUDENT, tone: 'bg-cyan-500' },
               ].map((item) => (
                 <div key={item.label}>
                   <div className="mb-1 flex items-center justify-between text-[12px] text-slate-500">
@@ -199,7 +199,7 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
           {resolvedInsights ? (
             <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
               <h3 className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
-                <i className="ri-lightbulb-flash-line text-indigo-600" />
+                <i className="ri-lightbulb-flash-line text-cyan-700" />
                 AI 인사이트
               </h3>
               <p className="mt-3 text-[13px] leading-6 text-slate-500">

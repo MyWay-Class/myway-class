@@ -13,13 +13,13 @@ type RoleFilter = 'all' | AuthUser['role'];
 const roleBadgeClasses: Record<AuthUser['role'], string> = {
   ADMIN: 'bg-amber-100 text-amber-700',
   INSTRUCTOR: 'bg-emerald-100 text-emerald-600',
-  STUDENT: 'bg-indigo-100 text-indigo-600',
+  STUDENT: 'bg-cyan-100 text-cyan-700',
 };
 
 const roleToneClasses: Record<AuthUser['role'], string> = {
   ADMIN: 'border-amber-200 bg-amber-50 text-amber-700',
   INSTRUCTOR: 'border-emerald-200 bg-emerald-50 text-emerald-600',
-  STUDENT: 'border-indigo-200 bg-indigo-50 text-indigo-600',
+  STUDENT: 'border-cyan-200 bg-cyan-50 text-cyan-700',
 };
 
 export function AdminUsersPage({ users }: AdminUsersPageProps) {
@@ -51,7 +51,7 @@ export function AdminUsersPage({ users }: AdminUsersPageProps) {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#312e81_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
+      <section className="overflow-hidden rounded-[32px] border border-cyan-200 bg-[linear-gradient(135deg,#0f172a_0%,#0e7490_48%,#0f766e_100%)] px-6 py-6 text-white shadow-sm lg:px-8 lg:py-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-end">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
@@ -97,7 +97,7 @@ export function AdminUsersPage({ users }: AdminUsersPageProps) {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="이름, 이메일, 학과, 역할 검색"
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400"
+              className="min-h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100"
             />
           </label>
 
@@ -114,8 +114,9 @@ export function AdminUsersPage({ users }: AdminUsersPageProps) {
                   key={item.key}
                   type="button"
                   onClick={() => setRoleFilter(item.key as RoleFilter)}
-                  className={`rounded-full px-4 py-2 text-[12px] font-semibold transition ${
-                    active ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-600'
+                  aria-pressed={active}
+                  className={`min-h-10 rounded-full px-4 py-2 text-[12px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+                    active ? 'bg-cyan-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:text-cyan-700'
                   }`}
                 >
                   {item.label}
@@ -128,7 +129,7 @@ export function AdminUsersPage({ users }: AdminUsersPageProps) {
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">전체 {counts.total}명</span>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">검색 결과 {filteredUsers.length}명</span>
-          <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">역할별 색상 적용</span>
+          <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">역할별 색상 적용</span>
         </div>
       </section>
 

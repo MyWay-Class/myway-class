@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import type { ShortformCommunityItem } from '@myway/shared';
 import { resolvePlayableVideoUrl } from '../../../lib/video-url';
 
@@ -102,7 +102,7 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
               item.clips.map((clip, index) => (
                 <article key={`${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-[11px] font-bold text-indigo-600">
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-[11px] font-bold text-cyan-600">
                       {index + 1}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -144,3 +144,4 @@ export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalPr
     </div>
   );
 }
+

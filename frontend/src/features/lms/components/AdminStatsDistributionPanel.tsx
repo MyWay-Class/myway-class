@@ -11,11 +11,11 @@ export function AdminStatsDistributionPanel({ aiLogs }: AdminStatsDistributionPa
 
   return (
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-      <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
+      <article className="rounded-3xl border border-cyan-100 bg-white px-5 py-5 shadow-sm">
         <h2 className="text-[15px] font-bold text-slate-900">Provider 분포</h2>
         <div className="mt-4 space-y-3">
           {providerStats.map((stat) => (
-            <div key={stat.key} className="rounded-2xl border border-slate-200 px-4 py-3">
+            <div key={stat.key} className="rounded-2xl border border-cyan-100 bg-cyan-50/50 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[13px] font-semibold text-slate-900">{stat.label}</div>
@@ -33,11 +33,11 @@ export function AdminStatsDistributionPanel({ aiLogs }: AdminStatsDistributionPa
         </div>
       </article>
 
-      <article className="rounded-3xl border border-slate-200 bg-white px-5 py-5">
+      <article className="rounded-3xl border border-cyan-100 bg-white px-5 py-5 shadow-sm">
         <h2 className="text-[15px] font-bold text-slate-900">Model 분포</h2>
         <div className="mt-4 space-y-3">
           {modelStats.map((stat) => (
-            <div key={stat.key} className="rounded-2xl border border-slate-200 px-4 py-3">
+            <div key={stat.key} className="rounded-2xl border border-cyan-100 bg-cyan-50/50 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[13px] font-semibold text-slate-900">{stat.label}</div>
