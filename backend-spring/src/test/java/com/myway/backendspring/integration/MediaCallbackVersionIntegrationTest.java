@@ -68,7 +68,8 @@ class MediaCallbackVersionIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         JsonNode successRoot = objectMapper.readTree(successCallback);
-        assertThat(successRoot.path("data").path("extraction").path("status").asText()).isEqualTo("COMPLETED");
+        assertThat(successRoot.path("data").path("extraction").path("status").asText()).isEqualTo("PROCESSING");
+        assertThat(successRoot.path("data").path("pipeline").path("transcript_status").asText()).isEqualTo("COMPLETED");
         assertThat(successRoot.path("data").path("extraction").path("last_event_version").asLong()).isEqualTo(3L);
 
         mockMvc.perform(post("/api/v1/media/extract-audio/callback")
