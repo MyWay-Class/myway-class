@@ -26,20 +26,25 @@ class DashboardContractTest {
 
     @Test
     void dashboard_shouldReturnStatsAndRecentActivities_withStableShape() throws Exception {
-        String authHeader = "Bearer " + loginAndGetToken();
+        assertDashboardShapeForUser("usr_std_001");
+        assertDashboardShapeForUser("usr_ins_001");
+        assertDashboardShapeForUser("usr_admin_001");
+    }
 
+    private void assertDashboardShapeForUser(String userId) throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken(userId);
         String response = mockMvc.perform(get("/api/v1/dashboard").header("Authorization", authHeader))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-
         JsonNode root = objectMapper.readTree(response);
         JsonNode data = root.path("data");
         JsonNode stats = data.path("stats");
         JsonNode activities = data.path("recent_activities");
 
         assertThat(root.path("success").asBoolean()).isTrue();
+        assertThat(data.path("role").asText()).isIn("student", "instructor", "admin");
         assertThat(stats.isArray()).isTrue();
         assertThat(stats.size()).isEqualTo(4);
         assertThat(activities.isArray()).isTrue();
@@ -48,15 +53,22 @@ class DashboardContractTest {
         assertThat(firstStat.path("id").isMissingNode()).isFalse();
         assertThat(firstStat.path("label").isMissingNode()).isFalse();
         assertThat(firstStat.path("value").isMissingNode()).isFalse();
+        assertThat(firstStat.path("value").asText()).matches("\\d+");
         assertThat(firstStat.path("hint").isMissingNode()).isFalse();
         assertThat(firstStat.path("icon").isMissingNode()).isFalse();
         assertThat(firstStat.path("tone").isMissingNode()).isFalse();
+
+        if (activities.size() > 0) {
+            JsonNode firstActivity = activities.get(0);
+            assertThat(firstActivity.path("type").asText()).isNotBlank();
+            assertThat(firstActivity.path("timestamp").asText()).isNotBlank();
+        }
     }
 
-    private String loginAndGetToken() throws Exception {
+    private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userId\":\"usr_std_001\"}"))
+                        .content("{\"userId\":\"" + userId + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()

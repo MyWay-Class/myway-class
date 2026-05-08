@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -43,18 +44,19 @@ public class DashboardController {
         int averageProgress = totalCourses == 0
                 ? 0
                 : (int) Math.round(view.courses().stream().mapToInt(course -> course.progress_percent()).average().orElse(0));
+        String role = normalizeRole(session.user().role());
 
         List<Map<String, Object>> recentEventRows = activityEventService.recent(session.user().id(), 120);
         List<Map<String, Object>> recentActivities = new ArrayList<>();
         for (Map<String, Object> event : recentEventRows.stream().limit(12).toList()) {
-            String type = safeString(event.get("type"), "insight");
             Map<String, Object> metadata = safeMetadata(event.get("metadata"));
+            String type = resolveActivityType(event, metadata);
             Map<String, Object> item = new HashMap<>();
             item.put("id", safeString(event.get("id"), ""));
             item.put("type", normalizeActivityType(type));
             item.put("title", activityTitle(type));
             item.put("detail", activityDetail(type, metadata));
-            item.put("timestamp", safeString(event.get("occurred_at"), ""));
+            item.put("timestamp", resolveActivityTimestamp(event, metadata));
             item.put("icon", activityIcon(type));
             item.put("tone", activityTone(type));
             putIfNotBlank(item, "course_id", metadata.get("course_id"));
@@ -64,9 +66,9 @@ public class DashboardController {
             recentActivities.add(item);
         }
 
-        Map<String, Integer> statsCount = summarizeStats(recentEventRows);
+        Map<String, Integer> statsCount = summarizeStats(recentEventRows, role);
         List<Map<String, Object>> stats = List.of(
-                stat("completed_lectures", "학습 완료", String.valueOf(statsCount.get("completed_lectures")), "완료한 강의 수", "check-circle", "emerald"),
+                stat("completed_lectures", "학습 완료", String.valueOf(statsCount.get("completed_lectures")), roleStatsHint(role), "check-circle", "emerald"),
                 stat("ai_usage", "AI 사용", String.valueOf(statsCount.get("ai_usage")), "AI 기능 호출 수", "sparkles", "violet"),
                 stat("media_success", "미디어 성공", String.valueOf(statsCount.get("media_success")), "추출/전사 성공 수", "video", "indigo"),
                 stat("media_failed", "미디어 실패", String.valueOf(statsCount.get("media_failed")), "추출/전사 실패 수", "alert-triangle", "amber")
@@ -74,7 +76,7 @@ public class DashboardController {
 
         Map<String, Object> payload = Map.of(
                 "learner_name", session.user().name(),
-                "role", normalizeRole(session.user().role()),
+                "role", role,
                 "total_courses", totalCourses,
                 "active_enrollments", view.enrolled_count(),
                 "average_progress", averageProgress,
@@ -133,14 +135,15 @@ public class DashboardController {
         return String.valueOf(metadata.getOrDefault("message", "활동이 기록되었습니다."));
     }
 
-    private Map<String, Integer> summarizeStats(List<Map<String, Object>> rows) {
+    private Map<String, Integer> summarizeStats(List<Map<String, Object>> rows, String role) {
         int completedLectures = 0;
         int aiUsage = 0;
         int mediaSuccess = 0;
         int mediaFailed = 0;
+        Set<String> completionTypes = completionTypesByRole(role);
         for (Map<String, Object> row : rows) {
             String type = safeString(row.get("type"), "");
-            if ("lecture_complete".equals(type)) {
+            if (completionTypes.contains(type)) {
                 completedLectures++;
             }
             if (type.startsWith("ai_")) {
@@ -159,6 +162,22 @@ public class DashboardController {
                 "media_success", mediaSuccess,
                 "media_failed", mediaFailed
         );
+    }
+
+    private Set<String> completionTypesByRole(String role) {
+        return switch (role) {
+            case "admin" -> Set.of("lecture_complete", "enrollment", "media_extraction_completed");
+            case "instructor" -> Set.of("lecture_complete", "custom_course_created", "shortform_created");
+            default -> Set.of("lecture_complete");
+        };
+    }
+
+    private String roleStatsHint(String role) {
+        return switch (role) {
+            case "admin" -> "운영 기준 완료 이벤트 수";
+            case "instructor" -> "강의/콘텐츠 완료 이벤트 수";
+            default -> "완료한 강의 수";
+        };
     }
 
     private Map<String, Object> stat(String id, String label, String value, String hint, String icon, String tone) {
@@ -191,6 +210,38 @@ public class DashboardController {
         }
         String resolved = String.valueOf(value);
         return resolved.isBlank() ? fallback : resolved;
+    }
+
+    private String resolveActivityType(Map<String, Object> event, Map<String, Object> metadata) {
+        String baseType = safeString(event.get("type"), "");
+        if (!baseType.isBlank()) {
+            return baseType;
+        }
+        String metadataType = safeString(metadata.get("type"), "");
+        if (!metadataType.isBlank()) {
+            return metadataType;
+        }
+        String actionType = safeString(metadata.get("action"), "");
+        if (!actionType.isBlank()) {
+            return actionType;
+        }
+        return "insight";
+    }
+
+    private String resolveActivityTimestamp(Map<String, Object> event, Map<String, Object> metadata) {
+        String occurredAt = safeString(event.get("occurred_at"), "");
+        if (!occurredAt.isBlank()) {
+            return occurredAt;
+        }
+        String metadataOccurredAt = safeString(metadata.get("occurred_at"), "");
+        if (!metadataOccurredAt.isBlank()) {
+            return metadataOccurredAt;
+        }
+        String metadataTimestamp = safeString(metadata.get("timestamp"), "");
+        if (!metadataTimestamp.isBlank()) {
+            return metadataTimestamp;
+        }
+        return "1970-01-01T00:00:00Z";
     }
 
     private void putIfNotBlank(Map<String, Object> target, String key, Object value) {
