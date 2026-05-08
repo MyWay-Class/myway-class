@@ -29,10 +29,10 @@
 ## 체크 사항
 - [ ] 범위가 MoSCoW 기준에 맞는다
 - [ ] 관련 문서가 함께 갱신됐다
-- [ ] 기능 PR이면 ADR 링크를 본문에 포함했다
+- [ ] 기능 PR이면 ADR 링크를 본문에 포함했다 (없으면 PR 보류)
 - [ ] `docs/dev-logs/`에 변경 요약을 남겼다
 - [ ] 불필요한 리팩터링이 없다
 
 ## ADR 링크
-- ADR:
-  - 
+- ADR: `docs/decisions/ADR-xxxx-*.md`
+- 상태 변경: `Proposed -> Accepted` 또는 `Accepted -> Superseded` (해당 시 기입)
