@@ -182,7 +182,17 @@ export type AudioExtraction = {
   requested_stt_model?: string;
   processing_job_id?: string | null;
   processing_error?: string | null;
-  processing_stage?: 'queued' | 'downloading' | 'extracting' | 'uploading' | 'callback' | 'completed' | 'failed' | null;
+  processing_stage?:
+    | 'queued'
+    | 'downloading'
+    | 'extracting'
+    | 'uploading'
+    | 'callback'
+    | 'transcribing'
+    | 'summarizing'
+    | 'completed'
+    | 'failed'
+    | null;
   processing_step?: string | null;
   audio_url?: string | null;
   audio_format: string;
@@ -262,7 +272,16 @@ export type MediaProcessorJobSummary = {
   updated_at: string;
   audio_url: string | null;
   error_message: string | null;
-  stage: 'queued' | 'downloading' | 'extracting' | 'uploading' | 'callback' | 'completed' | 'failed';
+  stage:
+    | 'queued'
+    | 'downloading'
+    | 'extracting'
+    | 'uploading'
+    | 'callback'
+    | 'transcribing'
+    | 'summarizing'
+    | 'completed'
+    | 'failed';
   step: string;
   callback_status: number | null;
 };

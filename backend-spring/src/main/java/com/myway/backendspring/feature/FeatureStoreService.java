@@ -2,11 +2,17 @@ package com.myway.backendspring.feature;
 
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.domain.LectureItem;
+import com.myway.backendspring.domain.ActivityEventService;
 import com.myway.backendspring.persistence.FeatureJdbcStore;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
@@ -42,22 +48,38 @@ public class FeatureStoreService {
     private final FeatureJdbcStore store;
     private final DemoLearningService learningService;
     private final int shortformMaxRetry;
+    private final ActivityEventService activityEventService;
+    private final String mediaProcessorUrl;
+    private final String mediaProcessorToken;
+    private final String mediaCallbackSecret;
+    private final String mediaPublicBaseUrl;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     public FeatureStoreService(
             FeatureJdbcStore store,
             DemoLearningService learningService,
-            @Value("${myway.shortform.retry.max-attempts:3}") int shortformMaxRetry
+            ActivityEventService activityEventService,
+            @Value("${myway.shortform.retry.max-attempts:3}") int shortformMaxRetry,
+            @Value("${myway.media.processor.url:}") String mediaProcessorUrl,
+            @Value("${myway.media.processor.token:}") String mediaProcessorToken,
+            @Value("${myway.media.callback.secret:}") String mediaCallbackSecret,
+            @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl
     ) {
         this.store = store;
         this.learningService = learningService;
+        this.activityEventService = activityEventService;
         this.shortformMaxRetry = Math.max(1, shortformMaxRetry);
+        this.mediaProcessorUrl = mediaProcessorUrl == null ? "" : mediaProcessorUrl.trim();
+        this.mediaProcessorToken = mediaProcessorToken == null ? "" : mediaProcessorToken.trim();
+        this.mediaCallbackSecret = mediaCallbackSecret == null ? "" : mediaCallbackSecret.trim();
+        this.mediaPublicBaseUrl = mediaPublicBaseUrl == null ? "http://127.0.0.1:8787" : mediaPublicBaseUrl.trim();
         ensureDefaults();
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
     public FeatureStoreService(FeatureJdbcStore store, int shortformMaxRetry) {
-        this(store, new DemoLearningService(), shortformMaxRetry);
+        this(store, new DemoLearningService(), null, shortformMaxRetry, "", "", "", "http://127.0.0.1:8787");
     }
 
     private void ensureDefaults() {
@@ -102,7 +124,10 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> aiLogs(String userId) {
-        List<Map<String, Object>> rows = store.listEventsByOwner(AI_LOG_SCOPE, userId);
+        List<Map<String, Object>> rows = store.listAiUsageLogs(userId);
+        if (rows.isEmpty()) {
+            rows = store.listEventsByOwner(AI_LOG_SCOPE, userId);
+        }
         return Map.of("user_id", userId, "items", rows, "count", rows.size());
     }
 
@@ -197,6 +222,7 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> processorHealth() {
+        Map<String, Object> remoteHealth = fetchRemoteProcessorHealth();
         List<Map<String, Object>> extractions = store.listKvByScope(EXTRACTION_SCOPE);
         long processing = extractions.stream()
                 .map(item -> String.valueOf(item.getOrDefault("status", "PROCESSING")))
@@ -230,15 +256,15 @@ public class FeatureStoreService {
                 })
                 .toList();
 
+        Map<String, Object> ffmpeg = remoteHealth == null
+                ? Map.of("available", false, "version", "unavailable", "path", "unknown")
+                : (Map<String, Object>) remoteHealth.getOrDefault("ffmpeg", Map.of("available", false, "path", "unknown"));
+        boolean remoteOk = remoteHealth != null && Boolean.TRUE.equals(remoteHealth.getOrDefault("ok", true));
         return Map.of(
-                "ok", true,
-                "ffmpeg", Map.of(
-                        "available", true,
-                        "version", "spring-simulated-ffmpeg",
-                        "path", "internal"
-                ),
-                "token_configured", true,
-                "callback_secret_configured", true,
+                "ok", remoteOk,
+                "ffmpeg", ffmpeg,
+                "token_configured", !mediaProcessorToken.isBlank(),
+                "callback_secret_configured", !mediaCallbackSecret.isBlank(),
                 "jobs", Map.of(
                         "total", total,
                         "processing", processing,
@@ -246,7 +272,7 @@ public class FeatureStoreService {
                         "failed", failed
                 ),
                 "work_dir", "backend-spring/data",
-                "public_base_url", "/api/v1/media",
+                "public_base_url", mediaPublicBaseUrl + "/api/v1/media",
                 "recent_jobs", recentJobs,
                 "updated_at", Instant.now().toString()
         );
@@ -258,43 +284,59 @@ public class FeatureStoreService {
         if (limit <= 0) {
             limit = 100;
         }
-        String key = usageKey(userId);
-        Map<String, Object> row = store.getKv(AI_USAGE_SCOPE, key);
+        int usedToday = store.getAiUsageDailyCount(userId, java.time.LocalDate.now());
         Instant quotaWindowStart = parseInstantOrNull(settings.get("quota_window_started_at"));
-        int usedByDailyCounter = quotaWindowStart == null
-                ? (row == null ? 0 : asInt(row.get("count")))
-                : 0;
-        int usedByLogs = (int) store.listEventsByOwner(AI_LOG_SCOPE, userId).stream()
+        int usedByLogs = (int) aiLogs(userId).getOrDefault("count", 0);
+        if (quotaWindowStart != null) {
+            usedByLogs = (int) store.listAiUsageLogs(userId).stream()
                 .filter(item -> {
-                    if (quotaWindowStart == null) {
-                        return true;
-                    }
                     Instant createdAt = parseInstantOrNull(item.get("created_at"));
                     return createdAt != null && !createdAt.isBefore(quotaWindowStart);
                 })
                 .count();
-        int used = Math.max(usedByDailyCounter, usedByLogs);
+        } else if (usedByLogs == 0) {
+            usedByLogs = (int) store.listEventsByOwner(AI_LOG_SCOPE, userId).stream()
+                .filter(item -> {
+                    Instant createdAt = parseInstantOrNull(item.get("created_at"));
+                    return createdAt != null;
+                })
+                .count();
+        }
+        int used = Math.max(usedToday, usedByLogs);
         return used < limit;
     }
 
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
+        java.time.LocalDate today = java.time.LocalDate.now();
         String key = usageKey(userId);
-        Map<String, Object> row = store.getKv(AI_USAGE_SCOPE, key);
-        int used = row == null ? 0 : asInt(row.get("count"));
+        int used = store.getAiUsageDailyCount(userId, today);
+        store.upsertAiUsageDaily(userId, today, used + 1);
+
         Map<String, Object> next = new HashMap<>();
         next.put("user_id", userId);
-        next.put("day", java.time.LocalDate.now().toString());
+        next.put("day", today.toString());
         next.put("count", used + 1);
         next.put("updated_at", Instant.now().toString());
         store.upsertKv(AI_USAGE_SCOPE, key, next);
 
+        String logId = UUID.randomUUID().toString();
+        store.insertAiUsageLog(logId, userId, feature, success, inputText);
         Map<String, Object> log = new HashMap<>();
-        log.put("id", UUID.randomUUID().toString());
+        log.put("id", logId);
         log.put("feature", feature);
         log.put("success", success);
         log.put("input_text", inputText);
         log.put("created_at", Instant.now().toString());
         store.insertEvent(AI_LOG_SCOPE, userId, String.valueOf(log.get("id")), log);
+        if (activityEventService != null) {
+            activityEventService.append(
+                    userId,
+                    "ai_" + (feature == null || feature.isBlank() ? "request" : feature),
+                    "ai",
+                    logId,
+                    Map.of("success", success, "feature", feature == null ? "" : feature)
+            );
+        }
     }
 
     public Map<String, Object> ragOverview(String query, String lectureId, String courseId, Integer limit) {
@@ -395,26 +437,92 @@ public class FeatureStoreService {
 
     public Map<String, Object> createExtraction(String lectureId, String audioUrl) {
         String id = UUID.randomUUID().toString();
+        String now = Instant.now().toString();
         Map<String, Object> item = new HashMap<>();
         item.put("id", id);
         item.put("lecture_id", lectureId);
-        item.put("status", "COMPLETED");
+        item.put("status", "PROCESSING");
         item.put("audio_url", audioUrl);
+        item.put("processing_stage", "queued");
+        item.put("processing_step", "job_requested");
+        item.put("stt_status", "PENDING");
+        item.put("transcript_id", null);
         item.put("last_event_version", 0L);
-        item.put("created_at", Instant.now().toString());
+        item.put("created_at", now);
+        item.put("updated_at", now);
 
         store.insertEvent(EXTRACTION_SCOPE, lectureId, id, item);
         store.upsertKv(EXTRACTION_SCOPE, id, item);
-
-        Map<String, Object> transcript = Map.of(
-                "lecture_id", lectureId,
-                "segments", List.of(Map.of("start_ms", 0, "end_ms", 10000, "text", "자동 생성된 샘플 트랜스크립트")),
-                "updated_at", Instant.now().toString()
-        );
-        store.upsertKv(TRANSCRIPT_SCOPE, lectureId, transcript);
-        store.upsertKv(PIPELINE_SCOPE, lectureId, Map.of("lecture_id", lectureId, "status", "READY", "updated_at", Instant.now().toString()));
+        Map<String, Object> pipeline = new HashMap<>();
+        pipeline.put("lecture_id", lectureId);
+        pipeline.put("transcript_status", "PENDING");
+        pipeline.put("summary_status", "PENDING");
+        pipeline.put("audio_status", "PROCESSING");
+        pipeline.put("transcript_id", null);
+        pipeline.put("note_id", null);
+        pipeline.put("extraction_id", id);
+        pipeline.put("updated_at", now);
+        store.upsertKv(PIPELINE_SCOPE, lectureId, pipeline);
 
         return item;
+    }
+
+    public Map<String, Object> dispatchExtractionJob(String extractionId, String sourceVideoUrl) {
+        Map<String, Object> extraction = store.getKv(EXTRACTION_SCOPE, extractionId);
+        if (extraction == null) {
+            return null;
+        }
+        extraction = new HashMap<>(extraction);
+        if (mediaProcessorUrl.isBlank()) {
+            extraction.put("processing_step", "processor_not_configured");
+            extraction.put("processing_error", "MYWAY_MEDIA_PROCESSOR_URL이 설정되지 않았습니다.");
+            extraction.put("updated_at", Instant.now().toString());
+            store.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
+            return extraction;
+        }
+
+        try {
+            URI callbackUri = URI.create(mediaPublicBaseUrl + "/api/v1/media/extract-audio/callback");
+            Map<String, Object> body = new HashMap<>();
+            body.put("extraction_id", extractionId);
+            body.put("lecture_id", String.valueOf(extraction.getOrDefault("lecture_id", "")));
+            body.put("source_video_url", sourceVideoUrl);
+            body.put("callback", Map.of(
+                    "url", callbackUri.toString(),
+                    "secret", mediaCallbackSecret.isBlank() ? null : mediaCallbackSecret
+            ));
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(mediaProcessorUrl + "/jobs/audio-extraction"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
+            if (!mediaProcessorToken.isBlank()) {
+                requestBuilder.header("Authorization", "Bearer " + mediaProcessorToken);
+            }
+            HttpResponse<String> response = HttpClient.newHttpClient().send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                Map<?, ?> payload = objectMapper.readValue(response.body(), Map.class);
+                Object jobId = payload.get("job_id");
+                Object status = payload.get("status");
+                extraction.put("processing_job_id", jobId == null ? null : String.valueOf(jobId));
+                extraction.put("processing_step", "dispatched");
+                extraction.put("processing_stage", "queued");
+                extraction.put("status", status == null ? "PROCESSING" : String.valueOf(status).toUpperCase());
+                extraction.put("processing_error", null);
+            } else {
+                extraction.put("status", "FAILED");
+                extraction.put("processing_stage", "failed");
+                extraction.put("processing_step", "dispatch_failed");
+                extraction.put("processing_error", "processor dispatch 실패 (" + response.statusCode() + ")");
+            }
+        } catch (Exception exception) {
+            extraction.put("status", "FAILED");
+            extraction.put("processing_stage", "failed");
+            extraction.put("processing_step", "dispatch_exception");
+            extraction.put("processing_error", exception.getMessage());
+        }
+        extraction.put("updated_at", Instant.now().toString());
+        store.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
+        return extraction;
     }
 
     public Map<String, Object> transcript(String lectureId) {
@@ -426,7 +534,16 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> transcribe(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl) {
-        Map<String, Object> extraction = createExtraction(lectureId, audioUrl);
+        return transcribe(lectureId, language, durationMsInput, sttProvider, sttModel, audioUrl, null);
+    }
+
+    public Map<String, Object> transcribe(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl, String extractionId) {
+        Map<String, Object> extraction = extractionId == null || extractionId.isBlank()
+                ? createExtraction(lectureId, audioUrl)
+                : store.getKv(EXTRACTION_SCOPE, extractionId);
+        if (extraction == null) {
+            extraction = createExtraction(lectureId, audioUrl);
+        }
         LectureItem lecture = learningService.getLecture(lectureId);
         int lectureDurationMs = lecture == null
                 ? FALLBACK_TRANSCRIPT_DURATION_MS
@@ -478,7 +595,9 @@ public class FeatureStoreService {
         extractionPayload.put("requested_stt_provider", resolvedProvider);
         extractionPayload.put("requested_stt_model", resolvedModel);
         extractionPayload.put("audio_url", audioUrl);
-        store.upsertKv(EXTRACTION_SCOPE, transcriptId, extractionPayload);
+        extractionPayload.put("processing_stage", "completed");
+        extractionPayload.put("processing_step", "stt_completed");
+        store.upsertKv(EXTRACTION_SCOPE, String.valueOf(extraction.getOrDefault("id", transcriptId)), extractionPayload);
 
         Map<String, Object> response = new HashMap<>();
         response.put("transcript_id", transcriptId);
@@ -494,6 +613,27 @@ public class FeatureStoreService {
         return response;
     }
 
+    private Map<String, Object> fetchRemoteProcessorHealth() {
+        if (mediaProcessorUrl.isBlank()) {
+            return null;
+        }
+        try {
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(mediaProcessorUrl + "/health"))
+                    .GET();
+            if (!mediaProcessorToken.isBlank()) {
+                requestBuilder.header("Authorization", "Bearer " + mediaProcessorToken);
+            }
+            HttpResponse<String> response = HttpClient.newHttpClient().send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                return null;
+            }
+            return objectMapper.readValue(response.body(), Map.class);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     public List<Map<String, Object>> extractions(String lectureId) {
         return store.listEventsByOwner(EXTRACTION_SCOPE, lectureId);
     }
@@ -503,6 +643,22 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion, String audioUrl) {
+        return completeExtractionCallback(extractionId, status, errorMessage, eventVersion, audioUrl, null, null, null, null, null, null);
+    }
+
+    public Map<String, Object> completeExtractionCallback(
+            String extractionId,
+            String status,
+            String errorMessage,
+            long eventVersion,
+            String audioUrl,
+            String processingJobId,
+            String processingStage,
+            String processingStep,
+            String audioFormat,
+            Integer sampleRate,
+            Integer channels
+    ) {
         Map<String, Object> extraction = store.getKv(EXTRACTION_SCOPE, extractionId);
         if (extraction != null) {
             extraction = new HashMap<>(extraction);
@@ -525,14 +681,74 @@ public class FeatureStoreService {
             return extraction;
         }
 
+        String now = Instant.now().toString();
+        String resolvedStatus = status == null || status.isBlank() ? "COMPLETED" : status.toUpperCase();
         extraction.put("last_event_version", eventVersion);
-        extraction.put("status", status == null || status.isBlank() ? "COMPLETED" : status.toUpperCase());
+        extraction.put("status", resolvedStatus);
         extraction.put("error_message", errorMessage);
         if (audioUrl != null && !audioUrl.isBlank()) {
             extraction.put("audio_url", audioUrl);
         }
-        extraction.put("updated_at", Instant.now().toString());
+        if (processingJobId != null && !processingJobId.isBlank()) {
+            extraction.put("processing_job_id", processingJobId);
+        }
+        if (processingStage != null && !processingStage.isBlank()) {
+            extraction.put("processing_stage", processingStage);
+        }
+        if (processingStep != null && !processingStep.isBlank()) {
+            extraction.put("processing_step", processingStep);
+        }
+        if (audioFormat != null && !audioFormat.isBlank()) {
+            extraction.put("audio_format", audioFormat);
+        }
+        if (sampleRate != null && sampleRate > 0) {
+            extraction.put("sample_rate", sampleRate);
+        }
+        if (channels != null && channels > 0) {
+            extraction.put("channels", channels);
+        }
+        if ("COMPLETED".equalsIgnoreCase(resolvedStatus)) {
+            extraction.put("processing_stage", "callback");
+            extraction.put("processing_step", "callback_received");
+            extraction.put("stt_status", "PROCESSING");
+            extraction.put("processed_at", now);
+        } else if ("FAILED".equalsIgnoreCase(resolvedStatus)) {
+            extraction.put("processing_stage", "failed");
+            extraction.put("processing_step", "callback_failed");
+            extraction.put("stt_status", "FAILED");
+            extraction.put("processed_at", now);
+        } else {
+            extraction.put("processing_stage", "callback");
+            extraction.put("processing_step", "callback_received");
+        }
+        extraction.put("updated_at", now);
         store.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
+
+        String lectureId = String.valueOf(extraction.getOrDefault("lecture_id", "")).trim();
+        if (!lectureId.isBlank()) {
+            Map<String, Object> pipeline = new HashMap<>();
+            pipeline.put("lecture_id", lectureId);
+            pipeline.put("audio_status", "FAILED".equalsIgnoreCase(resolvedStatus) ? "FAILED" : "COMPLETED");
+            pipeline.put("transcript_status", "FAILED".equalsIgnoreCase(resolvedStatus) ? "FAILED" : "PROCESSING");
+            pipeline.put("summary_status", "PENDING");
+            pipeline.put("transcript_id", extraction.get("transcript_id"));
+            pipeline.put("note_id", null);
+            pipeline.put("extraction_id", extraction.get("id"));
+            pipeline.put("updated_at", now);
+            store.upsertKv(PIPELINE_SCOPE, lectureId, pipeline);
+        }
+        if (activityEventService != null) {
+            String userId = String.valueOf(extraction.getOrDefault("user_id", "")).trim();
+            if (!userId.isBlank()) {
+                activityEventService.append(
+                        userId,
+                        "media_extraction_" + resolvedStatus.toLowerCase(),
+                        "extraction",
+                        extractionId,
+                        Map.of("lecture_id", lectureId, "status", resolvedStatus)
+                );
+            }
+        }
         return extraction;
     }
 
@@ -628,6 +844,15 @@ public class FeatureStoreService {
         store.upsertKv(SHORTFORM_VIDEO_SCOPE, id, video);
         store.insertEvent(SHORTFORM_VIDEO_SCOPE + "_library", userId, id, video);
         store.insertEvent(SHORTFORM_VIDEO_SCOPE + "_community", "all", id, video);
+        if (activityEventService != null) {
+            activityEventService.append(
+                    userId,
+                    "shortform_created",
+                    "shortform",
+                    id,
+                    Map.of("course_id", String.valueOf(video.getOrDefault("course_id", "")))
+            );
+        }
         return video;
     }
 
@@ -661,6 +886,15 @@ public class FeatureStoreService {
         row.put("message", payload.get("message"));
         row.put("created_at", Instant.now().toString());
         store.insertEvent(SHORTFORM_SHARE_SCOPE, userId, String.valueOf(row.get("id")), row);
+        if (activityEventService != null) {
+            activityEventService.append(
+                    userId,
+                    "shortform_shared",
+                    "shortform",
+                    videoId,
+                    Map.of("course_id", courseId)
+            );
+        }
         return row;
     }
 
@@ -680,6 +914,15 @@ public class FeatureStoreService {
         row.put("saved", true);
         row.put("updated_at", Instant.now().toString());
         store.upsertKv(SHORTFORM_SAVE_SCOPE, key, row);
+        if (activityEventService != null) {
+            activityEventService.append(
+                    userId,
+                    "shortform_saved",
+                    "shortform",
+                    videoId,
+                    Map.of("folder", String.valueOf(payload.getOrDefault("folder", "")))
+            );
+        }
         return row;
     }
 
@@ -697,6 +940,15 @@ public class FeatureStoreService {
         row.put("liked", next);
         row.put("updated_at", Instant.now().toString());
         store.upsertKv(SHORTFORM_LIKE_SCOPE, key, row);
+        if (activityEventService != null) {
+            activityEventService.append(
+                    userId,
+                    next ? "shortform_liked" : "shortform_unliked",
+                    "shortform",
+                    videoId,
+                    Map.of()
+            );
+        }
         return row;
     }
 
@@ -783,6 +1035,15 @@ public class FeatureStoreService {
         store.upsertKv(CUSTOM_COURSE_SCOPE, id, cc);
         store.insertEvent(CUSTOM_COURSE_SCOPE + "_my", userId, id, cc);
         store.insertEvent(CUSTOM_COURSE_SCOPE + "_community", "all", id, cc);
+        if (activityEventService != null) {
+            activityEventService.append(
+                    userId,
+                    "custom_course_created",
+                    "custom_course",
+                    id,
+                    Map.of("course_id", String.valueOf(cc.getOrDefault("course_id", "")))
+            );
+        }
         return cc;
     }
 

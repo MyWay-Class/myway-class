@@ -6,7 +6,9 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -74,6 +76,88 @@ public class FeatureJdbcStore {
                 "SELECT payload FROM scoped_events WHERE scope = ? ORDER BY created_at DESC",
                 (rs, rowNum) -> fromJsonMap(rs.getString("payload")),
                 scope
+        );
+    }
+
+    public int getAiUsageDailyCount(String userId, LocalDate day) {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT count FROM ai_usage_daily WHERE user_id = ? AND day = ?",
+                    Integer.class,
+                    userId, day
+            );
+            return count == null ? 0 : count;
+        } catch (DataAccessException ex) {
+            return 0;
+        }
+    }
+
+    public void upsertAiUsageDaily(String userId, LocalDate day, int count) {
+        jdbcTemplate.update(
+                """
+                MERGE INTO ai_usage_daily(user_id, day, count, updated_at)
+                KEY(user_id, day)
+                VALUES(?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                userId, day, count
+        );
+    }
+
+    public void insertAiUsageLog(String id, String userId, String feature, boolean success, String inputText) {
+        jdbcTemplate.update(
+                "INSERT INTO ai_usage_log(id, user_id, feature, success, input_text, created_at) VALUES(?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                id, userId, feature, success, inputText
+        );
+    }
+
+    public List<Map<String, Object>> listAiUsageLogs(String userId) {
+        return jdbcTemplate.query(
+                "SELECT id, user_id, feature, success, input_text, created_at FROM ai_usage_log WHERE user_id = ? ORDER BY created_at DESC",
+                (rs, rowNum) -> {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", rs.getString("id"));
+                    row.put("user_id", rs.getString("user_id"));
+                    row.put("feature", rs.getString("feature"));
+                    row.put("success", rs.getBoolean("success"));
+                    row.put("input_text", rs.getString("input_text"));
+                    row.put("created_at", rs.getTimestamp("created_at").toInstant().toString());
+                    return row;
+                },
+                userId
+        );
+    }
+
+    public void insertActivityEvent(
+            String id,
+            String userId,
+            String type,
+            String resourceType,
+            String resourceId,
+            Map<String, Object> metadata
+    ) {
+        jdbcTemplate.update(
+                "INSERT INTO activity_event(id, user_id, type, resource_type, resource_id, metadata, occurred_at) VALUES(?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                id, userId, type, resourceType, resourceId, metadata == null ? null : toJson(metadata)
+        );
+    }
+
+    public List<Map<String, Object>> listActivityEvents(String userId, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        return jdbcTemplate.query(
+                "SELECT id, user_id, type, resource_type, resource_id, metadata, occurred_at FROM activity_event WHERE user_id = ? ORDER BY occurred_at DESC LIMIT ?",
+                (rs, rowNum) -> {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", rs.getString("id"));
+                    row.put("user_id", rs.getString("user_id"));
+                    row.put("type", rs.getString("type"));
+                    row.put("resource_type", rs.getString("resource_type"));
+                    row.put("resource_id", rs.getString("resource_id"));
+                    String metadata = rs.getString("metadata");
+                    row.put("metadata", metadata == null || metadata.isBlank() ? Collections.emptyMap() : fromJsonMap(metadata));
+                    row.put("occurred_at", rs.getTimestamp("occurred_at").toInstant().toString());
+                    return row;
+                },
+                userId, safeLimit
         );
     }
 
