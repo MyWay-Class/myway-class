@@ -84,7 +84,9 @@ class AdminEndpointMigrationIntegrationTest {
                         .content("{\"extraction_id\":\"" + extractionId + "\",\"status\":\"COMPLETED\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(objectMapper.readTree(callback).path("data").path("extraction").path("status").asText()).isEqualTo("COMPLETED");
+        JsonNode callbackRoot = objectMapper.readTree(callback);
+        assertThat(callbackRoot.path("data").path("extraction").path("status").asText()).isEqualTo("PROCESSING");
+        assertThat(callbackRoot.path("data").path("pipeline").path("transcript_status").asText()).isEqualTo("COMPLETED");
 
         String upload = mockMvc.perform(post("/api/v1/media/upload-video")
                         .header("Authorization", auth)

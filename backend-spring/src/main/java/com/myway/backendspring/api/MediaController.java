@@ -234,7 +234,9 @@ public class MediaController {
         }
         String lectureId = String.valueOf(result.getOrDefault("lecture_id", "")).trim();
         Map<String, Object> transcribeResult = null;
-        if ("COMPLETED".equalsIgnoreCase(String.valueOf(result.getOrDefault("status", ""))) && !lectureId.isBlank()) {
+        boolean shouldStartStt = "COMPLETED".equalsIgnoreCase(status)
+                || "transcribing".equalsIgnoreCase(String.valueOf(result.getOrDefault("processing_stage", "")));
+        if (shouldStartStt && !lectureId.isBlank()) {
             transcribeResult = featureStore.transcribe(
                     lectureId,
                     "ko",

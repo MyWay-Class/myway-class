@@ -49,3 +49,4 @@ CREATE TABLE IF NOT EXISTS activity_event (
 );
 
 CREATE INDEX IF NOT EXISTS idx_activity_event_user_time ON activity_event(user_id, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_event_user_type_time ON activity_event(user_id, type, occurred_at DESC);

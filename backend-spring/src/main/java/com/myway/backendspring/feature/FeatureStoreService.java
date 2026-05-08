@@ -445,6 +445,8 @@ public class FeatureStoreService {
         item.put("audio_url", audioUrl);
         item.put("processing_stage", "queued");
         item.put("processing_step", "job_requested");
+        item.put("processing_error_code", null);
+        item.put("processing_error", null);
         item.put("stt_status", "PENDING");
         item.put("transcript_id", null);
         item.put("last_event_version", 0L);
@@ -458,6 +460,10 @@ public class FeatureStoreService {
         pipeline.put("transcript_status", "PENDING");
         pipeline.put("summary_status", "PENDING");
         pipeline.put("audio_status", "PROCESSING");
+        pipeline.put("processing_stage", "queued");
+        pipeline.put("processing_step", "job_requested");
+        pipeline.put("processing_error_code", null);
+        pipeline.put("processing_error", null);
         pipeline.put("transcript_id", null);
         pipeline.put("note_id", null);
         pipeline.put("extraction_id", id);
@@ -474,8 +480,12 @@ public class FeatureStoreService {
         }
         extraction = new HashMap<>(extraction);
         if (mediaProcessorUrl.isBlank()) {
+            extraction.put("status", "FAILED");
+            extraction.put("processing_stage", "failed");
             extraction.put("processing_step", "processor_not_configured");
+            extraction.put("processing_error_code", "PROCESSOR_NOT_CONFIGURED");
             extraction.put("processing_error", "MYWAY_MEDIA_PROCESSOR_URL이 설정되지 않았습니다.");
+            extraction.put("stt_status", "FAILED");
             extraction.put("updated_at", Instant.now().toString());
             store.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
             return extraction;
@@ -507,18 +517,24 @@ public class FeatureStoreService {
                 extraction.put("processing_step", "dispatched");
                 extraction.put("processing_stage", "queued");
                 extraction.put("status", status == null ? "PROCESSING" : String.valueOf(status).toUpperCase());
+                extraction.put("stt_status", "PENDING");
+                extraction.put("processing_error_code", null);
                 extraction.put("processing_error", null);
             } else {
                 extraction.put("status", "FAILED");
                 extraction.put("processing_stage", "failed");
                 extraction.put("processing_step", "dispatch_failed");
+                extraction.put("processing_error_code", "PROCESSOR_DISPATCH_FAILED");
                 extraction.put("processing_error", "processor dispatch 실패 (" + response.statusCode() + ")");
+                extraction.put("stt_status", "FAILED");
             }
         } catch (Exception exception) {
             extraction.put("status", "FAILED");
             extraction.put("processing_stage", "failed");
             extraction.put("processing_step", "dispatch_exception");
+            extraction.put("processing_error_code", "PROCESSOR_DISPATCH_EXCEPTION");
             extraction.put("processing_error", exception.getMessage());
+            extraction.put("stt_status", "FAILED");
         }
         extraction.put("updated_at", Instant.now().toString());
         store.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
@@ -544,6 +560,17 @@ public class FeatureStoreService {
         if (extraction == null) {
             extraction = createExtraction(lectureId, audioUrl);
         }
+        String now = Instant.now().toString();
+        Map<String, Object> extractionInProgress = new HashMap<>(extraction);
+        extractionInProgress.put("status", "PROCESSING");
+        extractionInProgress.put("stt_status", "PROCESSING");
+        extractionInProgress.put("processing_stage", "transcribing");
+        extractionInProgress.put("processing_step", "stt_started");
+        extractionInProgress.put("processing_error_code", null);
+        extractionInProgress.put("processing_error", null);
+        extractionInProgress.put("updated_at", now);
+        store.upsertKv(EXTRACTION_SCOPE, String.valueOf(extractionInProgress.getOrDefault("id", extractionId)), extractionInProgress);
+        extraction = extractionInProgress;
         LectureItem lecture = learningService.getLecture(lectureId);
         int lectureDurationMs = lecture == null
                 ? FALLBACK_TRANSCRIPT_DURATION_MS
@@ -572,12 +599,15 @@ public class FeatureStoreService {
         transcriptPayload.put("created_at", Instant.now().toString());
         store.upsertKv(TRANSCRIPT_SCOPE, lectureId, transcriptPayload);
 
-        String now = Instant.now().toString();
         Map<String, Object> pipelinePayload = new HashMap<>();
         pipelinePayload.put("lecture_id", lectureId);
         pipelinePayload.put("transcript_status", "COMPLETED");
         pipelinePayload.put("summary_status", "PENDING");
         pipelinePayload.put("audio_status", "COMPLETED");
+        pipelinePayload.put("processing_stage", "completed");
+        pipelinePayload.put("processing_step", "stt_completed");
+        pipelinePayload.put("processing_error_code", null);
+        pipelinePayload.put("processing_error", null);
         pipelinePayload.put("transcript_id", transcriptId);
         pipelinePayload.put("note_id", null);
         pipelinePayload.put("extraction_id", extraction.get("id"));
@@ -597,6 +627,8 @@ public class FeatureStoreService {
         extractionPayload.put("audio_url", audioUrl);
         extractionPayload.put("processing_stage", "completed");
         extractionPayload.put("processing_step", "stt_completed");
+        extractionPayload.put("processing_error_code", null);
+        extractionPayload.put("processing_error", null);
         store.upsertKv(EXTRACTION_SCOPE, String.valueOf(extraction.getOrDefault("id", transcriptId)), extractionPayload);
 
         Map<String, Object> response = new HashMap<>();
@@ -635,7 +667,20 @@ public class FeatureStoreService {
     }
 
     public List<Map<String, Object>> extractions(String lectureId) {
-        return store.listEventsByOwner(EXTRACTION_SCOPE, lectureId);
+        List<Map<String, Object>> rows = store.listEventsByOwner(EXTRACTION_SCOPE, lectureId);
+        List<Map<String, Object>> merged = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            String extractionId = String.valueOf(row.getOrDefault("id", "")).trim();
+            Map<String, Object> latest = extractionId.isBlank() ? null : store.getKv(EXTRACTION_SCOPE, extractionId);
+            Map<String, Object> hydrated = latest == null ? new HashMap<>(row) : new HashMap<>(latest);
+            hydrated.putIfAbsent("processing_stage", "queued");
+            hydrated.putIfAbsent("processing_step", "job_requested");
+            hydrated.putIfAbsent("processing_error_code", null);
+            hydrated.putIfAbsent("processing_error", null);
+            hydrated.putIfAbsent("stt_status", "PENDING");
+            merged.add(hydrated);
+        }
+        return merged;
     }
 
     public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion) {
@@ -683,6 +728,10 @@ public class FeatureStoreService {
 
         String now = Instant.now().toString();
         String resolvedStatus = status == null || status.isBlank() ? "COMPLETED" : status.toUpperCase();
+        String resolvedErrorCode = "FAILED".equalsIgnoreCase(resolvedStatus) ? "PROCESSOR_CALLBACK_FAILED" : null;
+        if ("FAILED".equalsIgnoreCase(resolvedStatus) && (errorMessage == null || errorMessage.isBlank())) {
+            errorMessage = "media processor callback failed";
+        }
         extraction.put("last_event_version", eventVersion);
         extraction.put("status", resolvedStatus);
         extraction.put("error_message", errorMessage);
@@ -708,14 +757,19 @@ public class FeatureStoreService {
             extraction.put("channels", channels);
         }
         if ("COMPLETED".equalsIgnoreCase(resolvedStatus)) {
-            extraction.put("processing_stage", "callback");
-            extraction.put("processing_step", "callback_received");
+            extraction.put("status", "PROCESSING");
+            extraction.put("processing_stage", "transcribing");
+            extraction.put("processing_step", "stt_started");
             extraction.put("stt_status", "PROCESSING");
+            extraction.put("processing_error_code", null);
+            extraction.put("processing_error", null);
             extraction.put("processed_at", now);
         } else if ("FAILED".equalsIgnoreCase(resolvedStatus)) {
             extraction.put("processing_stage", "failed");
             extraction.put("processing_step", "callback_failed");
             extraction.put("stt_status", "FAILED");
+            extraction.put("processing_error_code", resolvedErrorCode);
+            extraction.put("processing_error", errorMessage);
             extraction.put("processed_at", now);
         } else {
             extraction.put("processing_stage", "callback");
@@ -731,6 +785,10 @@ public class FeatureStoreService {
             pipeline.put("audio_status", "FAILED".equalsIgnoreCase(resolvedStatus) ? "FAILED" : "COMPLETED");
             pipeline.put("transcript_status", "FAILED".equalsIgnoreCase(resolvedStatus) ? "FAILED" : "PROCESSING");
             pipeline.put("summary_status", "PENDING");
+            pipeline.put("processing_stage", "FAILED".equalsIgnoreCase(resolvedStatus) ? "failed" : "transcribing");
+            pipeline.put("processing_step", "FAILED".equalsIgnoreCase(resolvedStatus) ? "callback_failed" : "stt_started");
+            pipeline.put("processing_error_code", "FAILED".equalsIgnoreCase(resolvedStatus) ? resolvedErrorCode : null);
+            pipeline.put("processing_error", "FAILED".equalsIgnoreCase(resolvedStatus) ? errorMessage : null);
             pipeline.put("transcript_id", extraction.get("transcript_id"));
             pipeline.put("note_id", null);
             pipeline.put("extraction_id", extraction.get("id"));
@@ -754,7 +812,36 @@ public class FeatureStoreService {
 
     public Map<String, Object> pipeline(String lectureId) {
         Map<String, Object> row = store.getKv(PIPELINE_SCOPE, lectureId);
-        return row != null ? row : Map.of("lecture_id", lectureId, "status", "EMPTY");
+        if (row == null) {
+            Map<String, Object> empty = new HashMap<>();
+            empty.put("lecture_id", lectureId);
+            empty.put("status", "EMPTY");
+            empty.put("audio_status", "PENDING");
+            empty.put("transcript_status", "PENDING");
+            empty.put("summary_status", "PENDING");
+            empty.put("processing_stage", "idle");
+            empty.put("processing_step", "not_started");
+            empty.put("processing_error_code", null);
+            empty.put("processing_error", null);
+            empty.put("transcript_id", null);
+            empty.put("note_id", null);
+            empty.put("extraction_id", null);
+            empty.put("updated_at", Instant.now().toString());
+            return empty;
+        }
+        Map<String, Object> hydrated = new HashMap<>(row);
+        hydrated.putIfAbsent("audio_status", "PENDING");
+        hydrated.putIfAbsent("transcript_status", "PENDING");
+        hydrated.putIfAbsent("summary_status", "PENDING");
+        hydrated.putIfAbsent("processing_stage", "idle");
+        hydrated.putIfAbsent("processing_step", "not_started");
+        hydrated.putIfAbsent("processing_error_code", null);
+        hydrated.putIfAbsent("processing_error", null);
+        hydrated.putIfAbsent("transcript_id", null);
+        hydrated.putIfAbsent("note_id", null);
+        hydrated.putIfAbsent("extraction_id", null);
+        hydrated.putIfAbsent("updated_at", Instant.now().toString());
+        return hydrated;
     }
 
     public Map<String, Object> summarizeLecture(String lectureId, String style, String language) {
