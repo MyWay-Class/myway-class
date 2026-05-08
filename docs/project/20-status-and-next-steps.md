@@ -66,7 +66,7 @@
 - 검증 / 배포 안정화
   - backend workspace 의존성 점검을 자동화한다.
   - frontend build 환경 오류 같은 실행 이슈를 별도로 정리한다.
-  - `npm run verify`로 의존성과 빌드를 한 번에 점검한다.
+  - `npm run verify`(frontend build + backend spring test)로 핵심 검증을 한 번에 점검한다.
 - 미디어 업로드 / 오디오 추출
   - 강의 영상 업로드, R2 asset 조회, 외부 media processor dispatch, callback 기반 STT 연결까지 붙었다.
   - 다음 단계는 실제 FFmpeg 실행 환경을 운영에 배포하고, 추출 job 상태를 UI에서 더 세밀하게 보여주는 일이다.
