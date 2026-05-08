@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -142,9 +143,31 @@ public class FeatureJdbcStore {
     }
 
     public List<Map<String, Object>> listActivityEvents(String userId, int limit) {
+        return listActivityEvents(userId, null, null, null, limit);
+    }
+
+    public List<Map<String, Object>> listActivityEvents(
+            String userId,
+            String type,
+            String occurredFromIso,
+            String occurredToIso,
+            int limit
+    ) {
         int safeLimit = Math.max(1, Math.min(limit, 100));
+        OffsetDateTime occurredFrom = parseIsoDateTimeOrNull(occurredFromIso);
+        OffsetDateTime occurredTo = parseIsoDateTimeOrNull(occurredToIso);
+        String safeType = (type == null || type.isBlank()) ? null : type.trim();
         return jdbcTemplate.query(
-                "SELECT id, user_id, type, resource_type, resource_id, metadata, occurred_at FROM activity_event WHERE user_id = ? ORDER BY occurred_at DESC LIMIT ?",
+                """
+                SELECT id, user_id, type, resource_type, resource_id, metadata, occurred_at
+                FROM activity_event
+                WHERE user_id = ?
+                  AND (? IS NULL OR type = ?)
+                  AND (? IS NULL OR occurred_at >= ?)
+                  AND (? IS NULL OR occurred_at <= ?)
+                ORDER BY occurred_at DESC
+                LIMIT ?
+                """,
                 (rs, rowNum) -> {
                     Map<String, Object> row = new HashMap<>();
                     row.put("id", rs.getString("id"));
@@ -157,8 +180,19 @@ public class FeatureJdbcStore {
                     row.put("occurred_at", rs.getTimestamp("occurred_at").toInstant().toString());
                     return row;
                 },
-                userId, safeLimit
+                userId,
+                safeType, safeType,
+                occurredFrom, occurredFrom,
+                occurredTo, occurredTo,
+                safeLimit
         );
+    }
+
+    private OffsetDateTime parseIsoDateTimeOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return OffsetDateTime.parse(value);
     }
 
     private String toJson(Map<String, Object> payload) {

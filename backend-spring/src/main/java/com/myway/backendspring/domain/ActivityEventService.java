@@ -32,4 +32,14 @@ public class ActivityEventService {
     public List<Map<String, Object>> recent(String userId, int limit) {
         return store.listActivityEvents(userId, limit);
     }
+
+    public List<Map<String, Object>> recent(
+            String userId,
+            String type,
+            String occurredFromIso,
+            String occurredToIso,
+            int limit
+    ) {
+        return store.listActivityEvents(userId, type, occurredFromIso, occurredToIso, limit);
+    }
 }
