@@ -36,6 +36,31 @@ function formatDateTime(value?: string | null): string {
   return value ? new Date(value).toLocaleString('ko-KR') : '기록 없음';
 }
 
+function stageLabel(stage?: string | null): string {
+  switch (stage) {
+    case 'queued':
+      return '대기열 등록';
+    case 'downloading':
+      return '원본 다운로드';
+    case 'extracting':
+      return '오디오 추출';
+    case 'uploading':
+      return '오디오 업로드';
+    case 'callback':
+      return '콜백 반영';
+    case 'transcribing':
+      return 'STT 전사';
+    case 'summarizing':
+      return '요약 생성';
+    case 'completed':
+      return '완료';
+    case 'failed':
+      return '실패';
+    default:
+      return '미확인';
+  }
+}
+
 export function MediaPipelineStatusBoard({
   compact = false,
   selectedLecture,
@@ -150,6 +175,7 @@ export function MediaPipelineStatusBoard({
               { label: '오디오 상태', value: pipeline?.audio_status ?? 'PENDING' },
               { label: 'STT 상태', value: extraction?.stt_status ?? pipeline?.transcript_status ?? 'PENDING' },
               { label: '요약 상태', value: pipeline?.summary_status ?? 'PENDING' },
+              { label: '처리 단계', value: stageLabel(extraction?.processing_stage) },
               { label: '처리 서비스 job', value: extraction?.processing_job_id ?? '없음' },
               { label: '전사 ID', value: extraction?.transcript_id ?? pipeline?.transcript_id ?? '없음' },
               { label: '처리 완료 시각', value: extraction?.processed_at ? new Date(extraction.processed_at).toLocaleString('ko-KR') : '대기 중' },
@@ -273,19 +299,27 @@ export function MediaPipelineStatusBoard({
             <div className="text-sm font-semibold text-slate-900">추출 진행 세부</div>
             {extraction ? (
               <div className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] p-4 text-sm text-slate-700">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">오디오 URL</div>
-                    <div className="mt-1 break-all font-medium text-slate-900">{extraction.audio_url ?? 'callback 대기 중'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">요청 STT</div>
-                    <div className="mt-1 font-medium text-slate-900">
-                      {extraction.requested_stt_provider ?? '자동 선택'}
-                      {extraction.requested_stt_model ? ` · ${extraction.requested_stt_model}` : ''}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">오디오 URL</div>
+                      <div className="mt-1 break-all font-medium text-slate-900">{extraction.audio_url ?? 'callback 대기 중'}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">요청 STT</div>
+                      <div className="mt-1 font-medium text-slate-900">
+                        {extraction.requested_stt_provider ?? '자동 선택'}
+                        {extraction.requested_stt_model ? ` · ${extraction.requested_stt_model}` : ''}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 단계</div>
+                      <div className="mt-1 font-medium text-slate-900">{stageLabel(extraction.processing_stage)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 상세</div>
+                      <div className="mt-1 font-medium text-slate-900">{extraction.processing_step ?? '없음'}</div>
                     </div>
                   </div>
-                </div>
                 {extraction.processing_error ? (
                   <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">
                     {extraction.processing_error}

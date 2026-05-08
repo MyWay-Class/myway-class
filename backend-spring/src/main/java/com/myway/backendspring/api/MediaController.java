@@ -37,10 +37,17 @@ public class MediaController {
 
     public record ExtractionCallbackRequest(
             String extraction_id,
+            String lecture_id,
             String status,
             String error_message,
             Long event_version,
-            String audio_url
+            String audio_url,
+            String processing_job_id,
+            String processing_stage,
+            String processing_step,
+            String audio_format,
+            Integer sample_rate,
+            Integer channels
     ) {}
 
     private SessionView require(String auth) { return sessionService.me(auth); }
@@ -69,7 +76,9 @@ public class MediaController {
         String lectureId = text(body, "lecture_id");
         String audioUrl = text(body, "audio_url");
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.createExtraction(lectureId, audioUrl.isBlank() ? null : audioUrl), "오디오 추출 job이 생성되었습니다."));
+        Map<String, Object> extraction = featureStore.createExtraction(lectureId, audioUrl.isBlank() ? null : audioUrl);
+        Map<String, Object> dispatched = featureStore.dispatchExtractionJob(String.valueOf(extraction.get("id")), audioUrl.isBlank() ? null : audioUrl);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(dispatched != null ? dispatched : extraction, "오디오 추출 job이 생성되었습니다."));
     }
 
     @PostMapping("/transcribe")
@@ -183,9 +192,11 @@ public class MediaController {
     @PostMapping("/extract-audio/callback")
     public ResponseEntity<ApiResponse<Map<String, Object>>> callback(
             @RequestHeader(value = "X-Callback-Token", required = false) String token,
+            @RequestHeader(value = "x-myway-media-callback-secret", required = false) String callbackSecret,
             @RequestBody ExtractionCallbackRequest body
     ) {
-        if (token == null || token.isBlank() || !token.equals(callbackToken)) {
+        String resolvedToken = (token != null && !token.isBlank()) ? token : callbackSecret;
+        if (resolvedToken == null || resolvedToken.isBlank() || !resolvedToken.equals(callbackToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "유효한 callback token이 필요합니다."));
         }
         if (body == null) {
@@ -199,7 +210,19 @@ public class MediaController {
         String status = body.status() == null ? "COMPLETED" : body.status();
         String errorMessage = body.error_message();
         String audioUrl = body.audio_url() == null ? null : body.audio_url().trim();
-        Map<String, Object> result = featureStore.completeExtractionCallback(extractionId, status, errorMessage, eventVersion, audioUrl);
+        Map<String, Object> result = featureStore.completeExtractionCallback(
+                extractionId,
+                status,
+                errorMessage,
+                eventVersion,
+                audioUrl,
+                body.processing_job_id(),
+                body.processing_stage(),
+                body.processing_step(),
+                body.audio_format(),
+                body.sample_rate(),
+                body.channels()
+        );
         if (result == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "오디오 추출 기록을 찾을 수 없습니다."));
         }
@@ -218,7 +241,8 @@ public class MediaController {
                     null,
                     "cloudflare",
                     "cf-whisper",
-                    audioUrl
+                    audioUrl,
+                    extractionId
             );
         }
 

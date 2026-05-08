@@ -1,19 +1,38 @@
 package com.myway.backendspring.domain;
 
+import com.myway.backendspring.persistence.FeatureJdbcStore;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class DemoLearningService {
+    private static final String ENROLLMENT_SCOPE = "learning_enrollment";
+    private static final String LECTURE_COMPLETION_SCOPE = "learning_lecture_completion";
     private final Map<String, CourseDetail> courses = new LinkedHashMap<>();
     private final Map<String, List<MaterialItem>> materialsByCourse = new ConcurrentHashMap<>();
     private final Map<String, List<NoticeItem>> noticesByCourse = new ConcurrentHashMap<>();
     private final List<EnrollmentItem> enrollments = Collections.synchronizedList(new ArrayList<>());
     private final Set<String> completedLectureKeys = Collections.synchronizedSet(new HashSet<>());
+    private final FeatureJdbcStore store;
+    private final ActivityEventService activityEventService;
 
+    public DemoLearningService(FeatureJdbcStore store, ActivityEventService activityEventService) {
+        this.store = store;
+        this.activityEventService = activityEventService;
+        initSeedData();
+    }
+
+    // Backward-compatible constructor for tests and direct instantiation.
     public DemoLearningService() {
+        this.store = null;
+        this.activityEventService = null;
+        initSeedData();
+    }
+
+    private void initSeedData() {
         List<LectureItem> javaLectures = List.of(
                 new LectureItem("lec_java_01", "crs_java_01", "Spring Boot 시작", 25),
                 new LectureItem("lec_java_02", "crs_java_01", "REST API 설계", 35)
@@ -78,8 +97,8 @@ public class DemoLearningService {
 
     public DashboardView getDashboard(String userId) {
         List<CourseCard> cards = listCourseCards(userId);
-        int enrolled = (int) enrollments.stream().filter(e -> e.user_id().equals(userId)).count();
-        int completed = (int) completedLectureKeys.stream().filter(k -> k.startsWith(userId + ":")).count();
+        int enrolled = listEnrollments(userId).size();
+        int completed = listCompletedLectureIds(userId).size();
         return new DashboardView(cards, enrolled, completed);
     }
 
@@ -104,30 +123,69 @@ public class DemoLearningService {
     }
 
     public EnrollmentItem enroll(String userId, String courseId) {
-        EnrollmentItem existing = enrollments.stream().filter(e -> e.user_id().equals(userId) && e.course_id().equals(courseId)).findFirst().orElse(null);
+        EnrollmentItem existing = findEnrollment(userId, courseId);
         if (existing != null) return existing;
         EnrollmentItem item = new EnrollmentItem(UUID.randomUUID().toString(), userId, courseId);
-        enrollments.add(item);
+        if (useStore()) {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", item.id());
+            payload.put("user_id", item.user_id());
+            payload.put("course_id", item.course_id());
+            payload.put("created_at", Instant.now().toString());
+            store.upsertKv(ENROLLMENT_SCOPE, enrollmentKey(userId, courseId), payload);
+        } else {
+            enrollments.add(item);
+        }
+        appendActivity(userId, "enrollment", "course", courseId, Map.of("enrollment_id", item.id()));
         return item;
     }
 
     public List<EnrollmentItem> listEnrollments(String userId) {
-        return enrollments.stream().filter(e -> e.user_id().equals(userId)).toList();
+        if (!useStore()) {
+            return enrollments.stream().filter(e -> e.user_id().equals(userId)).toList();
+        }
+        return store.listKvByScope(ENROLLMENT_SCOPE).stream()
+                .filter(item -> userId.equals(String.valueOf(item.getOrDefault("user_id", ""))))
+                .map(item -> new EnrollmentItem(
+                        String.valueOf(item.getOrDefault("id", "")),
+                        String.valueOf(item.getOrDefault("user_id", "")),
+                        String.valueOf(item.getOrDefault("course_id", ""))
+                ))
+                .filter(item -> !item.id().isBlank() && !item.course_id().isBlank())
+                .toList();
     }
 
     public Map<String, Object> completeLecture(String userId, String lectureId) {
         LectureItem lecture = getLecture(lectureId);
         if (lecture == null) return null;
 
-        boolean enrolled = enrollments.stream().anyMatch(e -> e.user_id().equals(userId) && e.course_id().equals(lecture.course_id()));
+        boolean enrolled = findEnrollment(userId, lecture.course_id()) != null;
         if (!enrolled) return Map.of("reason", "enrollment_required");
 
-        completedLectureKeys.add(userId + ":" + lectureId);
+        if (useStore()) {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", completionKey(userId, lectureId));
+            payload.put("user_id", userId);
+            payload.put("lecture_id", lectureId);
+            payload.put("course_id", lecture.course_id());
+            payload.put("completed_at", Instant.now().toString());
+            store.upsertKv(LECTURE_COMPLETION_SCOPE, completionKey(userId, lectureId), payload);
+        } else {
+            completedLectureKeys.add(completionKey(userId, lectureId));
+        }
 
         List<LectureItem> lectures = getCourseLectures(lecture.course_id());
-        long completed = lectures.stream().filter(l -> completedLectureKeys.contains(userId + ":" + l.id())).count();
+        Set<String> completedLectureIds = listCompletedLectureIds(userId);
+        long completed = lectures.stream().filter(l -> completedLectureIds.contains(l.id())).count();
         int total = lectures.size();
         int progress = total == 0 ? 0 : (int) Math.round((completed * 100.0) / total);
+        appendActivity(
+                userId,
+                "lecture_complete",
+                "lecture",
+                lectureId,
+                Map.of("course_id", lecture.course_id(), "progress_percent", progress)
+        );
 
         return Map.of(
                 "lecture_id", lectureId,
@@ -146,7 +204,58 @@ public class DemoLearningService {
     private int progressPercent(String userId, String courseId) {
         List<LectureItem> lectures = getCourseLectures(courseId);
         if (lectures.isEmpty()) return 0;
-        long completed = lectures.stream().filter(l -> completedLectureKeys.contains(userId + ":" + l.id())).count();
+        Set<String> completedLectureIds = listCompletedLectureIds(userId);
+        long completed = lectures.stream().filter(l -> completedLectureIds.contains(l.id())).count();
         return (int) Math.round((completed * 100.0) / lectures.size());
+    }
+
+    private EnrollmentItem findEnrollment(String userId, String courseId) {
+        if (!useStore()) {
+            return enrollments.stream()
+                    .filter(e -> e.user_id().equals(userId) && e.course_id().equals(courseId))
+                    .findFirst()
+                    .orElse(null);
+        }
+        Map<String, Object> found = store.getKv(ENROLLMENT_SCOPE, enrollmentKey(userId, courseId));
+        if (found == null) {
+            return null;
+        }
+        return new EnrollmentItem(
+                String.valueOf(found.getOrDefault("id", "")),
+                String.valueOf(found.getOrDefault("user_id", "")),
+                String.valueOf(found.getOrDefault("course_id", ""))
+        );
+    }
+
+    private Set<String> listCompletedLectureIds(String userId) {
+        if (!useStore()) {
+            return completedLectureKeys.stream()
+                    .filter(key -> key.startsWith(userId + ":"))
+                    .map(key -> key.substring((userId + ":").length()))
+                    .collect(java.util.stream.Collectors.toSet());
+        }
+        return store.listKvByScope(LECTURE_COMPLETION_SCOPE).stream()
+                .filter(item -> userId.equals(String.valueOf(item.getOrDefault("user_id", ""))))
+                .map(item -> String.valueOf(item.getOrDefault("lecture_id", "")))
+                .filter(lectureId -> !lectureId.isBlank())
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private String enrollmentKey(String userId, String courseId) {
+        return userId + ":" + courseId;
+    }
+
+    private String completionKey(String userId, String lectureId) {
+        return userId + ":" + lectureId;
+    }
+
+    private boolean useStore() {
+        return store != null;
+    }
+
+    private void appendActivity(String userId, String type, String resourceType, String resourceId, Map<String, Object> metadata) {
+        if (activityEventService != null) {
+            activityEventService.append(userId, type, resourceType, resourceId, metadata);
+        }
     }
 }
