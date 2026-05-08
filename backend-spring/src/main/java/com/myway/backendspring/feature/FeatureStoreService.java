@@ -721,7 +721,8 @@ public class FeatureStoreService {
         long currentVersion = asLong(extraction.get("last_event_version"));
         if (eventVersion <= currentVersion) {
             extraction.put("callback_ignored", true);
-            return extraction;
+            extraction.put("callback_status", "IGNORED_STALE");
+            return normalizeExtractionForResponse(extraction);
         }
 
         String now = Instant.now().toString();
@@ -773,6 +774,8 @@ public class FeatureStoreService {
             extraction.put("processing_stage", "callback");
             extraction.put("processing_step", "callback_received");
         }
+        extraction.put("callback_ignored", false);
+        extraction.put("callback_status", "APPLIED");
         extraction.put("updated_at", now);
         store.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
 
@@ -805,7 +808,21 @@ public class FeatureStoreService {
                 );
             }
         }
-        return extraction;
+        return normalizeExtractionForResponse(extraction);
+    }
+
+    private Map<String, Object> normalizeExtractionForResponse(Map<String, Object> extraction) {
+        Map<String, Object> hydrated = new HashMap<>(extraction);
+        hydrated.putIfAbsent("processing_stage", "queued");
+        hydrated.putIfAbsent("processing_step", "job_requested");
+        hydrated.putIfAbsent("processing_error_code", null);
+        hydrated.putIfAbsent("processing_error", null);
+        hydrated.putIfAbsent("stt_status", "PENDING");
+        hydrated.putIfAbsent("error_message", null);
+        hydrated.putIfAbsent("callback_ignored", false);
+        hydrated.putIfAbsent("callback_status", "APPLIED");
+        hydrated.putIfAbsent("last_event_version", 0L);
+        return hydrated;
     }
 
     public Map<String, Object> pipeline(String lectureId) {

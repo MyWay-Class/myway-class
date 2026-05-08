@@ -46,6 +46,8 @@ class MediaCallbackVersionIntegrationTest {
 
         JsonNode failedRoot = objectMapper.readTree(failedCallback);
         assertThat(failedRoot.path("data").path("extraction").path("status").asText()).isEqualTo("FAILED");
+        assertThat(failedRoot.path("data").path("extraction").path("processing_error_code").asText()).isEqualTo("PROCESSOR_CALLBACK_FAILED");
+        assertThat(failedRoot.path("data").path("extraction").path("callback_status").asText()).isEqualTo("APPLIED");
         assertThat(failedRoot.path("data").path("extraction").path("last_event_version").asLong()).isEqualTo(2L);
 
         String staleCallback = mockMvc.perform(post("/api/v1/media/extract-audio/callback")
@@ -57,8 +59,11 @@ class MediaCallbackVersionIntegrationTest {
 
         JsonNode staleRoot = objectMapper.readTree(staleCallback);
         assertThat(staleRoot.path("data").path("extraction").path("callback_ignored").asBoolean()).isTrue();
+        assertThat(staleRoot.path("data").path("extraction").path("callback_status").asText()).isEqualTo("IGNORED_STALE");
         assertThat(staleRoot.path("data").path("extraction").path("status").asText()).isEqualTo("FAILED");
         assertThat(staleRoot.path("data").path("extraction").path("last_event_version").asLong()).isEqualTo(2L);
+        assertThat(staleRoot.path("data").path("pipeline").path("audio_status").asText()).isEqualTo("FAILED");
+        assertThat(staleRoot.path("data").path("pipeline").path("processing_error_code").asText()).isEqualTo("PROCESSOR_CALLBACK_FAILED");
 
         String successCallback = mockMvc.perform(post("/api/v1/media/extract-audio/callback")
                         .header("X-Callback-Token", "dev-media-callback-token")
@@ -69,8 +74,23 @@ class MediaCallbackVersionIntegrationTest {
 
         JsonNode successRoot = objectMapper.readTree(successCallback);
         assertThat(successRoot.path("data").path("extraction").path("status").asText()).isEqualTo("PROCESSING");
+        assertThat(successRoot.path("data").path("extraction").path("callback_ignored").asBoolean()).isFalse();
+        assertThat(successRoot.path("data").path("extraction").path("callback_status").asText()).isEqualTo("APPLIED");
         assertThat(successRoot.path("data").path("pipeline").path("transcript_status").asText()).isEqualTo("COMPLETED");
         assertThat(successRoot.path("data").path("extraction").path("last_event_version").asLong()).isEqualTo(3L);
+
+        String staleAfterSuccess = mockMvc.perform(post("/api/v1/media/extract-audio/callback")
+                        .header("X-Callback-Token", "dev-media-callback-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"extraction_id\":\"" + extractionId + "\",\"status\":\"FAILED\",\"error_message\":\"late-error\",\"event_version\":2}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode staleAfterSuccessRoot = objectMapper.readTree(staleAfterSuccess);
+        assertThat(staleAfterSuccessRoot.path("data").path("extraction").path("callback_ignored").asBoolean()).isTrue();
+        assertThat(staleAfterSuccessRoot.path("data").path("extraction").path("callback_status").asText()).isEqualTo("IGNORED_STALE");
+        assertThat(staleAfterSuccessRoot.path("data").path("extraction").path("last_event_version").asLong()).isEqualTo(3L);
+        assertThat(staleAfterSuccessRoot.path("data").path("pipeline").path("transcript_status").asText()).isEqualTo("COMPLETED");
 
         mockMvc.perform(post("/api/v1/media/extract-audio/callback")
                         .contentType(MediaType.APPLICATION_JSON)
