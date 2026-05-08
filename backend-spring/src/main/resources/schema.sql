@@ -19,10 +19,10 @@ CREATE INDEX IF NOT EXISTS idx_scoped_events_owner ON scoped_events(scope, owner
 
 CREATE TABLE IF NOT EXISTS ai_usage_daily (
   user_id VARCHAR(128) NOT NULL,
-  day DATE NOT NULL,
-  count INT NOT NULL DEFAULT 0,
+  usage_day DATE NOT NULL,
+  usage_count INT NOT NULL DEFAULT 0,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (user_id, day)
+  PRIMARY KEY (user_id, usage_day)
 );
 
 CREATE TABLE IF NOT EXISTS ai_usage_log (

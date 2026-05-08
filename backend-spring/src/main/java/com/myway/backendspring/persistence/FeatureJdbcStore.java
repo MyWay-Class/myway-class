@@ -82,7 +82,7 @@ public class FeatureJdbcStore {
     public int getAiUsageDailyCount(String userId, LocalDate day) {
         try {
             Integer count = jdbcTemplate.queryForObject(
-                    "SELECT count FROM ai_usage_daily WHERE user_id = ? AND day = ?",
+                    "SELECT usage_count FROM ai_usage_daily WHERE user_id = ? AND usage_day = ?",
                     Integer.class,
                     userId, day
             );
@@ -95,8 +95,8 @@ public class FeatureJdbcStore {
     public void upsertAiUsageDaily(String userId, LocalDate day, int count) {
         jdbcTemplate.update(
                 """
-                MERGE INTO ai_usage_daily(user_id, day, count, updated_at)
-                KEY(user_id, day)
+                MERGE INTO ai_usage_daily(user_id, usage_day, usage_count, updated_at)
+                KEY(user_id, usage_day)
                 VALUES(?, ?, ?, CURRENT_TIMESTAMP)
                 """,
                 userId, day, count
