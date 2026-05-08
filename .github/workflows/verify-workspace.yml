@@ -38,5 +38,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Patch rollup optional dependency on Linux
+        if: runner.os == 'Linux'
+        run: npm install --no-save @rollup/rollup-linux-x64-gnu
+
       - name: Verify workspace
         run: npm run verify
