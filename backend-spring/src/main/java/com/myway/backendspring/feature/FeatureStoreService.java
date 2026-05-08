@@ -1208,6 +1208,26 @@ public class FeatureStoreService {
         }
     }
 
+    private boolean asBoolean(Object value, boolean defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        String normalized = String.valueOf(value).trim().toLowerCase();
+        if (normalized.isEmpty()) {
+            return defaultValue;
+        }
+        if ("true".equals(normalized) || "1".equals(normalized) || "y".equals(normalized) || "yes".equals(normalized)) {
+            return true;
+        }
+        if ("false".equals(normalized) || "0".equals(normalized) || "n".equals(normalized) || "no".equals(normalized)) {
+            return false;
+        }
+        return defaultValue;
+    }
+
     private long asLong(Object value) {
         if (value == null) {
             return 0L;
