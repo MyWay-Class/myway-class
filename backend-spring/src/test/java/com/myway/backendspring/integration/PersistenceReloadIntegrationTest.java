@@ -40,11 +40,13 @@ class PersistenceReloadIntegrationTest {
         assertThat(aiSettings.get("model")).isEqualTo("gemini-2.5-flash");
 
         Map<String, Object> pipeline = afterRestart.pipeline(lectureId);
-        assertThat(pipeline.get("status")).isEqualTo("READY");
+        assertThat(pipeline.get("lecture_id")).isEqualTo(lectureId);
+        assertThat(pipeline.get("audio_status")).isEqualTo("PROCESSING");
+        assertThat(pipeline.get("transcript_status")).isEqualTo("PENDING");
+        assertThat(pipeline.get("extraction_id")).isEqualTo(extraction.get("id"));
 
         Map<String, Object> transcript = afterRestart.transcript(lectureId);
-        assertThat(transcript).isNotNull();
-        assertThat(transcript.get("lecture_id")).isEqualTo(lectureId);
+        assertThat(transcript).isNull();
 
         List<Map<String, Object>> extractions = afterRestart.extractions(lectureId);
         assertThat(extractions).isNotEmpty();
