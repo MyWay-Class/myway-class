@@ -15,6 +15,7 @@
     "build:frontend": "npm --workspace @myway/frontend run build",
     "build:backend": "cd backend-spring && mvnw.cmd -DskipTests package",
     "test:backend": "cd backend-spring && mvnw.cmd test",
+    "verify": "npm run build:frontend && npm run test:backend",
     "build:backend:legacy": "npm --workspace @myway/backend run build",
     "build": "npm run build:frontend && npm run build:backend"
   }
