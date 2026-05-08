@@ -197,14 +197,14 @@ public class MediaController {
     ) {
         String resolvedToken = (token != null && !token.isBlank()) ? token : callbackSecret;
         if (resolvedToken == null || resolvedToken.isBlank() || !resolvedToken.equals(callbackToken)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "유효한 callback token이 필요합니다."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("CALLBACK_UNAUTHORIZED", "유효한 callback token이 필요합니다."));
         }
         if (body == null) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID", "callback payload가 올바르지 않습니다."));
+            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "callback payload가 올바르지 않습니다."));
         }
         String extractionId = body.extraction_id() == null ? "" : body.extraction_id().trim();
         if (extractionId.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID", "callback payload가 올바르지 않습니다."));
+            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "callback payload가 올바르지 않습니다."));
         }
         long eventVersion = body.event_version() != null ? body.event_version() : 1L;
         String status = body.status() == null ? "COMPLETED" : body.status();
@@ -224,7 +224,7 @@ public class MediaController {
                 body.channels()
         );
         if (result == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "오디오 추출 기록을 찾을 수 없습니다."));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("CALLBACK_EXTRACTION_NOT_FOUND", "오디오 추출 기록을 찾을 수 없습니다."));
         }
         if (Boolean.TRUE.equals(result.get("callback_ignored"))) {
             return ResponseEntity.ok(ApiResponse.success(

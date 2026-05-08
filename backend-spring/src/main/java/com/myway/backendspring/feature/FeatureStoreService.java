@@ -41,7 +41,6 @@ public class FeatureStoreService {
     private static final String CUSTOM_COURSE_SCOPE = "custom_course";
     private static final String ADMIN_ASSIGNMENT_SCOPE = "admin_assignment";
     private static final String AI_USAGE_SCOPE = "ai_usage_daily";
-    private static final String AI_LOG_SCOPE = "ai_log";
     private static final int PUBLIC_STT_MAX_DURATION_MS = 180_000;
     private static final int FALLBACK_TRANSCRIPT_DURATION_MS = 120_000;
     private static final int FALLBACK_SEGMENT_MIN_MS = 1_000;
@@ -124,10 +123,18 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> aiLogs(String userId) {
-        List<Map<String, Object>> rows = store.listAiUsageLogs(userId);
-        if (rows.isEmpty()) {
-            rows = store.listEventsByOwner(AI_LOG_SCOPE, userId);
-        }
+        List<Map<String, Object>> rows = store.listAiUsageLogs(userId).stream()
+                .map(item -> {
+                    Map<String, Object> mapped = new HashMap<>();
+                    mapped.put("id", String.valueOf(item.getOrDefault("id", "")));
+                    mapped.put("user_id", String.valueOf(item.getOrDefault("user_id", userId)));
+                    mapped.put("feature", String.valueOf(item.getOrDefault("feature", "request")));
+                    mapped.put("success", asBoolean(item.get("success"), false));
+                    mapped.put("input_text", String.valueOf(item.getOrDefault("input_text", "")));
+                    mapped.put("created_at", String.valueOf(item.getOrDefault("created_at", Instant.now().toString())));
+                    return mapped;
+                })
+                .toList();
         return Map.of("user_id", userId, "items", rows, "count", rows.size());
     }
 
@@ -295,12 +302,10 @@ public class FeatureStoreService {
                 })
                 .count();
         } else if (usedByLogs == 0) {
-            usedByLogs = (int) store.listEventsByOwner(AI_LOG_SCOPE, userId).stream()
-                .filter(item -> {
-                    Instant createdAt = parseInstantOrNull(item.get("created_at"));
-                    return createdAt != null;
-                })
-                .count();
+            usedByLogs = (int) store.listActivityEvents(userId, 100).stream()
+                    .map(item -> String.valueOf(item.getOrDefault("type", "")))
+                    .filter(type -> type.startsWith("ai_"))
+                    .count();
         }
         int used = Math.max(usedToday, usedByLogs);
         return used < limit;
@@ -321,13 +326,6 @@ public class FeatureStoreService {
 
         String logId = UUID.randomUUID().toString();
         store.insertAiUsageLog(logId, userId, feature, success, inputText);
-        Map<String, Object> log = new HashMap<>();
-        log.put("id", logId);
-        log.put("feature", feature);
-        log.put("success", success);
-        log.put("input_text", inputText);
-        log.put("created_at", Instant.now().toString());
-        store.insertEvent(AI_LOG_SCOPE, userId, String.valueOf(log.get("id")), log);
         if (activityEventService != null) {
             activityEventService.append(
                     userId,
@@ -723,7 +721,8 @@ public class FeatureStoreService {
         long currentVersion = asLong(extraction.get("last_event_version"));
         if (eventVersion <= currentVersion) {
             extraction.put("callback_ignored", true);
-            return extraction;
+            extraction.put("callback_status", "IGNORED_STALE");
+            return normalizeExtractionForResponse(extraction);
         }
 
         String now = Instant.now().toString();
@@ -775,6 +774,8 @@ public class FeatureStoreService {
             extraction.put("processing_stage", "callback");
             extraction.put("processing_step", "callback_received");
         }
+        extraction.put("callback_ignored", false);
+        extraction.put("callback_status", "APPLIED");
         extraction.put("updated_at", now);
         store.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
 
@@ -807,7 +808,21 @@ public class FeatureStoreService {
                 );
             }
         }
-        return extraction;
+        return normalizeExtractionForResponse(extraction);
+    }
+
+    private Map<String, Object> normalizeExtractionForResponse(Map<String, Object> extraction) {
+        Map<String, Object> hydrated = new HashMap<>(extraction);
+        hydrated.putIfAbsent("processing_stage", "queued");
+        hydrated.putIfAbsent("processing_step", "job_requested");
+        hydrated.putIfAbsent("processing_error_code", null);
+        hydrated.putIfAbsent("processing_error", null);
+        hydrated.putIfAbsent("stt_status", "PENDING");
+        hydrated.putIfAbsent("error_message", null);
+        hydrated.putIfAbsent("callback_ignored", false);
+        hydrated.putIfAbsent("callback_status", "APPLIED");
+        hydrated.putIfAbsent("last_event_version", 0L);
+        return hydrated;
     }
 
     public Map<String, Object> pipeline(String lectureId) {
@@ -1191,6 +1206,26 @@ public class FeatureStoreService {
         } catch (Exception ignored) {
             return 0;
         }
+    }
+
+    private boolean asBoolean(Object value, boolean defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        String normalized = String.valueOf(value).trim().toLowerCase();
+        if (normalized.isEmpty()) {
+            return defaultValue;
+        }
+        if ("true".equals(normalized) || "1".equals(normalized) || "y".equals(normalized) || "yes".equals(normalized)) {
+            return true;
+        }
+        if ("false".equals(normalized) || "0".equals(normalized) || "n".equals(normalized) || "no".equals(normalized)) {
+            return false;
+        }
+        return defaultValue;
     }
 
     private long asLong(Object value) {

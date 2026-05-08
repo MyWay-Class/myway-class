@@ -56,7 +56,7 @@ class MediaContractTest {
                         .content("{\"extraction_id\":\"abc\",\"status\":\"COMPLETED\"}"))
                 .andExpect(status().isForbidden())
                 .andReturn(),
-                "FORBIDDEN");
+                "CALLBACK_UNAUTHORIZED");
     }
 
     private String loginAndGetToken(String userId) throws Exception {
