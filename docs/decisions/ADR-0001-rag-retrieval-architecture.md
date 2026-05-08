@@ -3,6 +3,8 @@
 - Status: Accepted
 - Date: 2026-05-07
 - Owners: Backend / AI Layer
+- Supersedes: N/A
+- Superseded by: N/A
 
 ## 배경(Context)
 현재 LMS AI 질의응답은 강의 STT/노트 기반 검색이 필요하며, 응답 groundedness와 운영비를 동시에 맞춰야 한다.

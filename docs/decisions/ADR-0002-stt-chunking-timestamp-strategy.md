@@ -3,6 +3,8 @@
 - Status: Accepted
 - Date: 2026-05-07
 - Owners: Backend / Media Pipeline
+- Supersedes: N/A
+- Superseded by: N/A
 
 ## 배경(Context)
 강의 전사(STT) 결과를 RAG/숏폼/학습 UI에서 공통 재사용하려면, 세그먼트 청킹과 타임스탬프 보존 전략이 필요하다.

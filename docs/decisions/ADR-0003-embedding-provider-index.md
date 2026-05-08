@@ -3,6 +3,8 @@
 - Status: Proposed
 - Date: 2026-05-07
 - Owners: Backend / Infra
+- Supersedes: N/A
+- Superseded by: N/A
 
 ## 배경(Context)
 RAG 품질 고도화를 위해 임베딩 모델과 벡터 인덱스 저장소 조합을 표준화해야 한다.
