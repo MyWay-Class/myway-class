@@ -1,0 +1,26 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReviewScorecard",
+  "type": "object",
+  "required": ["taskId", "scores", "required_pass", "total", "verdict", "timestamp"],
+  "properties": {
+    "taskId": { "type": "string", "minLength": 1 },
+    "scores": {
+      "type": "object",
+      "required": ["tests", "style", "security", "performance"],
+      "properties": {
+        "tests": { "type": "number", "minimum": 0, "maximum": 100 },
+        "style": { "type": "number", "minimum": 0, "maximum": 100 },
+        "security": { "type": "number", "minimum": 0, "maximum": 100 },
+        "performance": { "type": "number", "minimum": 0, "maximum": 100 }
+      },
+      "additionalProperties": false
+    },
+    "required_pass": { "type": "boolean" },
+    "total": { "type": "number", "minimum": 0, "maximum": 100 },
+    "verdict": { "type": "string", "enum": ["approve", "reject"] },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "timestamp": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

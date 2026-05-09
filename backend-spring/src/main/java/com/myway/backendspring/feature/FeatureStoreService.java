@@ -181,6 +181,7 @@ public class FeatureStoreService {
             // When only daily_limit is patched, start a new quota window for deterministic quota tests.
             if (patch.containsKey("daily_limit") && patch.size() == 1) {
                 settings.put("quota_window_started_at", Instant.now().toString());
+                store.upsertAiUsageDaily(userId, java.time.LocalDate.now(), 0);
             } else if (patch.containsKey("daily_limit")) {
                 settings.remove("quota_window_started_at");
             }
@@ -319,7 +320,7 @@ public class FeatureStoreService {
                     .filter(type -> type.startsWith("ai_"))
                     .count();
         }
-        int used = Math.max(usedToday, usedByLogs);
+        int used = quotaWindowStart != null ? usedByLogs : Math.max(usedToday, usedByLogs);
         return used < limit;
     }
 

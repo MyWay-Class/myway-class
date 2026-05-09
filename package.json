@@ -17,6 +17,14 @@
     "test:backend": "node scripts/run-maven-wrapper.mjs test",
     "verify": "npm run build:frontend && npm run test:backend",
     "build:backend:legacy": "npm --workspace @myway/backend run build",
-    "build": "npm run build:frontend && npm run build:backend"
+    "build": "npm run build:frontend && npm run build:backend",
+    "orch:run": "tsx tools/orchestrator/run.ts",
+    "orch:checks": "tsx tools/orchestrator/checks.ts"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "tsx": "^4.21.0",
+    "yaml": "^2.8.4"
   }
 }

@@ -1,0 +1,10 @@
+﻿version: 1
+retry:
+  worker_max_retries: 1
+  check_max_retries: 1
+timeouts:
+  worker_timeout_minutes: 15
+  review_timeout_minutes: 10
+fallback:
+  on_repeated_failure: manual_review_required
+  allow_partial_report: true

@@ -1,0 +1,16 @@
+﻿version: 1
+weights:
+  tests: 0.4
+  style: 0.2
+  security: 0.2
+  performance: 0.2
+required:
+  tests:
+    min: 80
+  security:
+    min: 70
+cutoff:
+  total_min: 75
+decision_map:
+  pass: approve
+  fail: reject
