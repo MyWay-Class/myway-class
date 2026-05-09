@@ -86,6 +86,16 @@ class MediaContractTest {
     }
 
     @Test
+    void uploadVideo_shouldRequireLectureId_forInstructorOrAdmin() throws Exception {
+        String instructorAuth = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/media/upload-video")
+                        .header("Authorization", instructorAuth))
+                .andExpect(status().isBadRequest())
+                .andReturn(), "LECTURE_ID_REQUIRED");
+    }
+
+    @Test
     void mediaProviders_shouldExposeCloudflareAsDefaultPolicyForTranscribePlan() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
 
