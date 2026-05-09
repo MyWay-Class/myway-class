@@ -169,7 +169,8 @@ public class FeatureStoreService {
         if (settings != null) {
             merged.putAll(settings);
         }
-        enforceAiProviderPolicy(merged);
+        merged.putIfAbsent("provider", resolvePolicyAiProvider());
+        merged.putIfAbsent("model", resolvePolicyAiModel());
         return merged;
     }
 
@@ -184,7 +185,6 @@ public class FeatureStoreService {
                 settings.remove("quota_window_started_at");
             }
         }
-        enforceAiProviderPolicy(settings);
         store.upsertKv(AI_SETTINGS_SCOPE, userId, settings);
         return settings;
     }
@@ -1218,14 +1218,6 @@ public class FeatureStoreService {
         } catch (Exception ignored) {
             return 0;
         }
-    }
-
-    private void enforceAiProviderPolicy(Map<String, Object> settings) {
-        if (settings == null) {
-            return;
-        }
-        settings.put("provider", resolvePolicyAiProvider());
-        settings.put("model", resolvePolicyAiModel());
     }
 
     private String resolvePolicyAiProvider() {

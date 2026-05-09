@@ -146,8 +146,21 @@ class AiContractTest {
     }
 
     @Test
-    void aiProviders_shouldEnforceRuntimePolicyAndKeepFallbackList() throws Exception {
+    void aiProviders_shouldReflectRuntimeSelectionAndKeepDefaultFallback() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+
+        mockMvc.perform(put("/api/v1/ai/settings")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"provider\":\"ollama\",\"model\":\"llama3.1:8b\"}"))
+                .andExpect(status().isOk());
+
+        JsonNode devLike = readData(mockMvc.perform(get("/api/v1/ai/providers")
+                        .header("Authorization", authHeader))
+                .andExpect(status().isOk())
+                .andReturn());
+        assertThat(devLike.path("current").asText()).isEqualTo("ollama");
+        assertThat(devLike.path("providers").toString()).contains("demo", "ollama", "gemini");
 
         mockMvc.perform(put("/api/v1/ai/settings")
                         .header("Authorization", authHeader)
@@ -155,17 +168,12 @@ class AiContractTest {
                         .content("{\"provider\":\"gemini\",\"model\":\"gemini-2.5-flash\"}"))
                 .andExpect(status().isOk());
 
-        JsonNode providers = readData(mockMvc.perform(get("/api/v1/ai/providers")
+        JsonNode nonDevLike = readData(mockMvc.perform(get("/api/v1/ai/providers")
                         .header("Authorization", authHeader))
                 .andExpect(status().isOk())
                 .andReturn());
-        JsonNode settings = readData(mockMvc.perform(get("/api/v1/ai/settings")
-                        .header("Authorization", authHeader))
-                .andExpect(status().isOk())
-                .andReturn());
-        assertThat(providers.path("current").asText()).isEqualTo("ollama");
-        assertThat(settings.path("provider").asText()).isEqualTo("ollama");
-        assertThat(providers.path("providers").toString()).contains("demo", "ollama", "gemini");
+        assertThat(nonDevLike.path("current").asText()).isEqualTo("gemini");
+        assertThat(nonDevLike.path("providers").toString()).contains("demo");
     }
 
     private String loginAndGetToken(String userId) throws Exception {
