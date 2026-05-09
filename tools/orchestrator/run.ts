@@ -154,6 +154,10 @@ const scorecard = buildScorecard(taskId, checksOutput.checks, rules);
 validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), scorecard, "review scorecard");
 
 const allWorkersPassed = workerReports.every((report) => report.risks.length === 0);
+const failedWorkers = workerReports
+  .filter((report) => report.risks.length > 0)
+  .map((report) => ({ role: report.role, risks: report.risks }));
+const failedChecks = checksOutput.checks.filter((check) => !check.pass).map((check) => check.name);
 const approved = allWorkersPassed && scorecard.verdict === "approve";
 const finalState = approved ? "approved" : "rejected";
 stateLog("review", finalState, "manager");
@@ -173,5 +177,18 @@ writeFileSync(join(workspaceDir, "decision.json"), JSON.stringify(decision, null
 auditLog({ type: "decision", decision: decision.decision, state: finalState });
 
 process.stdout.write(
-  JSON.stringify({ taskId, profile, state: finalState, workerPass: allWorkersPassed, checksPass: checksOutput.pass, checksHash }, null, 2)
+  JSON.stringify(
+    {
+      taskId,
+      profile,
+      state: finalState,
+      workerPass: allWorkersPassed,
+      checksPass: checksOutput.pass,
+      checksHash,
+      failedWorkers,
+      failedChecks
+    },
+    null,
+    2
+  )
 );
