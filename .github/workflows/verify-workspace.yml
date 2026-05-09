@@ -43,8 +43,4 @@ jobs:
         run: npm install --no-save @rollup/rollup-linux-x64-gnu
 
       - name: Verify workspace
-        run: |
-          npm run build:frontend
-          cd backend-spring
-          chmod +x mvnw
-          ./mvnw test
+        run: npm run verify
