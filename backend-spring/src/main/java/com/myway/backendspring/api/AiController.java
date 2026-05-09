@@ -146,7 +146,7 @@ public class AiController {
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!featureStore.canConsumeAi(session.user().id())) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
         String question = text(body, "question");
-        if (question.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("QUESTION_REQUIRED", "question가 필요합니다."));
+        if (question.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("QUESTION_REQUIRED", "question이 필요합니다."));
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body);
         if (lectureError != null) return lectureError;
         Map<String, Object> data = new HashMap<>();
