@@ -18,7 +18,12 @@ function hasScript(name: string, scripts: Record<string, string>): boolean {
 }
 
 function run(cmd: string, cwd: string): boolean {
-  const out = spawnSync(cmd, { cwd, shell: true, stdio: "pipe" });
+  const out = spawnSync(cmd, {
+    cwd,
+    shell: true,
+    stdio: "pipe",
+    maxBuffer: 20 * 1024 * 1024
+  });
   return out.status === 0;
 }
 

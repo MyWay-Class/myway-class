@@ -50,7 +50,13 @@ function auditLog(event: Record<string, unknown>): void {
 }
 
 function runCmd(cmd: string, timeoutMs: number): boolean {
-  const out = spawnSync(cmd, { cwd: projectDir, shell: true, stdio: "pipe", timeout: timeoutMs });
+  const out = spawnSync(cmd, {
+    cwd: projectDir,
+    shell: true,
+    stdio: "pipe",
+    timeout: timeoutMs,
+    maxBuffer: 20 * 1024 * 1024
+  });
   return out.status === 0;
 }
 
