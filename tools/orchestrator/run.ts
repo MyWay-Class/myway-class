@@ -72,6 +72,7 @@ function runWorker(role: WorkerRole): WorkerReport {
   let summary = "no-op";
   const baselineSkips = profile === "baseline" && (role === "backend-dev" || role === "test-engineer");
   const testOwnedByChecks = role === "test-engineer";
+  const frontendOwnedByVerifyWorkflow = role === "frontend-dev";
 
   if (baselineSkips) {
     summary = `${role} skipped in baseline profile`;
@@ -79,12 +80,15 @@ function runWorker(role: WorkerRole): WorkerReport {
   if (!baselineSkips && testOwnedByChecks) {
     summary = `${role} skipped: strict test execution is owned by checks.ts`;
   }
+  if (!baselineSkips && frontendOwnedByVerifyWorkflow) {
+    summary = `${role} skipped: frontend build is covered by verify-workspace workflow`;
+  }
 
   if (!baselineSkips && role === "backend-dev") {
     pass = runWithRetry(() => runCmd("npm run build:backend", workerTimeoutMs), workerMaxRetries);
     summary = pass ? "backend build/contract check passed" : "backend build/contract check failed";
   }
-  if (role === "frontend-dev") {
+  if (!baselineSkips && !frontendOwnedByVerifyWorkflow && role === "frontend-dev") {
     pass = runWithRetry(() => runCmd("npm run build:frontend", workerTimeoutMs), workerMaxRetries);
     summary = pass ? "frontend build passed" : "frontend build failed";
   }
