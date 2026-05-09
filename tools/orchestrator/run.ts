@@ -50,7 +50,13 @@ function auditLog(event: Record<string, unknown>): void {
 }
 
 function runCmd(cmd: string, timeoutMs: number): boolean {
-  const out = spawnSync(cmd, { cwd: projectDir, shell: true, stdio: "pipe", timeout: timeoutMs });
+  const out = spawnSync(cmd, {
+    cwd: projectDir,
+    shell: true,
+    stdio: "pipe",
+    timeout: timeoutMs,
+    maxBuffer: 20 * 1024 * 1024
+  });
   return out.status === 0;
 }
 
@@ -65,20 +71,28 @@ function runWorker(role: WorkerRole): WorkerReport {
   let pass = true;
   let summary = "no-op";
   const baselineSkips = profile === "baseline" && (role === "backend-dev" || role === "test-engineer");
+  const testOwnedByChecks = role === "test-engineer";
+  const frontendOwnedByVerifyWorkflow = role === "frontend-dev";
 
   if (baselineSkips) {
     summary = `${role} skipped in baseline profile`;
+  }
+  if (!baselineSkips && testOwnedByChecks) {
+    summary = `${role} skipped: strict test execution is owned by checks.ts`;
+  }
+  if (!baselineSkips && frontendOwnedByVerifyWorkflow) {
+    summary = `${role} skipped: frontend build is covered by verify-workspace workflow`;
   }
 
   if (!baselineSkips && role === "backend-dev") {
     pass = runWithRetry(() => runCmd("npm run build:backend", workerTimeoutMs), workerMaxRetries);
     summary = pass ? "backend build/contract check passed" : "backend build/contract check failed";
   }
-  if (role === "frontend-dev") {
+  if (!baselineSkips && !frontendOwnedByVerifyWorkflow && role === "frontend-dev") {
     pass = runWithRetry(() => runCmd("npm run build:frontend", workerTimeoutMs), workerMaxRetries);
     summary = pass ? "frontend build passed" : "frontend build failed";
   }
-  if (!baselineSkips && role === "test-engineer") {
+  if (!baselineSkips && !testOwnedByChecks && role === "test-engineer") {
     pass = runWithRetry(() => runCmd("npm run test:backend", workerTimeoutMs), workerMaxRetries);
     summary = pass ? "backend tests passed" : "backend tests failed";
   }
@@ -144,6 +158,10 @@ const scorecard = buildScorecard(taskId, checksOutput.checks, rules);
 validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), scorecard, "review scorecard");
 
 const allWorkersPassed = workerReports.every((report) => report.risks.length === 0);
+const failedWorkers = workerReports
+  .filter((report) => report.risks.length > 0)
+  .map((report) => ({ role: report.role, risks: report.risks }));
+const failedChecks = checksOutput.checks.filter((check) => !check.pass).map((check) => check.name);
 const approved = allWorkersPassed && scorecard.verdict === "approve";
 const finalState = approved ? "approved" : "rejected";
 stateLog("review", finalState, "manager");
@@ -163,5 +181,18 @@ writeFileSync(join(workspaceDir, "decision.json"), JSON.stringify(decision, null
 auditLog({ type: "decision", decision: decision.decision, state: finalState });
 
 process.stdout.write(
-  JSON.stringify({ taskId, profile, state: finalState, workerPass: allWorkersPassed, checksPass: checksOutput.pass, checksHash }, null, 2)
+  JSON.stringify(
+    {
+      taskId,
+      profile,
+      state: finalState,
+      workerPass: allWorkersPassed,
+      checksPass: checksOutput.pass,
+      checksHash,
+      failedWorkers,
+      failedChecks
+    },
+    null,
+    2
+  )
 );
