@@ -39,6 +39,7 @@ MyWayClass의 기능, 기획, 구현 기준 문서를 한곳에서 찾기 쉽게
 21. `docs/project/19-deployment.md`
 22. `docs/project/20-status-and-next-steps.md`
 23. `docs/project/21-free-tier-public-test-policy.md`
+24. `docs/project/22-orchestration-operations.md`
 
 ## 아키텍처 결정 / 평가 문서
 - `docs/decisions/ADR-0001-rag-retrieval-architecture.md`

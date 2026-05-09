@@ -11,3 +11,11 @@ tmp/
 frontend.zip
 temp-sample-10s.mp4
 
+.github/.tmp_*.md
+_workspace/
+backend-spring/target/
+backend-spring/data/
+capture-ui.cjs
+myway-desktop.png
+myway-mobile.png
+run-backend.cmd

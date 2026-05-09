@@ -16,11 +16,20 @@
 - `baseline` 결과만으로 `dev` 머지를 승인하지 않는다.
 
 ## 필수 머지 조건(`dev`)
-- GitHub required check: `orchestration-gate / gate`
-- PR 리뷰 승인 1개 이상 + CODEOWNERS 리뷰
+- GitHub required check: `gate` (`orchestration-gate` 워크플로우)
 - Conversation resolution 완료
 
 ## 운영 수칙
 - 오케스트레이션 결과는 `_workspace/decision.json`, `_workspace/scorecard.json`, `_workspace/logs/*.jsonl`로 추적한다.
 - `request_changes` 또는 `rejected` 시 원인 워커 리포트(`_workspace/reports/*.json`)를 우선 확인한다.
 - 임시/산출물 파일(`_workspace/`, `.github/.tmp_*`, `backend-spring/target/`)은 커밋하지 않는다.
+
+## 실행 예시
+1. strict 기본 검증
+- `set ORCH_PROFILE=strict && npm run orch:run`
+
+2. 체크만 빠르게 확인
+- `set ORCH_PROFILE=strict && npm run orch:checks`
+
+3. 로컬 빠른 확인(예외)
+- `set ORCH_PROFILE=baseline && npm run orch:run`
