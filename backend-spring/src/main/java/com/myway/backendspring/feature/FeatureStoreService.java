@@ -41,6 +41,12 @@ public class FeatureStoreService {
     private static final String CUSTOM_COURSE_SCOPE = "custom_course";
     private static final String ADMIN_ASSIGNMENT_SCOPE = "admin_assignment";
     private static final String AI_USAGE_SCOPE = "ai_usage_daily";
+    private static final String DEV_AI_PROVIDER = "ollama";
+    private static final String NON_DEV_AI_PROVIDER = "gemini";
+    private static final String DEV_AI_MODEL = "llama3.1:8b";
+    private static final String NON_DEV_AI_MODEL = "gemini-1.5-flash";
+    private static final String STT_DEFAULT_PROVIDER = "cloudflare";
+    private static final String STT_DEFAULT_MODEL = "cf-whisper";
     private static final int PUBLIC_STT_MAX_DURATION_MS = 180_000;
     private static final int FALLBACK_TRANSCRIPT_DURATION_MS = 120_000;
     private static final int FALLBACK_SEGMENT_MIN_MS = 1_000;
@@ -52,6 +58,7 @@ public class FeatureStoreService {
     private final String mediaProcessorToken;
     private final String mediaCallbackSecret;
     private final String mediaPublicBaseUrl;
+    private final String runtimeEnv;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
@@ -63,7 +70,8 @@ public class FeatureStoreService {
             @Value("${myway.media.processor.url:}") String mediaProcessorUrl,
             @Value("${myway.media.processor.token:}") String mediaProcessorToken,
             @Value("${myway.media.callback.secret:}") String mediaCallbackSecret,
-            @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl
+            @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl,
+            @Value("${myway.runtime.env:${SPRING_PROFILES_ACTIVE:dev}}") String runtimeEnv
     ) {
         this.store = store;
         this.learningService = learningService;
@@ -73,21 +81,24 @@ public class FeatureStoreService {
         this.mediaProcessorToken = mediaProcessorToken == null ? "" : mediaProcessorToken.trim();
         this.mediaCallbackSecret = mediaCallbackSecret == null ? "" : mediaCallbackSecret.trim();
         this.mediaPublicBaseUrl = mediaPublicBaseUrl == null ? "http://127.0.0.1:8787" : mediaPublicBaseUrl.trim();
+        this.runtimeEnv = runtimeEnv == null ? "dev" : runtimeEnv.trim();
         ensureDefaults();
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
     public FeatureStoreService(FeatureJdbcStore store, int shortformMaxRetry) {
-        this(store, new DemoLearningService(), null, shortformMaxRetry, "", "", "", "http://127.0.0.1:8787");
+        this(store, new DemoLearningService(), null, shortformMaxRetry, "", "", "", "http://127.0.0.1:8787", "dev");
     }
 
     private void ensureDefaults() {
         Map<String, Object> settings = store.getKv(AI_SETTINGS_SCOPE, "global");
+        String policyProvider = resolvePolicyAiProvider();
+        String policyModel = resolvePolicyAiModel();
         if (settings == null) {
             store.upsertKv(AI_SETTINGS_SCOPE, "global", new HashMap<>(Map.of(
                     "daily_limit", 100,
-                    "provider", "demo",
-                    "model", "demo-v1"
+                    "provider", policyProvider,
+                    "model", policyModel
             )));
             return;
         }
@@ -97,12 +108,12 @@ public class FeatureStoreService {
             settings.put("daily_limit", 100);
             changed = true;
         }
-        if (!settings.containsKey("provider")) {
-            settings.put("provider", "demo");
+        if (!settings.containsKey("provider") || !policyProvider.equals(String.valueOf(settings.get("provider")))) {
+            settings.put("provider", policyProvider);
             changed = true;
         }
-        if (!settings.containsKey("model")) {
-            settings.put("model", "demo-v1");
+        if (!settings.containsKey("model") || !policyModel.equals(String.valueOf(settings.get("model")))) {
+            settings.put("model", policyModel);
             changed = true;
         }
         if (changed) {
@@ -151,14 +162,15 @@ public class FeatureStoreService {
     public Map<String, Object> aiSettings(String userId) {
         Map<String, Object> global = store.getKv(AI_SETTINGS_SCOPE, "global");
         Map<String, Object> settings = store.getKv(AI_SETTINGS_SCOPE, userId);
-        if (settings == null) {
-            return global != null ? global : Map.of();
-        }
         Map<String, Object> merged = new HashMap<>();
         if (global != null) {
             merged.putAll(global);
         }
-        merged.putAll(settings);
+        if (settings != null) {
+            merged.putAll(settings);
+        }
+        merged.putIfAbsent("provider", resolvePolicyAiProvider());
+        merged.putIfAbsent("model", resolvePolicyAiModel());
         return merged;
     }
 
@@ -205,7 +217,7 @@ public class FeatureStoreService {
                         "capabilities", List.of("transcribe", "segment", "pipeline")
                 )
         );
-        List<String> chain = List.of("cloudflare", "gemini", "demo");
+        List<String> chain = List.of(STT_DEFAULT_PROVIDER, "gemini", "demo");
         List<Map<String, Object>> steps = new ArrayList<>();
         for (int i = 0; i < chain.size(); i++) {
             String provider = chain.get(i);
@@ -217,9 +229,9 @@ public class FeatureStoreService {
             steps.add(Map.of("provider", provider, "status", status, "reason", reason));
         }
         List<Map<String, Object>> plans = List.of(
-                Map.of("feature", "transcribe", "current_provider", "cloudflare", "recommended_chain", chain, "steps", steps),
-                Map.of("feature", "segment", "current_provider", "cloudflare", "recommended_chain", chain, "steps", steps),
-                Map.of("feature", "pipeline", "current_provider", "cloudflare", "recommended_chain", chain, "steps", steps)
+                Map.of("feature", "transcribe", "current_provider", STT_DEFAULT_PROVIDER, "recommended_chain", chain, "steps", steps),
+                Map.of("feature", "segment", "current_provider", STT_DEFAULT_PROVIDER, "recommended_chain", chain, "steps", steps),
+                Map.of("feature", "pipeline", "current_provider", STT_DEFAULT_PROVIDER, "recommended_chain", chain, "steps", steps)
         );
         return Map.of(
                 "generated_at", Instant.now().toString(),
@@ -577,8 +589,8 @@ public class FeatureStoreService {
         int durationMs = Math.min(requestedDurationMs, PUBLIC_STT_MAX_DURATION_MS);
 
         String normalizedLanguage = language == null || language.isBlank() ? "ko" : language;
-        String resolvedProvider = sttProvider == null || sttProvider.isBlank() ? "demo" : sttProvider.trim();
-        String resolvedModel = sttModel == null || sttModel.isBlank() ? "demo-stt-v1" : sttModel.trim();
+        String resolvedProvider = sttProvider == null || sttProvider.isBlank() ? STT_DEFAULT_PROVIDER : sttProvider.trim();
+        String resolvedModel = sttModel == null || sttModel.isBlank() ? STT_DEFAULT_MODEL : sttModel.trim();
         String baseText = buildLectureNarrative(lectureId);
         List<Map<String, Object>> segments = splitIntoSegments(baseText, durationMs);
         String transcriptId = String.valueOf(extraction.getOrDefault("id", UUID.randomUUID().toString()));
@@ -1206,6 +1218,28 @@ public class FeatureStoreService {
         } catch (Exception ignored) {
             return 0;
         }
+    }
+
+    private String resolvePolicyAiProvider() {
+        return isNonDevRuntime() ? NON_DEV_AI_PROVIDER : DEV_AI_PROVIDER;
+    }
+
+    private String resolvePolicyAiModel() {
+        return isNonDevRuntime() ? NON_DEV_AI_MODEL : DEV_AI_MODEL;
+    }
+
+    private boolean isNonDevRuntime() {
+        String normalized = runtimeEnv == null ? "" : runtimeEnv.trim().toLowerCase();
+        if (normalized.isBlank()) {
+            return false;
+        }
+        String[] tokens = normalized.split("[,;\\s]+");
+        for (String token : tokens) {
+            if ("prod".equals(token) || "production".equals(token) || "staging".equals(token) || "stage".equals(token)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean asBoolean(Object value, boolean defaultValue) {
