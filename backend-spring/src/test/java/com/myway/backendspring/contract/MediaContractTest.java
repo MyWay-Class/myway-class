@@ -60,6 +60,32 @@ class MediaContractTest {
     }
 
     @Test
+    void mediaManagementEndpoints_shouldAllowOnlyInstructorOrAdmin() throws Exception {
+        String studentAuth = "Bearer " + loginAndGetToken("usr_std_001");
+        String instructorAuth = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/media/extract-audio")
+                        .header("Authorization", studentAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isForbidden())
+                .andReturn(), "FORBIDDEN");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/media/upload-video")
+                        .header("Authorization", studentAuth)
+                        .queryParam("lecture_id", "lec_java_01"))
+                .andExpect(status().isForbidden())
+                .andReturn(), "FORBIDDEN");
+
+        assertSuccessEnvelope(mockMvc.perform(post("/api/v1/media/extract-audio")
+                        .header("Authorization", instructorAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+    }
+
+    @Test
     void mediaProviders_shouldExposeCloudflareAsDefaultPolicyForTranscribePlan() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
 
