@@ -132,6 +132,22 @@ class MediaContractTest {
         assertThat(transcript.path("stt_model").asText()).isEqualTo("cf-whisper");
     }
 
+    @Test
+    void transcribe_shouldCapDurationToPublicPolicyLimit() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        JsonNode transcript = readData(mockMvc.perform(post("/api/v1/media/transcribe")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\",\"language\":\"ko\",\"duration_ms\":999999}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+
+        assertThat(transcript.path("duration_ms").asInt()).isEqualTo(180000);
+        assertThat(transcript.path("stt_provider").asText()).isEqualTo("cloudflare");
+        assertThat(transcript.path("stt_model").asText()).isEqualTo("cf-whisper");
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
