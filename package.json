@@ -10,11 +10,11 @@
   "scripts": {
     "dev": "npm run dev:frontend",
     "dev:frontend": "npm --workspace @myway/frontend run dev",
-    "dev:backend": "cd backend-spring && mvnw.cmd spring-boot:run",
+    "dev:backend": "node scripts/run-maven-wrapper.mjs spring-boot:run",
     "dev:backend:legacy": "npm --workspace @myway/backend run dev",
     "build:frontend": "npm --workspace @myway/frontend run build",
-    "build:backend": "cd backend-spring && mvnw.cmd -DskipTests package",
-    "test:backend": "cd backend-spring && mvnw.cmd test",
+    "build:backend": "node scripts/run-maven-wrapper.mjs -DskipTests package",
+    "test:backend": "node scripts/run-maven-wrapper.mjs test",
     "verify": "npm run build:frontend && npm run test:backend",
     "build:backend:legacy": "npm --workspace @myway/backend run build",
     "build": "npm run build:frontend && npm run build:backend"
