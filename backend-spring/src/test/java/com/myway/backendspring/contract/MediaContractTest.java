@@ -59,6 +59,53 @@ class MediaContractTest {
                 "CALLBACK_UNAUTHORIZED");
     }
 
+    @Test
+    void mediaProviders_shouldExposeCloudflareAsDefaultPolicyForTranscribePlan() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        JsonNode data = readData(mockMvc.perform(get("/api/v1/media/providers")
+                        .header("Authorization", authHeader))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        JsonNode plans = data.path("plans");
+        JsonNode transcribePlan = null;
+        for (JsonNode plan : plans) {
+            if ("transcribe".equals(plan.path("feature").asText())) {
+                transcribePlan = plan;
+                break;
+            }
+        }
+        assertThat(transcribePlan).isNotNull();
+        assertThat(transcribePlan.path("current_provider").asText()).isEqualTo("cloudflare");
+        assertThat(transcribePlan.path("recommended_chain").get(0).asText()).isEqualTo("cloudflare");
+    }
+
+    @Test
+    void mediaCallbackAutoTranscribe_shouldUseCloudflareDefault_whenProviderNotExplicitlyRequested() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        JsonNode extraction = readData(mockMvc.perform(post("/api/v1/media/extract-audio")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+        String extractionId = extraction.path("id").asText();
+        assertThat(extractionId).isNotBlank();
+
+        JsonNode callbackData = readData(mockMvc.perform(post("/api/v1/media/extract-audio/callback")
+                        .header("X-Callback-Token", "dev-media-callback-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"extraction_id\":\"" + extractionId + "\",\"status\":\"COMPLETED\",\"event_version\":1}"))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        JsonNode transcript = callbackData.path("transcript");
+        assertThat(transcript.path("stt_provider").asText()).isEqualTo("cloudflare");
+        assertThat(transcript.path("stt_model").asText()).isEqualTo("cf-whisper");
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -84,5 +131,11 @@ class MediaContractTest {
         assertThat(root.path("data").isNull()).isTrue();
         assertThat(root.path("error").path("code").asText()).isEqualTo(expectedCode);
         assertThat(root.path("message").asText()).isNotBlank();
+    }
+
+    private JsonNode readData(MvcResult result) throws Exception {
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(root.path("success").asBoolean()).isTrue();
+        return root.path("data");
     }
 }

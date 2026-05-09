@@ -145,6 +145,29 @@ class AiContractTest {
                 "COURSE_NOT_FOUND");
     }
 
+    @Test
+    void aiProviders_shouldEnforceRuntimePolicyAndKeepFallbackList() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+
+        mockMvc.perform(put("/api/v1/ai/settings")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"provider\":\"gemini\",\"model\":\"gemini-2.5-flash\"}"))
+                .andExpect(status().isOk());
+
+        JsonNode providers = readData(mockMvc.perform(get("/api/v1/ai/providers")
+                        .header("Authorization", authHeader))
+                .andExpect(status().isOk())
+                .andReturn());
+        JsonNode settings = readData(mockMvc.perform(get("/api/v1/ai/settings")
+                        .header("Authorization", authHeader))
+                .andExpect(status().isOk())
+                .andReturn());
+        assertThat(providers.path("current").asText()).isEqualTo("ollama");
+        assertThat(settings.path("provider").asText()).isEqualTo("ollama");
+        assertThat(providers.path("providers").toString()).contains("demo", "ollama", "gemini");
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -178,5 +201,11 @@ class AiContractTest {
         assertThat(root.path("data").isNull()).isTrue();
         assertThat(root.path("error").path("code").asText()).isEqualTo(expectedCode);
         assertThat(root.path("message").asText()).isNotBlank();
+    }
+
+    private JsonNode readData(MvcResult result) throws Exception {
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(root.path("success").asBoolean()).isTrue();
+        return root.path("data");
     }
 }
