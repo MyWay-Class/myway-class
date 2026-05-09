@@ -43,7 +43,7 @@ export function runChecks(projectDir: string, profile: OrchestratorProfile): { p
           { name: "performance", command: "baseline-skip", pass: true, skipped: true, reason: "baseline profile skips perf smoke" }
         ]
       : [
-          runScriptOrSkip("test:backend", "tests", projectDir, scripts),
+          runScriptOrSkip("test:backend:clean", "tests", projectDir, scripts),
           runScriptOrSkip("lint", "style", projectDir, scripts),
           { name: "security", command: "npm audit --audit-level=high", pass: run("npm audit --audit-level=high", projectDir) },
           runScriptOrSkip("perf:smoke", "performance", projectDir, scripts)

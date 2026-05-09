@@ -15,6 +15,7 @@
     "build:frontend": "npm --workspace @myway/frontend run build",
     "build:backend": "node scripts/run-maven-wrapper.mjs -DskipTests package",
     "test:backend": "node scripts/run-maven-wrapper.mjs test",
+    "test:backend:clean": "node -e \"const fs=require('fs');fs.rmSync('backend-spring/data',{recursive:true,force:true});\" && npm run test:backend",
     "verify": "npm run build:frontend && npm run test:backend",
     "build:backend:legacy": "npm --workspace @myway/backend run build",
     "build": "npm run build:frontend && npm run build:backend",
