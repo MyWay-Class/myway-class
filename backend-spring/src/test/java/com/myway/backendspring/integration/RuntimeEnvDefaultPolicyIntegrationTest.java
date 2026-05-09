@@ -14,7 +14,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "myway.runtime.env=staging")
+@SpringBootTest(properties = {
+        "myway.runtime.env=staging",
+        "spring.datasource.url=jdbc:h2:mem:runtime-policy-it;MODE=PostgreSQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
+})
 @AutoConfigureMockMvc
 class RuntimeEnvDefaultPolicyIntegrationTest {
 
