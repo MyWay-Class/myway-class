@@ -65,9 +65,13 @@ function runWorker(role: WorkerRole): WorkerReport {
   let pass = true;
   let summary = "no-op";
   const baselineSkips = profile === "baseline" && (role === "backend-dev" || role === "test-engineer");
+  const testOwnedByChecks = role === "test-engineer";
 
   if (baselineSkips) {
     summary = `${role} skipped in baseline profile`;
+  }
+  if (!baselineSkips && testOwnedByChecks) {
+    summary = `${role} skipped: strict test execution is owned by checks.ts`;
   }
 
   if (!baselineSkips && role === "backend-dev") {
@@ -78,7 +82,7 @@ function runWorker(role: WorkerRole): WorkerReport {
     pass = runWithRetry(() => runCmd("npm run build:frontend", workerTimeoutMs), workerMaxRetries);
     summary = pass ? "frontend build passed" : "frontend build failed";
   }
-  if (!baselineSkips && role === "test-engineer") {
+  if (!baselineSkips && !testOwnedByChecks && role === "test-engineer") {
     pass = runWithRetry(() => runCmd("npm run test:backend", workerTimeoutMs), workerMaxRetries);
     summary = pass ? "backend tests passed" : "backend tests failed";
   }
