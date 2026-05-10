@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import YAML from "yaml";
 import { runChecks, type OrchestratorProfile } from "./checks";
 import { validateOrThrow } from "./validate";
-import { buildScorecard, loadRules, loadWaivers } from "./score";
+import { buildScorecard, loadRules, loadWaiverGovernance, loadWaivers } from "./score";
 
 type WorkerRole = "backend-dev" | "frontend-dev" | "test-engineer" | "docs-writer";
 
@@ -413,7 +413,60 @@ async function debateRound(): Promise<{ chosen: "A" | "B" | "C"; rationale: stri
   if (agentMode === "remote" && agentEndpoint) {
     try {
       const apiKey = process.env[agentApiKeyEnv];
-      const response = await fetch(`${agentEndpoint.replace(/\/$/, "")}/debate/round`, {
+      const endpoint = agentEndpoint.replace(/\/$/, "");
+      const sessionResponse = await fetch(`${endpoint}/debate/sessions/open`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
+        },
+        body: JSON.stringify({ taskId, profile, participants: ["worker-A", "worker-B", "critic", "manager"] }),
+        signal: AbortSignal.timeout(agentTimeoutMs)
+      });
+      if (sessionResponse.ok) {
+        const sessionPayload = (await sessionResponse.json()) as { sessionId: string };
+        const postMessage = async (role: string, message: string): Promise<void> => {
+          await fetch(`${endpoint}/debate/sessions/message`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
+            },
+            body: JSON.stringify({ sessionId: sessionPayload.sessionId, role, message }),
+            signal: AbortSignal.timeout(agentTimeoutMs)
+          });
+        };
+        await postMessage("worker-A", optionA);
+        await postMessage("worker-B", optionB);
+        if (optionC) await postMessage("critic", `proposed merge option C: ${optionC}`);
+
+        const decideResponse = await fetch(`${endpoint}/debate/sessions/decide`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
+          },
+          body: JSON.stringify({ sessionId: sessionPayload.sessionId, options: { A: optionA, B: optionB, C: optionC } }),
+          signal: AbortSignal.timeout(agentTimeoutMs)
+        });
+        if (!decideResponse.ok) throw new Error(`remote debate decide failed: ${decideResponse.status}`);
+        const decidePayload = (await decideResponse.json()) as {
+          messages?: Array<{ role: string; message: string; at?: string }>;
+          chosen?: "A" | "B" | "C";
+          rationale?: string;
+        };
+        for (const entry of decidePayload.messages ?? []) {
+          appendFileSync(join(threadsDir, `${taskId}.jsonl`), JSON.stringify({ role: entry.role, message: entry.message, at: entry.at || new Date().toISOString() }) + "\n");
+        }
+        await fetch(`${endpoint}/debate/sessions/${encodeURIComponent(sessionPayload.sessionId)}`, {
+          method: "POST",
+          headers: { ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
+          signal: AbortSignal.timeout(agentTimeoutMs)
+        });
+        return { chosen: decidePayload.chosen || chosen, rationale: decidePayload.rationale || rationale };
+      }
+
+      const fallbackResponse = await fetch(`${endpoint}/debate/round`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -422,8 +475,8 @@ async function debateRound(): Promise<{ chosen: "A" | "B" | "C"; rationale: stri
         body: JSON.stringify({ taskId, profile, optionA, optionB, optionC }),
         signal: AbortSignal.timeout(agentTimeoutMs)
       });
-      if (response.ok) {
-        const payload = (await response.json()) as { messages?: Array<{ role: string; message: string }>; chosen?: "A" | "B" | "C"; rationale?: string };
+      if (fallbackResponse.ok) {
+        const payload = (await fallbackResponse.json()) as { messages?: Array<{ role: string; message: string }>; chosen?: "A" | "B" | "C"; rationale?: string };
         for (const entry of payload.messages ?? []) {
           appendFileSync(join(threadsDir, `${taskId}.jsonl`), JSON.stringify({ role: entry.role, message: entry.message, at: new Date().toISOString() }) + "\n");
         }
@@ -486,9 +539,11 @@ async function main(): Promise<void> {
         ? join(projectDir, "ops/workflow/review-rules.main.yaml")
         : join(projectDir, "ops/workflow/review-rules.yaml");
   const waiversPath = join(projectDir, "ops/workflow/review-waivers.yaml");
+  const waiverGovernancePath = join(projectDir, "ops/workflow/waiver-governance.yaml");
   const rules = loadRules(rulesPath);
   const waivers = existsSync(waiversPath) ? loadWaivers(waiversPath) : { waivers: [] };
-  const scorecard = buildScorecard(taskId, checksOutput.checks, rules, { waivers, branch: targetBranch });
+  const governance = existsSync(waiverGovernancePath) ? loadWaiverGovernance(waiverGovernancePath) : {};
+  const scorecard = buildScorecard(taskId, checksOutput.checks, rules, { waivers, branch: targetBranch, governance });
   validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), scorecard, "review scorecard");
 
   let failedWorkers = workerReports
@@ -531,7 +586,7 @@ async function main(): Promise<void> {
     checksOutput = rerunChecks;
     failedWorkers = finalWorkerReports.filter((report) => report.risks.length > 0).map((report) => ({ role: report.role, risks: report.risks }));
     failedChecks = checksOutput.checks.filter((check) => !check.pass).map((check) => check.name);
-    finalScorecard = buildScorecard(taskId, checksOutput.checks, rules, { waivers, branch: targetBranch });
+    finalScorecard = buildScorecard(taskId, checksOutput.checks, rules, { waivers, branch: targetBranch, governance });
     validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), finalScorecard, "review scorecard rerun");
     auditLog({ type: "remediation-round", rerun: 1, workerFailures: failedWorkers, checkFailures: failedChecks });
   }
