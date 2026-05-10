@@ -35,3 +35,45 @@ npm run orch:slack -- --profile strict --target dev --task-id task-20260510-001
 - 현재 브리지는 "토론 표시/중계" 용도입니다.
 - Slack slash command/event 기반 양방향 제어(예: `/orch`)는 별도 webhook 서버를 추가해 연동할 수 있습니다.
 
+## Slash Command(`/orch`) 연동
+이제 `/orch`로 오케스트레이션 실행 트리거를 받을 수 있습니다.
+
+### 1) 로컬 서버 실행
+```bash
+npm run orch:slack:server
+```
+
+필수 환경 변수:
+- `SLACK_SIGNING_SECRET`
+- `SLACK_BOT_TOKEN`
+
+선택:
+- `SLACK_COMMAND_HOST` (기본 `127.0.0.1`)
+- `SLACK_COMMAND_PORT` (기본 `3131`)
+
+### 2) Slack 앱 Slash Command 설정
+- Slack API > `Slash Commands` > `Create New Command`
+- Command: `/orch`
+- Request URL: `https://<공인도메인>/slack/commands/orch`
+- Short Description: `Run orchestration`
+- Usage Hint: `--profile strict --target dev --task task-...`
+
+로컬 테스트 시 `ngrok` 같은 터널로 외부 URL을 연결해야 합니다.
+
+예:
+```bash
+ngrok http 3131
+```
+
+생성된 `https://...ngrok.../slack/commands/orch`를 Request URL로 넣으면 됩니다.
+
+### 3) Slack에서 실행 예시
+```text
+/orch --profile strict --target dev --task task-20260510-001
+```
+
+동작:
+- 명령 수신 서버가 Slack 서명 검증 수행
+- 백그라운드로 `npm run orch:slack` 실행
+- 같은 채널 스레드에 토론/결정 로그 자동 게시
+
