@@ -12,6 +12,10 @@ debate:
   max_rounds: 2
   remote_autonomous_enabled: false
   remote_autonomous_rounds: 2
+learning:
+  enabled: true
+  history_limit: 100
+  dynamic_role_routing: true
 agent_runtime:
   mode: local
   endpoint: ""
