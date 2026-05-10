@@ -102,6 +102,46 @@ public class AiController {
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 응답을 생성했습니다."));
     }
 
+    @GetMapping("/rag/index")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> ragIndex(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestParam(value = "lecture_id", required = false) String lectureId,
+            @RequestParam(value = "course_id", required = false) String courseId
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        Map<String, Object> data = featureStore.ragIndexOverview(
+                lectureId == null || lectureId.isBlank() ? null : lectureId.trim(),
+                courseId == null || courseId.isBlank() ? null : courseId.trim()
+        );
+        return ResponseEntity.ok(ApiResponse.success(data, "RAG 인덱스 현황을 조회했습니다."));
+    }
+
+    @PostMapping("/rag/index/rebuild")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> rebuildRagIndex(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String lectureId = text(body, "lecture_id");
+        String courseId = text(body, "course_id");
+        if (lectureId.isBlank() && courseId.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_OR_COURSE_REQUIRED", "lecture_id 또는 course_id가 필요합니다."));
+        }
+        if (!lectureId.isBlank() && learningService.getLecture(lectureId) == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
+        }
+        if (!courseId.isBlank() && learningService.getCourseLectures(courseId).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
+        }
+        Map<String, Object> data = featureStore.rebuildRagIndex(
+                lectureId.isBlank() ? null : lectureId,
+                courseId.isBlank() ? null : courseId
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(data, "RAG 인덱스를 재생성했습니다."));
+    }
+
     @PostMapping("/intent")
     public ResponseEntity<ApiResponse<Map<String, Object>>> intent(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
         SessionView session = require(auth);

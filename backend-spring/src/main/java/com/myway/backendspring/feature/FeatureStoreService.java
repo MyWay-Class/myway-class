@@ -41,6 +41,7 @@ public class FeatureStoreService {
     private static final String CUSTOM_COURSE_SCOPE = "custom_course";
     private static final String ADMIN_ASSIGNMENT_SCOPE = "admin_assignment";
     private static final String AI_USAGE_SCOPE = "ai_usage_daily";
+    private static final String RAG_INDEX_SCOPE = "rag_chunk_index";
     private static final String DEV_AI_PROVIDER = "ollama";
     private static final String NON_DEV_AI_PROVIDER = "gemini";
     private static final String DEV_AI_MODEL = "llama3.1:8b";
@@ -356,7 +357,7 @@ public class FeatureStoreService {
         int resolvedLimit = Math.max(1, Math.min(6, limit == null ? 4 : limit));
         String normalizedQuery = normalizeText(query);
         List<String> targetLectureIds = targetLectureIds(lectureId, courseId);
-        List<Map<String, Object>> corpus = buildRagCorpus(targetLectureIds);
+        List<Map<String, Object>> corpus = indexedRagCorpus(targetLectureIds);
 
         List<Map<String, Object>> rankedChunks = corpus.stream()
                 .map(chunk -> {
@@ -420,6 +421,40 @@ public class FeatureStoreService {
         payload.put("provider", providerPayload);
         payload.put("limit", resolvedLimit);
         return payload;
+    }
+
+    public Map<String, Object> ragIndexOverview(String lectureId, String courseId) {
+        List<String> lectureIds = targetLectureIds(lectureId, courseId);
+        List<Map<String, Object>> chunks = indexedRagCorpus(lectureIds);
+        Set<String> indexedLectures = chunks.stream()
+                .map(chunk -> String.valueOf(chunk.getOrDefault("lecture_id", "")))
+                .filter(id -> !id.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return Map.of(
+                "scope", RAG_INDEX_SCOPE,
+                "lecture_ids", indexedLectures,
+                "chunk_count", chunks.size(),
+                "indexed_at", Instant.now().toString()
+        );
+    }
+
+    public Map<String, Object> rebuildRagIndex(String lectureId, String courseId) {
+        List<String> lectureIds = targetLectureIds(lectureId, courseId);
+        List<Map<String, Object>> chunks = buildRagCorpus(lectureIds);
+        String key = ragIndexKey(lectureId, courseId);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", key);
+        payload.put("lecture_id", lectureId);
+        payload.put("course_id", courseId);
+        payload.put("chunk_count", chunks.size());
+        payload.put("chunks", chunks);
+        payload.put("updated_at", Instant.now().toString());
+        store.upsertKv(RAG_INDEX_SCOPE, key, payload);
+        return Map.of(
+                "index_id", key,
+                "chunk_count", chunks.size(),
+                "updated_at", payload.get("updated_at")
+        );
     }
 
     private Instant parseInstantOrNull(Object raw) {
@@ -1370,6 +1405,33 @@ public class FeatureStoreService {
             }
         }
         return chunks;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> indexedRagCorpus(List<String> lectureIds) {
+        if (lectureIds.isEmpty()) return List.of();
+        List<Map<String, Object>> indexed = new ArrayList<>();
+        for (String lectureId : lectureIds) {
+            Map<String, Object> saved = store.getKv(RAG_INDEX_SCOPE, ragIndexKey(lectureId, null));
+            if (saved == null || !(saved.get("chunks") instanceof List<?> rows)) continue;
+            for (Object row : rows) {
+                if (!(row instanceof Map<?, ?> map)) continue;
+                Map<String, Object> chunk = new HashMap<>();
+                for (Map.Entry<?, ?> entry : map.entrySet()) {
+                    if (entry.getKey() != null) {
+                        chunk.put(String.valueOf(entry.getKey()), entry.getValue());
+                    }
+                }
+                indexed.add(chunk);
+            }
+        }
+        return indexed.isEmpty() ? buildRagCorpus(lectureIds) : indexed;
+    }
+
+    private String ragIndexKey(String lectureId, String courseId) {
+        if (lectureId != null && !lectureId.isBlank()) return "lecture:" + lectureId;
+        if (courseId != null && !courseId.isBlank()) return "course:" + courseId;
+        return "global:all";
     }
 
     private Map<String, Object> buildChunk(
