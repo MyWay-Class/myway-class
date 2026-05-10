@@ -63,6 +63,8 @@ jobs:
               : 'n/a';
             const body = [
               '### Orchestration Gate Result',
+              `- trace id: ${d.traceId || 'n/a'}`,
+              `- task id: ${d.taskId || 'n/a'}`,
               `- state: ${d.state}`,
               `- decision: ${d.decision}`,
               `- reason: ${d.reason}`,
