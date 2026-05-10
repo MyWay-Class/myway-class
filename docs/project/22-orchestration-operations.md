@@ -86,7 +86,12 @@
 
 2-1. 운영 요약 리포트
 - `npm run orch:report`
+- 기간/Top 필터: `npm run orch:report -- --days 7 --top 10`
 - 출력: 최신 decision(traceId 포함), 상태 분포, requestChangeCodes Top N, 자동복구 성공률
+
+## 실패 알림 에스컬레이션
+- `SLACK_WEBHOOK_URL`가 설정된 경우 gate 실패 시 Slack 알림 전송
+- 최근 5개 실행 중 실패가 3회 이상이면 에스컬레이션 문구(`:fire:`)를 포함한다.
 
 3. 로컬 빠른 확인(예외)
 - `set ORCH_PROFILE=baseline && npm run orch:run`
