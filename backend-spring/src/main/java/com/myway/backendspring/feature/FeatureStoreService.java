@@ -50,6 +50,8 @@ public class FeatureStoreService {
     private static final int PUBLIC_STT_MAX_DURATION_MS = 180_000;
     private static final int FALLBACK_TRANSCRIPT_DURATION_MS = 120_000;
     private static final int FALLBACK_SEGMENT_MIN_MS = 1_000;
+    private static final int RAG_CHUNK_MAX_WORDS = 90;
+    private static final int RAG_CHUNK_OVERLAP_WORDS = 20;
     private final FeatureJdbcStore store;
     private final DemoLearningService learningService;
     private final int shortformMaxRetry;
@@ -1406,10 +1408,12 @@ public class FeatureStoreService {
         Set<String> haystack = new LinkedHashSet<>(tokenize(title + " " + content));
         long overlap = queryTokens.stream().filter(haystack::contains).count();
         double coverage = overlap / (double) Math.max(3, queryTokens.size());
-        double exact = content.contains(query) ? 0.14 : 0;
-        double titleBoost = title.contains(query) ? 0.06 : 0;
+        double exact = content.contains(query) ? 0.16 : 0;
+        double titleBoost = title.contains(query) ? 0.08 : 0;
+        double orderBoost = phraseOrderBoost(queryTokens, tokenize(content));
+        double diversityPenalty = repeatedTokenPenalty(tokenize(content));
         double scopeBoost = "transcript".equals(chunk.get("source_scope")) ? 0.05 : ("note".equals(chunk.get("source_scope")) ? 0.03 : 0.01);
-        return Math.min(0.99, coverage + exact + titleBoost + scopeBoost);
+        return Math.min(0.99, Math.max(0.0, coverage + exact + titleBoost + orderBoost + scopeBoost - diversityPenalty));
     }
 
     private String inferIntent(String query) {
@@ -1439,17 +1443,19 @@ public class FeatureStoreService {
     }
 
     private List<String> splitForRag(String text, int maxChunks) {
-        List<String> sentences = List.of(text.split("(?<=[.!?])\\s+"));
-        List<String> cleaned = sentences.stream().map(this::normalizeText).filter(s -> !s.isBlank()).toList();
-        if (cleaned.isEmpty()) {
-            return List.of(text);
-        }
-        int chunkSize = Math.max(1, (int) Math.ceil(cleaned.size() / (double) maxChunks));
+        List<String> words = tokenizeForChunking(text);
+        if (words.isEmpty()) return List.of(text);
+        int maxWords = Math.max(30, RAG_CHUNK_MAX_WORDS);
+        int overlap = Math.max(0, Math.min(RAG_CHUNK_OVERLAP_WORDS, maxWords / 2));
         List<String> parts = new ArrayList<>();
-        for (int i = 0; i < cleaned.size(); i += chunkSize) {
-            parts.add(String.join(" ", cleaned.subList(i, Math.min(cleaned.size(), i + chunkSize))));
+        int cursor = 0;
+        while (cursor < words.size() && parts.size() < Math.max(1, maxChunks * 2)) {
+            int end = Math.min(words.size(), cursor + maxWords);
+            parts.add(String.join(" ", words.subList(cursor, end)));
+            if (end >= words.size()) break;
+            cursor = Math.max(cursor + 1, end - overlap);
         }
-        return parts;
+        return parts.isEmpty() ? List.of(text) : parts;
     }
 
     private String buildLectureNarrative(String lectureId) {
@@ -1462,11 +1468,11 @@ public class FeatureStoreService {
     }
 
     private List<Map<String, Object>> splitIntoSegments(String text, int durationMs) {
-        List<String> words = List.of(normalizeText(text).split("\\s+")).stream().filter(word -> !word.isBlank()).toList();
+        List<String> words = tokenizeForChunking(text);
         if (words.isEmpty()) {
             return List.of();
         }
-        int segmentCount = Math.min(6, Math.max(3, (int) Math.ceil(words.size() / 10.0)));
+        int segmentCount = Math.min(8, Math.max(3, (int) Math.ceil(words.size() / 20.0)));
         int wordsPerSegment = Math.max(1, (int) Math.ceil(words.size() / (double) segmentCount));
         List<Map<String, Object>> segments = new ArrayList<>();
         for (int i = 0; i < segmentCount; i++) {
@@ -1500,6 +1506,39 @@ public class FeatureStoreService {
                 .map(String::trim)
                 .filter(token -> token.length() > 1)
                 .toList();
+    }
+
+    private List<String> tokenizeForChunking(String text) {
+        return List.of(normalizeText(text).split("\\s+")).stream()
+                .map(String::trim)
+                .filter(token -> !token.isBlank())
+                .toList();
+    }
+
+    private double phraseOrderBoost(List<String> queryTokens, List<String> contentTokens) {
+        if (queryTokens.size() < 2 || contentTokens.size() < 2) return 0.0;
+        int matchedPairs = 0;
+        for (int i = 0; i < queryTokens.size() - 1; i++) {
+            String first = queryTokens.get(i);
+            String second = queryTokens.get(i + 1);
+            for (int j = 0; j < contentTokens.size() - 1; j++) {
+                if (first.equals(contentTokens.get(j)) && second.equals(contentTokens.get(j + 1))) {
+                    matchedPairs++;
+                    break;
+                }
+            }
+        }
+        return Math.min(0.08, matchedPairs * 0.02);
+    }
+
+    private double repeatedTokenPenalty(List<String> tokens) {
+        if (tokens.isEmpty()) return 0.0;
+        Map<String, Integer> countByToken = new HashMap<>();
+        for (String token : tokens) {
+            countByToken.put(token, countByToken.getOrDefault(token, 0) + 1);
+        }
+        long repeatedKinds = countByToken.values().stream().filter(v -> v >= 4).count();
+        return Math.min(0.06, repeatedKinds * 0.01);
     }
 
     private String normalizeText(String text) {
