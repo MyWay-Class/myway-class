@@ -1,0 +1,18 @@
+version: 1
+project:
+  name: "__PROJECT_NAME__"
+  target_branch: "dev"
+runtime:
+  mode: "local"
+  endpoint: ""
+  api_key_env: "ORCH_AGENT_API_KEY"
+debate:
+  autonomous_enabled: false
+  autonomous_rounds: 2
+learning:
+  enabled: true
+  history_limit: 100
+  ttl_days: 30
+experiments:
+  enabled: true
+  variant_ratio: 0.5
