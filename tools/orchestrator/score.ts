@@ -4,7 +4,7 @@ import type { CheckResult, CheckName } from "./checks";
 
 interface Rules {
   weights: Record<CheckName, number>;
-  required: Partial<Record<CheckName, { min: number }>>;
+  required: Partial<Record<CheckName, { min: number; fail_fast?: boolean }>>;
   cutoff: { total_min: number };
 }
 
@@ -12,6 +12,8 @@ export interface Scorecard {
   taskId: string;
   scores: Record<CheckName, number>;
   required_pass: boolean;
+  required_failed: CheckName[];
+  fail_fast_triggered: boolean;
   total: number;
   verdict: "approve" | "reject";
   notes: string[];
@@ -42,19 +44,35 @@ export function buildScorecard(taskId: string, checks: CheckResult[], rules: Rul
     scores.performance * rules.weights.performance
   ).toFixed(2));
 
-  const requiredPass = Object.entries(rules.required).every(([key, value]) => {
+  const requiredFailed = Object.entries(rules.required)
+    .filter(([key, value]) => {
+      const metric = key as CheckName;
+      return scores[metric] < (value?.min ?? 0);
+    })
+    .map(([key]) => key as CheckName);
+  const requiredPass = requiredFailed.length === 0;
+  const failFastTriggered = Object.entries(rules.required).some(([key, value]) => {
     const metric = key as CheckName;
-    return scores[metric] >= (value?.min ?? 0);
+    return Boolean(value?.fail_fast) && scores[metric] < (value?.min ?? 0);
   });
 
-  const pass = total >= rules.cutoff.total_min && requiredPass;
+  const pass = !failFastTriggered && total >= rules.cutoff.total_min && requiredPass;
+  const notes = pass
+    ? ["review rules satisfied"]
+    : [
+        "review rules not satisfied",
+        requiredFailed.length > 0 ? `required_failed=${requiredFailed.join(",")}` : "required_failed=none",
+        failFastTriggered ? "fail_fast_triggered=true" : "fail_fast_triggered=false"
+      ];
   return {
     taskId,
     scores,
     required_pass: requiredPass,
+    required_failed: requiredFailed,
+    fail_fast_triggered: failFastTriggered,
     total,
     verdict: pass ? "approve" : "reject",
-    notes: pass ? ["review rules satisfied"] : ["review rules not satisfied"],
+    notes,
     timestamp: new Date().toISOString()
   };
 }

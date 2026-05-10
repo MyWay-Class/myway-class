@@ -69,6 +69,8 @@ jobs:
               `- decision: ${d.decision}`,
               `- reason: ${d.reason}`,
               s ? `- total score: ${s.total}` : '- total score: n/a',
+              s ? `- required failed: ${(Array.isArray(s.required_failed) && s.required_failed.length > 0) ? s.required_failed.join(', ') : 'none'}` : '- required failed: n/a',
+              s ? `- fail-fast triggered: ${Boolean(s.fail_fast_triggered)}` : '- fail-fast triggered: n/a',
               `- request change codes: ${codes}`,
               `- next actions: ${nextActions}`
             ].join('\n');

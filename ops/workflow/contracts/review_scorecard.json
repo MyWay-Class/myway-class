@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ReviewScorecard",
   "type": "object",
-  "required": ["taskId", "scores", "required_pass", "total", "verdict", "timestamp"],
+  "required": ["taskId", "scores", "required_pass", "required_failed", "fail_fast_triggered", "total", "verdict", "timestamp"],
   "properties": {
     "taskId": { "type": "string", "minLength": 1 },
     "scores": {
@@ -17,6 +17,11 @@
       "additionalProperties": false
     },
     "required_pass": { "type": "boolean" },
+    "required_failed": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["tests", "style", "security", "performance"] }
+    },
+    "fail_fast_triggered": { "type": "boolean" },
     "total": { "type": "number", "minimum": 0, "maximum": 100 },
     "verdict": { "type": "string", "enum": ["approve", "reject"] },
     "notes": { "type": "array", "items": { "type": "string" } },
