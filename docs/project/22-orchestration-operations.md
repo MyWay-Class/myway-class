@@ -10,6 +10,9 @@
 ## strict 사용 기준
 - PR 검증, 병합 전 최종 검증, 릴리즈 직전 검증에 사용한다.
 - 필수: 백엔드 테스트(`npm run test:backend`) 통과, 오케스트레이터 최종 상태 `approved`.
+- 브랜치별 룰:
+  - `dev` -> `ops/workflow/review-rules.yaml`
+  - `main` -> `ops/workflow/review-rules.main.yaml` (더 엄격)
 
 ## baseline 사용 기준
 - 로컬 빠른 확인 또는 일시적 환경 제약(예: 외부 의존 서비스 장애)에서만 사용한다.

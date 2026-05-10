@@ -37,6 +37,7 @@ jobs:
         run: npm run orch:run
         env:
           ORCH_PROFILE: strict
+          ORCH_TARGET_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
 
       - name: Ensure decision artifact exists
         run: test -f _workspace/decision.json

@@ -1,0 +1,21 @@
+version: 1
+weights:
+  tests: 0.45
+  style: 0.15
+  security: 0.25
+  performance: 0.15
+required:
+  tests:
+    min: 85
+    fail_fast: true
+  security:
+    min: 85
+    fail_fast: true
+  performance:
+    min: 70
+    fail_fast: true
+cutoff:
+  total_min: 82
+decision_map:
+  pass: approve
+  fail: reject
