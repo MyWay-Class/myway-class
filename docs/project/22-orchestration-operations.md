@@ -75,6 +75,10 @@
 2. 체크만 빠르게 확인
 - `set ORCH_PROFILE=strict && npm run orch:checks`
 
+2-1. 운영 요약 리포트
+- `npm run orch:report`
+- 출력: 최신 decision(traceId 포함), 상태 분포, requestChangeCodes Top N, 자동복구 성공률
+
 3. 로컬 빠른 확인(예외)
 - `set ORCH_PROFILE=baseline && npm run orch:run`
 
