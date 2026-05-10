@@ -25,6 +25,22 @@
 - 실패가 발생하면 정책(`ops/workflow/policy.yaml`)의 `debate.max_rounds` 범위 내에서 1회 재토론/재실행 후 최종 판정한다.
 - 임시/산출물 파일(`_workspace/`, `.github/.tmp_*`, `backend-spring/target/`)은 커밋하지 않는다.
 
+## 멀티에이전트 런타임 모드
+- `local`(기본): 오케스트레이터가 로컬 커맨드 기반 워커를 직접 실행한다.
+- `remote`: 오케스트레이터가 외부 에이전트 API를 호출해 워커/토론을 위임한다.
+- 우선순위: 환경변수(`ORCH_AGENT_MODE`, `ORCH_AGENT_ENDPOINT`) > `ops/workflow/policy.yaml.agent_runtime`.
+
+## remote API 계약(최소)
+1. 워커 실행
+- `POST {ORCH_AGENT_ENDPOINT}/workers/run`
+- 요청 필드: `taskId`, `role`, `profile`, `projectDir`, `timeoutMs`, `filesChangedHint`
+- 응답 필드: `summary`, `filesChanged[]`, `risks[]`, `pass`, `messages[]`
+
+2. 토론 라운드(선택)
+- `POST {ORCH_AGENT_ENDPOINT}/debate/round`
+- 요청 필드: `taskId`, `profile`, `optionA`, `optionB`
+- 응답 필드: `chosen`, `rationale`, `messages[]`
+
 ## 실행 예시
 1. strict 기본 검증
 - `set ORCH_PROFILE=strict && npm run orch:run`
@@ -34,3 +50,6 @@
 
 3. 로컬 빠른 확인(예외)
 - `set ORCH_PROFILE=baseline && npm run orch:run`
+
+4. 원격 멀티에이전트 실행
+- `set ORCH_AGENT_MODE=remote && set ORCH_AGENT_ENDPOINT=https://your-agent-runtime.example && npm run orch:run`

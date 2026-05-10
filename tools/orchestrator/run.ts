@@ -23,6 +23,12 @@ interface Policy {
   timeouts?: { worker_timeout_minutes?: number; review_timeout_minutes?: number };
   fallback?: { on_repeated_failure?: string; allow_partial_report?: boolean };
   debate?: { max_rounds?: number };
+  agent_runtime?: {
+    mode?: "local" | "remote";
+    endpoint?: string;
+    timeout_seconds?: number;
+    api_key_env?: string;
+  };
 }
 
 const taskId = process.env.TASK_ID || `task-${Date.now()}`;
@@ -41,6 +47,10 @@ const policy = YAML.parse(readFileSync(join(projectDir, "ops/workflow/policy.yam
 const workerMaxRetries = policy.retry?.worker_max_retries ?? 1;
 const checkMaxRetries = policy.retry?.check_max_retries ?? 1;
 const workerTimeoutMs = (policy.timeouts?.worker_timeout_minutes ?? 15) * 60 * 1000;
+const agentMode = (process.env.ORCH_AGENT_MODE as "local" | "remote") || policy.agent_runtime?.mode || "local";
+const agentEndpoint = process.env.ORCH_AGENT_ENDPOINT || policy.agent_runtime?.endpoint || "";
+const agentTimeoutMs = (policy.agent_runtime?.timeout_seconds ?? 60) * 1000;
+const agentApiKeyEnv = policy.agent_runtime?.api_key_env || "ORCH_AGENT_API_KEY";
 
 function stateLog(from: string | null, to: string, actor: string): void {
   appendFileSync(join(logsDir, "state-transitions.jsonl"), JSON.stringify({ taskId, from, to, actor, at: new Date().toISOString() }) + "\n");
@@ -103,7 +113,7 @@ function roleOwnsFile(role: WorkerRole, filePath: string): boolean {
   return false;
 }
 
-function runWorker(role: WorkerRole): WorkerReport {
+function localWorkerReport(role: WorkerRole): WorkerReport {
   let pass = true;
   let summary = "no-op";
   const baselineSkips = profile === "baseline" && (role === "backend-dev" || role === "test-engineer");
@@ -152,11 +162,108 @@ function runWorker(role: WorkerRole): WorkerReport {
   return report;
 }
 
-function debateRound(): { chosen: "A" | "B"; rationale: string } {
+interface RemoteWorkerResponse {
+  summary?: string;
+  filesChanged?: string[];
+  risks?: string[];
+  pass?: boolean;
+  messages?: string[];
+}
+
+async function callRemoteWorker(role: WorkerRole): Promise<WorkerReport> {
+  if (!agentEndpoint) {
+    throw new Error("ORCH_AGENT_MODE=remote requires ORCH_AGENT_ENDPOINT or policy.agent_runtime.endpoint");
+  }
+  const ownedChangedFiles = getGitChangedFiles().filter((filePath) => roleOwnsFile(role, filePath));
+  const apiKey = process.env[agentApiKeyEnv];
+  const response = await fetch(`${agentEndpoint.replace(/\/$/, "")}/workers/run`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
+    },
+    body: JSON.stringify({
+      taskId,
+      role,
+      profile,
+      projectDir,
+      timeoutMs: workerTimeoutMs,
+      filesChangedHint: ownedChangedFiles
+    }),
+    signal: AbortSignal.timeout(agentTimeoutMs)
+  });
+
+  if (!response.ok) {
+    throw new Error(`remote worker call failed: ${response.status} ${response.statusText}`);
+  }
+  const payload = (await response.json()) as RemoteWorkerResponse;
+  const pass = payload.pass ?? (payload.risks?.length ?? 0) === 0;
+  const summary = payload.summary || `${role} remote execution ${pass ? "passed" : "failed"}`;
+  const report: WorkerReport = {
+    taskId,
+    role,
+    summary,
+    filesChanged: Array.from(new Set([...(payload.filesChanged ?? []), ...ownedChangedFiles])),
+    risks: payload.risks ?? (pass ? [] : [`${role} remote execution failed`]),
+    timestamp: new Date().toISOString()
+  };
+  for (const message of payload.messages ?? []) {
+    appendFileSync(join(threadsDir, `${taskId}.jsonl`), JSON.stringify({ role, message, at: new Date().toISOString() }) + "\n");
+  }
+  validateOrThrow(join(projectDir, "ops/workflow/contracts/worker_report.json"), report, `${role} report`);
+  writeFileSync(join(reportsDir, `${taskId}-${role}.json`), JSON.stringify(report, null, 2));
+  appendFileSync(join(threadsDir, `${taskId}.jsonl`), JSON.stringify({ role, message: summary, at: new Date().toISOString() }) + "\n");
+  return report;
+}
+
+async function runWorker(role: WorkerRole): Promise<WorkerReport> {
+  if (agentMode === "remote") {
+    try {
+      return await callRemoteWorker(role);
+    } catch (error) {
+      const fallback = localWorkerReport(role);
+      fallback.summary = `${fallback.summary} (remote fallback: ${(error as Error).message})`;
+      fallback.risks = fallback.risks.length ? fallback.risks : ["remote worker unavailable, used local fallback"];
+      validateOrThrow(join(projectDir, "ops/workflow/contracts/worker_report.json"), fallback, `${role} report fallback`);
+      writeFileSync(join(reportsDir, `${taskId}-${role}.json`), JSON.stringify(fallback, null, 2));
+      appendFileSync(
+        join(threadsDir, `${taskId}.jsonl`),
+        JSON.stringify({ role: "manager", message: `remote worker fallback for ${role}: ${(error as Error).message}`, at: new Date().toISOString() }) + "\n"
+      );
+      return fallback;
+    }
+  }
+  return localWorkerReport(role);
+}
+
+async function debateRound(): Promise<{ chosen: "A" | "B"; rationale: string }> {
   const optionA = profile === "strict" ? "full quality gate with tests+audit" : "keep strict for production branches";
   const optionB = profile === "baseline" ? "baseline fast gate for CI" : "fallback baseline when strict repeatedly fails";
   const chosen = profile === "strict" ? "A" : "B";
   const rationale = chosen === "A" ? optionA : optionB;
+  if (agentMode === "remote" && agentEndpoint) {
+    try {
+      const apiKey = process.env[agentApiKeyEnv];
+      const response = await fetch(`${agentEndpoint.replace(/\/$/, "")}/debate/round`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
+        },
+        body: JSON.stringify({ taskId, profile, optionA, optionB }),
+        signal: AbortSignal.timeout(agentTimeoutMs)
+      });
+      if (response.ok) {
+        const payload = (await response.json()) as { messages?: Array<{ role: string; message: string }>; chosen?: "A" | "B"; rationale?: string };
+        for (const entry of payload.messages ?? []) {
+          appendFileSync(join(threadsDir, `${taskId}.jsonl`), JSON.stringify({ role: entry.role, message: entry.message, at: new Date().toISOString() }) + "\n");
+        }
+        return { chosen: payload.chosen || chosen, rationale: payload.rationale || rationale };
+      }
+    } catch {
+      // fall through to local deterministic debate logging
+    }
+  }
   appendFileSync(
     join(threadsDir, `${taskId}.jsonl`),
     JSON.stringify({ role: "worker-A", message: optionA, at: new Date().toISOString() }) + "\n" +
@@ -181,99 +288,109 @@ function remediationRound(failedWorkers: string[], failedChecks: string[]): void
   );
 }
 
-stateLog(null, "draft", "manager");
-stateLog("draft", "debate", "manager");
-const debate = debateRound();
-auditLog({ type: "debate", chosen: debate.chosen, rationale: debate.rationale });
+async function main(): Promise<void> {
+  stateLog(null, "draft", "manager");
+  stateLog("draft", "debate", "manager");
+  const debate = await debateRound();
+  auditLog({ type: "debate", chosen: debate.chosen, rationale: debate.rationale, mode: agentMode });
 
-const workers: WorkerRole[] = ["backend-dev", "frontend-dev", "test-engineer", "docs-writer"];
-const workerReports = workers.map(runWorker);
+  const workers: WorkerRole[] = ["backend-dev", "frontend-dev", "test-engineer", "docs-writer"];
+  const workerReports = await Promise.all(workers.map((role) => runWorker(role)));
 
-stateLog("debate", "review", "reviewer");
+  stateLog("debate", "review", "reviewer");
 
-let checksOutput = runChecks(projectDir, profile);
-if (!checksOutput.pass && checkMaxRetries > 0) {
-  for (let i = 0; i < checkMaxRetries; i += 1) {
-    checksOutput = runChecks(projectDir, profile);
-    if (checksOutput.pass) break;
-  }
-}
-const checksHash = createHash("sha256").update(JSON.stringify(checksOutput)).digest("hex");
-auditLog({ type: "checks", hash: checksHash, pass: checksOutput.pass });
-
-const rulesPath =
-  profile === "baseline"
-    ? join(projectDir, "ops/workflow/review-rules.baseline.yaml")
-    : join(projectDir, "ops/workflow/review-rules.yaml");
-const rules = loadRules(rulesPath);
-const scorecard = buildScorecard(taskId, checksOutput.checks, rules);
-validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), scorecard, "review scorecard");
-
-let failedWorkers = workerReports
-  .filter((report) => report.risks.length > 0)
-  .map((report) => ({ role: report.role, risks: report.risks }));
-let failedChecks = checksOutput.checks.filter((check) => !check.pass).map((check) => check.name);
-
-const maxDebateRounds = Math.max(1, policy.debate?.max_rounds ?? 2);
-const shouldRetryRound = (failedWorkers.length > 0 || failedChecks.length > 0) && maxDebateRounds > 1;
-let finalWorkerReports = workerReports;
-let finalScorecard = scorecard;
-
-if (shouldRetryRound) {
-  remediationRound(
-    failedWorkers.map((worker) => worker.role),
-    failedChecks
-  );
-  const rerunRoles = new Set(failedWorkers.map((worker) => worker.role as WorkerRole));
-  const rerunReports = finalWorkerReports.map((report) => (rerunRoles.has(report.role) ? runWorker(report.role) : report));
-  finalWorkerReports = rerunReports;
-
-  let rerunChecks = runChecks(projectDir, profile);
-  if (!rerunChecks.pass && checkMaxRetries > 0) {
+  let checksOutput = runChecks(projectDir, profile);
+  if (!checksOutput.pass && checkMaxRetries > 0) {
     for (let i = 0; i < checkMaxRetries; i += 1) {
-      rerunChecks = runChecks(projectDir, profile);
-      if (rerunChecks.pass) break;
+      checksOutput = runChecks(projectDir, profile);
+      if (checksOutput.pass) break;
     }
   }
-  checksOutput = rerunChecks;
-  failedWorkers = finalWorkerReports.filter((report) => report.risks.length > 0).map((report) => ({ role: report.role, risks: report.risks }));
-  failedChecks = checksOutput.checks.filter((check) => !check.pass).map((check) => check.name);
-  finalScorecard = buildScorecard(taskId, checksOutput.checks, rules);
-  validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), finalScorecard, "review scorecard rerun");
-  auditLog({ type: "remediation-round", rerun: 1, workerFailures: failedWorkers, checkFailures: failedChecks });
+  const checksHash = createHash("sha256").update(JSON.stringify(checksOutput)).digest("hex");
+  auditLog({ type: "checks", hash: checksHash, pass: checksOutput.pass });
+
+  const rulesPath =
+    profile === "baseline"
+      ? join(projectDir, "ops/workflow/review-rules.baseline.yaml")
+      : join(projectDir, "ops/workflow/review-rules.yaml");
+  const rules = loadRules(rulesPath);
+  const scorecard = buildScorecard(taskId, checksOutput.checks, rules);
+  validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), scorecard, "review scorecard");
+
+  let failedWorkers = workerReports
+    .filter((report) => report.risks.length > 0)
+    .map((report) => ({ role: report.role, risks: report.risks }));
+  let failedChecks = checksOutput.checks.filter((check) => !check.pass).map((check) => check.name);
+
+  const maxDebateRounds = Math.max(1, policy.debate?.max_rounds ?? 2);
+  const shouldRetryRound = (failedWorkers.length > 0 || failedChecks.length > 0) && maxDebateRounds > 1;
+  let finalWorkerReports = workerReports;
+  let finalScorecard = scorecard;
+
+  if (shouldRetryRound) {
+    remediationRound(
+      failedWorkers.map((worker) => worker.role),
+      failedChecks
+    );
+    const rerunRoles = new Set(failedWorkers.map((worker) => worker.role as WorkerRole));
+    const rerunReports = await Promise.all(
+      finalWorkerReports.map((report) => (rerunRoles.has(report.role) ? runWorker(report.role) : Promise.resolve(report)))
+    );
+    finalWorkerReports = rerunReports;
+
+    let rerunChecks = runChecks(projectDir, profile);
+    if (!rerunChecks.pass && checkMaxRetries > 0) {
+      for (let i = 0; i < checkMaxRetries; i += 1) {
+        rerunChecks = runChecks(projectDir, profile);
+        if (rerunChecks.pass) break;
+      }
+    }
+    checksOutput = rerunChecks;
+    failedWorkers = finalWorkerReports.filter((report) => report.risks.length > 0).map((report) => ({ role: report.role, risks: report.risks }));
+    failedChecks = checksOutput.checks.filter((check) => !check.pass).map((check) => check.name);
+    finalScorecard = buildScorecard(taskId, checksOutput.checks, rules);
+    validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), finalScorecard, "review scorecard rerun");
+    auditLog({ type: "remediation-round", rerun: 1, workerFailures: failedWorkers, checkFailures: failedChecks });
+  }
+
+  const approved = finalWorkerReports.every((report) => report.risks.length === 0) && finalScorecard.verdict === "approve";
+  const finalState = approved ? "approved" : "rejected";
+  stateLog("review", finalState, "manager");
+
+  const decision = {
+    taskId,
+    state: finalState,
+    decision: approved ? "approve" : "request_changes",
+    reason: approved ? "workers and quality gate passed" : "worker/check/review gate failed",
+    timestamp: new Date().toISOString(),
+    nextActions: approved ? ["ready for merge gate"] : [policy.fallback?.on_repeated_failure ?? "fix failures and rerun"]
+  };
+  validateOrThrow(join(projectDir, "ops/workflow/contracts/manager_decision.json"), decision, "manager decision");
+
+  writeFileSync(join(workspaceDir, "scorecard.json"), JSON.stringify(finalScorecard, null, 2));
+  writeFileSync(join(workspaceDir, "decision.json"), JSON.stringify(decision, null, 2));
+  auditLog({ type: "decision", decision: decision.decision, state: finalState });
+
+  process.stdout.write(
+    JSON.stringify(
+      {
+        taskId,
+        profile,
+        state: finalState,
+        workerPass: finalWorkerReports.every((report) => report.risks.length === 0),
+        checksPass: checksOutput.pass,
+        checksHash,
+        failedWorkers,
+        failedChecks,
+        agentMode
+      },
+      null,
+      2
+    )
+  );
 }
 
-const approved = finalWorkerReports.every((report) => report.risks.length === 0) && finalScorecard.verdict === "approve";
-const finalState = approved ? "approved" : "rejected";
-stateLog("review", finalState, "manager");
-
-const decision = {
-  taskId,
-  state: finalState,
-  decision: approved ? "approve" : "request_changes",
-  reason: approved ? "workers and quality gate passed" : "worker/check/review gate failed",
-  timestamp: new Date().toISOString(),
-  nextActions: approved ? ["ready for merge gate"] : [policy.fallback?.on_repeated_failure ?? "fix failures and rerun"]
-};
-validateOrThrow(join(projectDir, "ops/workflow/contracts/manager_decision.json"), decision, "manager decision");
-
-writeFileSync(join(workspaceDir, "scorecard.json"), JSON.stringify(finalScorecard, null, 2));
-writeFileSync(join(workspaceDir, "decision.json"), JSON.stringify(decision, null, 2));
-auditLog({ type: "decision", decision: decision.decision, state: finalState });
-
-process.stdout.write(
-  JSON.stringify(
-    {
-      taskId,
-      profile,
-      state: finalState,
-      workerPass: finalWorkerReports.every((report) => report.risks.length === 0),
-      checksPass: checksOutput.pass,
-      checksHash,
-      failedWorkers,
-      failedChecks
-    },
-    null,
-    2
-  )
-);
+main().catch((error) => {
+  process.stderr.write(`orchestrator failed: ${(error as Error).message}\n`);
+  process.exit(1);
+});
