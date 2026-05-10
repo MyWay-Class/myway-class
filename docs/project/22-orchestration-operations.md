@@ -64,6 +64,13 @@
 - 예: `WORKER_BACKEND_FAILED`, `CHECK_TESTS_FAILED`, `REMOTE_RUNTIME_UNAVAILABLE`
 - 재라운드 진입 시 `requestChangeCodes`별 부분 복구 명령(예: 테스트 재실행, 보안 감사, 빌드 스모크)을 자동 실행한 뒤 재판정한다.
 
+## Safe Auto-Fix (옵트인)
+- 기본값 비활성: `ops/workflow/policy.yaml.autofix.enabled: false`
+- 활성화 방법:
+  - 정책 변경: `autofix.enabled: true`, `autofix.mode: safe`
+  - 또는 일회성: `set ORCH_AUTOFIX=1`
+- safe 모드에서는 allowlist 명령만 실행한다(예: `npm audit fix --package-lock-only`).
+
 ## Reviewer fail-fast
 - `review-rules*.yaml`의 `required.<metric>.fail_fast: true`인 항목이 기준 미달이면 총점과 무관하게 즉시 `reject`한다.
 - 결과는 `scorecard.required_failed`, `scorecard.fail_fast_triggered`에 기록된다.

@@ -34,6 +34,10 @@ interface Policy {
     timeout_seconds?: number;
     api_key_env?: string;
   };
+  autofix?: {
+    enabled?: boolean;
+    mode?: "safe" | "off";
+  };
 }
 
 const taskId = process.env.TASK_ID || `task-${Date.now()}`;
@@ -57,6 +61,8 @@ const agentMode = (process.env.ORCH_AGENT_MODE as "local" | "remote") || policy.
 const agentEndpoint = process.env.ORCH_AGENT_ENDPOINT || policy.agent_runtime?.endpoint || "";
 const agentTimeoutMs = (policy.agent_runtime?.timeout_seconds ?? 60) * 1000;
 const agentApiKeyEnv = policy.agent_runtime?.api_key_env || "ORCH_AGENT_API_KEY";
+const autofixEnabled = process.env.ORCH_AUTOFIX === "1" || policy.autofix?.enabled === true;
+const autofixMode = policy.autofix?.mode || "off";
 
 function stateLog(from: string | null, to: string, actor: string): void {
   appendFileSync(join(logsDir, "state-transitions.jsonl"), JSON.stringify({ taskId, traceId, from, to, actor, at: new Date().toISOString() }) + "\n");
@@ -282,6 +288,25 @@ function runCodeBasedRecovery(codes: RequestChangeCode[]): Array<{ code: Request
   return results;
 }
 
+function runAutoFix(codes: RequestChangeCode[]): Array<{ code: RequestChangeCode; command: string; pass: boolean }> {
+  if (!autofixEnabled || autofixMode !== "safe") return [];
+  const safeFixByCode: Partial<Record<RequestChangeCode, string>> = {
+    CHECK_SECURITY_FAILED: "npm audit fix --package-lock-only",
+    CHECK_STYLE_FAILED: "npm run build:frontend",
+    CHECK_TESTS_FAILED: "npm run test:backend:clean"
+  };
+  const uniqueCommands = new Set<string>();
+  const results: Array<{ code: RequestChangeCode; command: string; pass: boolean }> = [];
+  for (const code of [...new Set(codes)]) {
+    const command = safeFixByCode[code];
+    if (!command || uniqueCommands.has(command)) continue;
+    uniqueCommands.add(command);
+    const pass = runWithRetry(() => runCmd(command, workerTimeoutMs), workerMaxRetries);
+    results.push({ code, command, pass });
+  }
+  return results;
+}
+
 function remediationActionForCode(code: RequestChangeCode): { action: string; owner: WorkerRole | "reviewer" | "manager" } {
   if (code === "WORKER_BACKEND_FAILED") return { action: "백엔드 빌드/계약 오류 수정 후 `npm run build:backend` 재실행", owner: "backend-dev" };
   if (code === "WORKER_FRONTEND_FAILED") return { action: "프론트 빌드 오류 수정 후 `npm run build:frontend` 재실행", owner: "frontend-dev" };
@@ -473,6 +498,12 @@ async function main(): Promise<void> {
 
   if (shouldRetryRound) {
     const initialRequestChangeCodes = requestChangeCodesFromFailures(failedWorkers, failedChecks, finalWorkerReports);
+    const autofixResults = runAutoFix(initialRequestChangeCodes);
+    if (autofixResults.length > 0) {
+      auditLog({ type: "auto-fix", enabled: true, mode: autofixMode, requested: initialRequestChangeCodes, results: autofixResults });
+    } else {
+      auditLog({ type: "auto-fix", enabled: autofixEnabled, mode: autofixMode, requested: initialRequestChangeCodes, results: [] });
+    }
     const recoveryResults = runCodeBasedRecovery(initialRequestChangeCodes);
     auditLog({ type: "code-based-recovery", requested: initialRequestChangeCodes, results: recoveryResults });
     remediationRound(
