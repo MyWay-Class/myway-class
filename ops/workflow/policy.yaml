@@ -15,3 +15,6 @@ agent_runtime:
   endpoint: ""
   timeout_seconds: 60
   api_key_env: ORCH_AGENT_API_KEY
+autofix:
+  enabled: false
+  mode: safe
