@@ -355,10 +355,22 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> ragOverview(String query, String lectureId, String courseId, Integer limit) {
+        return ragOverview(query, lectureId, courseId, limit, null, false);
+    }
+
+    public Map<String, Object> ragOverview(
+            String query,
+            String lectureId,
+            String courseId,
+            Integer limit,
+            Double minScore,
+            boolean includeDebug
+    ) {
         int resolvedLimit = Math.max(1, Math.min(6, limit == null ? 4 : limit));
         String normalizedQuery = normalizeText(query);
         List<String> targetLectureIds = targetLectureIds(lectureId, courseId);
         List<Map<String, Object>> corpus = indexedRagCorpus(targetLectureIds);
+        double threshold = minScore == null ? 0.0 : Math.max(0.0, Math.min(1.0, minScore));
 
         List<Map<String, Object>> rankedChunks = corpus.stream()
                 .map(chunk -> {
@@ -366,6 +378,7 @@ public class FeatureStoreService {
                     mutable.put("similarity", scoreChunk(normalizedQuery, mutable));
                     return mutable;
                 })
+                .filter(item -> asDouble(item.get("similarity")) >= threshold)
                 .sorted(Comparator
                         .comparingDouble((Map<String, Object> item) -> asDouble(item.get("similarity"))).reversed()
                         .thenComparing(item -> String.valueOf(item.getOrDefault("title", ""))))
@@ -421,6 +434,16 @@ public class FeatureStoreService {
         payload.put("answer_payload", answerPayload);
         payload.put("provider", providerPayload);
         payload.put("limit", resolvedLimit);
+        payload.put("min_score", threshold);
+        if (includeDebug) {
+            double avgSimilarity = rankedChunks.stream().mapToDouble(item -> asDouble(item.get("similarity"))).average().orElse(0.0);
+            payload.put("debug", Map.of(
+                    "query_tokens", tokenize(normalizedQuery),
+                    "corpus_size", corpus.size(),
+                    "filtered_count", rankedChunks.size(),
+                    "avg_similarity", Math.round(avgSimilarity * 1000.0) / 1000.0
+            ));
+        }
         return payload;
     }
 
@@ -454,6 +477,24 @@ public class FeatureStoreService {
         return Map.of(
                 "index_id", key,
                 "chunk_count", chunks.size(),
+                "updated_at", payload.get("updated_at")
+        );
+    }
+
+    public Map<String, Object> clearRagIndex(String lectureId, String courseId) {
+        String key = ragIndexKey(lectureId, courseId);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", key);
+        payload.put("lecture_id", lectureId);
+        payload.put("course_id", courseId);
+        payload.put("chunk_count", 0);
+        payload.put("chunks", List.of());
+        payload.put("updated_at", Instant.now().toString());
+        payload.put("cleared", true);
+        store.upsertKv(RAG_INDEX_SCOPE, key, payload);
+        return Map.of(
+                "index_id", key,
+                "cleared", true,
                 "updated_at", payload.get("updated_at")
         );
     }
