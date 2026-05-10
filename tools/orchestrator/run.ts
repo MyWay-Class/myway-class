@@ -37,6 +37,7 @@ interface Policy {
 }
 
 const taskId = process.env.TASK_ID || `task-${Date.now()}`;
+const traceId = process.env.TRACE_ID || `${taskId}-${Math.random().toString(36).slice(2, 10)}`;
 const projectDir = process.env.PROJECT_DIR || process.cwd();
 const profile = (process.env.ORCH_PROFILE as OrchestratorProfile) || "strict";
 const workspaceDir = join(projectDir, "_workspace");
@@ -58,11 +59,11 @@ const agentTimeoutMs = (policy.agent_runtime?.timeout_seconds ?? 60) * 1000;
 const agentApiKeyEnv = policy.agent_runtime?.api_key_env || "ORCH_AGENT_API_KEY";
 
 function stateLog(from: string | null, to: string, actor: string): void {
-  appendFileSync(join(logsDir, "state-transitions.jsonl"), JSON.stringify({ taskId, from, to, actor, at: new Date().toISOString() }) + "\n");
+  appendFileSync(join(logsDir, "state-transitions.jsonl"), JSON.stringify({ taskId, traceId, from, to, actor, at: new Date().toISOString() }) + "\n");
 }
 
 function auditLog(event: Record<string, unknown>): void {
-  appendFileSync(join(logsDir, "audit-events.jsonl"), JSON.stringify({ taskId, at: new Date().toISOString(), ...event }) + "\n");
+  appendFileSync(join(logsDir, "audit-events.jsonl"), JSON.stringify({ taskId, traceId, at: new Date().toISOString(), ...event }) + "\n");
 }
 
 function runCmd(cmd: string, timeoutMs: number): boolean {
@@ -444,6 +445,7 @@ async function main(): Promise<void> {
 
   const decision = {
     taskId,
+    traceId,
     state: finalState,
     decision: approved ? "approve" : "request_changes",
     reason: approved ? "workers and quality gate passed" : "worker/check/review gate failed",
@@ -461,6 +463,7 @@ async function main(): Promise<void> {
     JSON.stringify(
       {
         taskId,
+        traceId,
         profile,
         state: finalState,
         workerPass: finalWorkerReports.every((report) => report.risks.length === 0),
