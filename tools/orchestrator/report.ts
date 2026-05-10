@@ -14,6 +14,29 @@ interface AuditEvent extends JsonObject {
   results?: Array<{ code: string; command: string; pass: boolean }>;
 }
 
+function parseArgs(argv: string[]): { days: number | null; top: number } {
+  let days: number | null = null;
+  let top = 5;
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (token === "--days") {
+      const raw = argv[i + 1];
+      if (raw && !Number.isNaN(Number(raw))) {
+        days = Number(raw);
+        i += 1;
+      }
+    }
+    if (token === "--top") {
+      const raw = argv[i + 1];
+      if (raw && !Number.isNaN(Number(raw))) {
+        top = Math.max(1, Number(raw));
+        i += 1;
+      }
+    }
+  }
+  return { days, top };
+}
+
 function readJsonl(path: string): AuditEvent[] {
   if (!existsSync(path)) return [];
   return readFileSync(path, "utf-8")
@@ -34,11 +57,18 @@ function topN(entries: Map<string, number>, n: number): Array<[string, number]> 
 }
 
 function main(): void {
+  const { days, top } = parseArgs(process.argv.slice(2));
   const projectDir = process.env.PROJECT_DIR || process.cwd();
   const workspaceDir = join(projectDir, "_workspace");
   const logsDir = join(workspaceDir, "logs");
   const auditPath = join(logsDir, "audit-events.jsonl");
-  const audit = readJsonl(auditPath);
+  const allAudit = readJsonl(auditPath);
+  const cutoffMs = days !== null ? Date.now() - days * 24 * 60 * 60 * 1000 : null;
+  const audit = allAudit.filter((e) => {
+    if (cutoffMs === null) return true;
+    const at = e.at ? Date.parse(String(e.at)) : Number.NaN;
+    return Number.isFinite(at) && at >= cutoffMs;
+  });
 
   const decisions = audit.filter((e) => e.type === "decision");
   const recoveries = audit.filter((e) => e.type === "code-based-recovery");
@@ -88,12 +118,13 @@ function main(): void {
     },
     latestDecision: latestSummary,
     stateBreakdown: Object.fromEntries(stateCount.entries()),
-    topRequestChangeCodes: topN(codeCount, 5).map(([code, count]) => ({ code, count })),
+    topRequestChangeCodes: topN(codeCount, top).map(([code, count]) => ({ code, count })),
     recoveryStats: {
       attemptedCommands: recoveryAttempted,
       passedCommands: recoveryPassed,
       passRate: recoveryAttempted > 0 ? Number(((recoveryPassed / recoveryAttempted) * 100).toFixed(2)) : null
-    }
+    },
+    filters: { days, top }
   };
 
   process.stdout.write(JSON.stringify(report, null, 2));

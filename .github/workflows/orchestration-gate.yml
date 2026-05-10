@@ -141,8 +141,20 @@ jobs:
               : 'none';
             const pr = context.payload.pull_request;
             const target = pr ? `PR #${pr.number}` : context.ref;
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'orchestration-gate.yml',
+              branch: context.ref.replace('refs/heads/', ''),
+              per_page: 20
+            });
+            const recentFailures = (runs.data.workflow_runs || [])
+              .filter((r) => r.conclusion === 'failure')
+              .slice(0, 5).length;
+            const escalation = recentFailures >= 3 ? ':fire: repeated failures detected (last5 failures >=3)' : '';
             const text = [
               ':rotating_light: orchestration-gate failed',
+              escalation,
               `repo: ${context.repo.owner}/${context.repo.repo}`,
               `target: ${target}`,
               `trace: ${d.traceId || 'n/a'}`,
@@ -150,6 +162,7 @@ jobs:
               `state: ${d.state || 'n/a'} / decision: ${d.decision || 'n/a'}`,
               `reason: ${d.reason || 'n/a'}`,
               `codes: ${codeText}`,
+              `recent failures(last5): ${recentFailures}`,
               `run: ${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
             ].join('\n');
             await fetch(process.env.SLACK_WEBHOOK_URL, {
