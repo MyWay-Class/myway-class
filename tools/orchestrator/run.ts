@@ -27,7 +27,7 @@ interface Policy {
   retry?: { worker_max_retries?: number; check_max_retries?: number };
   timeouts?: { worker_timeout_minutes?: number; review_timeout_minutes?: number };
   fallback?: { on_repeated_failure?: string; allow_partial_report?: boolean };
-  debate?: { max_rounds?: number };
+  debate?: { max_rounds?: number; remote_autonomous_enabled?: boolean; remote_autonomous_rounds?: number };
   agent_runtime?: {
     mode?: "local" | "remote";
     endpoint?: string;
@@ -64,6 +64,8 @@ const agentTimeoutMs = (policy.agent_runtime?.timeout_seconds ?? 60) * 1000;
 const agentApiKeyEnv = policy.agent_runtime?.api_key_env || "ORCH_AGENT_API_KEY";
 const autofixEnabled = process.env.ORCH_AUTOFIX === "1" || policy.autofix?.enabled === true;
 const autofixMode = policy.autofix?.mode || "off";
+const remoteAutonomousDebateEnabled = process.env.ORCH_REMOTE_AUTONOMOUS_DEBATE === "1" || policy.debate?.remote_autonomous_enabled === true;
+const remoteAutonomousDebateRounds = Math.max(1, Math.min(policy.debate?.remote_autonomous_rounds ?? 2, 3));
 
 function stateLog(from: string | null, to: string, actor: string): void {
   appendFileSync(join(logsDir, "state-transitions.jsonl"), JSON.stringify({ taskId, traceId, from, to, actor, at: new Date().toISOString() }) + "\n");
@@ -414,6 +416,33 @@ async function debateRound(): Promise<{ chosen: "A" | "B" | "C"; rationale: stri
     try {
       const apiKey = process.env[agentApiKeyEnv];
       const endpoint = agentEndpoint.replace(/\/$/, "");
+      if (remoteAutonomousDebateEnabled) {
+        const autonomousResponse = await fetch(`${endpoint}/debate/autonomous`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
+          },
+          body: JSON.stringify({
+            taskId,
+            profile,
+            options: { A: optionA, B: optionB, C: optionC },
+            rounds: remoteAutonomousDebateRounds
+          }),
+          signal: AbortSignal.timeout(agentTimeoutMs)
+        });
+        if (autonomousResponse.ok) {
+          const autonomousPayload = (await autonomousResponse.json()) as {
+            chosen?: "A" | "B" | "C";
+            rationale?: string;
+            messages?: Array<{ role: string; message: string }>;
+          };
+          for (const entry of autonomousPayload.messages ?? []) {
+            appendFileSync(join(threadsDir, `${taskId}.jsonl`), JSON.stringify({ role: entry.role, message: entry.message, at: new Date().toISOString() }) + "\n");
+          }
+          return { chosen: autonomousPayload.chosen || chosen, rationale: autonomousPayload.rationale || rationale };
+        }
+      }
       const sessionResponse = await fetch(`${endpoint}/debate/sessions/open`, {
         method: "POST",
         headers: {

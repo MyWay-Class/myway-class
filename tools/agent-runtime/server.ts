@@ -39,6 +39,13 @@ interface DebateSessionDecideRequest {
   options: { A: string; B: string; C?: string };
 }
 
+interface AutonomousDebateRequest {
+  taskId: string;
+  profile: OrchestratorProfile;
+  options: { A: string; B: string; C?: string };
+  rounds?: number;
+}
+
 const port = Number(process.env.AGENT_RUNTIME_PORT || "8787");
 const host = process.env.AGENT_RUNTIME_HOST || "127.0.0.1";
 const apiKey = process.env.ORCH_AGENT_API_KEY || "";
@@ -46,6 +53,11 @@ const allowedRoot = resolve(process.env.AGENT_RUNTIME_ALLOWED_ROOT || process.cw
 const queueConcurrency = Math.max(1, Number(process.env.AGENT_RUNTIME_CONCURRENCY || "1"));
 const commandRetries = Math.max(0, Number(process.env.AGENT_RUNTIME_COMMAND_RETRIES || "1"));
 const queueTimeoutMs = Math.max(5_000, Number(process.env.AGENT_RUNTIME_QUEUE_TIMEOUT_MS || "120000"));
+const autonomousDebateEnabled = process.env.AGENT_RUNTIME_AUTONOMOUS_DEBATE === "1";
+const llmBaseUrl = (process.env.AGENT_RUNTIME_LLM_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+const llmApiKey = process.env.AGENT_RUNTIME_LLM_API_KEY || process.env.OPENAI_API_KEY || "";
+const llmModel = process.env.AGENT_RUNTIME_LLM_MODEL || "gpt-4.1-mini";
+const llmTimeoutMs = Math.max(5_000, Number(process.env.AGENT_RUNTIME_LLM_TIMEOUT_MS || "30000"));
 
 type QueueJob = {
   run: () => Promise<unknown>;
@@ -114,6 +126,85 @@ function getPathname(urlRaw?: string): string {
   } catch {
     return urlRaw;
   }
+}
+
+async function callLlm(role: string, prompt: string): Promise<string> {
+  const response = await fetch(`${llmBaseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${llmApiKey}`
+    },
+    body: JSON.stringify({
+      model: llmModel,
+      temperature: 0.2,
+      messages: [
+        { role: "system", content: `You are ${role}. Return concise, actionable text only.` },
+        { role: "user", content: prompt }
+      ]
+    }),
+    signal: AbortSignal.timeout(llmTimeoutMs)
+  });
+  if (!response.ok) {
+    throw new Error(`llm call failed: ${response.status} ${response.statusText}`);
+  }
+  const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const content = payload.choices?.[0]?.message?.content?.trim();
+  if (!content) throw new Error("empty llm response");
+  return content;
+}
+
+async function runAutonomousDebate(body: AutonomousDebateRequest): Promise<{
+  chosen: "A" | "B" | "C";
+  rationale: string;
+  messages: Array<{ role: string; message: string }>;
+}> {
+  const rounds = Math.max(1, Math.min(body.rounds ?? 2, 3));
+  const messages: Array<{ role: string; message: string }> = [];
+  const history = (): string => messages.map((m) => `${m.role}: ${m.message}`).join("\n");
+
+  for (let round = 1; round <= rounds; round += 1) {
+    const proposalA = await callLlm(
+      "worker-A",
+      `Task ${body.taskId}, profile=${body.profile}, round=${round}. Defend option A:\n${body.options.A}\n\nPrior discussion:\n${history() || "none"}`
+    );
+    messages.push({ role: "worker-A", message: `[round ${round}] ${proposalA}` });
+
+    const proposalB = await callLlm(
+      "worker-B",
+      `Task ${body.taskId}, profile=${body.profile}, round=${round}. Defend option B:\n${body.options.B}\n\nPrior discussion:\n${history()}`
+    );
+    messages.push({ role: "worker-B", message: `[round ${round}] ${proposalB}` });
+
+    if (body.options.C) {
+      const mergeView = await callLlm(
+        "critic",
+        `Task ${body.taskId}, profile=${body.profile}, round=${round}. Evaluate if option C merge is viable.\nOption C:\n${body.options.C}\n\nDiscussion:\n${history()}`
+      );
+      messages.push({ role: "critic", message: `[round ${round}] ${mergeView}` });
+    }
+  }
+
+  const decision = await callLlm(
+    "manager",
+    `Choose one final option: A, B, or C. Return format:
+chosen=<A|B|C>
+rationale=<one paragraph>
+
+Options:
+A=${body.options.A}
+B=${body.options.B}
+C=${body.options.C || "N/A"}
+
+Discussion:\n${history()}`
+  );
+  const chosenMatch = /chosen\s*=\s*([ABC])/i.exec(decision);
+  const rationaleMatch = /rationale\s*=\s*([\s\S]+)/i.exec(decision);
+  const chosen = (chosenMatch?.[1]?.toUpperCase() as "A" | "B" | "C") || (body.options.C ? "C" : body.profile === "strict" ? "A" : "B");
+  const rationale = (rationaleMatch?.[1] || decision).trim();
+  messages.push({ role: "manager", message: `selected ${chosen}: ${rationale}` });
+
+  return { chosen, rationale, messages };
 }
 
 function isAuthorized(req: IncomingMessage): boolean {
@@ -275,6 +366,25 @@ const server = createServer(async (req, res) => {
           { role: "manager", message: `execute plan ${chosen} for ${body.profile} profile` }
         ]
       });
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/debate/autonomous") {
+      if (!autonomousDebateEnabled) {
+        writeJson(res, 501, { error: "autonomous debate disabled" });
+        return;
+      }
+      if (!llmApiKey) {
+        writeJson(res, 501, { error: "AGENT_RUNTIME_LLM_API_KEY (or OPENAI_API_KEY) is required" });
+        return;
+      }
+      const body = await parseJson<AutonomousDebateRequest>(req);
+      if (!body?.taskId || !body?.profile || !body?.options?.A || !body?.options?.B) {
+        writeJson(res, 400, { error: "invalid autonomous debate payload" });
+        return;
+      }
+      const result = await runAutonomousDebate(body);
+      writeJson(res, 200, result);
       return;
     }
 

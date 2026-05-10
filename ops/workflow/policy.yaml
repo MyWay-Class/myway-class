@@ -10,6 +10,8 @@ fallback:
   allow_partial_report: true
 debate:
   max_rounds: 2
+  remote_autonomous_enabled: false
+  remote_autonomous_rounds: 2
 agent_runtime:
   mode: local
   endpoint: ""
