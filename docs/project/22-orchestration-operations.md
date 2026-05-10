@@ -58,6 +58,19 @@
 - `POST {ORCH_AGENT_ENDPOINT}/debate/sessions/{sessionId}` (close)
 - 오케스트레이터는 remote 모드에서 위 API를 우선 사용하고, 미지원 런타임이면 `/debate/round`로 자동 폴백한다.
 
+4. 자율 멀티-LLM 토론(옵트인)
+- `POST {ORCH_AGENT_ENDPOINT}/debate/autonomous`
+- 요청 필드: `taskId`, `profile`, `options(A/B/C)`, `rounds(1~3)`
+- 응답 필드: `chosen`, `rationale`, `messages[]`
+- 런타임 활성화:
+  - `AGENT_RUNTIME_AUTONOMOUS_DEBATE=1`
+  - `AGENT_RUNTIME_LLM_API_KEY` (또는 `OPENAI_API_KEY`)
+  - 선택: `AGENT_RUNTIME_LLM_BASE_URL`, `AGENT_RUNTIME_LLM_MODEL`, `AGENT_RUNTIME_LLM_TIMEOUT_MS`
+- 오케스트레이터 활성화:
+  - 정책: `ops/workflow/policy.yaml`의 `debate.remote_autonomous_enabled: true`
+  - 또는 일회성: `ORCH_REMOTE_AUTONOMOUS_DEBATE=1`
+- 실패/미지원 시 세션 토론(`/debate/sessions/*`)으로 자동 폴백한다.
+
 ## 로컬 에이전트 런타임 서버 실행
 1. 서버 시작
 - `npm run agent-runtime:start`
