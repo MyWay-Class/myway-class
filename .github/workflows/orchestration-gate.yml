@@ -55,11 +55,17 @@ jobs:
             const s = fs.existsSync('_workspace/scorecard.json')
               ? JSON.parse(fs.readFileSync('_workspace/scorecard.json','utf8'))
               : null;
+            const r = fs.existsSync('_workspace/remediation.json')
+              ? JSON.parse(fs.readFileSync('_workspace/remediation.json','utf8'))
+              : null;
             const codes = Array.isArray(d.requestChangeCodes) && d.requestChangeCodes.length > 0
               ? d.requestChangeCodes.join(', ')
               : 'none';
             const nextActions = Array.isArray(d.nextActions) && d.nextActions.length > 0
               ? d.nextActions.join(' | ')
+              : 'n/a';
+            const topActions = r && Array.isArray(r.actions)
+              ? r.actions.slice(0, 3).map((a) => `[${a.code}] ${a.action} (${a.owner})`).join(' | ')
               : 'n/a';
             const body = [
               '### Orchestration Gate Result',
@@ -72,7 +78,8 @@ jobs:
               s ? `- required failed: ${(Array.isArray(s.required_failed) && s.required_failed.length > 0) ? s.required_failed.join(', ') : 'none'}` : '- required failed: n/a',
               s ? `- fail-fast triggered: ${Boolean(s.fail_fast_triggered)}` : '- fail-fast triggered: n/a',
               `- request change codes: ${codes}`,
-              `- next actions: ${nextActions}`
+              `- next actions: ${nextActions}`,
+              `- remediation (top 3): ${topActions}`
             ].join('\n');
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
