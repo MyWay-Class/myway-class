@@ -44,6 +44,7 @@ const taskId = process.env.TASK_ID || `task-${Date.now()}`;
 const traceId = process.env.TRACE_ID || `${taskId}-${Math.random().toString(36).slice(2, 10)}`;
 const projectDir = process.env.PROJECT_DIR || process.cwd();
 const profile = (process.env.ORCH_PROFILE as OrchestratorProfile) || "strict";
+const targetBranch = process.env.ORCH_TARGET_BRANCH || "dev";
 const workspaceDir = join(projectDir, "_workspace");
 const logsDir = join(workspaceDir, "logs");
 const threadsDir = join(workspaceDir, "threads");
@@ -481,7 +482,9 @@ async function main(): Promise<void> {
   const rulesPath =
     profile === "baseline"
       ? join(projectDir, "ops/workflow/review-rules.baseline.yaml")
-      : join(projectDir, "ops/workflow/review-rules.yaml");
+      : targetBranch === "main"
+        ? join(projectDir, "ops/workflow/review-rules.main.yaml")
+        : join(projectDir, "ops/workflow/review-rules.yaml");
   const rules = loadRules(rulesPath);
   const scorecard = buildScorecard(taskId, checksOutput.checks, rules);
   validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), scorecard, "review scorecard");
@@ -560,6 +563,7 @@ async function main(): Promise<void> {
         taskId,
         traceId,
         profile,
+        targetBranch,
         state: finalState,
         workerPass: finalWorkerReports.every((report) => report.risks.length === 0),
         checksPass: checksOutput.pass,
