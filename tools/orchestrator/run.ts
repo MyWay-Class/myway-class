@@ -194,6 +194,15 @@ type RequestChangeCode =
   | "CHECK_UNKNOWN_FAILED"
   | "REMOTE_RUNTIME_UNAVAILABLE";
 
+interface RemediationPlan {
+  taskId: string;
+  traceId: string;
+  createdAt: string;
+  decision: "approve" | "request_changes";
+  requestChangeCodes: RequestChangeCode[];
+  actions: Array<{ code: RequestChangeCode; action: string; owner: WorkerRole | "reviewer" | "manager" }>;
+}
+
 function planForRole(role: WorkerRole, summary: string, isFail: boolean): WorkerReport["executionPlan"] {
   if (role === "backend-dev") {
     return {
@@ -246,6 +255,30 @@ function requestChangeCodesFromFailures(
     codes.add("REMOTE_RUNTIME_UNAVAILABLE");
   }
   return [...codes];
+}
+
+function remediationActionForCode(code: RequestChangeCode): { action: string; owner: WorkerRole | "reviewer" | "manager" } {
+  if (code === "WORKER_BACKEND_FAILED") return { action: "백엔드 빌드/계약 오류 수정 후 `npm run build:backend` 재실행", owner: "backend-dev" };
+  if (code === "WORKER_FRONTEND_FAILED") return { action: "프론트 빌드 오류 수정 후 `npm run build:frontend` 재실행", owner: "frontend-dev" };
+  if (code === "WORKER_TEST_FAILED") return { action: "실패 테스트 원인 수정 후 `npm run test:backend:clean` 재실행", owner: "test-engineer" };
+  if (code === "WORKER_DOCS_FAILED") return { action: "문서 변경 누락/불일치 점검 후 docs 업데이트", owner: "docs-writer" };
+  if (code === "CHECK_TESTS_FAILED") return { action: "테스트 실패 로그 우선 분석 후 회귀 수정", owner: "test-engineer" };
+  if (code === "CHECK_STYLE_FAILED") return { action: "스타일/정적검사 실패 항목 수정 후 검증 재실행", owner: "frontend-dev" };
+  if (code === "CHECK_SECURITY_FAILED") return { action: "`npm audit --audit-level=high` 실패 패키지 패치 또는 버전 업", owner: "reviewer" };
+  if (code === "CHECK_PERFORMANCE_FAILED") return { action: "성능 스모크 실패 원인(번들/빌드) 완화 후 재측정", owner: "frontend-dev" };
+  if (code === "REMOTE_RUNTIME_UNAVAILABLE") return { action: "remote 런타임 헬스(`/health`) 확인 후 복구, 필요 시 local 폴백", owner: "manager" };
+  return { action: "알 수 없는 체크 실패 항목 로그 확인 후 담당자 지정", owner: "reviewer" };
+}
+
+function buildRemediationPlan(codes: RequestChangeCode[], approved: boolean): RemediationPlan {
+  return {
+    taskId,
+    traceId,
+    createdAt: new Date().toISOString(),
+    decision: approved ? "approve" : "request_changes",
+    requestChangeCodes: codes,
+    actions: codes.map((code) => ({ code, ...remediationActionForCode(code) }))
+  };
 }
 
 async function callRemoteWorker(role: WorkerRole): Promise<WorkerReport> {
@@ -443,20 +476,23 @@ async function main(): Promise<void> {
   const finalState = approved ? "approved" : "rejected";
   stateLog("review", finalState, "manager");
 
+  const requestChangeCodes = approved ? [] : requestChangeCodesFromFailures(failedWorkers, failedChecks, finalWorkerReports);
   const decision = {
     taskId,
     traceId,
     state: finalState,
     decision: approved ? "approve" : "request_changes",
     reason: approved ? "workers and quality gate passed" : "worker/check/review gate failed",
-    requestChangeCodes: approved ? [] : requestChangeCodesFromFailures(failedWorkers, failedChecks, finalWorkerReports),
+    requestChangeCodes,
     timestamp: new Date().toISOString(),
     nextActions: approved ? ["ready for merge gate"] : [policy.fallback?.on_repeated_failure ?? "fix failures and rerun"]
   };
   validateOrThrow(join(projectDir, "ops/workflow/contracts/manager_decision.json"), decision, "manager decision");
+  const remediation = buildRemediationPlan(requestChangeCodes, approved);
 
   writeFileSync(join(workspaceDir, "scorecard.json"), JSON.stringify(finalScorecard, null, 2));
   writeFileSync(join(workspaceDir, "decision.json"), JSON.stringify(decision, null, 2));
+  writeFileSync(join(workspaceDir, "remediation.json"), JSON.stringify(remediation, null, 2));
   auditLog({ type: "decision", decision: decision.decision, state: finalState });
 
   process.stdout.write(

@@ -23,6 +23,7 @@
 
 ## 운영 수칙
 - 오케스트레이션 결과는 `_workspace/decision.json`, `_workspace/scorecard.json`, `_workspace/logs/*.jsonl`로 추적한다.
+- 실패 시 `_workspace/remediation.json`에 `requestChangeCodes` 기반 수정 가이드(담당/액션)가 생성된다.
 - 각 실행에는 `traceId`가 발급되며, `decision.json`/감사 로그/PR gate 코멘트에 동일하게 기록된다.
 - `request_changes` 또는 `rejected` 시 원인 워커 리포트(`_workspace/reports/*.json`)를 우선 확인한다.
 - 실패가 발생하면 정책(`ops/workflow/policy.yaml`)의 `debate.max_rounds` 범위 내에서 1회 재토론/재실행 후 최종 판정한다.
