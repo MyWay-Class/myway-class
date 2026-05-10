@@ -23,6 +23,7 @@
     "orch:checks": "tsx tools/orchestrator/checks.ts",
     "orch:report": "tsx tools/orchestrator/report.ts",
     "orch:slack": "tsx tools/orchestrator/slack-bridge.ts",
+    "orch:slack:server": "tsx tools/orchestrator/slack-command-server.ts",
     "orch:portable:init": "node tools/orchestrator/portable/install.mjs",
     "agent-runtime:start": "tsx tools/agent-runtime/server.ts",
     "lint": "npm --workspace @myway/backend run build && npm --workspace @myway/frontend run build",
