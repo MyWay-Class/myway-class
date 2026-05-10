@@ -41,6 +41,16 @@
 - 요청 필드: `taskId`, `profile`, `optionA`, `optionB`
 - 응답 필드: `chosen`, `rationale`, `messages[]`
 
+## 로컬 에이전트 런타임 서버 실행
+1. 서버 시작
+- `npm run agent-runtime:start`
+- 기본 주소: `http://127.0.0.1:8787`
+
+2. 오케스트레이터를 remote 모드로 실행
+- `set ORCH_AGENT_MODE=remote`
+- `set ORCH_AGENT_ENDPOINT=http://127.0.0.1:8787`
+- `npm run orch:run`
+
 ## 실행 예시
 1. strict 기본 검증
 - `set ORCH_PROFILE=strict && npm run orch:run`
