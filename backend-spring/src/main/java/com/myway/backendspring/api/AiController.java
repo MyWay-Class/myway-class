@@ -97,7 +97,16 @@ public class AiController {
         }
 
         Integer limit = intOrNull(body, "limit");
-        Map<String, Object> data = featureStore.ragOverview(query, lectureId.isBlank() ? null : lectureId, courseId.isBlank() ? null : courseId, limit);
+        Double minScore = doubleOrNull(body, "min_score");
+        boolean includeDebug = booleanOrDefault(body, "include_debug", false);
+        Map<String, Object> data = featureStore.ragOverview(
+                query,
+                lectureId.isBlank() ? null : lectureId,
+                courseId.isBlank() ? null : courseId,
+                limit,
+                minScore,
+                includeDebug
+        );
         featureStore.recordAiUsage(session.user().id(), "rag", true, query);
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 응답을 생성했습니다."));
     }
@@ -140,6 +149,31 @@ public class AiController {
                 courseId.isBlank() ? null : courseId
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(data, "RAG 인덱스를 재생성했습니다."));
+    }
+
+    @PostMapping("/rag/index/clear")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> clearRagIndex(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String lectureId = text(body, "lecture_id");
+        String courseId = text(body, "course_id");
+        if (lectureId.isBlank() && courseId.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_OR_COURSE_REQUIRED", "lecture_id 또는 course_id가 필요합니다."));
+        }
+        if (!lectureId.isBlank() && learningService.getLecture(lectureId) == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
+        }
+        if (!courseId.isBlank() && learningService.getCourseLectures(courseId).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
+        }
+        Map<String, Object> data = featureStore.clearRagIndex(
+                lectureId.isBlank() ? null : lectureId,
+                courseId.isBlank() ? null : courseId
+        );
+        return ResponseEntity.ok(ApiResponse.success(data, "RAG 인덱스를 초기화했습니다."));
     }
 
     @PostMapping("/intent")
@@ -265,5 +299,38 @@ public class AiController {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    private Double doubleOrNull(Map<String, Object> body, String key) {
+        String value = text(body, key);
+        if (value.isBlank()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private boolean booleanOrDefault(Map<String, Object> body, String key, boolean defaultValue) {
+        if (body == null || !body.containsKey(key)) {
+            return defaultValue;
+        }
+        Object raw = body.get(key);
+        if (raw instanceof Boolean bool) {
+            return bool;
+        }
+        String value = String.valueOf(raw).trim().toLowerCase();
+        if (value.isBlank()) {
+            return defaultValue;
+        }
+        if ("true".equals(value) || "1".equals(value) || "y".equals(value) || "yes".equals(value)) {
+            return true;
+        }
+        if ("false".equals(value) || "0".equals(value) || "n".equals(value) || "no".equals(value)) {
+            return false;
+        }
+        return defaultValue;
     }
 }
