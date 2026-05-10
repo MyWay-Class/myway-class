@@ -22,6 +22,7 @@
 ## 운영 수칙
 - 오케스트레이션 결과는 `_workspace/decision.json`, `_workspace/scorecard.json`, `_workspace/logs/*.jsonl`로 추적한다.
 - `request_changes` 또는 `rejected` 시 원인 워커 리포트(`_workspace/reports/*.json`)를 우선 확인한다.
+- 실패가 발생하면 정책(`ops/workflow/policy.yaml`)의 `debate.max_rounds` 범위 내에서 1회 재토론/재실행 후 최종 판정한다.
 - 임시/산출물 파일(`_workspace/`, `.github/.tmp_*`, `backend-spring/target/`)은 커밋하지 않는다.
 
 ## 실행 예시

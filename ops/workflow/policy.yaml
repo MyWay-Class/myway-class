@@ -8,3 +8,5 @@ timeouts:
 fallback:
   on_repeated_failure: manual_review_required
   allow_partial_report: true
+debate:
+  max_rounds: 2
