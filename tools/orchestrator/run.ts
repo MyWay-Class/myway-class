@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import YAML from "yaml";
 import { runChecks, type OrchestratorProfile } from "./checks";
 import { validateOrThrow } from "./validate";
-import { buildScorecard, loadRules } from "./score";
+import { buildScorecard, loadRules, loadWaivers } from "./score";
 
 type WorkerRole = "backend-dev" | "frontend-dev" | "test-engineer" | "docs-writer";
 
@@ -485,8 +485,10 @@ async function main(): Promise<void> {
       : targetBranch === "main"
         ? join(projectDir, "ops/workflow/review-rules.main.yaml")
         : join(projectDir, "ops/workflow/review-rules.yaml");
+  const waiversPath = join(projectDir, "ops/workflow/review-waivers.yaml");
   const rules = loadRules(rulesPath);
-  const scorecard = buildScorecard(taskId, checksOutput.checks, rules);
+  const waivers = existsSync(waiversPath) ? loadWaivers(waiversPath) : { waivers: [] };
+  const scorecard = buildScorecard(taskId, checksOutput.checks, rules, { waivers, branch: targetBranch });
   validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), scorecard, "review scorecard");
 
   let failedWorkers = workerReports
@@ -529,7 +531,7 @@ async function main(): Promise<void> {
     checksOutput = rerunChecks;
     failedWorkers = finalWorkerReports.filter((report) => report.risks.length > 0).map((report) => ({ role: report.role, risks: report.risks }));
     failedChecks = checksOutput.checks.filter((check) => !check.pass).map((check) => check.name);
-    finalScorecard = buildScorecard(taskId, checksOutput.checks, rules);
+    finalScorecard = buildScorecard(taskId, checksOutput.checks, rules, { waivers, branch: targetBranch });
     validateOrThrow(join(projectDir, "ops/workflow/contracts/review_scorecard.json"), finalScorecard, "review scorecard rerun");
     auditLog({ type: "remediation-round", rerun: 1, workerFailures: failedWorkers, checkFailures: failedChecks });
   }
