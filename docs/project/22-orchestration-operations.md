@@ -62,6 +62,7 @@
 ## request_changes 코드 표준
 - 실패 시 `decision.json.requestChangeCodes`에 구조화 원인 코드를 기록한다.
 - 예: `WORKER_BACKEND_FAILED`, `CHECK_TESTS_FAILED`, `REMOTE_RUNTIME_UNAVAILABLE`
+- 재라운드 진입 시 `requestChangeCodes`별 부분 복구 명령(예: 테스트 재실행, 보안 감사, 빌드 스모크)을 자동 실행한 뒤 재판정한다.
 
 ## Reviewer fail-fast
 - `review-rules*.yaml`의 `required.<metric>.fail_fast: true`인 항목이 기준 미달이면 총점과 무관하게 즉시 `reject`한다.
