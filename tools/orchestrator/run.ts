@@ -15,6 +15,11 @@ interface WorkerReport {
   summary: string;
   filesChanged: string[];
   risks: string[];
+  executionPlan: {
+    steps: string[];
+    commands: string[];
+    riskLevel: "low" | "medium" | "high";
+  };
   timestamp: string;
 }
 
@@ -153,6 +158,7 @@ function localWorkerReport(role: WorkerRole): WorkerReport {
     summary,
     filesChanged: changedFiles,
     risks: pass ? [] : [`${role} command failed`],
+    executionPlan: planForRole(role, summary, !pass),
     timestamp: new Date().toISOString()
   };
 
@@ -168,6 +174,77 @@ interface RemoteWorkerResponse {
   risks?: string[];
   pass?: boolean;
   messages?: string[];
+  executionPlan?: {
+    steps?: string[];
+    commands?: string[];
+    riskLevel?: "low" | "medium" | "high";
+  };
+}
+
+type RequestChangeCode =
+  | "WORKER_BACKEND_FAILED"
+  | "WORKER_FRONTEND_FAILED"
+  | "WORKER_TEST_FAILED"
+  | "WORKER_DOCS_FAILED"
+  | "CHECK_TESTS_FAILED"
+  | "CHECK_STYLE_FAILED"
+  | "CHECK_SECURITY_FAILED"
+  | "CHECK_PERFORMANCE_FAILED"
+  | "CHECK_UNKNOWN_FAILED"
+  | "REMOTE_RUNTIME_UNAVAILABLE";
+
+function planForRole(role: WorkerRole, summary: string, isFail: boolean): WorkerReport["executionPlan"] {
+  if (role === "backend-dev") {
+    return {
+      steps: ["compile backend modules", "run contract-sensitive packaging"],
+      commands: ["npm run build:backend"],
+      riskLevel: isFail ? "high" : "medium"
+    };
+  }
+  if (role === "frontend-dev") {
+    return {
+      steps: ["compile frontend bundle", "validate build output"],
+      commands: ["npm run build:frontend"],
+      riskLevel: isFail ? "medium" : "low"
+    };
+  }
+  if (role === "test-engineer") {
+    return {
+      steps: ["run backend tests", "collect failures for remediation"],
+      commands: ["npm run test:backend"],
+      riskLevel: isFail ? "high" : "medium"
+    };
+  }
+  return {
+    steps: ["inspect docs impact", "record documentation actions"],
+    commands: ["echo docs-worker-noop"],
+    riskLevel: summary.includes("no docs") ? "low" : "medium"
+  };
+}
+
+function requestChangeCodesFromFailures(
+  failedWorkers: Array<{ role: WorkerRole; risks: string[] }>,
+  failedChecks: string[],
+  finalReports: WorkerReport[]
+): RequestChangeCode[] {
+  const codes = new Set<RequestChangeCode>();
+  for (const worker of failedWorkers) {
+    if (worker.role === "backend-dev") codes.add("WORKER_BACKEND_FAILED");
+    if (worker.role === "frontend-dev") codes.add("WORKER_FRONTEND_FAILED");
+    if (worker.role === "test-engineer") codes.add("WORKER_TEST_FAILED");
+    if (worker.role === "docs-writer") codes.add("WORKER_DOCS_FAILED");
+  }
+  for (const checkName of failedChecks) {
+    if (checkName.toLowerCase().includes("test")) codes.add("CHECK_TESTS_FAILED");
+    else if (checkName.toLowerCase().includes("lint") || checkName.toLowerCase().includes("style")) codes.add("CHECK_STYLE_FAILED");
+    else if (checkName.toLowerCase().includes("security") || checkName.toLowerCase().includes("audit")) codes.add("CHECK_SECURITY_FAILED");
+    else if (checkName.toLowerCase().includes("perf")) codes.add("CHECK_PERFORMANCE_FAILED");
+    else codes.add("CHECK_UNKNOWN_FAILED");
+  }
+  if (finalReports.some((report) => report.risks.some((risk) => risk.includes("remote worker unavailable")))) {
+    codes.add("REMOTE_RUNTIME_UNAVAILABLE");
+  }
+  return [...codes];
 }
 
 async function callRemoteWorker(role: WorkerRole): Promise<WorkerReport> {
@@ -199,12 +276,18 @@ async function callRemoteWorker(role: WorkerRole): Promise<WorkerReport> {
   const payload = (await response.json()) as RemoteWorkerResponse;
   const pass = payload.pass ?? (payload.risks?.length ?? 0) === 0;
   const summary = payload.summary || `${role} remote execution ${pass ? "passed" : "failed"}`;
+  const fallbackPlan = planForRole(role, summary, !pass);
   const report: WorkerReport = {
     taskId,
     role,
     summary,
     filesChanged: Array.from(new Set([...(payload.filesChanged ?? []), ...ownedChangedFiles])),
     risks: payload.risks ?? (pass ? [] : [`${role} remote execution failed`]),
+    executionPlan: {
+      steps: payload.executionPlan?.steps ?? fallbackPlan.steps,
+      commands: payload.executionPlan?.commands ?? fallbackPlan.commands,
+      riskLevel: payload.executionPlan?.riskLevel ?? fallbackPlan.riskLevel
+    },
     timestamp: new Date().toISOString()
   };
   for (const message of payload.messages ?? []) {
@@ -236,9 +319,10 @@ async function runWorker(role: WorkerRole): Promise<WorkerReport> {
   return localWorkerReport(role);
 }
 
-async function debateRound(): Promise<{ chosen: "A" | "B"; rationale: string }> {
+async function debateRound(): Promise<{ chosen: "A" | "B" | "C"; rationale: string }> {
   const optionA = profile === "strict" ? "full quality gate with tests+audit" : "keep strict for production branches";
   const optionB = profile === "baseline" ? "baseline fast gate for CI" : "fallback baseline when strict repeatedly fails";
+  const optionC = "merge A+B: keep strict gate with baseline fallback only for transient external failures";
   const chosen = profile === "strict" ? "A" : "B";
   const rationale = chosen === "A" ? optionA : optionB;
   if (agentMode === "remote" && agentEndpoint) {
@@ -250,11 +334,11 @@ async function debateRound(): Promise<{ chosen: "A" | "B"; rationale: string }> 
           "content-type": "application/json",
           ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
         },
-        body: JSON.stringify({ taskId, profile, optionA, optionB }),
+        body: JSON.stringify({ taskId, profile, optionA, optionB, optionC }),
         signal: AbortSignal.timeout(agentTimeoutMs)
       });
       if (response.ok) {
-        const payload = (await response.json()) as { messages?: Array<{ role: string; message: string }>; chosen?: "A" | "B"; rationale?: string };
+        const payload = (await response.json()) as { messages?: Array<{ role: string; message: string }>; chosen?: "A" | "B" | "C"; rationale?: string };
         for (const entry of payload.messages ?? []) {
           appendFileSync(join(threadsDir, `${taskId}.jsonl`), JSON.stringify({ role: entry.role, message: entry.message, at: new Date().toISOString() }) + "\n");
         }
@@ -268,6 +352,7 @@ async function debateRound(): Promise<{ chosen: "A" | "B"; rationale: string }> 
     join(threadsDir, `${taskId}.jsonl`),
     JSON.stringify({ role: "worker-A", message: optionA, at: new Date().toISOString() }) + "\n" +
       JSON.stringify({ role: "worker-B", message: optionB, at: new Date().toISOString() }) + "\n" +
+      JSON.stringify({ role: "critic", message: `proposed merge option C: ${optionC}`, at: new Date().toISOString() }) + "\n" +
       JSON.stringify({ role: "critic", message: `selected ${chosen}: ${rationale}`, at: new Date().toISOString() }) + "\n" +
       JSON.stringify({ role: "manager", message: `execute plan ${chosen} for ${profile} profile`, at: new Date().toISOString() }) + "\n"
   );
@@ -362,6 +447,7 @@ async function main(): Promise<void> {
     state: finalState,
     decision: approved ? "approve" : "request_changes",
     reason: approved ? "workers and quality gate passed" : "worker/check/review gate failed",
+    requestChangeCodes: approved ? [] : requestChangeCodesFromFailures(failedWorkers, failedChecks, finalWorkerReports),
     timestamp: new Date().toISOString(),
     nextActions: approved ? ["ready for merge gate"] : [policy.fallback?.on_repeated_failure ?? "fix failures and rerun"]
   };

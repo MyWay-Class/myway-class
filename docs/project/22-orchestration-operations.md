@@ -34,22 +34,30 @@
 1. 워커 실행
 - `POST {ORCH_AGENT_ENDPOINT}/workers/run`
 - 요청 필드: `taskId`, `role`, `profile`, `projectDir`, `timeoutMs`, `filesChangedHint`
-- 응답 필드: `summary`, `filesChanged[]`, `risks[]`, `pass`, `messages[]`
+- 응답 필드: `summary`, `filesChanged[]`, `risks[]`, `pass`, `messages[]`, `executionPlan`
 
 2. 토론 라운드(선택)
 - `POST {ORCH_AGENT_ENDPOINT}/debate/round`
-- 요청 필드: `taskId`, `profile`, `optionA`, `optionB`
-- 응답 필드: `chosen`, `rationale`, `messages[]`
+- 요청 필드: `taskId`, `profile`, `optionA`, `optionB`, `optionC(선택)`
+- 응답 필드: `chosen(A|B|C)`, `rationale`, `messages[]`
 
 ## 로컬 에이전트 런타임 서버 실행
 1. 서버 시작
 - `npm run agent-runtime:start`
 - 기본 주소: `http://127.0.0.1:8787`
+- 운영 파라미터:
+  - `AGENT_RUNTIME_CONCURRENCY` (기본 `1`)
+  - `AGENT_RUNTIME_COMMAND_RETRIES` (기본 `1`)
+  - `AGENT_RUNTIME_QUEUE_TIMEOUT_MS` (기본 `120000`)
 
 2. 오케스트레이터를 remote 모드로 실행
 - `set ORCH_AGENT_MODE=remote`
 - `set ORCH_AGENT_ENDPOINT=http://127.0.0.1:8787`
 - `npm run orch:run`
+
+## request_changes 코드 표준
+- 실패 시 `decision.json.requestChangeCodes`에 구조화 원인 코드를 기록한다.
+- 예: `WORKER_BACKEND_FAILED`, `CHECK_TESTS_FAILED`, `REMOTE_RUNTIME_UNAVAILABLE`
 
 ## 실행 예시
 1. strict 기본 검증

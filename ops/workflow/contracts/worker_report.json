@@ -2,13 +2,23 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "WorkerReport",
   "type": "object",
-  "required": ["taskId", "role", "summary", "filesChanged", "risks", "timestamp"],
+  "required": ["taskId", "role", "summary", "filesChanged", "risks", "timestamp", "executionPlan"],
   "properties": {
     "taskId": { "type": "string", "minLength": 1 },
     "role": { "type": "string", "enum": ["backend-dev", "frontend-dev", "test-engineer", "docs-writer"] },
     "summary": { "type": "string", "minLength": 1 },
     "filesChanged": { "type": "array", "items": { "type": "string" } },
     "risks": { "type": "array", "items": { "type": "string" } },
+    "executionPlan": {
+      "type": "object",
+      "required": ["steps", "commands", "riskLevel"],
+      "properties": {
+        "steps": { "type": "array", "items": { "type": "string" } },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "riskLevel": { "type": "string", "enum": ["low", "medium", "high"] }
+      },
+      "additionalProperties": false
+    },
     "timestamp": { "type": "string", "format": "date-time" }
   },
   "additionalProperties": false
