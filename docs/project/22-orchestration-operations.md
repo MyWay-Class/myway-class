@@ -80,6 +80,18 @@
 - `review-rules*.yaml`의 `required.<metric>.fail_fast: true`인 항목이 기준 미달이면 총점과 무관하게 즉시 `reject`한다.
 - 결과는 `scorecard.required_failed`, `scorecard.fail_fast_triggered`에 기록된다.
 
+## Temporary waiver(예외 승인)
+- 파일: `ops/workflow/review-waivers.yaml`
+- 목적: 제한된 기간 동안 특정 metric fail-fast/required 기준을 예외 처리한다.
+- 필드:
+  - `metric`: `tests | style | security | performance`
+  - `branch`(선택): 지정 시 해당 브랜치에서만 적용
+  - `expires_at`: ISO-8601 만료 시각(만료 후 자동 무효)
+  - `reason`, `approved_by`: 감사 추적용 필수 메타데이터
+- 반영 결과:
+  - `scorecard.waived_required`에 예외 적용 metric 기록
+  - `scorecard.waiver_notes`에 사유/승인자/만료 시각 기록
+
 ## 실행 예시
 1. strict 기본 검증
 - `set ORCH_PROFILE=strict && npm run orch:run`
