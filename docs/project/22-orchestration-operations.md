@@ -66,6 +66,8 @@
   - `AGENT_RUNTIME_AUTONOMOUS_DEBATE=1`
   - `AGENT_RUNTIME_LLM_API_KEY` (또는 `OPENAI_API_KEY`)
   - 선택: `AGENT_RUNTIME_LLM_BASE_URL`, `AGENT_RUNTIME_LLM_MODEL`, `AGENT_RUNTIME_LLM_TIMEOUT_MS`
+  - 선택(역할별 모델): `AGENT_RUNTIME_LLM_MODEL_WORKER_A`, `AGENT_RUNTIME_LLM_MODEL_WORKER_B`, `AGENT_RUNTIME_LLM_MODEL_CRITIC`, `AGENT_RUNTIME_LLM_MODEL_MANAGER`
+  - 선택(비용 제한): `AGENT_RUNTIME_LLM_MAX_OUTPUT_TOKENS`
 - 오케스트레이터 활성화:
   - 정책: `ops/workflow/policy.yaml`의 `debate.remote_autonomous_enabled: true`
   - 또는 일회성: `ORCH_REMOTE_AUTONOMOUS_DEBATE=1`
@@ -153,3 +155,16 @@
   - `enabled`
   - `history_limit`
   - `dynamic_role_routing`
+  - `ttl_days`: 장기 메모리 만료 일수
+  - `summary_bucket_days`: 오래된 실행 압축 요약 단위
+  - `bias_guard_reject_ratio_min`: 반려율이 너무 낮을 때 보수적 힌트 강제 기준
+
+## 정책 A/B 자동 튜닝
+- 정책: `ops/workflow/policy.yaml.experiments`
+  - `enabled`, `seed`, `variant_ratio`, `warmup_runs`
+  - `control`, `variant` 각각에 `remote_autonomous_enabled`, `remote_autonomous_rounds`, `dynamic_role_routing` 설정
+- 수집 지표(실행별): 승인 여부, 재라운드 횟수, 리드타임(ms)
+- 자동 튜닝 로직:
+  - warmup 이후 control/variant 최근 성능 점수 비교
+  - 점수 우위 변형의 노출 비율을 자동 가중(기본 비율 대비 ±0.2)
+  - 점수는 `approve_rate - rerun_penalty - leadtime_penalty` 기반

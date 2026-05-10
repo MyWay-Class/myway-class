@@ -32,6 +32,25 @@ interface Policy {
     enabled?: boolean;
     history_limit?: number;
     dynamic_role_routing?: boolean;
+    ttl_days?: number;
+    summary_bucket_days?: number;
+    bias_guard_reject_ratio_min?: number;
+  };
+  experiments?: {
+    enabled?: boolean;
+    seed?: string;
+    variant_ratio?: number;
+    warmup_runs?: number;
+    control?: {
+      remote_autonomous_enabled?: boolean;
+      remote_autonomous_rounds?: number;
+      dynamic_role_routing?: boolean;
+    };
+    variant?: {
+      remote_autonomous_enabled?: boolean;
+      remote_autonomous_rounds?: number;
+      dynamic_role_routing?: boolean;
+    };
   };
   agent_runtime?: {
     mode?: "local" | "remote";
@@ -73,14 +92,20 @@ const remoteAutonomousDebateEnabled = process.env.ORCH_REMOTE_AUTONOMOUS_DEBATE 
 const remoteAutonomousDebateRounds = Math.max(1, Math.min(policy.debate?.remote_autonomous_rounds ?? 2, 3));
 const learningEnabled = policy.learning?.enabled !== false;
 const historyLimit = Math.max(10, Math.min(policy.learning?.history_limit ?? 100, 500));
-const dynamicRoleRoutingEnabled = policy.learning?.dynamic_role_routing !== false;
+const memoryTtlDays = Math.max(7, Math.min(policy.learning?.ttl_days ?? 30, 365));
+const summaryBucketDays = Math.max(1, Math.min(policy.learning?.summary_bucket_days ?? 7, 30));
+const biasGuardRejectRatioMin = Math.max(0.05, Math.min(policy.learning?.bias_guard_reject_ratio_min ?? 0.1, 0.9));
+const dynamicRoleRoutingEnabledDefault = policy.learning?.dynamic_role_routing !== false;
 
 interface StrategyMemoryEntry {
   at: string;
   profile: OrchestratorProfile;
   targetBranch: string;
+  experimentVariant?: "control" | "variant";
   chosenDebate?: "A" | "B" | "C";
   state: "approved" | "rejected";
+  rerunCount: number;
+  leadTimeMs: number;
   failedWorkers: WorkerRole[];
   failedChecks: string[];
 }
@@ -88,6 +113,22 @@ interface StrategyMemoryEntry {
 interface StrategyMemory {
   version: 1;
   entries: StrategyMemoryEntry[];
+  summaries?: Array<{
+    from: string;
+    to: string;
+    totalRuns: number;
+    approvedRuns: number;
+    rejectedRuns: number;
+    topFailedChecks: string[];
+    topFailedWorkers: WorkerRole[];
+  }>;
+}
+
+interface ExperimentConfig {
+  variantName: "control" | "variant";
+  remoteAutonomousEnabled: boolean;
+  remoteAutonomousRounds: number;
+  dynamicRoleRoutingEnabled: boolean;
 }
 
 function strategyMemoryPath(): string {
@@ -96,13 +137,13 @@ function strategyMemoryPath(): string {
 
 function loadStrategyMemory(): StrategyMemory {
   const path = strategyMemoryPath();
-  if (!existsSync(path)) return { version: 1, entries: [] };
+  if (!existsSync(path)) return { version: 1, entries: [], summaries: [] };
   try {
     const parsed = JSON.parse(readFileSync(path, "utf-8")) as StrategyMemory;
-    if (!Array.isArray(parsed.entries)) return { version: 1, entries: [] };
-    return { version: 1, entries: parsed.entries };
+    if (!Array.isArray(parsed.entries)) return { version: 1, entries: [], summaries: [] };
+    return { version: 1, entries: parsed.entries, summaries: Array.isArray(parsed.summaries) ? parsed.summaries : [] };
   } catch {
-    return { version: 1, entries: [] };
+    return { version: 1, entries: [], summaries: [] };
   }
 }
 
@@ -110,10 +151,88 @@ function saveStrategyMemory(entry: StrategyMemoryEntry): void {
   if (!learningEnabled) return;
   const memory = loadStrategyMemory();
   memory.entries.push(entry);
+  const ttlMs = memoryTtlDays * 24 * 60 * 60 * 1000;
+  const nowMs = Date.now();
+  memory.entries = memory.entries.filter((e) => {
+    const atMs = Date.parse(e.at);
+    return Number.isFinite(atMs) && nowMs - atMs <= ttlMs;
+  });
   if (memory.entries.length > historyLimit) {
-    memory.entries = memory.entries.slice(memory.entries.length - historyLimit);
+    const overflow = memory.entries.length - historyLimit;
+    const expired = memory.entries.slice(0, overflow);
+    const kept = memory.entries.slice(overflow);
+    const byMetric = new Map<string, number>();
+    const byWorker = new Map<WorkerRole, number>();
+    for (const e of expired) {
+      for (const c of e.failedChecks) byMetric.set(c, (byMetric.get(c) || 0) + 1);
+      for (const w of e.failedWorkers) byWorker.set(w, (byWorker.get(w) || 0) + 1);
+    }
+    const topFailedChecks = [...byMetric.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map((v) => v[0]);
+    const topFailedWorkers = [...byWorker.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map((v) => v[0]);
+    memory.summaries = memory.summaries || [];
+    memory.summaries.push({
+      from: expired[0]?.at || new Date(nowMs - summaryBucketDays * 86400000).toISOString(),
+      to: expired[expired.length - 1]?.at || new Date().toISOString(),
+      totalRuns: expired.length,
+      approvedRuns: expired.filter((e) => e.state === "approved").length,
+      rejectedRuns: expired.filter((e) => e.state === "rejected").length,
+      topFailedChecks,
+      topFailedWorkers
+    });
+    if (memory.summaries.length > 50) {
+      memory.summaries = memory.summaries.slice(memory.summaries.length - 50);
+    }
+    memory.entries = kept;
   }
   writeFileSync(strategyMemoryPath(), JSON.stringify(memory, null, 2));
+}
+
+function hashString(input: string): number {
+  let h = 0;
+  for (let i = 0; i < input.length; i += 1) h = (h * 31 + input.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function resolveExperimentConfig(memory: StrategyMemory): ExperimentConfig {
+  const base: ExperimentConfig = {
+    variantName: "control",
+    remoteAutonomousEnabled: remoteAutonomousDebateEnabled,
+    remoteAutonomousRounds: remoteAutonomousDebateRounds,
+    dynamicRoleRoutingEnabled: dynamicRoleRoutingEnabledDefault
+  };
+  if (policy.experiments?.enabled !== true) return base;
+  const warmupRuns = Math.max(0, policy.experiments?.warmup_runs ?? 20);
+  if (memory.entries.length < warmupRuns) return base;
+  const defaultRatio = Math.max(0.05, Math.min(policy.experiments?.variant_ratio ?? 0.5, 0.95));
+  const recent = memory.entries.slice(-120).filter((e) => e.experimentVariant);
+  const byVariant = {
+    control: recent.filter((e) => e.experimentVariant === "control"),
+    variant: recent.filter((e) => e.experimentVariant === "variant")
+  };
+  const score = (items: StrategyMemoryEntry[]): number => {
+    if (items.length === 0) return 0;
+    const approveRate = items.filter((i) => i.state === "approved").length / items.length;
+    const rerunPenalty = items.reduce((s, i) => s + i.rerunCount, 0) / items.length;
+    const leadTimePenalty = items.reduce((s, i) => s + i.leadTimeMs, 0) / items.length / 60_000;
+    return approveRate * 100 - rerunPenalty * 10 - leadTimePenalty;
+  };
+  const controlScore = score(byVariant.control);
+  const variantScore = score(byVariant.variant);
+  const tunedRatio = byVariant.control.length >= 10 && byVariant.variant.length >= 10
+    ? variantScore > controlScore
+      ? Math.min(0.9, defaultRatio + 0.2)
+      : Math.max(0.1, defaultRatio - 0.2)
+    : defaultRatio;
+  const seed = policy.experiments?.seed || "orch-exp";
+  const pick = (hashString(`${seed}:${taskId}:${targetBranch}`) % 1000) / 1000;
+  const variantName: "control" | "variant" = pick < tunedRatio ? "variant" : "control";
+  const selected = variantName === "variant" ? policy.experiments?.variant : policy.experiments?.control;
+  return {
+    variantName,
+    remoteAutonomousEnabled: selected?.remote_autonomous_enabled ?? base.remoteAutonomousEnabled,
+    remoteAutonomousRounds: Math.max(1, Math.min(selected?.remote_autonomous_rounds ?? base.remoteAutonomousRounds, 3)),
+    dynamicRoleRoutingEnabled: selected?.dynamic_role_routing ?? base.dynamicRoleRoutingEnabled
+  };
 }
 
 function inferPriorityRolesFromChanges(changedFiles: string[]): WorkerRole[] {
@@ -135,7 +254,7 @@ function workerRoleFromCheck(check: string): WorkerRole {
   return "backend-dev";
 }
 
-function buildExecutionWorkers(): WorkerRole[] {
+function buildExecutionWorkers(dynamicRoleRoutingEnabled: boolean): WorkerRole[] {
   const defaults: WorkerRole[] = ["backend-dev", "frontend-dev", "test-engineer", "docs-writer"];
   if (!dynamicRoleRoutingEnabled) return defaults;
   const changedFiles = getGitChangedFiles();
@@ -489,11 +608,13 @@ async function runWorker(role: WorkerRole): Promise<WorkerReport> {
   return localWorkerReport(role);
 }
 
-async function debateRound(): Promise<{ chosen: "A" | "B" | "C"; rationale: string }> {
+async function debateRound(experiment: ExperimentConfig): Promise<{ chosen: "A" | "B" | "C"; rationale: string }> {
   const memory = loadStrategyMemory().entries.slice(-20);
   const recentRejects = memory.filter((e) => e.state === "rejected").length;
   const recentApprovals = memory.filter((e) => e.state === "approved").length;
-  const memoryHint = `recent_approvals=${recentApprovals}, recent_rejects=${recentRejects}`;
+  const rejectRatio = recentApprovals + recentRejects === 0 ? 0 : recentRejects / (recentApprovals + recentRejects);
+  const biasGuard = rejectRatio < biasGuardRejectRatioMin ? "bias_guard=force_conservative_checks" : "bias_guard=normal";
+  const memoryHint = `recent_approvals=${recentApprovals}, recent_rejects=${recentRejects}, ${biasGuard}`;
   const optionA = profile === "strict" ? "full quality gate with tests+audit" : "keep strict for production branches";
   const optionB = profile === "baseline" ? "baseline fast gate for CI" : "fallback baseline when strict repeatedly fails";
   const optionC = `merge A+B: keep strict gate with baseline fallback only for transient external failures (${memoryHint})`;
@@ -503,7 +624,7 @@ async function debateRound(): Promise<{ chosen: "A" | "B" | "C"; rationale: stri
     try {
       const apiKey = process.env[agentApiKeyEnv];
       const endpoint = agentEndpoint.replace(/\/$/, "");
-      if (remoteAutonomousDebateEnabled) {
+      if (experiment.remoteAutonomousEnabled) {
         const autonomousResponse = await fetch(`${endpoint}/debate/autonomous`, {
           method: "POST",
           headers: {
@@ -514,7 +635,7 @@ async function debateRound(): Promise<{ chosen: "A" | "B" | "C"; rationale: stri
             taskId,
             profile,
             options: { A: optionA, B: optionB, C: optionC },
-            rounds: remoteAutonomousDebateRounds
+            rounds: experiment.remoteAutonomousRounds
           }),
           signal: AbortSignal.timeout(agentTimeoutMs)
         });
@@ -628,12 +749,23 @@ function remediationRound(failedWorkers: string[], failedChecks: string[]): void
 }
 
 async function main(): Promise<void> {
+  const startedAtMs = Date.now();
+  const memoryAtStart = loadStrategyMemory();
+  const experiment = resolveExperimentConfig(memoryAtStart);
+  auditLog({
+    type: "experiment",
+    variant: experiment.variantName,
+    remoteAutonomousEnabled: experiment.remoteAutonomousEnabled,
+    remoteAutonomousRounds: experiment.remoteAutonomousRounds,
+    dynamicRoleRoutingEnabled: experiment.dynamicRoleRoutingEnabled
+  });
+
   stateLog(null, "draft", "manager");
   stateLog("draft", "debate", "manager");
-  const debate = await debateRound();
+  const debate = await debateRound(experiment);
   auditLog({ type: "debate", chosen: debate.chosen, rationale: debate.rationale, mode: agentMode });
 
-  const workers = buildExecutionWorkers();
+  const workers = buildExecutionWorkers(experiment.dynamicRoleRoutingEnabled);
   const workerReports = await Promise.all(workers.map((role) => runWorker(role)));
 
   stateLog("debate", "review", "reviewer");
@@ -669,10 +801,12 @@ async function main(): Promise<void> {
 
   const maxDebateRounds = Math.max(1, policy.debate?.max_rounds ?? 2);
   const shouldRetryRound = (failedWorkers.length > 0 || failedChecks.length > 0) && maxDebateRounds > 1;
+  let rerunCount = 0;
   let finalWorkerReports = workerReports;
   let finalScorecard = scorecard;
 
   if (shouldRetryRound) {
+    rerunCount = 1;
     const initialRequestChangeCodes = requestChangeCodesFromFailures(failedWorkers, failedChecks, finalWorkerReports);
     const autofixResults = runAutoFix(initialRequestChangeCodes);
     if (autofixResults.length > 0) {
@@ -736,8 +870,11 @@ async function main(): Promise<void> {
     at: new Date().toISOString(),
     profile,
     targetBranch,
+    experimentVariant: experiment.variantName,
     chosenDebate: debate.chosen,
     state: finalState,
+    rerunCount,
+    leadTimeMs: Date.now() - startedAtMs,
     failedWorkers: failedWorkers.map((v) => v.role),
     failedChecks
   });

@@ -16,6 +16,22 @@ learning:
   enabled: true
   history_limit: 100
   dynamic_role_routing: true
+  ttl_days: 30
+  summary_bucket_days: 7
+  bias_guard_reject_ratio_min: 0.1
+experiments:
+  enabled: true
+  seed: "myway-orch-ab"
+  variant_ratio: 0.5
+  warmup_runs: 20
+  control:
+    remote_autonomous_enabled: false
+    remote_autonomous_rounds: 1
+    dynamic_role_routing: true
+  variant:
+    remote_autonomous_enabled: true
+    remote_autonomous_rounds: 2
+    dynamic_role_routing: true
 agent_runtime:
   mode: local
   endpoint: ""
