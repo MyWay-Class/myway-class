@@ -11,6 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DemoLearningService {
     private static final String ENROLLMENT_SCOPE = "learning_enrollment";
     private static final String LECTURE_COMPLETION_SCOPE = "learning_lecture_completion";
+    private static final String COURSE_SCOPE = "learning_course";
+    private static final String MATERIAL_SCOPE = "learning_material";
+    private static final String NOTICE_SCOPE = "learning_notice";
     private final Map<String, CourseDetail> courses = new LinkedHashMap<>();
     private final Map<String, List<MaterialItem>> materialsByCourse = new ConcurrentHashMap<>();
     private final Map<String, List<NoticeItem>> noticesByCourse = new ConcurrentHashMap<>();
@@ -33,6 +36,10 @@ public class DemoLearningService {
     }
 
     private void initSeedData() {
+        if (useStore()) {
+            seedStoreDataIfMissing();
+            return;
+        }
         List<LectureItem> javaLectures = List.of(
                 new LectureItem("lec_java_01", "crs_java_01", "Spring Boot 시작", 25),
                 new LectureItem("lec_java_02", "crs_java_01", "REST API 설계", 35)
@@ -54,11 +61,11 @@ public class DemoLearningService {
     }
 
     public List<CourseCard> listCourseCards(String userId) {
-        return courses.values().stream().map(c -> new CourseCard(c.id(), c.title(), c.instructor_id(), progressPercent(userId, c.id()))).toList();
+        return listAllCourses().stream().map(c -> new CourseCard(c.id(), c.title(), c.instructor_id(), progressPercent(userId, c.id()))).toList();
     }
 
     public List<CourseCard> listManagedCourseCards(String userId, String role) {
-        return courses.values().stream()
+        return listAllCourses().stream()
                 .filter(c -> "admin".equals(role) || c.instructor_id().equals(userId))
                 .map(c -> new CourseCard(c.id(), c.title(), c.instructor_id(), progressPercent(userId, c.id())))
                 .toList();
@@ -72,23 +79,27 @@ public class DemoLearningService {
             lectures.add(new LectureItem("lec_" + UUID.randomUUID(), courseId, titles.get(i), 25 + (i * 5)));
         }
         CourseDetail detail = new CourseDetail(courseId, title, instructorId, List.copyOf(lectures), 0);
-        courses.put(courseId, detail);
+        if (useStore()) {
+            store.upsertKv(COURSE_SCOPE, courseId, toCoursePayload(detail));
+        } else {
+            courses.put(courseId, detail);
+        }
         return detail;
     }
 
     public CourseDetail getCourseDetail(String courseId, String userId) {
-        CourseDetail base = courses.get(courseId);
+        CourseDetail base = findCourse(courseId);
         if (base == null) return null;
         return new CourseDetail(base.id(), base.title(), base.instructor_id(), base.lectures(), progressPercent(userId, base.id()));
     }
 
     public List<LectureItem> getCourseLectures(String courseId) {
-        CourseDetail detail = courses.get(courseId);
+        CourseDetail detail = findCourse(courseId);
         return detail == null ? List.of() : detail.lectures();
     }
 
     public LectureItem getLecture(String lectureId) {
-        return courses.values().stream().flatMap(c -> c.lectures().stream()).filter(l -> l.id().equals(lectureId)).findFirst().orElse(null);
+        return listAllCourses().stream().flatMap(c -> c.lectures().stream()).filter(l -> l.id().equals(lectureId)).findFirst().orElse(null);
     }
 
     public LectureItem getCourseLecture(String courseId, String lectureId) {
@@ -103,22 +114,44 @@ public class DemoLearningService {
     }
 
     public List<MaterialItem> getMaterials(String courseId) {
+        if (useStore()) {
+            return store.listKvByScope(MATERIAL_SCOPE).stream()
+                    .map(this::fromMaterialPayload)
+                    .filter(Objects::nonNull)
+                    .filter(m -> courseId.equals(m.course_id()))
+                    .toList();
+        }
         return materialsByCourse.getOrDefault(courseId, List.of());
     }
 
     public List<NoticeItem> getNotices(String courseId) {
+        if (useStore()) {
+            return store.listKvByScope(NOTICE_SCOPE).stream()
+                    .map(this::fromNoticePayload)
+                    .filter(Objects::nonNull)
+                    .filter(n -> courseId.equals(n.course_id()))
+                    .toList();
+        }
         return noticesByCourse.getOrDefault(courseId, List.of());
     }
 
     public MaterialItem addMaterial(String userId, String courseId, String title, String summary, String fileName) {
         MaterialItem created = new MaterialItem(UUID.randomUUID().toString(), courseId, title, summary, fileName);
-        materialsByCourse.computeIfAbsent(courseId, k -> new ArrayList<>()).add(created);
+        if (useStore()) {
+            store.upsertKv(MATERIAL_SCOPE, created.id(), toMaterialPayload(created));
+        } else {
+            materialsByCourse.computeIfAbsent(courseId, k -> new ArrayList<>()).add(created);
+        }
         return created;
     }
 
     public NoticeItem addNotice(String userId, String courseId, String title, String content, boolean pinned) {
         NoticeItem created = new NoticeItem(UUID.randomUUID().toString(), courseId, title, content, pinned);
-        noticesByCourse.computeIfAbsent(courseId, k -> new ArrayList<>()).add(created);
+        if (useStore()) {
+            store.upsertKv(NOTICE_SCOPE, created.id(), toNoticePayload(created));
+        } else {
+            noticesByCourse.computeIfAbsent(courseId, k -> new ArrayList<>()).add(created);
+        }
         return created;
     }
 
@@ -251,6 +284,151 @@ public class DemoLearningService {
 
     private boolean useStore() {
         return store != null;
+    }
+
+    private void seedStoreDataIfMissing() {
+        if (!store.listKvByScope(COURSE_SCOPE).isEmpty()) {
+            return;
+        }
+        List<LectureItem> javaLectures = List.of(
+                new LectureItem("lec_java_01", "crs_java_01", "Spring Boot 시작", 25),
+                new LectureItem("lec_java_02", "crs_java_01", "REST API 설계", 35)
+        );
+        List<LectureItem> reactLectures = List.of(
+                new LectureItem("lec_react_01", "crs_react_01", "React 상태관리", 30),
+                new LectureItem("lec_react_02", "crs_react_01", "API 연동", 28)
+        );
+        CourseDetail java = new CourseDetail("crs_java_01", "Java Spring 백엔드", "usr_ins_001", javaLectures, 0);
+        CourseDetail react = new CourseDetail("crs_react_01", "React 프론트엔드", "usr_ins_001", reactLectures, 0);
+        store.upsertKv(COURSE_SCOPE, java.id(), toCoursePayload(java));
+        store.upsertKv(COURSE_SCOPE, react.id(), toCoursePayload(react));
+        store.upsertKv(MATERIAL_SCOPE, "mat_java_01", Map.of(
+                "id", "mat_java_01",
+                "course_id", "crs_java_01",
+                "title", "강의 자료집",
+                "summary", "Spring 핵심 요약",
+                "file_name", "spring-handbook.pdf"
+        ));
+        store.upsertKv(NOTICE_SCOPE, "not_java_01", Map.of(
+                "id", "not_java_01",
+                "course_id", "crs_java_01",
+                "title", "과제 공지",
+                "content", "1주차 과제를 제출하세요.",
+                "pinned", true
+        ));
+    }
+
+    private List<CourseDetail> listAllCourses() {
+        if (!useStore()) return new ArrayList<>(courses.values());
+        return store.listKvByScope(COURSE_SCOPE).stream()
+                .map(this::fromCoursePayload)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private CourseDetail findCourse(String courseId) {
+        if (!useStore()) return courses.get(courseId);
+        return fromCoursePayload(store.getKv(COURSE_SCOPE, courseId));
+    }
+
+    private Map<String, Object> toCoursePayload(CourseDetail detail) {
+        List<Map<String, Object>> lectures = detail.lectures().stream()
+                .map(l -> {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", l.id());
+                    row.put("course_id", l.course_id());
+                    row.put("title", l.title());
+                    row.put("duration_minutes", l.duration_minutes());
+                    return row;
+                })
+                .toList();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", detail.id());
+        payload.put("title", detail.title());
+        payload.put("instructor_id", detail.instructor_id());
+        payload.put("lectures", lectures);
+        return payload;
+    }
+
+    @SuppressWarnings("unchecked")
+    private CourseDetail fromCoursePayload(Map<String, Object> payload) {
+        if (payload == null) return null;
+        String id = String.valueOf(payload.getOrDefault("id", "")).trim();
+        if (id.isBlank()) return null;
+        String title = String.valueOf(payload.getOrDefault("title", "")).trim();
+        String instructorId = String.valueOf(payload.getOrDefault("instructor_id", "")).trim();
+        List<LectureItem> lectures = new ArrayList<>();
+        Object rawLectures = payload.get("lectures");
+        if (rawLectures instanceof List<?> list) {
+            for (Object row : list) {
+                if (!(row instanceof Map<?, ?> map)) continue;
+                String lectureId = String.valueOf(map.containsKey("id") ? map.get("id") : "").trim();
+                String courseId = String.valueOf(map.containsKey("course_id") ? map.get("course_id") : id).trim();
+                String lectureTitle = String.valueOf(map.containsKey("title") ? map.get("title") : "").trim();
+                int duration = parseInt(map.get("duration_minutes"), 0);
+                if (!lectureId.isBlank() && !lectureTitle.isBlank()) {
+                    lectures.add(new LectureItem(lectureId, courseId, lectureTitle, duration));
+                }
+            }
+        }
+        return new CourseDetail(id, title, instructorId, lectures, 0);
+    }
+
+    private Map<String, Object> toMaterialPayload(MaterialItem item) {
+        return Map.of(
+                "id", item.id(),
+                "course_id", item.course_id(),
+                "title", item.title(),
+                "summary", item.summary(),
+                "file_name", item.file_name()
+        );
+    }
+
+    private MaterialItem fromMaterialPayload(Map<String, Object> payload) {
+        if (payload == null) return null;
+        String id = String.valueOf(payload.getOrDefault("id", "")).trim();
+        String courseId = String.valueOf(payload.getOrDefault("course_id", "")).trim();
+        if (id.isBlank() || courseId.isBlank()) return null;
+        return new MaterialItem(
+                id,
+                courseId,
+                String.valueOf(payload.getOrDefault("title", "")),
+                String.valueOf(payload.getOrDefault("summary", "")),
+                String.valueOf(payload.getOrDefault("file_name", ""))
+        );
+    }
+
+    private Map<String, Object> toNoticePayload(NoticeItem item) {
+        return Map.of(
+                "id", item.id(),
+                "course_id", item.course_id(),
+                "title", item.title(),
+                "content", item.content(),
+                "pinned", item.pinned()
+        );
+    }
+
+    private NoticeItem fromNoticePayload(Map<String, Object> payload) {
+        if (payload == null) return null;
+        String id = String.valueOf(payload.getOrDefault("id", "")).trim();
+        String courseId = String.valueOf(payload.getOrDefault("course_id", "")).trim();
+        if (id.isBlank() || courseId.isBlank()) return null;
+        return new NoticeItem(
+                id,
+                courseId,
+                String.valueOf(payload.getOrDefault("title", "")),
+                String.valueOf(payload.getOrDefault("content", "")),
+                Boolean.parseBoolean(String.valueOf(payload.getOrDefault("pinned", false)))
+        );
+    }
+
+    private int parseInt(Object value, int fallback) {
+        if (value instanceof Number n) return n.intValue();
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (Exception ignored) {
+            return fallback;
+        }
     }
 
     private void appendActivity(String userId, String type, String resourceType, String resourceId, Map<String, Object> metadata) {
