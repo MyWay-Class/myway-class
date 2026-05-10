@@ -22,6 +22,23 @@ interface DebateRoundRequest {
   optionC?: string;
 }
 
+interface DebateSessionOpenRequest {
+  taskId: string;
+  profile: OrchestratorProfile;
+  participants?: string[];
+}
+
+interface DebateSessionMessageRequest {
+  sessionId: string;
+  role: string;
+  message: string;
+}
+
+interface DebateSessionDecideRequest {
+  sessionId: string;
+  options: { A: string; B: string; C?: string };
+}
+
 const port = Number(process.env.AGENT_RUNTIME_PORT || "8787");
 const host = process.env.AGENT_RUNTIME_HOST || "127.0.0.1";
 const apiKey = process.env.ORCH_AGENT_API_KEY || "";
@@ -38,6 +55,18 @@ type QueueJob = {
 
 const queue: QueueJob[] = [];
 let activeWorkers = 0;
+const debateSessions = new Map<
+  string,
+  {
+    sessionId: string;
+    taskId: string;
+    profile: OrchestratorProfile;
+    participants: string[];
+    messages: Array<{ role: string; message: string; at: string }>;
+    openedAt: string;
+    closedAt?: string;
+  }
+>();
 
 function enqueue<T>(run: () => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -76,6 +105,15 @@ async function parseJson<T>(req: IncomingMessage): Promise<T> {
   const raw = Buffer.concat(chunks).toString("utf-8");
   if (!raw.trim()) return {} as T;
   return JSON.parse(raw) as T;
+}
+
+function getPathname(urlRaw?: string): string {
+  if (!urlRaw) return "";
+  try {
+    return new URL(urlRaw, "http://127.0.0.1").pathname;
+  } catch {
+    return urlRaw;
+  }
 }
 
 function isAuthorized(req: IncomingMessage): boolean {
@@ -238,6 +276,90 @@ const server = createServer(async (req, res) => {
         ]
       });
       return;
+    }
+
+    if (req.method === "POST" && req.url === "/debate/sessions/open") {
+      const body = await parseJson<DebateSessionOpenRequest>(req);
+      if (!body?.taskId || !body?.profile) {
+        writeJson(res, 400, { error: "invalid session payload" });
+        return;
+      }
+      const sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const session = {
+        sessionId,
+        taskId: body.taskId,
+        profile: body.profile,
+        participants: body.participants ?? ["worker-A", "worker-B", "critic", "manager"],
+        messages: [] as Array<{ role: string; message: string; at: string }>,
+        openedAt: new Date().toISOString()
+      };
+      debateSessions.set(sessionId, session);
+      writeJson(res, 200, { sessionId, openedAt: session.openedAt, participants: session.participants });
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/debate/sessions/message") {
+      const body = await parseJson<DebateSessionMessageRequest>(req);
+      if (!body?.sessionId || !body?.role || !body?.message) {
+        writeJson(res, 400, { error: "invalid message payload" });
+        return;
+      }
+      const session = debateSessions.get(body.sessionId);
+      if (!session) {
+        writeJson(res, 404, { error: "session not found" });
+        return;
+      }
+      if (session.closedAt) {
+        writeJson(res, 409, { error: "session already closed" });
+        return;
+      }
+      const entry = { role: body.role, message: body.message, at: new Date().toISOString() };
+      session.messages.push(entry);
+      writeJson(res, 200, { ok: true, entry, count: session.messages.length });
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/debate/sessions/decide") {
+      const body = await parseJson<DebateSessionDecideRequest>(req);
+      if (!body?.sessionId || !body?.options?.A || !body?.options?.B) {
+        writeJson(res, 400, { error: "invalid decide payload" });
+        return;
+      }
+      const session = debateSessions.get(body.sessionId);
+      if (!session) {
+        writeJson(res, 404, { error: "session not found" });
+        return;
+      }
+      const combinedMessages = session.messages.map((m) => `${m.role}:${m.message}`).join(" | ").toLowerCase();
+      const preferStrict = combinedMessages.includes("strict") || session.profile === "strict";
+      const hasMergeHint = combinedMessages.includes("merge") || combinedMessages.includes("병합");
+      const chosen: "A" | "B" | "C" = body.options.C && hasMergeHint ? "C" : preferStrict ? "A" : "B";
+      const rationale = chosen === "A" ? body.options.A : chosen === "B" ? body.options.B : body.options.C ?? `${body.options.A} + ${body.options.B}`;
+      const criticMessage = { role: "critic", message: `selected ${chosen}: ${rationale}`, at: new Date().toISOString() };
+      const managerMessage = { role: "manager", message: `execute plan ${chosen} for ${session.profile} profile`, at: new Date().toISOString() };
+      session.messages.push(criticMessage, managerMessage);
+      writeJson(res, 200, { chosen, rationale, messages: session.messages });
+      return;
+    }
+
+    const pathname = getPathname(req.url);
+    const sessionPathMatch = /^\/debate\/sessions\/([^/]+)$/.exec(pathname);
+    if (sessionPathMatch) {
+      const sessionId = decodeURIComponent(sessionPathMatch[1]);
+      const session = debateSessions.get(sessionId);
+      if (!session) {
+        writeJson(res, 404, { error: "session not found" });
+        return;
+      }
+      if (req.method === "GET") {
+        writeJson(res, 200, session);
+        return;
+      }
+      if (req.method === "POST") {
+        session.closedAt = new Date().toISOString();
+        writeJson(res, 200, { ok: true, sessionId, closedAt: session.closedAt });
+        return;
+      }
     }
 
     writeJson(res, 404, { error: "not found" });

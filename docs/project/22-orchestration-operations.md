@@ -50,6 +50,14 @@
 - 요청 필드: `taskId`, `profile`, `optionA`, `optionB`, `optionC(선택)`
 - 응답 필드: `chosen(A|B|C)`, `rationale`, `messages[]`
 
+3. 세션 기반 토론(권장)
+- `POST {ORCH_AGENT_ENDPOINT}/debate/sessions/open`
+- `POST {ORCH_AGENT_ENDPOINT}/debate/sessions/message`
+- `POST {ORCH_AGENT_ENDPOINT}/debate/sessions/decide`
+- `GET  {ORCH_AGENT_ENDPOINT}/debate/sessions/{sessionId}`
+- `POST {ORCH_AGENT_ENDPOINT}/debate/sessions/{sessionId}` (close)
+- 오케스트레이터는 remote 모드에서 위 API를 우선 사용하고, 미지원 런타임이면 `/debate/round`로 자동 폴백한다.
+
 ## 로컬 에이전트 런타임 서버 실행
 1. 서버 시작
 - `npm run agent-runtime:start`
@@ -82,12 +90,19 @@
 
 ## Temporary waiver(예외 승인)
 - 파일: `ops/workflow/review-waivers.yaml`
+- 거버넌스: `ops/workflow/waiver-governance.yaml`
 - 목적: 제한된 기간 동안 특정 metric fail-fast/required 기준을 예외 처리한다.
 - 필드:
   - `metric`: `tests | style | security | performance`
   - `branch`(선택): 지정 시 해당 브랜치에서만 적용
   - `expires_at`: ISO-8601 만료 시각(만료 후 자동 무효)
   - `reason`, `approved_by`: 감사 추적용 필수 메타데이터
+  - `ticket`: 거버넌스에서 요구 시 필수
+- 거버넌스 규칙:
+  - `require_ticket`: 티켓 번호 필수 여부
+  - `allowed_branches`: waiver 적용 허용 브랜치
+  - `allowed_approvers`: 승인 가능 사용자/역할
+  - `max_duration_hours`: metric별 최대 유효 기간
 - 반영 결과:
   - `scorecard.waived_required`에 예외 적용 metric 기록
   - `scorecard.waiver_notes`에 사유/승인자/만료 시각 기록

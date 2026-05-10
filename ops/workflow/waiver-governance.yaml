@@ -1,0 +1,12 @@
+version: 1
+require_ticket: true
+allowed_branches:
+  - dev
+allowed_approvers:
+  - tech-lead
+  - platform-owner
+max_duration_hours:
+  tests: 72
+  style: 72
+  security: 24
+  performance: 48
