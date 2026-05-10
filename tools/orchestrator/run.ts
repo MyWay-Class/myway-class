@@ -257,6 +257,31 @@ function requestChangeCodesFromFailures(
   return [...codes];
 }
 
+function runCodeBasedRecovery(codes: RequestChangeCode[]): Array<{ code: RequestChangeCode; command: string; pass: boolean }> {
+  const commandByCode: Partial<Record<RequestChangeCode, string>> = {
+    WORKER_BACKEND_FAILED: "npm run build:backend",
+    WORKER_FRONTEND_FAILED: "npm run build:frontend",
+    WORKER_TEST_FAILED: "npm run test:backend:clean",
+    CHECK_TESTS_FAILED: "npm run test:backend:clean",
+    CHECK_STYLE_FAILED: "npm run build:frontend",
+    CHECK_SECURITY_FAILED: "npm audit --audit-level=high",
+    CHECK_PERFORMANCE_FAILED: "npm run perf:smoke",
+    REMOTE_RUNTIME_UNAVAILABLE: "npm run orch:checks",
+    CHECK_UNKNOWN_FAILED: "npm run orch:checks"
+  };
+  const uniqueCodes = [...new Set(codes)];
+  const uniqueCommands = new Set<string>();
+  const results: Array<{ code: RequestChangeCode; command: string; pass: boolean }> = [];
+  for (const code of uniqueCodes) {
+    const command = commandByCode[code];
+    if (!command || uniqueCommands.has(command)) continue;
+    uniqueCommands.add(command);
+    const pass = runWithRetry(() => runCmd(command, workerTimeoutMs), workerMaxRetries);
+    results.push({ code, command, pass });
+  }
+  return results;
+}
+
 function remediationActionForCode(code: RequestChangeCode): { action: string; owner: WorkerRole | "reviewer" | "manager" } {
   if (code === "WORKER_BACKEND_FAILED") return { action: "백엔드 빌드/계약 오류 수정 후 `npm run build:backend` 재실행", owner: "backend-dev" };
   if (code === "WORKER_FRONTEND_FAILED") return { action: "프론트 빌드 오류 수정 후 `npm run build:frontend` 재실행", owner: "frontend-dev" };
@@ -447,6 +472,9 @@ async function main(): Promise<void> {
   let finalScorecard = scorecard;
 
   if (shouldRetryRound) {
+    const initialRequestChangeCodes = requestChangeCodesFromFailures(failedWorkers, failedChecks, finalWorkerReports);
+    const recoveryResults = runCodeBasedRecovery(initialRequestChangeCodes);
+    auditLog({ type: "code-based-recovery", requested: initialRequestChangeCodes, results: recoveryResults });
     remediationRound(
       failedWorkers.map((worker) => worker.role),
       failedChecks
