@@ -28,6 +28,11 @@ interface Policy {
   timeouts?: { worker_timeout_minutes?: number; review_timeout_minutes?: number };
   fallback?: { on_repeated_failure?: string; allow_partial_report?: boolean };
   debate?: { max_rounds?: number; remote_autonomous_enabled?: boolean; remote_autonomous_rounds?: number };
+  learning?: {
+    enabled?: boolean;
+    history_limit?: number;
+    dynamic_role_routing?: boolean;
+  };
   agent_runtime?: {
     mode?: "local" | "remote";
     endpoint?: string;
@@ -66,6 +71,84 @@ const autofixEnabled = process.env.ORCH_AUTOFIX === "1" || policy.autofix?.enabl
 const autofixMode = policy.autofix?.mode || "off";
 const remoteAutonomousDebateEnabled = process.env.ORCH_REMOTE_AUTONOMOUS_DEBATE === "1" || policy.debate?.remote_autonomous_enabled === true;
 const remoteAutonomousDebateRounds = Math.max(1, Math.min(policy.debate?.remote_autonomous_rounds ?? 2, 3));
+const learningEnabled = policy.learning?.enabled !== false;
+const historyLimit = Math.max(10, Math.min(policy.learning?.history_limit ?? 100, 500));
+const dynamicRoleRoutingEnabled = policy.learning?.dynamic_role_routing !== false;
+
+interface StrategyMemoryEntry {
+  at: string;
+  profile: OrchestratorProfile;
+  targetBranch: string;
+  chosenDebate?: "A" | "B" | "C";
+  state: "approved" | "rejected";
+  failedWorkers: WorkerRole[];
+  failedChecks: string[];
+}
+
+interface StrategyMemory {
+  version: 1;
+  entries: StrategyMemoryEntry[];
+}
+
+function strategyMemoryPath(): string {
+  return join(workspaceDir, "strategy-memory.json");
+}
+
+function loadStrategyMemory(): StrategyMemory {
+  const path = strategyMemoryPath();
+  if (!existsSync(path)) return { version: 1, entries: [] };
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf-8")) as StrategyMemory;
+    if (!Array.isArray(parsed.entries)) return { version: 1, entries: [] };
+    return { version: 1, entries: parsed.entries };
+  } catch {
+    return { version: 1, entries: [] };
+  }
+}
+
+function saveStrategyMemory(entry: StrategyMemoryEntry): void {
+  if (!learningEnabled) return;
+  const memory = loadStrategyMemory();
+  memory.entries.push(entry);
+  if (memory.entries.length > historyLimit) {
+    memory.entries = memory.entries.slice(memory.entries.length - historyLimit);
+  }
+  writeFileSync(strategyMemoryPath(), JSON.stringify(memory, null, 2));
+}
+
+function inferPriorityRolesFromChanges(changedFiles: string[]): WorkerRole[] {
+  const roles = new Set<WorkerRole>();
+  for (const file of changedFiles) {
+    if (file.startsWith("backend/") || file.startsWith("backend-spring/")) roles.add("backend-dev");
+    if (file.startsWith("frontend/") || file.startsWith("myway-class-ui")) roles.add("frontend-dev");
+    if (/test|spec|contract/i.test(file)) roles.add("test-engineer");
+    if (file.startsWith("docs/") || file.endsWith(".md")) roles.add("docs-writer");
+  }
+  return [...roles];
+}
+
+function workerRoleFromCheck(check: string): WorkerRole {
+  const v = check.toLowerCase();
+  if (v.includes("test")) return "test-engineer";
+  if (v.includes("style") || v.includes("lint") || v.includes("perf")) return "frontend-dev";
+  if (v.includes("security") || v.includes("audit")) return "backend-dev";
+  return "backend-dev";
+}
+
+function buildExecutionWorkers(): WorkerRole[] {
+  const defaults: WorkerRole[] = ["backend-dev", "frontend-dev", "test-engineer", "docs-writer"];
+  if (!dynamicRoleRoutingEnabled) return defaults;
+  const changedFiles = getGitChangedFiles();
+  const priority = inferPriorityRolesFromChanges(changedFiles);
+  const memory = loadStrategyMemory().entries.slice(-10);
+  const recentFailed = new Set<WorkerRole>(memory.flatMap((e) => e.failedWorkers));
+  for (const role of recentFailed) {
+    if (!priority.includes(role)) priority.push(role);
+  }
+  const merged = [...priority, ...defaults.filter((role) => !priority.includes(role))];
+  auditLog({ type: "dynamic-role-routing", changedFiles, priority, executionOrder: merged });
+  return merged;
+}
 
 function stateLog(from: string | null, to: string, actor: string): void {
   appendFileSync(join(logsDir, "state-transitions.jsonl"), JSON.stringify({ taskId, traceId, from, to, actor, at: new Date().toISOString() }) + "\n");
@@ -407,9 +490,13 @@ async function runWorker(role: WorkerRole): Promise<WorkerReport> {
 }
 
 async function debateRound(): Promise<{ chosen: "A" | "B" | "C"; rationale: string }> {
+  const memory = loadStrategyMemory().entries.slice(-20);
+  const recentRejects = memory.filter((e) => e.state === "rejected").length;
+  const recentApprovals = memory.filter((e) => e.state === "approved").length;
+  const memoryHint = `recent_approvals=${recentApprovals}, recent_rejects=${recentRejects}`;
   const optionA = profile === "strict" ? "full quality gate with tests+audit" : "keep strict for production branches";
   const optionB = profile === "baseline" ? "baseline fast gate for CI" : "fallback baseline when strict repeatedly fails";
-  const optionC = "merge A+B: keep strict gate with baseline fallback only for transient external failures";
+  const optionC = `merge A+B: keep strict gate with baseline fallback only for transient external failures (${memoryHint})`;
   const chosen = profile === "strict" ? "A" : "B";
   const rationale = chosen === "A" ? optionA : optionB;
   if (agentMode === "remote" && agentEndpoint) {
@@ -546,7 +633,7 @@ async function main(): Promise<void> {
   const debate = await debateRound();
   auditLog({ type: "debate", chosen: debate.chosen, rationale: debate.rationale, mode: agentMode });
 
-  const workers: WorkerRole[] = ["backend-dev", "frontend-dev", "test-engineer", "docs-writer"];
+  const workers = buildExecutionWorkers();
   const workerReports = await Promise.all(workers.map((role) => runWorker(role)));
 
   stateLog("debate", "review", "reviewer");
@@ -599,7 +686,10 @@ async function main(): Promise<void> {
       failedWorkers.map((worker) => worker.role),
       failedChecks
     );
-    const rerunRoles = new Set(failedWorkers.map((worker) => worker.role as WorkerRole));
+    const rerunRoles = new Set<WorkerRole>(failedWorkers.map((worker) => worker.role as WorkerRole));
+    for (const checkName of failedChecks) {
+      rerunRoles.add(workerRoleFromCheck(checkName));
+    }
     const rerunReports = await Promise.all(
       finalWorkerReports.map((report) => (rerunRoles.has(report.role) ? runWorker(report.role) : Promise.resolve(report)))
     );
@@ -642,6 +732,15 @@ async function main(): Promise<void> {
   writeFileSync(join(workspaceDir, "decision.json"), JSON.stringify(decision, null, 2));
   writeFileSync(join(workspaceDir, "remediation.json"), JSON.stringify(remediation, null, 2));
   auditLog({ type: "decision", decision: decision.decision, state: finalState });
+  saveStrategyMemory({
+    at: new Date().toISOString(),
+    profile,
+    targetBranch,
+    chosenDebate: debate.chosen,
+    state: finalState,
+    failedWorkers: failedWorkers.map((v) => v.role),
+    failedChecks
+  });
 
   process.stdout.write(
     JSON.stringify(

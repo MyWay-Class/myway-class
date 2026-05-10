@@ -141,3 +141,15 @@
 
 4. 원격 멀티에이전트 실행
 - `set ORCH_AGENT_MODE=remote && set ORCH_AGENT_ENDPOINT=https://your-agent-runtime.example && npm run orch:run`
+
+## 전략 학습/동적 라우팅
+- 학습 메모리 파일: `_workspace/strategy-memory.json`
+- 기록 항목: 프로필/브랜치/토론선택/최종상태/실패워커/실패체크
+- 동작:
+  - 최근 실행 이력을 토대로 토론 옵션 힌트(`recent_approvals/rejects`)를 생성
+  - 변경 파일 기반 우선 워커 + 최근 실패 워커를 앞 순서로 자동 배치
+  - 재라운드 시 실패 체크 유형을 역할로 매핑해 추가 재실행(예: `tests` -> `test-engineer`)
+- 정책: `ops/workflow/policy.yaml.learning`
+  - `enabled`
+  - `history_limit`
+  - `dynamic_role_routing`
