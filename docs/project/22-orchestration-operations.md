@@ -18,6 +18,8 @@
 ## 필수 머지 조건(`dev`)
 - GitHub required check: `gate` (`orchestration-gate` 워크플로우)
 - Conversation resolution 완료
+- Gate 코멘트에는 `requestChangeCodes`, `nextActions`가 포함된다.
+- 자동 승인(AI review)은 `dev` 대상 PR에서만 시도한다(`main` 제외).
 
 ## 운영 수칙
 - 오케스트레이션 결과는 `_workspace/decision.json`, `_workspace/scorecard.json`, `_workspace/logs/*.jsonl`로 추적한다.
