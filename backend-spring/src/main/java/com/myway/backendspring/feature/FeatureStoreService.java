@@ -53,6 +53,7 @@ public class FeatureStoreService {
     private static final int FALLBACK_SEGMENT_MIN_MS = 1_000;
     private static final int RAG_CHUNK_MAX_WORDS = 90;
     private static final int RAG_CHUNK_OVERLAP_WORDS = 20;
+    private static final int STT_TARGET_SEGMENT_WORDS = 20;
     private final FeatureJdbcStore store;
     private final DemoLearningService learningService;
     private final int shortformMaxRetry;
@@ -633,6 +634,7 @@ public class FeatureStoreService {
         List<Map<String, Object>> segments = splitIntoSegments(baseText, durationMs);
         String transcriptId = String.valueOf(extraction.getOrDefault("id", UUID.randomUUID().toString()));
         int wordCount = countWords(baseText);
+        Map<String, Object> sttQuality = sttQualityMetrics(segments, durationMs);
 
         Map<String, Object> transcriptPayload = new HashMap<>();
         transcriptPayload.put("id", transcriptId);
@@ -644,6 +646,7 @@ public class FeatureStoreService {
         transcriptPayload.put("duration_ms", durationMs);
         transcriptPayload.put("stt_provider", resolvedProvider);
         transcriptPayload.put("stt_model", resolvedModel);
+        transcriptPayload.put("quality", sttQuality);
         transcriptPayload.put("created_at", Instant.now().toString());
         store.upsertKv(TRANSCRIPT_SCOPE, lectureId, transcriptPayload);
 
@@ -677,7 +680,10 @@ public class FeatureStoreService {
         extractionPayload.put("processing_step", "stt_completed");
         extractionPayload.put("processing_error_code", null);
         extractionPayload.put("processing_error", null);
+        extractionPayload.put("stt_quality", sttQuality);
         store.upsertKv(EXTRACTION_SCOPE, String.valueOf(extraction.getOrDefault("id", transcriptId)), extractionPayload);
+
+        Map<String, Object> ragIndex = rebuildRagIndex(lectureId, null);
 
         Map<String, Object> response = new HashMap<>();
         response.put("transcript_id", transcriptId);
@@ -690,6 +696,8 @@ public class FeatureStoreService {
         response.put("audio_url", audioUrl);
         response.put("pipeline", pipeline(lectureId));
         response.put("language", normalizedLanguage);
+        response.put("quality", sttQuality);
+        response.put("rag_index", ragIndex);
         return response;
     }
 
@@ -1556,6 +1564,42 @@ public class FeatureStoreService {
             segments.add(segment);
         }
         return segments;
+    }
+
+    private Map<String, Object> sttQualityMetrics(List<Map<String, Object>> segments, int durationMs) {
+        if (segments == null || segments.isEmpty()) {
+            return Map.of(
+                    "segment_count", 0,
+                    "avg_words_per_segment", 0,
+                    "min_segment_ms", 0,
+                    "max_segment_ms", 0,
+                    "target_segment_words", STT_TARGET_SEGMENT_WORDS,
+                    "quality_score", 0.0
+            );
+        }
+        int totalWords = 0;
+        int minMs = Integer.MAX_VALUE;
+        int maxMs = 0;
+        for (Map<String, Object> segment : segments) {
+            int start = asInt(segment.get("start_ms"));
+            int end = asInt(segment.get("end_ms"));
+            int ms = Math.max(0, end - start);
+            minMs = Math.min(minMs, ms);
+            maxMs = Math.max(maxMs, ms);
+            totalWords += countWords(String.valueOf(segment.getOrDefault("text", "")));
+        }
+        double avgWords = totalWords / (double) Math.max(1, segments.size());
+        double wordFit = 1.0 - Math.min(1.0, Math.abs(avgWords - STT_TARGET_SEGMENT_WORDS) / STT_TARGET_SEGMENT_WORDS);
+        double durationFit = 1.0 - Math.min(1.0, Math.abs(durationMs - (segments.size() * 20_000.0)) / Math.max(1.0, durationMs));
+        double score = Math.max(0.0, Math.min(1.0, (wordFit * 0.7) + (durationFit * 0.3)));
+        return Map.of(
+                "segment_count", segments.size(),
+                "avg_words_per_segment", Math.round(avgWords * 100.0) / 100.0,
+                "min_segment_ms", minMs == Integer.MAX_VALUE ? 0 : minMs,
+                "max_segment_ms", maxMs,
+                "target_segment_words", STT_TARGET_SEGMENT_WORDS,
+                "quality_score", Math.round(score * 1000.0) / 1000.0
+        );
     }
 
     private int countWords(String text) {
