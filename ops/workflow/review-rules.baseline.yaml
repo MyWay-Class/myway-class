@@ -7,6 +7,7 @@ weights:
 required:
   tests:
     min: 70
+    fail_fast: true
 cutoff:
   total_min: 70
 decision_map:

@@ -62,6 +62,10 @@
 - 실패 시 `decision.json.requestChangeCodes`에 구조화 원인 코드를 기록한다.
 - 예: `WORKER_BACKEND_FAILED`, `CHECK_TESTS_FAILED`, `REMOTE_RUNTIME_UNAVAILABLE`
 
+## Reviewer fail-fast
+- `review-rules*.yaml`의 `required.<metric>.fail_fast: true`인 항목이 기준 미달이면 총점과 무관하게 즉시 `reject`한다.
+- 결과는 `scorecard.required_failed`, `scorecard.fail_fast_triggered`에 기록된다.
+
 ## 실행 예시
 1. strict 기본 검증
 - `set ORCH_PROFILE=strict && npm run orch:run`
