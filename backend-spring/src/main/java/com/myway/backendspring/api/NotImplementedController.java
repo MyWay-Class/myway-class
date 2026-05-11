@@ -63,7 +63,9 @@ public class NotImplementedController {
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "status", "migration_in_progress",
                 "mappings", List.of(
-                        Map.of("legacy", "/api/v1/legacy/courses", "replacement", "/api/v1/courses"),
+                        Map.of("legacy", "/api/v1/legacy/courses", "replacement", "/api/v1/courses", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/courses/{courseId}", "replacement", "/api/v1/courses/{courseId}", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/courses/{courseId}/lectures", "replacement", "/api/v1/courses/{courseId}/lectures", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/ai/*", "replacement", "/api/v1/ai/*"),
                         Map.of("legacy", "/api/v1/legacy/media/*", "replacement", "/api/v1/media/*"),
                         Map.of("legacy", "/api/v1/legacy/shortform/*", "replacement", "/api/v1/shortform/*")
