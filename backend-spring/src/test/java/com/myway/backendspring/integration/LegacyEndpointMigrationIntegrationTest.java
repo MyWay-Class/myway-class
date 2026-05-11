@@ -26,6 +26,37 @@ class LegacyEndpointMigrationIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
+    void legacyCoursesEndpoints_shouldReturnModernCompatibleData() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_std_001");
+
+        String listResponse = mockMvc.perform(get("/api/v1/legacy/courses")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode listData = objectMapper.readTree(listResponse).path("data");
+        assertThat(listData.isArray()).isTrue();
+        assertThat(listData.size()).isGreaterThan(0);
+
+        String courseId = listData.get(0).path("id").asText();
+        assertThat(courseId).isNotBlank();
+
+        String detailResponse = mockMvc.perform(get("/api/v1/legacy/courses/" + courseId)
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode detailData = objectMapper.readTree(detailResponse).path("data");
+        assertThat(detailData.path("id").asText()).isEqualTo(courseId);
+
+        String lecturesResponse = mockMvc.perform(get("/api/v1/legacy/courses/" + courseId + "/lectures")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode lecturesData = objectMapper.readTree(lecturesResponse).path("data");
+        assertThat(lecturesData.isArray()).isTrue();
+        assertThat(lecturesData.size()).isGreaterThan(0);
+    }
+
+    @Test
     void courseCreateAndManage_shouldMatchLegacyInstructorSemantics() throws Exception {
         String auth = "Bearer " + loginAndGetToken("usr_ins_001");
 
