@@ -49,6 +49,7 @@ class LegacyEndpointMigrationIntegrationTest {
         JsonNode shortformLibraryMapping = null;
         JsonNode dashboardMapping = null;
         JsonNode enrollmentsMapping = null;
+        JsonNode aiIntentMapping = null;
         for (JsonNode node : mappings) {
             if ("/api/v1/legacy/ai/settings".equals(node.path("legacy").asText())) {
                 aiSettingsMapping = node;
@@ -65,6 +66,9 @@ class LegacyEndpointMigrationIntegrationTest {
             if ("/api/v1/legacy/enrollments".equals(node.path("legacy").asText())) {
                 enrollmentsMapping = node;
             }
+            if ("/api/v1/legacy/ai/intent".equals(node.path("legacy").asText())) {
+                aiIntentMapping = node;
+            }
         }
         assertThat(aiSettingsMapping).isNotNull();
         assertThat(aiSettingsMapping.path("status").asText()).isEqualTo("available");
@@ -76,6 +80,8 @@ class LegacyEndpointMigrationIntegrationTest {
         assertThat(dashboardMapping.path("status").asText()).isEqualTo("available");
         assertThat(enrollmentsMapping).isNotNull();
         assertThat(enrollmentsMapping.path("status").asText()).isEqualTo("available");
+        assertThat(aiIntentMapping).isNotNull();
+        assertThat(aiIntentMapping.path("status").asText()).isEqualTo("available");
     }
 
     @Test
@@ -207,6 +213,59 @@ class LegacyEndpointMigrationIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(objectMapper.readTree(enrollments).path("data").isArray()).isTrue();
+    }
+
+    @Test
+    void legacyAiWriteEndpoints_shouldReturnModernCompatibleData() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_std_001");
+
+        String settings = mockMvc.perform(post("/api/v1/legacy/ai/settings")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"daily_limit\":999999,\"provider\":\"demo\",\"model\":\"demo-v1\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(settings).path("success").asBoolean()).isTrue();
+
+        String intent = mockMvc.perform(post("/api/v1/legacy/ai/intent")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"다음 강의 추천해줘\",\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(intent).path("data").path("intent").asText()).isNotBlank();
+
+        String search = mockMvc.perform(post("/api/v1/legacy/ai/search")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"Spring\",\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(search).path("data").path("hits").isArray()).isTrue();
+
+        String answer = mockMvc.perform(post("/api/v1/legacy/ai/answer")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"REST API가 뭐야?\",\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(answer).path("data").path("answer").asText()).isNotBlank();
+
+        String summary = mockMvc.perform(post("/api/v1/legacy/ai/summary")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\",\"style\":\"brief\",\"language\":\"ko\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(summary).path("data").path("content").asText()).isNotBlank();
+
+        String quiz = mockMvc.perform(post("/api/v1/legacy/ai/quiz")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\",\"count\":2}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(quiz).path("data").path("questions").isArray()).isTrue();
     }
 
     @Test
