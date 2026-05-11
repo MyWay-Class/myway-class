@@ -11,6 +11,9 @@ import com.myway.backendspring.feature.FeatureStoreService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,11 +26,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1")
 public class NotImplementedController {
+    private final AiController aiController;
     private final DemoLearningService learningService;
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
 
-    public NotImplementedController(DemoLearningService learningService, SessionService sessionService, FeatureStoreService featureStore) {
+    public NotImplementedController(AiController aiController, DemoLearningService learningService, SessionService sessionService, FeatureStoreService featureStore) {
+        this.aiController = aiController;
         this.learningService = learningService;
         this.sessionService = sessionService;
         this.featureStore = featureStore;
@@ -106,6 +111,62 @@ public class NotImplementedController {
         }
         String userId = sessionService.me(auth).user().id();
         return ResponseEntity.ok(ApiResponse.success(featureStore.aiLogs(userId), "legacy ai logs 응답을 /api/v1/ai/logs와 동일하게 반환했습니다."));
+    }
+
+    @PostMapping("/legacy/ai/settings")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiUpdateSettings(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return aiController.updateSettings(auth, body);
+    }
+
+    @PutMapping("/legacy/ai/settings")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiPutSettings(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return aiController.putSettings(auth, body);
+    }
+
+    @PostMapping("/legacy/ai/intent")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiIntent(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return aiController.intent(auth, body);
+    }
+
+    @PostMapping("/legacy/ai/search")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiSearch(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return aiController.search(auth, body);
+    }
+
+    @PostMapping("/legacy/ai/answer")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiAnswer(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return aiController.answer(auth, body);
+    }
+
+    @PostMapping("/legacy/ai/summary")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiSummary(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return aiController.summary(auth, body);
+    }
+
+    @PostMapping("/legacy/ai/quiz")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiQuiz(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return aiController.quiz(auth, body);
     }
 
     @GetMapping("/legacy/media/providers")
@@ -200,7 +261,13 @@ public class NotImplementedController {
                         Map.of("legacy", "/api/v1/legacy/ai/insights", "replacement", "/api/v1/ai/insights", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/ai/recommendations", "replacement", "/api/v1/ai/recommendations", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/ai/logs", "replacement", "/api/v1/ai/logs", "status", "available"),
-                        Map.of("legacy", "/api/v1/legacy/ai/*", "replacement", "/api/v1/ai/*", "status", "migration_in_progress"),
+                        Map.of("legacy", "/api/v1/legacy/ai/settings(POST|PUT)", "replacement", "/api/v1/ai/settings(POST|PUT)", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/ai/intent", "replacement", "/api/v1/ai/intent", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/ai/search", "replacement", "/api/v1/ai/search", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/ai/answer", "replacement", "/api/v1/ai/answer", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/ai/summary", "replacement", "/api/v1/ai/summary", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/ai/quiz", "replacement", "/api/v1/ai/quiz", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/ai/*", "replacement", "/api/v1/ai/*", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/media/providers", "replacement", "/api/v1/media/providers", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/media/processor-health", "replacement", "/api/v1/media/processor-health", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/media/pipeline/{lectureId}", "replacement", "/api/v1/media/pipeline/{lectureId}", "status", "available"),
