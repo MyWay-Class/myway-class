@@ -43,6 +43,51 @@ class LegacyEndpointMigrationIntegrationTest {
         }
         assertThat(courseMapping).isNotNull();
         assertThat(courseMapping.path("status").asText()).isEqualTo("available");
+
+        JsonNode aiSettingsMapping = null;
+        for (JsonNode node : mappings) {
+            if ("/api/v1/legacy/ai/settings".equals(node.path("legacy").asText())) {
+                aiSettingsMapping = node;
+                break;
+            }
+        }
+        assertThat(aiSettingsMapping).isNotNull();
+        assertThat(aiSettingsMapping.path("status").asText()).isEqualTo("available");
+    }
+
+    @Test
+    void legacyAiReadEndpoints_shouldReturnModernCompatibleData() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_std_001");
+
+        String settings = mockMvc.perform(get("/api/v1/legacy/ai/settings")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(settings).path("success").asBoolean()).isTrue();
+
+        String providers = mockMvc.perform(get("/api/v1/legacy/ai/providers")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(providers).path("success").asBoolean()).isTrue();
+
+        String insights = mockMvc.perform(get("/api/v1/legacy/ai/insights")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(insights).path("success").asBoolean()).isTrue();
+
+        String recommendations = mockMvc.perform(get("/api/v1/legacy/ai/recommendations")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(recommendations).path("success").asBoolean()).isTrue();
+
+        String logs = mockMvc.perform(get("/api/v1/legacy/ai/logs")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(logs).path("success").asBoolean()).isTrue();
     }
 
     @Test
