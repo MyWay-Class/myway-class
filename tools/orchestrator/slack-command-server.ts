@@ -12,6 +12,10 @@ interface SlackCommandPayload {
   team_id?: string;
 }
 
+function normalizeText(input: string): string {
+  return input.normalize("NFC").replace(/\r\n/g, "\n");
+}
+
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value || !value.trim()) {
@@ -52,7 +56,10 @@ function verifySlackSignature(
 function writeJson(res: ServerResponse, statusCode: number, body: Record<string, unknown>): void {
   res.statusCode = statusCode;
   res.setHeader("content-type", "application/json; charset=utf-8");
-  res.end(JSON.stringify(body));
+  const normalized = JSON.parse(JSON.stringify(body), (_key, value) =>
+    typeof value === "string" ? normalizeText(value) : value
+  ) as Record<string, unknown>;
+  res.end(JSON.stringify(normalized));
 }
 
 function parseOrchText(text: string): { profile: string; target: string; task: string; extra: string[] } {
@@ -94,11 +101,11 @@ async function main(): Promise<void> {
   const server = createServer(async (req, res) => {
     try {
       if (req.method === "GET" && req.url === "/health") {
-        writeJson(res, 200, { ok: true, service: "slack-command-server", at: new Date().toISOString() });
+        writeJson(res, 200, { ok: true, service: "slack-command-server", message: "정상", at: new Date().toISOString() });
         return;
       }
       if (req.method !== "POST" || req.url !== "/slack/commands/orch") {
-        writeJson(res, 404, { ok: false, error: "not_found" });
+        writeJson(res, 404, { ok: false, error: "not_found", message: "요청 경로를 찾을 수 없습니다." });
         return;
       }
 
@@ -106,7 +113,7 @@ async function main(): Promise<void> {
       const sig = String(req.headers["x-slack-signature"] || "");
       const ts = String(req.headers["x-slack-request-timestamp"] || "");
       if (!verifySlackSignature(signingSecret, ts, rawBody, sig)) {
-        writeJson(res, 401, { ok: false, error: "invalid_signature" });
+        writeJson(res, 401, { ok: false, error: "invalid_signature", message: "Slack 서명 검증에 실패했습니다." });
         return;
       }
 
@@ -131,15 +138,15 @@ async function main(): Promise<void> {
         return;
       }
 
-      writeJson(res, 200, {
-        response_type: "ephemeral",
-        text: [
-          "오케스트레이션 실행을 시작했습니다.",
-          `profile=${parsed.profile}`,
-          `target=${parsed.target}`,
-          `task=${parsed.task}`
-        ].join(" ")
-      });
+        writeJson(res, 200, {
+          response_type: "ephemeral",
+          text: normalizeText([
+            "오케스트레이션 실행을 시작했습니다.",
+            `profile=${parsed.profile}`,
+            `target=${parsed.target}`,
+            `task=${parsed.task}`
+          ].join(" "))
+        });
 
       const child = spawn(
         "npm",
@@ -180,8 +187,8 @@ async function main(): Promise<void> {
   });
 
   server.listen(port, host, () => {
-    process.stdout.write(`[slack-command-server] listening on http://${host}:${port}\n`);
-    process.stdout.write("[slack-command-server] endpoint: POST /slack/commands/orch\n");
+    process.stdout.write(`[slack-command-server] 실행 중: http://${host}:${port}\n`);
+    process.stdout.write("[slack-command-server] 엔드포인트: POST /slack/commands/orch\n");
   });
 }
 
