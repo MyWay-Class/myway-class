@@ -5,6 +5,7 @@ import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.CourseCard;
 import com.myway.backendspring.domain.CourseDetail;
 import com.myway.backendspring.domain.DemoLearningService;
+import com.myway.backendspring.domain.EnrollmentItem;
 import com.myway.backendspring.domain.LectureItem;
 import com.myway.backendspring.feature.FeatureStoreService;
 import org.springframework.http.HttpStatus;
@@ -163,6 +164,29 @@ public class NotImplementedController {
         return ResponseEntity.ok(ApiResponse.success(featureStore.shortformVideos(userId), "legacy shortform videos 응답을 /api/v1/shortform/videos/my와 동일하게 반환했습니다."));
     }
 
+    @GetMapping("/legacy/dashboard")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyDashboard(@RequestHeader(value = "Authorization", required = false) String auth) {
+        if (sessionService.me(auth) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        }
+        String userId = sessionService.me(auth).user().id();
+        var dashboard = learningService.getDashboard(userId);
+        Map<String, Object> payload = Map.of(
+                "courses", dashboard.courses(),
+                "active_enrollments", dashboard.enrolled_count()
+        );
+        return ResponseEntity.ok(ApiResponse.success(payload, "legacy dashboard 응답을 /api/v1/dashboard의 핵심 필드와 호환되게 반환했습니다."));
+    }
+
+    @GetMapping("/legacy/enrollments")
+    public ResponseEntity<ApiResponse<List<EnrollmentItem>>> legacyEnrollments(@RequestHeader(value = "Authorization", required = false) String auth) {
+        if (sessionService.me(auth) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        }
+        String userId = sessionService.me(auth).user().id();
+        return ResponseEntity.ok(ApiResponse.success(learningService.listEnrollments(userId), "legacy enrollments 응답을 /api/v1/enrollments와 동일하게 반환했습니다."));
+    }
+
     @GetMapping("/legacy/mappings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMappings() {
         return ResponseEntity.ok(ApiResponse.success(Map.of(
@@ -184,7 +208,11 @@ public class NotImplementedController {
                         Map.of("legacy", "/api/v1/legacy/shortform/library", "replacement", "/api/v1/shortform/library", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/shortform/community", "replacement", "/api/v1/shortform/community", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/shortform/videos/my", "replacement", "/api/v1/shortform/videos/my", "status", "available"),
-                        Map.of("legacy", "/api/v1/legacy/shortform/*", "replacement", "/api/v1/shortform/*", "status", "migration_in_progress")
+                        Map.of("legacy", "/api/v1/legacy/shortform/*", "replacement", "/api/v1/shortform/*", "status", "migration_in_progress"),
+                        Map.of("legacy", "/api/v1/legacy/dashboard", "replacement", "/api/v1/dashboard", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/enrollments", "replacement", "/api/v1/enrollments", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/dashboard/*", "replacement", "/api/v1/dashboard/*", "status", "migration_in_progress"),
+                        Map.of("legacy", "/api/v1/legacy/enrollments/*", "replacement", "/api/v1/enrollments/*", "status", "migration_in_progress")
                 )
         ), "legacy API 매핑 정보를 반환했습니다."));
     }

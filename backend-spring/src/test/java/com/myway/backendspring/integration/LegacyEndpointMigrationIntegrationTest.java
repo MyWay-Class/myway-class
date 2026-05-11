@@ -47,6 +47,8 @@ class LegacyEndpointMigrationIntegrationTest {
         JsonNode aiSettingsMapping = null;
         JsonNode mediaProvidersMapping = null;
         JsonNode shortformLibraryMapping = null;
+        JsonNode dashboardMapping = null;
+        JsonNode enrollmentsMapping = null;
         for (JsonNode node : mappings) {
             if ("/api/v1/legacy/ai/settings".equals(node.path("legacy").asText())) {
                 aiSettingsMapping = node;
@@ -57,6 +59,12 @@ class LegacyEndpointMigrationIntegrationTest {
             if ("/api/v1/legacy/shortform/library".equals(node.path("legacy").asText())) {
                 shortformLibraryMapping = node;
             }
+            if ("/api/v1/legacy/dashboard".equals(node.path("legacy").asText())) {
+                dashboardMapping = node;
+            }
+            if ("/api/v1/legacy/enrollments".equals(node.path("legacy").asText())) {
+                enrollmentsMapping = node;
+            }
         }
         assertThat(aiSettingsMapping).isNotNull();
         assertThat(aiSettingsMapping.path("status").asText()).isEqualTo("available");
@@ -64,6 +72,10 @@ class LegacyEndpointMigrationIntegrationTest {
         assertThat(mediaProvidersMapping.path("status").asText()).isEqualTo("available");
         assertThat(shortformLibraryMapping).isNotNull();
         assertThat(shortformLibraryMapping.path("status").asText()).isEqualTo("available");
+        assertThat(dashboardMapping).isNotNull();
+        assertThat(dashboardMapping.path("status").asText()).isEqualTo("available");
+        assertThat(enrollmentsMapping).isNotNull();
+        assertThat(enrollmentsMapping.path("status").asText()).isEqualTo("available");
     }
 
     @Test
@@ -176,6 +188,25 @@ class LegacyEndpointMigrationIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(objectMapper.readTree(myVideos).path("success").asBoolean()).isTrue();
+    }
+
+    @Test
+    void legacyDashboardAndEnrollments_shouldReturnModernCompatibleData() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_std_001");
+
+        String dashboard = mockMvc.perform(get("/api/v1/legacy/dashboard")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode dashboardData = objectMapper.readTree(dashboard).path("data");
+        assertThat(dashboardData.path("courses").isArray()).isTrue();
+        assertThat(dashboardData.path("active_enrollments").isInt()).isTrue();
+
+        String enrollments = mockMvc.perform(get("/api/v1/legacy/enrollments")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(enrollments).path("data").isArray()).isTrue();
     }
 
     @Test
