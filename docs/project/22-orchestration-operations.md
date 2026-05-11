@@ -148,6 +148,9 @@
 5. 협업형 토론/검토 실행
 - `set ORCH_PROFILE=collab && npm run orch:run`
 - Slack 중계: `set ORCH_PROFILE=collab && npm run orch:slack -- --profile collab --target dev --task-id task-...`
+- 단축 스크립트:
+  - `npm run orch:run:collab`
+  - `npm run orch:slack:collab -- --target dev --task-id task-...`
 
 ## 전략 학습/동적 라우팅
 - 학습 메모리 파일: `_workspace/strategy-memory.json`
