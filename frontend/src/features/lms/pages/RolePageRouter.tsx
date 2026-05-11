@@ -163,6 +163,23 @@ export function RolePageRouter({
             onNavigate={onNavigate}
           />
         );
+      case 'lecture-studio':
+        return (
+          <LectureStudioPage
+            courses={courseCards}
+            selectedCourse={selectedCourse}
+            highlightedLecture={highlightedLecture}
+            onSelectCourse={onSelectCourse}
+          />
+        );
+      case 'ai-chat':
+        return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} selectedCourse={selectedCourse} canManageCurrent={true} sessionToken={sessionToken} />;
+      case 'ai-summary':
+        return <AISummaryPage highlightedLecture={highlightedLecture} insights={insights} />;
+      case 'quiz-gen':
+        return <QuizGenPage courses={courseCards} />;
+      case 'assignment-check':
+        return <AssignmentCheckPage courses={courseCards} />;
       case 'admin-users':
         return withSuspense(<AdminUsersPage users={demoUsers} />);
       case 'admin-instructors':
@@ -382,6 +399,18 @@ export function RolePageRouter({
 
   if (page === 'ai-chat') {
     return <AIChatPage highlightedLecture={highlightedLecture} insights={insights} selectedCourse={selectedCourse} canManageCurrent={false} sessionToken={sessionToken} />;
+  }
+
+  if (page === 'ai-summary') {
+    return <AISummaryPage highlightedLecture={highlightedLecture} insights={insights} />;
+  }
+
+  if (page === 'quiz-gen') {
+    return <QuizGenPage courses={courseCards} />;
+  }
+
+  if (page === 'assignment-check') {
+    return <AssignmentCheckPage courses={courseCards} />;
   }
 
   if (page === 'shortform' || page === 'my-shortforms' || page === 'community') {
