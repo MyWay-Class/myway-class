@@ -46,6 +46,7 @@ class LegacyEndpointMigrationIntegrationTest {
 
         JsonNode aiSettingsMapping = null;
         JsonNode mediaProvidersMapping = null;
+        JsonNode shortformLibraryMapping = null;
         for (JsonNode node : mappings) {
             if ("/api/v1/legacy/ai/settings".equals(node.path("legacy").asText())) {
                 aiSettingsMapping = node;
@@ -53,11 +54,16 @@ class LegacyEndpointMigrationIntegrationTest {
             if ("/api/v1/legacy/media/providers".equals(node.path("legacy").asText())) {
                 mediaProvidersMapping = node;
             }
+            if ("/api/v1/legacy/shortform/library".equals(node.path("legacy").asText())) {
+                shortformLibraryMapping = node;
+            }
         }
         assertThat(aiSettingsMapping).isNotNull();
         assertThat(aiSettingsMapping.path("status").asText()).isEqualTo("available");
         assertThat(mediaProvidersMapping).isNotNull();
         assertThat(mediaProvidersMapping.path("status").asText()).isEqualTo("available");
+        assertThat(shortformLibraryMapping).isNotNull();
+        assertThat(shortformLibraryMapping.path("status").asText()).isEqualTo("available");
     }
 
     @Test
@@ -147,6 +153,29 @@ class LegacyEndpointMigrationIntegrationTest {
         JsonNode lecturesData = objectMapper.readTree(lecturesResponse).path("data");
         assertThat(lecturesData.isArray()).isTrue();
         assertThat(lecturesData.size()).isGreaterThan(0);
+    }
+
+    @Test
+    void legacyShortformReadEndpoints_shouldReturnModernCompatibleData() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_std_001");
+
+        String library = mockMvc.perform(get("/api/v1/legacy/shortform/library")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(library).path("success").asBoolean()).isTrue();
+
+        String community = mockMvc.perform(get("/api/v1/legacy/shortform/community")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(community).path("success").asBoolean()).isTrue();
+
+        String myVideos = mockMvc.perform(get("/api/v1/legacy/shortform/videos/my")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(myVideos).path("success").asBoolean()).isTrue();
     }
 
     @Test

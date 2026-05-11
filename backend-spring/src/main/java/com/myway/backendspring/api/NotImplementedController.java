@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -133,6 +134,35 @@ public class NotImplementedController {
         return ResponseEntity.ok(ApiResponse.success(featureStore.pipeline(lectureId), "legacy media pipeline 응답을 /api/v1/media/pipeline/{lectureId}와 동일하게 반환했습니다."));
     }
 
+    @GetMapping("/legacy/shortform/library")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> legacyShortformLibrary(@RequestHeader(value = "Authorization", required = false) String auth) {
+        if (sessionService.me(auth) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        }
+        String userId = sessionService.me(auth).user().id();
+        return ResponseEntity.ok(ApiResponse.success(featureStore.shortformLibrary(userId), "legacy shortform library 응답을 /api/v1/shortform/library와 동일하게 반환했습니다."));
+    }
+
+    @GetMapping("/legacy/shortform/community")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> legacyShortformCommunity(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestParam(value = "course_id", required = false) String courseId
+    ) {
+        if (sessionService.me(auth) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(featureStore.shortformCommunity(courseId), "legacy shortform community 응답을 /api/v1/shortform/community와 동일하게 반환했습니다."));
+    }
+
+    @GetMapping("/legacy/shortform/videos/my")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> legacyShortformVideos(@RequestHeader(value = "Authorization", required = false) String auth) {
+        if (sessionService.me(auth) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        }
+        String userId = sessionService.me(auth).user().id();
+        return ResponseEntity.ok(ApiResponse.success(featureStore.shortformVideos(userId), "legacy shortform videos 응답을 /api/v1/shortform/videos/my와 동일하게 반환했습니다."));
+    }
+
     @GetMapping("/legacy/mappings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMappings() {
         return ResponseEntity.ok(ApiResponse.success(Map.of(
@@ -151,7 +181,10 @@ public class NotImplementedController {
                         Map.of("legacy", "/api/v1/legacy/media/processor-health", "replacement", "/api/v1/media/processor-health", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/media/pipeline/{lectureId}", "replacement", "/api/v1/media/pipeline/{lectureId}", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/media/*", "replacement", "/api/v1/media/*", "status", "migration_in_progress"),
-                        Map.of("legacy", "/api/v1/legacy/shortform/*", "replacement", "/api/v1/shortform/*")
+                        Map.of("legacy", "/api/v1/legacy/shortform/library", "replacement", "/api/v1/shortform/library", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/community", "replacement", "/api/v1/shortform/community", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/videos/my", "replacement", "/api/v1/shortform/videos/my", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/*", "replacement", "/api/v1/shortform/*", "status", "migration_in_progress")
                 )
         ), "legacy API 매핑 정보를 반환했습니다."));
     }
