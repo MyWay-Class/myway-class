@@ -332,35 +332,35 @@ function roleOwnsFile(role: WorkerRole, filePath: string): boolean {
 
 function localWorkerReport(role: WorkerRole): WorkerReport {
   let pass = true;
-  let summary = "no-op";
+  let summary = "작업 없음";
   const baselineSkips = profile === "baseline" && (role === "backend-dev" || role === "test-engineer");
   const testOwnedByChecks = role === "test-engineer";
   const frontendOwnedByVerifyWorkflow = role === "frontend-dev";
 
   if (baselineSkips) {
-    summary = `${role} skipped in baseline profile`;
+    summary = `${role} 워커는 baseline 프로필에서 건너뜀`;
   }
   if (!baselineSkips && testOwnedByChecks) {
-    summary = `${role} skipped: strict test execution is owned by checks.ts`;
+    summary = `${role} 워커는 건너뜀: 테스트 실행은 checks.ts에서 관리`;
   }
   if (!baselineSkips && frontendOwnedByVerifyWorkflow) {
-    summary = `${role} skipped: frontend build is covered by verify-workspace workflow`;
+    summary = `${role} 워커는 건너뜀: 프론트 빌드는 verify-workspace 워크플로우에서 검증`;
   }
 
   if (!baselineSkips && role === "backend-dev") {
     pass = runWithRetry(() => runCmd("npm run build:backend", workerTimeoutMs), workerMaxRetries);
-    summary = pass ? "backend build/contract check passed" : "backend build/contract check failed";
+    summary = pass ? "백엔드 빌드/계약 검증 통과" : "백엔드 빌드/계약 검증 실패";
   }
   if (!baselineSkips && !frontendOwnedByVerifyWorkflow && role === "frontend-dev") {
     pass = runWithRetry(() => runCmd("npm run build:frontend", workerTimeoutMs), workerMaxRetries);
-    summary = pass ? "frontend build passed" : "frontend build failed";
+    summary = pass ? "프론트엔드 빌드 통과" : "프론트엔드 빌드 실패";
   }
   if (!baselineSkips && !testOwnedByChecks && role === "test-engineer") {
     pass = runWithRetry(() => runCmd("npm run test:backend", workerTimeoutMs), workerMaxRetries);
-    summary = pass ? "backend tests passed" : "backend tests failed";
+    summary = pass ? "백엔드 테스트 통과" : "백엔드 테스트 실패";
   }
   if (role === "docs-writer") {
-    summary = "docs worker placeholder: no docs change requested";
+    summary = "문서 워커 자리표시자: 요청된 문서 변경 없음";
   }
 
   const changedFiles = getGitChangedFiles().filter((filePath) => roleOwnsFile(role, filePath));
@@ -369,7 +369,7 @@ function localWorkerReport(role: WorkerRole): WorkerReport {
     role,
     summary,
     filesChanged: changedFiles,
-    risks: pass ? [] : [`${role} command failed`],
+    risks: pass ? [] : [`${role} 워커 명령 실패`],
     executionPlan: planForRole(role, summary, !pass),
     timestamp: new Date().toISOString()
   };
@@ -417,29 +417,29 @@ interface RemediationPlan {
 function planForRole(role: WorkerRole, summary: string, isFail: boolean): WorkerReport["executionPlan"] {
   if (role === "backend-dev") {
     return {
-      steps: ["compile backend modules", "run contract-sensitive packaging"],
+      steps: ["백엔드 모듈 컴파일", "계약 영향 패키징 검증 실행"],
       commands: ["npm run build:backend"],
       riskLevel: isFail ? "high" : "medium"
     };
   }
   if (role === "frontend-dev") {
     return {
-      steps: ["compile frontend bundle", "validate build output"],
+      steps: ["프론트엔드 번들 컴파일", "빌드 산출물 검증"],
       commands: ["npm run build:frontend"],
       riskLevel: isFail ? "medium" : "low"
     };
   }
   if (role === "test-engineer") {
     return {
-      steps: ["run backend tests", "collect failures for remediation"],
+      steps: ["백엔드 테스트 실행", "실패 항목 수집 및 보완 라운드 준비"],
       commands: ["npm run test:backend"],
       riskLevel: isFail ? "high" : "medium"
     };
   }
   return {
-    steps: ["inspect docs impact", "record documentation actions"],
+    steps: ["문서 영향 범위 점검", "문서 조치 사항 기록"],
     commands: ["echo docs-worker-noop"],
-    riskLevel: summary.includes("no docs") ? "low" : "medium"
+    riskLevel: summary.includes("요청된 문서 변경 없음") ? "low" : "medium"
   };
 }
 
@@ -564,14 +564,14 @@ async function callRemoteWorker(role: WorkerRole): Promise<WorkerReport> {
   }
   const payload = (await response.json()) as RemoteWorkerResponse;
   const pass = payload.pass ?? (payload.risks?.length ?? 0) === 0;
-  const summary = payload.summary || `${role} remote execution ${pass ? "passed" : "failed"}`;
+  const summary = payload.summary || `${role} 원격 실행 ${pass ? "통과" : "실패"}`;
   const fallbackPlan = planForRole(role, summary, !pass);
   const report: WorkerReport = {
     taskId,
     role,
     summary,
     filesChanged: Array.from(new Set([...(payload.filesChanged ?? []), ...ownedChangedFiles])),
-    risks: payload.risks ?? (pass ? [] : [`${role} remote execution failed`]),
+    risks: payload.risks ?? (pass ? [] : [`${role} 원격 실행 실패`]),
     executionPlan: {
       steps: payload.executionPlan?.steps ?? fallbackPlan.steps,
       commands: payload.executionPlan?.commands ?? fallbackPlan.commands,
@@ -594,13 +594,13 @@ async function runWorker(role: WorkerRole): Promise<WorkerReport> {
       return await callRemoteWorker(role);
     } catch (error) {
       const fallback = localWorkerReport(role);
-      fallback.summary = `${fallback.summary} (remote fallback: ${(error as Error).message})`;
-      fallback.risks = fallback.risks.length ? fallback.risks : ["remote worker unavailable, used local fallback"];
+      fallback.summary = `${fallback.summary} (원격 폴백: ${(error as Error).message})`;
+      fallback.risks = fallback.risks.length ? fallback.risks : ["원격 워커를 사용할 수 없어 로컬 폴백 적용"];
       validateOrThrow(join(projectDir, "ops/workflow/contracts/worker_report.json"), fallback, `${role} report fallback`);
       writeFileSync(join(reportsDir, `${taskId}-${role}.json`), JSON.stringify(fallback, null, 2));
       appendFileSync(
         join(threadsDir, `${taskId}.jsonl`),
-        JSON.stringify({ role: "manager", message: `remote worker fallback for ${role}: ${(error as Error).message}`, at: new Date().toISOString() }) + "\n"
+        JSON.stringify({ role: "manager", message: `${role} 원격 워커 실패로 로컬 폴백: ${(error as Error).message}`, at: new Date().toISOString() }) + "\n"
       );
       return fallback;
     }
@@ -615,9 +615,9 @@ async function debateRound(experiment: ExperimentConfig): Promise<{ chosen: "A" 
   const rejectRatio = recentApprovals + recentRejects === 0 ? 0 : recentRejects / (recentApprovals + recentRejects);
   const biasGuard = rejectRatio < biasGuardRejectRatioMin ? "bias_guard=force_conservative_checks" : "bias_guard=normal";
   const memoryHint = `recent_approvals=${recentApprovals}, recent_rejects=${recentRejects}, ${biasGuard}`;
-  const optionA = profile === "strict" ? "full quality gate with tests+audit" : "keep strict for production branches";
-  const optionB = profile === "baseline" ? "baseline fast gate for CI" : "fallback baseline when strict repeatedly fails";
-  const optionC = `merge A+B: keep strict gate with baseline fallback only for transient external failures (${memoryHint})`;
+  const optionA = profile === "strict" ? "테스트+감사를 포함한 전체 품질 게이트 유지" : "운영 브랜치에는 strict 기준 유지";
+  const optionB = profile === "baseline" ? "CI용 baseline 빠른 게이트 사용" : "strict가 반복 실패할 때 baseline 폴백 사용";
+  const optionC = `A+B 병합안: 일시적 외부 실패에만 baseline 폴백 허용 (${memoryHint})`;
   const chosen = profile === "strict" ? "A" : "B";
   const rationale = chosen === "A" ? optionA : optionB;
   if (agentMode === "remote" && agentEndpoint) {
@@ -675,7 +675,7 @@ async function debateRound(experiment: ExperimentConfig): Promise<{ chosen: "A" 
         };
         await postMessage("worker-A", optionA);
         await postMessage("worker-B", optionB);
-        if (optionC) await postMessage("critic", `proposed merge option C: ${optionC}`);
+        if (optionC) await postMessage("critic", `병합 제안 C: ${optionC}`);
 
         const decideResponse = await fetch(`${endpoint}/debate/sessions/decide`, {
           method: "POST",
@@ -727,9 +727,9 @@ async function debateRound(experiment: ExperimentConfig): Promise<{ chosen: "A" 
     join(threadsDir, `${taskId}.jsonl`),
     JSON.stringify({ role: "worker-A", message: optionA, at: new Date().toISOString() }) + "\n" +
       JSON.stringify({ role: "worker-B", message: optionB, at: new Date().toISOString() }) + "\n" +
-      JSON.stringify({ role: "critic", message: `proposed merge option C: ${optionC}`, at: new Date().toISOString() }) + "\n" +
-      JSON.stringify({ role: "critic", message: `selected ${chosen}: ${rationale}`, at: new Date().toISOString() }) + "\n" +
-      JSON.stringify({ role: "manager", message: `execute plan ${chosen} for ${profile} profile`, at: new Date().toISOString() }) + "\n"
+      JSON.stringify({ role: "critic", message: `병합 제안 C: ${optionC}`, at: new Date().toISOString() }) + "\n" +
+      JSON.stringify({ role: "critic", message: `선택안 ${chosen}: ${rationale}`, at: new Date().toISOString() }) + "\n" +
+      JSON.stringify({ role: "manager", message: `${profile} 프로필에 대해 ${chosen}안 실행`, at: new Date().toISOString() }) + "\n"
   );
   return { chosen, rationale };
 }
@@ -739,12 +739,12 @@ function remediationRound(failedWorkers: string[], failedChecks: string[]): void
     join(threadsDir, `${taskId}.jsonl`),
     JSON.stringify({
       role: "manager",
-      message: `remediation requested. failedWorkers=${failedWorkers.join(",") || "none"}, failedChecks=${failedChecks.join(",") || "none"}`,
+      message: `보완 라운드 요청. failedWorkers=${failedWorkers.join(",") || "none"}, failedChecks=${failedChecks.join(",") || "none"}`,
       at: new Date().toISOString()
     }) + "\n" +
-      JSON.stringify({ role: "worker-A", message: "propose targeted rerun and minimal patch", at: new Date().toISOString() }) + "\n" +
-      JSON.stringify({ role: "worker-B", message: "propose fallback path and risk containment", at: new Date().toISOString() }) + "\n" +
-      JSON.stringify({ role: "critic", message: "approve one remediation round only", at: new Date().toISOString() }) + "\n"
+      JSON.stringify({ role: "worker-A", message: "실패 지점 중심 재실행과 최소 패치 제안", at: new Date().toISOString() }) + "\n" +
+      JSON.stringify({ role: "worker-B", message: "폴백 경로와 리스크 격리 방안 제안", at: new Date().toISOString() }) + "\n" +
+      JSON.stringify({ role: "critic", message: "보완 라운드는 1회만 승인", at: new Date().toISOString() }) + "\n"
   );
 }
 

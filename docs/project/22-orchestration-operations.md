@@ -5,6 +5,7 @@
 
 ## 실행 프로필
 - 기본값: `strict`
+- 협업형: `collab`
 - 예외값: `baseline`
 
 ## strict 사용 기준
@@ -144,6 +145,10 @@
 4. 원격 멀티에이전트 실행
 - `set ORCH_AGENT_MODE=remote && set ORCH_AGENT_ENDPOINT=https://your-agent-runtime.example && npm run orch:run`
 
+5. 협업형 토론/검토 실행
+- `set ORCH_PROFILE=collab && npm run orch:run`
+- Slack 중계: `set ORCH_PROFILE=collab && npm run orch:slack -- --profile collab --target dev --task-id task-...`
+
 ## 전략 학습/동적 라우팅
 - 학습 메모리 파일: `_workspace/strategy-memory.json`
 - 기록 항목: 프로필/브랜치/토론선택/최종상태/실패워커/실패체크
@@ -168,3 +173,11 @@
   - warmup 이후 control/variant 최근 성능 점수 비교
   - 점수 우위 변형의 노출 비율을 자동 가중(기본 비율 대비 ±0.2)
   - 점수는 `approve_rate - rerun_penalty - leadtime_penalty` 기반
+## collab 사용 기준
+- 관리자 + 역할별 에이전트 토론/검토/결정을 반복하면서도, `strict` 대비 실행 시간을 줄이고 싶을 때 사용한다.
+- 체크 구성:
+  - tests: `npm run test:backend:clean`
+  - style: `npm run lint` (스크립트 없으면 skip)
+  - security: `npm audit --audit-level=moderate`
+  - performance: `npm run perf:smoke` (스크립트 없으면 skip)
+- 권장: Slack 브리지(`orch:slack`)와 함께 사용해 토론 로그를 채널 스레드로 중계한다.
