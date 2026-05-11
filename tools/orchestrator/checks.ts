@@ -11,7 +11,7 @@ export interface CheckResult {
   skipped?: boolean;
   reason?: string;
 }
-export type OrchestratorProfile = "strict" | "baseline";
+export type OrchestratorProfile = "strict" | "collab" | "baseline";
 
 function hasScript(name: string, scripts: Record<string, string>): boolean {
   return Object.prototype.hasOwnProperty.call(scripts, name);
@@ -47,24 +47,31 @@ export function runChecks(projectDir: string, profile: OrchestratorProfile): { p
           { name: "security", command: "baseline-skip", pass: true, skipped: true, reason: "baseline profile skips audit" },
           { name: "performance", command: "baseline-skip", pass: true, skipped: true, reason: "baseline profile skips perf smoke" }
         ]
-      : [
-          runScriptOrSkip("test:backend:clean", "tests", projectDir, scripts),
-          {
-            name: "style",
-            command: "verify-workspace-owns-style",
-            pass: true,
-            skipped: true,
-            reason: "style check is covered by verify-workspace workflow"
-          },
-          { name: "security", command: "npm audit --audit-level=high", pass: run("npm audit --audit-level=high", projectDir) },
-          {
-            name: "performance",
-            command: "verify-workspace-owns-performance",
-            pass: true,
-            skipped: true,
-            reason: "performance smoke check is covered by verify-workspace workflow"
-          }
-        ];
+      : profile === "collab"
+        ? [
+            runScriptOrSkip("test:backend:clean", "tests", projectDir, scripts),
+            runScriptOrSkip("lint", "style", projectDir, scripts),
+            { name: "security", command: "npm audit --audit-level=moderate", pass: run("npm audit --audit-level=moderate", projectDir) },
+            runScriptOrSkip("perf:smoke", "performance", projectDir, scripts)
+          ]
+        : [
+            runScriptOrSkip("test:backend:clean", "tests", projectDir, scripts),
+            {
+              name: "style",
+              command: "verify-workspace-owns-style",
+              pass: true,
+              skipped: true,
+              reason: "style check is covered by verify-workspace workflow"
+            },
+            { name: "security", command: "npm audit --audit-level=high", pass: run("npm audit --audit-level=high", projectDir) },
+            {
+              name: "performance",
+              command: "verify-workspace-owns-performance",
+              pass: true,
+              skipped: true,
+              reason: "performance smoke check is covered by verify-workspace workflow"
+            }
+          ];
 
   return { pass: checks.every((check) => check.pass), checks };
 }

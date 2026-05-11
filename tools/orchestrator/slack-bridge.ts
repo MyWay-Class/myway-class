@@ -8,6 +8,10 @@ type SlackMessage = {
   thread_ts?: string;
 };
 
+function normalizeSlackText(input: string): string {
+  return input.normalize("NFC").replace(/\r\n/g, "\n");
+}
+
 type ThreadEntry = {
   role?: string;
   message?: string;
@@ -72,16 +76,16 @@ function parseArgs(argv: string[]): { profile: string; targetBranch: string; tas
 
 function formatRole(role?: string): string {
   const normalized = (role || "agent").toLowerCase();
-  if (normalized === "worker-a") return "Worker A";
-  if (normalized === "worker-b") return "Worker B";
-  if (normalized === "backend-dev") return "Backend Worker";
-  if (normalized === "frontend-dev") return "Frontend Worker";
-  if (normalized === "test-engineer") return "Test Worker";
-  if (normalized === "docs-writer") return "Docs Worker";
-  if (normalized === "critic") return "Critic";
-  if (normalized === "manager") return "Manager";
-  if (normalized === "reviewer") return "Reviewer";
-  return role || "Agent";
+  if (normalized === "worker-a") return "워커 A";
+  if (normalized === "worker-b") return "워커 B";
+  if (normalized === "backend-dev") return "백엔드 워커";
+  if (normalized === "frontend-dev") return "프론트엔드 워커";
+  if (normalized === "test-engineer") return "테스트 워커";
+  if (normalized === "docs-writer") return "문서 워커";
+  if (normalized === "critic") return "비평가";
+  if (normalized === "manager") return "관리자";
+  if (normalized === "reviewer") return "리뷰어";
+  return role || "에이전트";
 }
 
 async function slackApi(token: string, method: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -102,7 +106,10 @@ async function slackApi(token: string, method: string, payload: Record<string, u
 }
 
 async function postSlack(token: string, msg: SlackMessage): Promise<string> {
-  const response = await slackApi(token, "chat.postMessage", msg);
+  const response = await slackApi(token, "chat.postMessage", {
+    ...msg,
+    text: normalizeSlackText(msg.text)
+  });
   return String(response.ts || "");
 }
 
@@ -141,7 +148,7 @@ async function run(): Promise<void> {
   const headerTs = await postSlack(slackToken, {
     channel: slackChannel,
     text: [
-      `:robot_face: Orchestration started`,
+      `:robot_face: 오케스트레이션 시작`,
       `taskId: ${taskId}`,
       `profile: ${profile}`,
       `target: ${targetBranch}`
@@ -231,15 +238,15 @@ async function run(): Promise<void> {
   }
 
   const doneText = [
-    `:white_check_mark: Orchestration finished`,
-    `state: ${state}`,
-    `decision: ${decision}`,
-    `verdict: ${verdict}`,
-    `weighted_score: ${weightedScore}`,
-    `failed_checks: ${failedChecks.length ? failedChecks.join(", ") : "none"}`,
-    `request_change_codes: ${changeCodes.length ? changeCodes.join(", ") : "none"}`,
-    `reason: ${reason || "n/a"}`,
-    `exit_code: ${procExitCode ?? "n/a"}`
+    `:white_check_mark: 오케스트레이션 종료`,
+    `상태(state): ${state}`,
+    `결정(decision): ${decision}`,
+    `판정(verdict): ${verdict}`,
+    `가중 점수(weighted_score): ${weightedScore}`,
+    `실패 체크(failed_checks): ${failedChecks.length ? failedChecks.join(", ") : "없음"}`,
+    `변경 요청 코드(request_change_codes): ${changeCodes.length ? changeCodes.join(", ") : "없음"}`,
+    `사유(reason): ${reason || "n/a"}`,
+    `종료 코드(exit_code): ${procExitCode ?? "n/a"}`
   ].join("\n");
 
   await postSlack(slackToken, {
