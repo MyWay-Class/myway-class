@@ -26,6 +26,26 @@ class LegacyEndpointMigrationIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
+    void legacyMappings_shouldExposeAvailableCoursesMigrationState() throws Exception {
+        String response = mockMvc.perform(get("/api/v1/legacy/mappings"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode mappings = objectMapper.readTree(response).path("data").path("mappings");
+        assertThat(mappings.isArray()).isTrue();
+
+        JsonNode courseMapping = null;
+        for (JsonNode node : mappings) {
+            if ("/api/v1/legacy/courses".equals(node.path("legacy").asText())) {
+                courseMapping = node;
+                break;
+            }
+        }
+        assertThat(courseMapping).isNotNull();
+        assertThat(courseMapping.path("status").asText()).isEqualTo("available");
+    }
+
+    @Test
     void legacyCoursesEndpoints_shouldReturnModernCompatibleData() throws Exception {
         String auth = "Bearer " + loginAndGetToken("usr_std_001");
 
