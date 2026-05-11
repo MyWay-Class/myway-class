@@ -45,14 +45,19 @@ class LegacyEndpointMigrationIntegrationTest {
         assertThat(courseMapping.path("status").asText()).isEqualTo("available");
 
         JsonNode aiSettingsMapping = null;
+        JsonNode mediaProvidersMapping = null;
         for (JsonNode node : mappings) {
             if ("/api/v1/legacy/ai/settings".equals(node.path("legacy").asText())) {
                 aiSettingsMapping = node;
-                break;
+            }
+            if ("/api/v1/legacy/media/providers".equals(node.path("legacy").asText())) {
+                mediaProvidersMapping = node;
             }
         }
         assertThat(aiSettingsMapping).isNotNull();
         assertThat(aiSettingsMapping.path("status").asText()).isEqualTo("available");
+        assertThat(mediaProvidersMapping).isNotNull();
+        assertThat(mediaProvidersMapping.path("status").asText()).isEqualTo("available");
     }
 
     @Test
@@ -88,6 +93,29 @@ class LegacyEndpointMigrationIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(objectMapper.readTree(logs).path("success").asBoolean()).isTrue();
+    }
+
+    @Test
+    void legacyMediaReadEndpoints_shouldReturnModernCompatibleData() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        String providers = mockMvc.perform(get("/api/v1/legacy/media/providers")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(providers).path("success").asBoolean()).isTrue();
+
+        String health = mockMvc.perform(get("/api/v1/legacy/media/processor-health")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(health).path("success").asBoolean()).isTrue();
+
+        String pipeline = mockMvc.perform(get("/api/v1/legacy/media/pipeline/lec_java_01")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(pipeline).path("success").asBoolean()).isTrue();
     }
 
     @Test

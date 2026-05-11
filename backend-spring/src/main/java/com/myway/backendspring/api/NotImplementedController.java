@@ -106,6 +106,33 @@ public class NotImplementedController {
         return ResponseEntity.ok(ApiResponse.success(featureStore.aiLogs(userId), "legacy ai logs 응답을 /api/v1/ai/logs와 동일하게 반환했습니다."));
     }
 
+    @GetMapping("/legacy/media/providers")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaProviders(@RequestHeader(value = "Authorization", required = false) String auth) {
+        if (sessionService.me(auth) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(featureStore.sttProviders(), "legacy media providers 응답을 /api/v1/media/providers와 동일하게 반환했습니다."));
+    }
+
+    @GetMapping("/legacy/media/processor-health")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaProcessorHealth(@RequestHeader(value = "Authorization", required = false) String auth) {
+        if (sessionService.me(auth) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(featureStore.processorHealth(), "legacy media processor health 응답을 /api/v1/media/processor-health와 동일하게 반환했습니다."));
+    }
+
+    @GetMapping("/legacy/media/pipeline/{lectureId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaPipeline(
+            @PathVariable String lectureId,
+            @RequestHeader(value = "Authorization", required = false) String auth
+    ) {
+        if (sessionService.me(auth) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(featureStore.pipeline(lectureId), "legacy media pipeline 응답을 /api/v1/media/pipeline/{lectureId}와 동일하게 반환했습니다."));
+    }
+
     @GetMapping("/legacy/mappings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMappings() {
         return ResponseEntity.ok(ApiResponse.success(Map.of(
@@ -120,7 +147,10 @@ public class NotImplementedController {
                         Map.of("legacy", "/api/v1/legacy/ai/recommendations", "replacement", "/api/v1/ai/recommendations", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/ai/logs", "replacement", "/api/v1/ai/logs", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/ai/*", "replacement", "/api/v1/ai/*", "status", "migration_in_progress"),
-                        Map.of("legacy", "/api/v1/legacy/media/*", "replacement", "/api/v1/media/*"),
+                        Map.of("legacy", "/api/v1/legacy/media/providers", "replacement", "/api/v1/media/providers", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/media/processor-health", "replacement", "/api/v1/media/processor-health", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/media/pipeline/{lectureId}", "replacement", "/api/v1/media/pipeline/{lectureId}", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/media/*", "replacement", "/api/v1/media/*", "status", "migration_in_progress"),
                         Map.of("legacy", "/api/v1/legacy/shortform/*", "replacement", "/api/v1/shortform/*")
                 )
         ), "legacy API 매핑 정보를 반환했습니다."));
