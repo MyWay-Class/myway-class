@@ -366,6 +366,13 @@ public class FeatureStoreService {
         return ragService.clearRagIndex(lectureId, courseId);
     }
 
+    public Map<String, Object> evaluateRagBatch(List<Map<String, Object>> cases, Integer topK) {
+        if (ragService == null) {
+            return Map.of();
+        }
+        return ragService.evaluateBatch(cases, topK);
+    }
+
     private Instant parseInstantOrNull(Object raw) {
         if (raw == null) {
             return null;
