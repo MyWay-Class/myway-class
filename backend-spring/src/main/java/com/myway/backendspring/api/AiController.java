@@ -16,6 +16,15 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/ai")
 public class AiController {
+    public record RagRequest(String query, String lecture_id, String course_id, Integer limit, Double min_score, Boolean include_debug) {}
+    public record RagIndexMutationRequest(String lecture_id, String course_id) {}
+    public record RagEvaluateRequest(Integer top_k, List<Map<String, Object>> cases) {}
+    public record IntentRequest(String message, String lecture_id) {}
+    public record SearchRequest(String query, String lecture_id) {}
+    public record AnswerRequest(String question, String lecture_id) {}
+    public record SummaryRequest(String lecture_id, String style, String language) {}
+    public record QuizRequest(String lecture_id) {}
+
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
     private final DemoLearningService learningService;
@@ -60,7 +69,8 @@ public class AiController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateSettings(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.updateAiSettings(session.user().id(), body), "설정이 저장되었습니다."));
+        Map<String, Object> patch = body == null ? Map.of() : body;
+        return ResponseEntity.ok(ApiResponse.success(featureStore.updateAiSettings(session.user().id(), patch), "설정이 저장되었습니다."));
     }
 
     @PutMapping("/settings")
@@ -76,16 +86,16 @@ public class AiController {
     }
 
     @PostMapping("/rag")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> rag(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> rag(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody RagRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!featureStore.canConsumeAi(session.user().id())) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
 
-        String query = text(body, "query");
+        String query = body == null || body.query() == null ? "" : body.query().trim();
         if (query.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("QUERY_REQUIRED", "query가 필요합니다."));
 
-        String lectureId = text(body, "lecture_id");
-        String courseId = text(body, "course_id");
+        String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
+        String courseId = body.course_id() == null ? "" : body.course_id().trim();
         if (lectureId.isBlank() && courseId.isBlank()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_OR_COURSE_REQUIRED", "lecture_id 또는 course_id가 필요합니다."));
         }
@@ -96,9 +106,9 @@ public class AiController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         }
 
-        Integer limit = intOrNull(body, "limit");
-        Double minScore = doubleOrNull(body, "min_score");
-        boolean includeDebug = booleanOrDefault(body, "include_debug", false);
+        Integer limit = body.limit();
+        Double minScore = body.min_score();
+        boolean includeDebug = Boolean.TRUE.equals(body.include_debug());
         Map<String, Object> data = featureStore.ragOverview(
                 query,
                 lectureId.isBlank() ? null : lectureId,
@@ -129,12 +139,12 @@ public class AiController {
     @PostMapping("/rag/index/rebuild")
     public ResponseEntity<ApiResponse<Map<String, Object>>> rebuildRagIndex(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody RagIndexMutationRequest body
     ) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String lectureId = text(body, "lecture_id");
-        String courseId = text(body, "course_id");
+        String lectureId = body == null || body.lecture_id() == null ? "" : body.lecture_id().trim();
+        String courseId = body == null || body.course_id() == null ? "" : body.course_id().trim();
         if (lectureId.isBlank() && courseId.isBlank()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_OR_COURSE_REQUIRED", "lecture_id 또는 course_id가 필요합니다."));
         }
@@ -154,12 +164,12 @@ public class AiController {
     @PostMapping("/rag/index/clear")
     public ResponseEntity<ApiResponse<Map<String, Object>>> clearRagIndex(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody RagIndexMutationRequest body
     ) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String lectureId = text(body, "lecture_id");
-        String courseId = text(body, "course_id");
+        String lectureId = body == null || body.lecture_id() == null ? "" : body.lecture_id().trim();
+        String courseId = body == null || body.course_id() == null ? "" : body.course_id().trim();
         if (lectureId.isBlank() && courseId.isBlank()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_OR_COURSE_REQUIRED", "lecture_id 또는 course_id가 필요합니다."));
         }
@@ -179,29 +189,29 @@ public class AiController {
     @PostMapping("/rag/evaluate")
     public ResponseEntity<ApiResponse<Map<String, Object>>> evaluateRag(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody(required = false) Map<String, Object> body
+            @RequestBody(required = false) RagEvaluateRequest body
     ) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        Integer topK = intOrNull(body, "top_k");
-        List<Map<String, Object>> cases = listOfMap(body == null ? null : body.get("cases"));
+        Integer topK = body == null ? null : body.top_k();
+        List<Map<String, Object>> cases = body == null || body.cases() == null ? List.of() : body.cases();
         Map<String, Object> data = featureStore.evaluateRagBatch(cases, topK);
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 배치 평가를 완료했습니다."));
     }
 
     @PostMapping("/intent")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> intent(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> intent(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody IntentRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!featureStore.canConsumeAi(session.user().id())) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
-        String message = text(body, "message");
+        String message = body == null || body.message() == null ? "" : body.message().trim();
         if (message.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("MESSAGE_REQUIRED", "message가 필요합니다."));
         Map<String, Object> data = new HashMap<>();
         data.put("intent", "recommendation");
         data.put("confidence", 0.82);
         data.put("action", "show_recommendations");
         data.put("reason", "Spring demo intent classifier");
-        data.put("lecture_id", textOrNull(body, "lecture_id"));
+        data.put("lecture_id", body.lecture_id() == null || body.lecture_id().isBlank() ? null : body.lecture_id().trim());
         data.put("provider", "demo");
         data.put("model", "demo-intent-v1");
         featureStore.recordAiUsage(session.user().id(), "intent", true, message);
@@ -209,13 +219,13 @@ public class AiController {
     }
 
     @PostMapping("/search")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> search(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> search(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SearchRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!featureStore.canConsumeAi(session.user().id())) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
-        String query = text(body, "query");
+        String query = body == null || body.query() == null ? "" : body.query().trim();
         if (query.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("QUERY_REQUIRED", "query가 필요합니다."));
-        ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body);
+        ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body == null ? null : body.lecture_id());
         if (lectureError != null) return lectureError;
         Map<String, Object> data = Map.of(
                 "query", query,
@@ -228,18 +238,18 @@ public class AiController {
     }
 
     @PostMapping("/answer")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> answer(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> answer(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody AnswerRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!featureStore.canConsumeAi(session.user().id())) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
-        String question = text(body, "question");
+        String question = body == null || body.question() == null ? "" : body.question().trim();
         if (question.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("QUESTION_REQUIRED", "question이 필요합니다."));
-        ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body);
+        ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body == null ? null : body.lecture_id());
         if (lectureError != null) return lectureError;
         Map<String, Object> data = new HashMap<>();
         data.put("answer", "[Spring AI 응답] " + question);
         data.put("sources", List.of("lecture:lec_java_01"));
-        data.put("lecture_id", textOrNull(body, "lecture_id"));
+        data.put("lecture_id", body.lecture_id() == null || body.lecture_id().isBlank() ? null : body.lecture_id().trim());
         data.put("provider", "demo");
         data.put("model", "demo-answer-v1");
         featureStore.recordAiUsage(session.user().id(), "answer", true, question);
@@ -247,18 +257,20 @@ public class AiController {
     }
 
     @PostMapping("/summary")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> summary(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> summary(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SummaryRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!featureStore.canConsumeAi(session.user().id())) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
-        String lectureId = text(body, "lecture_id");
+        String lectureId = body == null || body.lecture_id() == null ? "" : body.lecture_id().trim();
         if (lectureId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
+        String style = body.style() == null || body.style().isBlank() ? "brief" : body.style().trim();
+        String language = body.language() == null || body.language().isBlank() ? "ko" : body.language().trim();
         Map<String, Object> data = Map.of(
                 "lecture_id", lectureId,
                 "content", "Spring 백엔드에서 생성한 강의 요약입니다.",
-                "style", text(body, "style").isBlank() ? "brief" : text(body, "style"),
-                "language", text(body, "language").isBlank() ? "ko" : text(body, "language"),
+                "style", style,
+                "language", language,
                 "provider", "demo",
                 "model", "demo-summary-v1"
         );
@@ -267,11 +279,11 @@ public class AiController {
     }
 
     @PostMapping("/quiz")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> quiz(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> quiz(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody QuizRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!featureStore.canConsumeAi(session.user().id())) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
-        String lectureId = text(body, "lecture_id");
+        String lectureId = body == null || body.lecture_id() == null ? "" : body.lecture_id().trim();
         if (lectureId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         Map<String, Object> data = Map.of(
@@ -284,85 +296,11 @@ public class AiController {
         return ResponseEntity.ok(ApiResponse.success(data, "퀴즈가 생성되었습니다."));
     }
 
-    private ResponseEntity<ApiResponse<Map<String, Object>>> validateLecture(Map<String, Object> body) {
-        String lectureId = text(body, "lecture_id");
+    private ResponseEntity<ApiResponse<Map<String, Object>>> validateLecture(String lectureIdRaw) {
+        String lectureId = lectureIdRaw == null ? "" : lectureIdRaw.trim();
         if (!lectureId.isBlank() && learningService.getLecture(lectureId) == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         }
         return null;
-    }
-
-    private String text(Map<String, Object> body, String key) {
-        if (body == null || body.get(key) == null) return "";
-        return String.valueOf(body.get(key)).trim();
-    }
-
-    private String textOrNull(Map<String, Object> body, String key) {
-        String value = text(body, key);
-        return value.isBlank() ? null : value;
-    }
-
-    private Integer intOrNull(Map<String, Object> body, String key) {
-        String value = text(body, key);
-        if (value.isBlank()) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
-
-    private Double doubleOrNull(Map<String, Object> body, String key) {
-        String value = text(body, key);
-        if (value.isBlank()) {
-            return null;
-        }
-        try {
-            return Double.parseDouble(value);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
-
-    private boolean booleanOrDefault(Map<String, Object> body, String key, boolean defaultValue) {
-        if (body == null || !body.containsKey(key)) {
-            return defaultValue;
-        }
-        Object raw = body.get(key);
-        if (raw instanceof Boolean bool) {
-            return bool;
-        }
-        String value = String.valueOf(raw).trim().toLowerCase();
-        if (value.isBlank()) {
-            return defaultValue;
-        }
-        if ("true".equals(value) || "1".equals(value) || "y".equals(value) || "yes".equals(value)) {
-            return true;
-        }
-        if ("false".equals(value) || "0".equals(value) || "n".equals(value) || "no".equals(value)) {
-            return false;
-        }
-        return defaultValue;
-    }
-
-    private List<Map<String, Object>> listOfMap(Object raw) {
-        if (!(raw instanceof List<?> rows)) {
-            return List.of();
-        }
-        List<Map<String, Object>> items = new java.util.ArrayList<>();
-        for (Object row : rows) {
-            if (row instanceof Map<?, ?> map) {
-                Map<String, Object> converted = new HashMap<>();
-                for (Map.Entry<?, ?> entry : map.entrySet()) {
-                    if (entry.getKey() != null) {
-                        converted.put(String.valueOf(entry.getKey()), entry.getValue());
-                    }
-                }
-                items.add(converted);
-            }
-        }
-        return items;
     }
 }
