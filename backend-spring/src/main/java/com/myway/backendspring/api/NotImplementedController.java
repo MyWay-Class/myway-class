@@ -149,7 +149,10 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return aiController.intent(auth, body);
+        return aiController.intent(auth, new AiController.IntentRequest(
+                text(body, "message"),
+                text(body, "lecture_id")
+        ));
     }
 
     @PostMapping("/legacy/ai/search")
@@ -157,7 +160,10 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return aiController.search(auth, body);
+        return aiController.search(auth, new AiController.SearchRequest(
+                text(body, "query"),
+                text(body, "lecture_id")
+        ));
     }
 
     @PostMapping("/legacy/ai/answer")
@@ -165,7 +171,10 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return aiController.answer(auth, body);
+        return aiController.answer(auth, new AiController.AnswerRequest(
+                text(body, "question"),
+                text(body, "lecture_id")
+        ));
     }
 
     @PostMapping("/legacy/ai/summary")
@@ -173,7 +182,11 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return aiController.summary(auth, body);
+        return aiController.summary(auth, new AiController.SummaryRequest(
+                text(body, "lecture_id"),
+                text(body, "style"),
+                text(body, "language")
+        ));
     }
 
     @PostMapping("/legacy/ai/quiz")
@@ -181,7 +194,9 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return aiController.quiz(auth, body);
+        return aiController.quiz(auth, new AiController.QuizRequest(
+                text(body, "lecture_id")
+        ));
     }
 
     @GetMapping("/legacy/media/providers")
