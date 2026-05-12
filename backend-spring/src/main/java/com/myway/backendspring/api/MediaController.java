@@ -50,6 +50,26 @@ public class MediaController {
             Integer channels
     ) {}
 
+    public record ExtractAudioRequest(
+            String lecture_id,
+            String audio_url
+    ) {}
+
+    public record TranscribeRequest(
+            String lecture_id,
+            String language,
+            Integer duration_ms,
+            String stt_provider,
+            String stt_model,
+            String audio_url
+    ) {}
+
+    public record SummarizeRequest(
+            String lecture_id,
+            String style,
+            String language
+    ) {}
+
     private SessionView require(String auth) { return sessionService.me(auth); }
     private boolean canManageMedia(SessionView session) {
         if (session == null) return false;
@@ -68,13 +88,13 @@ public class MediaController {
     }
 
     @PostMapping("/extract-audio")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> extract(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> extract(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody ExtractAudioRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
         if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
-        String lectureId = text(body, "lecture_id");
-        String audioUrl = text(body, "audio_url");
+        String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
+        String audioUrl = body.audio_url() == null ? "" : body.audio_url().trim();
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         Map<String, Object> extraction = mediaPipelineService.createExtraction(lectureId, audioUrl.isBlank() ? null : audioUrl);
         Map<String, Object> dispatched = mediaPipelineService.dispatchExtractionJob(String.valueOf(extraction.get("id")), audioUrl.isBlank() ? null : audioUrl);
@@ -82,27 +102,17 @@ public class MediaController {
     }
 
     @PostMapping("/transcribe")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody TranscribeRequest body) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
-        String lectureId = text(body, "lecture_id");
+        String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        String language = text(body, "language").isBlank() ? "ko" : text(body, "language");
-        Integer durationMs = null;
-        Object durationRaw = body.get("duration_ms");
-        if (durationRaw instanceof Number number) {
-            durationMs = number.intValue();
-        } else if (durationRaw != null) {
-            try {
-                durationMs = Integer.parseInt(String.valueOf(durationRaw));
-            } catch (NumberFormatException ignored) {
-                durationMs = null;
-            }
-        }
-        String sttProvider = text(body, "stt_provider");
-        String sttModel = text(body, "stt_model");
-        String audioUrl = text(body, "audio_url");
+        String language = body.language() == null || body.language().isBlank() ? "ko" : body.language().trim();
+        Integer durationMs = body.duration_ms();
+        String sttProvider = body.stt_provider() == null ? "" : body.stt_provider().trim();
+        String sttModel = body.stt_model() == null ? "" : body.stt_model().trim();
+        String audioUrl = body.audio_url() == null ? "" : body.audio_url().trim();
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
                 mediaPipelineService.transcribe(lectureId, language, durationMs, sttProvider.isBlank() ? null : sttProvider, sttModel.isBlank() ? null : sttModel, audioUrl.isBlank() ? null : audioUrl),
                 "트랜스크립트가 생성되었습니다."
@@ -110,14 +120,14 @@ public class MediaController {
     }
 
     @PostMapping("/summarize")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SummarizeRequest body) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
-        String lectureId = text(body, "lecture_id");
+        String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        String style = text(body, "style").isBlank() ? "brief" : text(body, "style");
-        String language = text(body, "language").isBlank() ? "ko" : text(body, "language");
+        String style = body.style() == null || body.style().isBlank() ? "brief" : body.style().trim();
+        String language = body.language() == null || body.language().isBlank() ? "ko" : body.language().trim();
         Map<String, Object> note = mediaPipelineService.summarizeLecture(lectureId, style, language);
         Map<String, Object> response = Map.of(
                 "note_id", note.get("id"),
@@ -262,8 +272,4 @@ public class MediaController {
         ));
     }
 
-    private String text(Map<String, Object> body, String key) {
-        if (body == null || body.get(key) == null) return "";
-        return String.valueOf(body.get(key)).trim();
-    }
 }

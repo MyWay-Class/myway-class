@@ -216,7 +216,10 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return mediaController.extract(auth, body);
+        return mediaController.extract(auth, new MediaController.ExtractAudioRequest(
+                text(body, "lecture_id"),
+                text(body, "audio_url")
+        ));
     }
 
     @PostMapping("/legacy/media/transcribe")
@@ -224,7 +227,14 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return mediaController.transcribe(auth, body);
+        return mediaController.transcribe(auth, new MediaController.TranscribeRequest(
+                text(body, "lecture_id"),
+                text(body, "language"),
+                intOrNull(body, "duration_ms"),
+                text(body, "stt_provider"),
+                text(body, "stt_model"),
+                text(body, "audio_url")
+        ));
     }
 
     @PostMapping("/legacy/media/summarize")
@@ -232,7 +242,11 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return mediaController.summarize(auth, body);
+        return mediaController.summarize(auth, new MediaController.SummarizeRequest(
+                text(body, "lecture_id"),
+                text(body, "style"),
+                text(body, "language")
+        ));
     }
 
     @GetMapping("/legacy/media/audio-extractions/{lectureId}")
@@ -480,5 +494,30 @@ public class NotImplementedController {
     public ResponseEntity<ApiResponse<Object>> notImplemented() {
         return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
                 .body(ApiResponse.failure("NOT_IMPLEMENTED", "Spring 백엔드 마이그레이션 중인 API입니다. /api/v1/legacy/mappings를 확인하세요."));
+    }
+
+    private String text(Map<String, Object> body, String key) {
+        if (body == null || body.get(key) == null) {
+            return "";
+        }
+        return String.valueOf(body.get(key)).trim();
+    }
+
+    private Integer intOrNull(Map<String, Object> body, String key) {
+        if (body == null) {
+            return null;
+        }
+        Object raw = body.get(key);
+        if (raw instanceof Number number) {
+            return number.intValue();
+        }
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(String.valueOf(raw));
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }
