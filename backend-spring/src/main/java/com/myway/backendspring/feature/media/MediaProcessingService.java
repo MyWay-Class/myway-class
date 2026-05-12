@@ -229,16 +229,17 @@ public class MediaProcessingService {
             Object step
     ) {
         static JobView from(Map<String, Object> row) {
+            ExtractionRowSnapshot snapshot = ExtractionRowSnapshot.from(row);
             return new JobView(
-                    String.valueOf(row.getOrDefault("id", "")),
-                    String.valueOf(row.getOrDefault("lecture_id", "")),
-                    String.valueOf(row.getOrDefault("status", MediaStatus.PROCESSING.name())),
-                    String.valueOf(row.getOrDefault("created_at", Instant.now().toString())),
-                    String.valueOf(row.getOrDefault("updated_at", row.getOrDefault("created_at", Instant.now().toString()))),
-                    row.get("audio_url"),
-                    row.get("error_message"),
-                    row.getOrDefault("processing_stage", PipelineStage.QUEUED.value()),
-                    row.getOrDefault("processing_step", "")
+                    snapshot.id(),
+                    snapshot.lectureId(),
+                    snapshot.status(),
+                    snapshot.createdAt(),
+                    snapshot.updatedAt(),
+                    snapshot.audioUrl(),
+                    snapshot.errorMessage(),
+                    snapshot.processingStage(),
+                    snapshot.processingStep()
             );
         }
 
@@ -255,6 +256,33 @@ public class MediaProcessingService {
             map.put("step", step);
             map.put("callback_status", null);
             return map;
+        }
+    }
+
+    private record ExtractionRowSnapshot(
+            String id,
+            String lectureId,
+            String status,
+            String createdAt,
+            String updatedAt,
+            Object audioUrl,
+            Object errorMessage,
+            Object processingStage,
+            Object processingStep
+    ) {
+        static ExtractionRowSnapshot from(Map<String, Object> row) {
+            String createdAt = String.valueOf(row.getOrDefault("created_at", Instant.now().toString()));
+            return new ExtractionRowSnapshot(
+                    String.valueOf(row.getOrDefault("id", "")),
+                    String.valueOf(row.getOrDefault("lecture_id", "")),
+                    String.valueOf(row.getOrDefault("status", MediaStatus.PROCESSING.name())),
+                    createdAt,
+                    String.valueOf(row.getOrDefault("updated_at", createdAt)),
+                    row.get("audio_url"),
+                    row.get("error_message"),
+                    row.getOrDefault("processing_stage", PipelineStage.QUEUED.value()),
+                    row.getOrDefault("processing_step", "")
+            );
         }
     }
 }
