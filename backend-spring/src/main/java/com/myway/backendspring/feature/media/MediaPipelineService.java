@@ -44,13 +44,13 @@ public class MediaPipelineService {
         Map<String, Object> item = new HashMap<>();
         item.put("id", id);
         item.put("lecture_id", lectureId);
-        item.put("status", "PROCESSING");
+        item.put("status", MediaStatus.PROCESSING.name());
         item.put("audio_url", audioUrl);
-        item.put("processing_stage", "queued");
+        item.put("processing_stage", PipelineStage.QUEUED.value());
         item.put("processing_step", "job_requested");
         item.put("processing_error_code", null);
         item.put("processing_error", null);
-        item.put("stt_status", "PENDING");
+        item.put("stt_status", MediaStatus.PENDING.name());
         item.put("transcript_id", null);
         item.put("last_event_version", 0L);
         item.put("created_at", now);
@@ -60,10 +60,10 @@ public class MediaPipelineService {
 
         Map<String, Object> pipeline = new HashMap<>();
         pipeline.put("lecture_id", lectureId);
-        pipeline.put("transcript_status", "PENDING");
-        pipeline.put("summary_status", "PENDING");
-        pipeline.put("audio_status", "PROCESSING");
-        pipeline.put("processing_stage", "queued");
+        pipeline.put("transcript_status", MediaStatus.PENDING.name());
+        pipeline.put("summary_status", MediaStatus.PENDING.name());
+        pipeline.put("audio_status", MediaStatus.PROCESSING.name());
+        pipeline.put("processing_stage", PipelineStage.QUEUED.value());
         pipeline.put("processing_step", "job_requested");
         pipeline.put("processing_error_code", null);
         pipeline.put("processing_error", null);
@@ -108,9 +108,9 @@ public class MediaPipelineService {
         Map<String, Object> hydrated = row == null ? new HashMap<>() : new HashMap<>(row);
         hydrated.putIfAbsent("lecture_id", lectureId);
         hydrated.putIfAbsent("status", row == null ? "EMPTY" : "IN_PROGRESS");
-        hydrated.putIfAbsent("audio_status", "PENDING");
-        hydrated.putIfAbsent("transcript_status", "PENDING");
-        hydrated.putIfAbsent("summary_status", "PENDING");
+        hydrated.putIfAbsent("audio_status", MediaStatus.PENDING.name());
+        hydrated.putIfAbsent("transcript_status", MediaStatus.PENDING.name());
+        hydrated.putIfAbsent("summary_status", MediaStatus.PENDING.name());
         hydrated.putIfAbsent("processing_stage", "idle");
         hydrated.putIfAbsent("processing_step", "not_started");
         hydrated.putIfAbsent("processing_error_code", null);
