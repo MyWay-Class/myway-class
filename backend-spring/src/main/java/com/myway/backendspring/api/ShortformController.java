@@ -15,6 +15,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/shortform")
 public class ShortformController {
+    public record GenerateRequest(String course_id, String mode) {}
+    public record SelectCandidatesRequest(String extraction_id, List<String> candidate_ids) {}
+    public record ComposeRequest(String title, String description, String course_id) {}
+    public record ShareRequest(String video_id, String course_id, String visibility, String message) {}
+    public record SaveRequest(String video_id, String note, String folder) {}
+    public record LikeRequest(String video_id) {}
+
     private final SessionService sessionService;
     private final ShortformService shortformService;
     private final String callbackToken;
@@ -45,22 +52,25 @@ public class ShortformController {
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> generate(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> generate(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody GenerateRequest body) {
         SessionView s = require(auth);
         if (s == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.createShortformExtraction(s.user().id(), body), "숏폼 후보가 생성되었습니다."));
+        Map<String, Object> payload = Map.of(
+                "course_id", body != null && body.course_id() != null ? body.course_id() : "",
+                "mode", body != null && body.mode() != null ? body.mode() : ""
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.createShortformExtraction(s.user().id(), payload), "숏폼 후보가 생성되었습니다."));
     }
 
     @PutMapping("/candidates/select")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> select(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> select(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SelectCandidatesRequest body) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String extractionId = String.valueOf(body.getOrDefault("extraction_id", "")).trim();
+        String extractionId = body == null || body.extraction_id() == null ? "" : body.extraction_id().trim();
         if (extractionId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("EXTRACTION_ID_REQUIRED", "extraction_id가 필요합니다."));
-        Object candidateIdsRaw = body.get("candidate_ids");
-        if (!(candidateIdsRaw instanceof List<?> candidateIdsList) || candidateIdsList.isEmpty()) {
+        List<String> candidateIds = body == null || body.candidate_ids() == null ? List.of() : body.candidate_ids().stream().map(String::valueOf).toList();
+        if (candidateIds.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("CANDIDATE_IDS_REQUIRED", "candidate_ids가 필요합니다."));
         }
-        List<String> candidateIds = candidateIdsList.stream().map(String::valueOf).toList();
         Map<String, Object> updated = shortformService.selectShortformCandidates(extractionId, candidateIds);
         if (updated == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "추출 결과를 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(updated, "후보 선택이 반영되었습니다."));
@@ -75,10 +85,15 @@ public class ShortformController {
     }
 
     @PostMapping("/compose")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> compose(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> compose(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody ComposeRequest body) {
         SessionView s = require(auth);
         if (s == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.composeShortform(s.user().id(), body), "숏폼이 생성되었습니다."));
+        Map<String, Object> payload = Map.of(
+                "title", body != null && body.title() != null ? body.title() : "",
+                "description", body != null && body.description() != null ? body.description() : "",
+                "course_id", body != null && body.course_id() != null ? body.course_id() : ""
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.composeShortform(s.user().id(), payload), "숏폼이 생성되었습니다."));
     }
 
     @GetMapping("/video/{id}")
@@ -97,28 +112,39 @@ public class ShortformController {
     }
 
     @PostMapping("/share")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> share(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> share(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody ShareRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        Map<String, Object> row = shortformService.shareShortform(session.user().id(), body);
+        Map<String, Object> payload = Map.of(
+                "video_id", body != null && body.video_id() != null ? body.video_id() : "",
+                "course_id", body != null && body.course_id() != null ? body.course_id() : "",
+                "visibility", body != null && body.visibility() != null ? body.visibility() : "",
+                "message", body != null && body.message() != null ? body.message() : ""
+        );
+        Map<String, Object> row = shortformService.shareShortform(session.user().id(), payload);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SHARE_FAILED", "숏폼을 공유할 수 없습니다."));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(row, "숏폼이 공유되었습니다."));
     }
 
     @PostMapping("/save")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> save(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> save(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SaveRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        Map<String, Object> row = shortformService.saveShortform(session.user().id(), body);
+        Map<String, Object> payload = Map.of(
+                "video_id", body != null && body.video_id() != null ? body.video_id() : "",
+                "note", body != null && body.note() != null ? body.note() : "",
+                "folder", body != null && body.folder() != null ? body.folder() : ""
+        );
+        Map<String, Object> row = shortformService.saveShortform(session.user().id(), payload);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SAVE_FAILED", "숏폼을 담아갈 수 없습니다."));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(row, "숏폼이 담아가기 되었습니다."));
     }
 
     @PostMapping("/like")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> like(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> like(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody LikeRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String videoId = String.valueOf(body.getOrDefault("video_id", "")).trim();
+        String videoId = body == null || body.video_id() == null ? "" : body.video_id().trim();
         if (videoId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("VIDEO_ID_REQUIRED", "video_id가 필요합니다."));
         Map<String, Object> row = shortformService.toggleShortformLike(session.user().id(), videoId);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_LIKE_FAILED", "좋아요를 처리할 수 없습니다."));
