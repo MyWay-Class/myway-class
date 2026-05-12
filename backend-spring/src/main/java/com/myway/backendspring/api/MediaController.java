@@ -4,7 +4,7 @@ import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.media.MediaPipelineService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,18 +19,18 @@ import java.util.Map;
 @RequestMapping("/api/v1/media")
 public class MediaController {
     private final SessionService sessionService;
-    private final FeatureStoreService featureStore;
+    private final MediaPipelineService mediaPipelineService;
     private final DemoLearningService learningService;
     private final String callbackToken;
 
     public MediaController(
             SessionService sessionService,
-            FeatureStoreService featureStore,
+            MediaPipelineService mediaPipelineService,
             DemoLearningService learningService,
             @Value("${myway.media.callback.token:dev-media-callback-token}") String callbackToken
     ) {
         this.sessionService = sessionService;
-        this.featureStore = featureStore;
+        this.mediaPipelineService = mediaPipelineService;
         this.learningService = learningService;
         this.callbackToken = callbackToken;
     }
@@ -64,7 +64,7 @@ public class MediaController {
         if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "영상 업로드는 강사와 운영자만 사용할 수 있습니다."));
         if (lectureId == null || lectureId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         String fileName = file != null ? file.getOriginalFilename() : "uploaded.mp4";
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.mediaUpload(lectureId.trim(), fileName), "강의 영상이 업로드되었습니다."));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(mediaPipelineService.mediaUpload(lectureId.trim(), fileName), "강의 영상이 업로드되었습니다."));
     }
 
     @PostMapping("/extract-audio")
@@ -76,8 +76,8 @@ public class MediaController {
         String lectureId = text(body, "lecture_id");
         String audioUrl = text(body, "audio_url");
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
-        Map<String, Object> extraction = featureStore.createExtraction(lectureId, audioUrl.isBlank() ? null : audioUrl);
-        Map<String, Object> dispatched = featureStore.dispatchExtractionJob(String.valueOf(extraction.get("id")), audioUrl.isBlank() ? null : audioUrl);
+        Map<String, Object> extraction = mediaPipelineService.createExtraction(lectureId, audioUrl.isBlank() ? null : audioUrl);
+        Map<String, Object> dispatched = mediaPipelineService.dispatchExtractionJob(String.valueOf(extraction.get("id")), audioUrl.isBlank() ? null : audioUrl);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(dispatched != null ? dispatched : extraction, "오디오 추출 job이 생성되었습니다."));
     }
 
@@ -104,7 +104,7 @@ public class MediaController {
         String sttModel = text(body, "stt_model");
         String audioUrl = text(body, "audio_url");
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                featureStore.transcribe(lectureId, language, durationMs, sttProvider.isBlank() ? null : sttProvider, sttModel.isBlank() ? null : sttModel, audioUrl.isBlank() ? null : audioUrl),
+                mediaPipelineService.transcribe(lectureId, language, durationMs, sttProvider.isBlank() ? null : sttProvider, sttModel.isBlank() ? null : sttModel, audioUrl.isBlank() ? null : audioUrl),
                 "트랜스크립트가 생성되었습니다."
         ));
     }
@@ -118,7 +118,7 @@ public class MediaController {
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         String style = text(body, "style").isBlank() ? "brief" : text(body, "style");
         String language = text(body, "language").isBlank() ? "ko" : text(body, "language");
-        Map<String, Object> note = featureStore.summarizeLecture(lectureId, style, language);
+        Map<String, Object> note = mediaPipelineService.summarizeLecture(lectureId, style, language);
         Map<String, Object> response = Map.of(
                 "note_id", note.get("id"),
                 "lecture_id", note.get("lecture_id"),
@@ -128,7 +128,7 @@ public class MediaController {
                 "keywords", note.get("keywords"),
                 "timestamps", note.get("timestamps"),
                 "style", style,
-                "pipeline", featureStore.pipeline(lectureId)
+                "pipeline", mediaPipelineService.pipeline(lectureId)
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "요약이 생성되었습니다."));
     }
@@ -136,37 +136,37 @@ public class MediaController {
     @GetMapping("/pipeline/{lectureId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> pipeline(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String lectureId) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.pipeline(lectureId)));
+        return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.pipeline(lectureId)));
     }
 
     @GetMapping("/audio-extractions/{lectureId}")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> audioExtractions(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String lectureId) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.extractions(lectureId)));
+        return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.extractions(lectureId)));
     }
 
     @GetMapping("/transcript/{lectureId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcript(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String lectureId) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.transcript(lectureId)));
+        return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.transcript(lectureId)));
     }
 
     @GetMapping("/notes/{lectureId}")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> notes(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String lectureId) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.notes(lectureId)));
+        return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.notes(lectureId)));
     }
 
     @GetMapping("/providers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> providers(@RequestHeader(value = "Authorization", required = false) String auth) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.sttProviders()));
+        return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.sttProviders()));
     }
 
     @GetMapping("/processor-health")
     public ResponseEntity<ApiResponse<Map<String, Object>>> processorHealth(@RequestHeader(value = "Authorization", required = false) String auth) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.ok(ApiResponse.success(featureStore.processorHealth()));
+        return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.processorHealth()));
     }
 
     @GetMapping("/assets/**")
@@ -184,7 +184,7 @@ public class MediaController {
         if (processorToken == null || !processorToken.equals(callbackToken)) {
             if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         }
-        Map<String, Object> asset = featureStore.mediaAsset(assetKey);
+        Map<String, Object> asset = mediaPipelineService.mediaAsset(assetKey);
         if (asset == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(asset));
     }
@@ -210,7 +210,7 @@ public class MediaController {
         String status = body.status() == null ? "COMPLETED" : body.status();
         String errorMessage = body.error_message();
         String audioUrl = body.audio_url() == null ? null : body.audio_url().trim();
-        Map<String, Object> result = featureStore.completeExtractionCallback(
+        Map<String, Object> result = mediaPipelineService.completeExtractionCallback(
                 extractionId,
                 status,
                 errorMessage,
@@ -228,7 +228,7 @@ public class MediaController {
         }
         if (Boolean.TRUE.equals(result.get("callback_ignored"))) {
             return ResponseEntity.ok(ApiResponse.success(
-                    Map.of("extraction", result, "pipeline", featureStore.pipeline(String.valueOf(result.getOrDefault("lecture_id", "")))),
+                    Map.of("extraction", result, "pipeline", mediaPipelineService.pipeline(String.valueOf(result.getOrDefault("lecture_id", "")))),
                     "오래된 callback 이벤트를 무시했습니다."
             ));
         }
@@ -237,7 +237,7 @@ public class MediaController {
         boolean shouldStartStt = "COMPLETED".equalsIgnoreCase(status)
                 || "transcribing".equalsIgnoreCase(String.valueOf(result.getOrDefault("processing_stage", "")));
         if (shouldStartStt && !lectureId.isBlank()) {
-            transcribeResult = featureStore.transcribe(
+            transcribeResult = mediaPipelineService.transcribe(
                     lectureId,
                     "ko",
                     null,
@@ -249,13 +249,13 @@ public class MediaController {
         }
 
         if (transcribeResult == null) {
-            return ResponseEntity.ok(ApiResponse.success(Map.of("extraction", result, "pipeline", featureStore.pipeline(lectureId)), "오디오 추출 callback이 반영되었습니다."));
+            return ResponseEntity.ok(ApiResponse.success(Map.of("extraction", result, "pipeline", mediaPipelineService.pipeline(lectureId)), "오디오 추출 callback이 반영되었습니다."));
         }
 
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of(
                         "extraction", result,
-                        "pipeline", featureStore.pipeline(lectureId),
+                        "pipeline", mediaPipelineService.pipeline(lectureId),
                         "transcript", transcribeResult
                 ),
                 "오디오 추출 callback이 반영되어 STT가 자동 시작되었습니다."
