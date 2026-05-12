@@ -245,20 +245,21 @@ public class MediaTranscriptionService {
 
     private Map<String, Object> buildPipelineFromCallback(ExtractionSnapshot extraction, MediaStatus callbackStatus, String errorMessage, String now) {
         boolean failed = callbackStatus == MediaStatus.FAILED;
-        Map<String, Object> pipeline = new HashMap<>();
-        pipeline.put("lecture_id", extraction.lectureId());
-        pipeline.put("audio_status", failed ? MediaStatus.FAILED.name() : MediaStatus.COMPLETED.name());
-        pipeline.put("transcript_status", failed ? MediaStatus.FAILED.name() : MediaStatus.PROCESSING.name());
-        pipeline.put("summary_status", "PENDING");
-        pipeline.put("processing_stage", failed ? PipelineStage.FAILED.value() : PipelineStage.TRANSCRIBING.value());
-        pipeline.put("processing_step", failed ? "callback_failed" : "stt_started");
-        pipeline.put("processing_error_code", failed ? "PROCESSOR_CALLBACK_FAILED" : null);
-        pipeline.put("processing_error", failed ? errorMessage : null);
-        pipeline.put("transcript_id", extraction.transcriptId());
-        pipeline.put("note_id", null);
-        pipeline.put("extraction_id", extraction.id());
-        pipeline.put("updated_at", now);
-        return pipeline;
+        PipelineSnapshot snapshot = new PipelineSnapshot(
+                extraction.lectureId(),
+                failed ? MediaStatus.FAILED.name() : MediaStatus.COMPLETED.name(),
+                failed ? MediaStatus.FAILED.name() : MediaStatus.PROCESSING.name(),
+                MediaStatus.PENDING.name(),
+                failed ? PipelineStage.FAILED.value() : PipelineStage.TRANSCRIBING.value(),
+                failed ? "callback_failed" : "stt_started",
+                failed ? "PROCESSOR_CALLBACK_FAILED" : null,
+                failed ? errorMessage : null,
+                extraction.transcriptId(),
+                null,
+                extraction.id(),
+                now
+        );
+        return snapshot.toMap();
     }
 
     private ExtractionSnapshot findExtraction(String extractionId) {
@@ -471,6 +472,38 @@ public class MediaTranscriptionService {
 
         Map<String, Object> toMap() {
             return new HashMap<>(raw);
+        }
+    }
+
+    private record PipelineSnapshot(
+            String lectureId,
+            String audioStatus,
+            String transcriptStatus,
+            String summaryStatus,
+            String processingStage,
+            String processingStep,
+            Object processingErrorCode,
+            Object processingError,
+            String transcriptId,
+            Object noteId,
+            String extractionId,
+            String updatedAt
+    ) {
+        Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("lecture_id", lectureId);
+            map.put("audio_status", audioStatus);
+            map.put("transcript_status", transcriptStatus);
+            map.put("summary_status", summaryStatus);
+            map.put("processing_stage", processingStage);
+            map.put("processing_step", processingStep);
+            map.put("processing_error_code", processingErrorCode);
+            map.put("processing_error", processingError);
+            map.put("transcript_id", transcriptId);
+            map.put("note_id", noteId);
+            map.put("extraction_id", extractionId);
+            map.put("updated_at", updatedAt);
+            return map;
         }
     }
 }
