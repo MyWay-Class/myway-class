@@ -197,6 +197,81 @@ class LegacyEndpointMigrationIntegrationTest {
     }
 
     @Test
+    void legacyShortformWriteEndpoints_shouldReturnModernCompatibleData() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_admin_001");
+
+        String generate = mockMvc.perform(post("/api/v1/legacy/shortform/generate")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"course_id\":\"crs_java_01\",\"mode\":\"cross\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String extractionId = objectMapper.readTree(generate).path("data").path("id").asText();
+        String candidateId = objectMapper.readTree(generate).path("data").path("candidates").get(0).path("id").asText();
+        assertThat(extractionId).isNotBlank();
+        assertThat(candidateId).isNotBlank();
+
+        String select = mockMvc.perform(put("/api/v1/legacy/shortform/candidates/select")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"extraction_id\":\"" + extractionId + "\",\"candidate_ids\":[\"" + candidateId + "\"]}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(select).path("success").asBoolean()).isTrue();
+
+        String extraction = mockMvc.perform(get("/api/v1/legacy/shortform/extraction/" + extractionId)
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(extraction).path("success").asBoolean()).isTrue();
+
+        String compose = mockMvc.perform(post("/api/v1/legacy/shortform/compose")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"extraction_id\":\"" + extractionId + "\",\"title\":\"legacy shortform\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String shortformId = objectMapper.readTree(compose).path("data").path("id").asText();
+        assertThat(shortformId).isNotBlank();
+
+        String video = mockMvc.perform(get("/api/v1/legacy/shortform/video/" + shortformId)
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(video).path("success").asBoolean()).isTrue();
+
+        String share = mockMvc.perform(post("/api/v1/legacy/shortform/share")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"video_id\":\"" + shortformId + "\",\"course_id\":\"crs_java_01\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(share).path("success").asBoolean()).isTrue();
+
+        String save = mockMvc.perform(post("/api/v1/legacy/shortform/save")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"video_id\":\"" + shortformId + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(save).path("success").asBoolean()).isTrue();
+
+        String like = mockMvc.perform(post("/api/v1/legacy/shortform/like")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"video_id\":\"" + shortformId + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(like).path("success").asBoolean()).isTrue();
+
+        String retry = mockMvc.perform(post("/api/v1/legacy/shortform/" + shortformId + "/export/retry")
+                        .header("Authorization", auth))
+                .andExpect(status().isAccepted())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(retry).path("success").asBoolean()).isTrue();
+    }
+
+    @Test
     void legacyDashboardAndEnrollments_shouldReturnModernCompatibleData() throws Exception {
         String auth = "Bearer " + loginAndGetToken("usr_std_001");
 
