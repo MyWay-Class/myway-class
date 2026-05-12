@@ -344,33 +344,13 @@ public class FeatureStoreService {
         Map<String, Object> empty = new HashMap<>();
         empty.put("lecture_id", lectureId);
         empty.put("status", "EMPTY");
-        empty.put("audio_status", "PENDING");
-        empty.put("transcript_status", "PENDING");
-        empty.put("summary_status", "PENDING");
-        empty.put("processing_stage", PipelineStage.IDLE.value());
-        empty.put("processing_step", "not_started");
-        empty.put("processing_error_code", null);
-        empty.put("processing_error", null);
-        empty.put("transcript_id", null);
-        empty.put("note_id", null);
-        empty.put("extraction_id", null);
-        empty.put("updated_at", Instant.now().toString());
+        PipelineDefaultProfile.withCurrentTimestamp().applyTo(empty);
         return empty;
     }
 
     private Map<String, Object> hydratePipelineRow(Map<String, Object> row) {
         Map<String, Object> hydrated = new HashMap<>(row);
-        hydrated.putIfAbsent("audio_status", "PENDING");
-        hydrated.putIfAbsent("transcript_status", "PENDING");
-        hydrated.putIfAbsent("summary_status", "PENDING");
-        hydrated.putIfAbsent("processing_stage", PipelineStage.IDLE.value());
-        hydrated.putIfAbsent("processing_step", "not_started");
-        hydrated.putIfAbsent("processing_error_code", null);
-        hydrated.putIfAbsent("processing_error", null);
-        hydrated.putIfAbsent("transcript_id", null);
-        hydrated.putIfAbsent("note_id", null);
-        hydrated.putIfAbsent("extraction_id", null);
-        hydrated.putIfAbsent("updated_at", Instant.now().toString());
+        PipelineDefaultProfile.withCurrentTimestamp().applyIfMissing(hydrated);
         return hydrated;
     }
 
@@ -510,6 +490,64 @@ public class FeatureStoreService {
             map.put("extraction_id", extractionId);
             map.put("updated_at", now);
             return map;
+        }
+    }
+
+    private record PipelineDefaultProfile(
+            String audioStatus,
+            String transcriptStatus,
+            String summaryStatus,
+            String processingStage,
+            String processingStep,
+            Object processingErrorCode,
+            Object processingError,
+            Object transcriptId,
+            Object noteId,
+            Object extractionId,
+            String updatedAt
+    ) {
+        static PipelineDefaultProfile withCurrentTimestamp() {
+            return new PipelineDefaultProfile(
+                    MediaStatus.PENDING.name(),
+                    MediaStatus.PENDING.name(),
+                    MediaStatus.PENDING.name(),
+                    PipelineStage.IDLE.value(),
+                    "not_started",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Instant.now().toString()
+            );
+        }
+
+        void applyTo(Map<String, Object> target) {
+            target.put("audio_status", audioStatus);
+            target.put("transcript_status", transcriptStatus);
+            target.put("summary_status", summaryStatus);
+            target.put("processing_stage", processingStage);
+            target.put("processing_step", processingStep);
+            target.put("processing_error_code", processingErrorCode);
+            target.put("processing_error", processingError);
+            target.put("transcript_id", transcriptId);
+            target.put("note_id", noteId);
+            target.put("extraction_id", extractionId);
+            target.put("updated_at", updatedAt);
+        }
+
+        void applyIfMissing(Map<String, Object> target) {
+            target.putIfAbsent("audio_status", audioStatus);
+            target.putIfAbsent("transcript_status", transcriptStatus);
+            target.putIfAbsent("summary_status", summaryStatus);
+            target.putIfAbsent("processing_stage", processingStage);
+            target.putIfAbsent("processing_step", processingStep);
+            target.putIfAbsent("processing_error_code", processingErrorCode);
+            target.putIfAbsent("processing_error", processingError);
+            target.putIfAbsent("transcript_id", transcriptId);
+            target.putIfAbsent("note_id", noteId);
+            target.putIfAbsent("extraction_id", extractionId);
+            target.putIfAbsent("updated_at", updatedAt);
         }
     }
 
