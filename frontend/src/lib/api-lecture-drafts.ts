@@ -11,6 +11,7 @@ import {
   type LectureStudioDraftRecord,
   type LectureStudioDraftSummary,
 } from '@myway/shared';
+import { z } from 'zod';
 import { getStoredAuth, request } from './api-core';
 
 function resolveToken(sessionToken?: string | null): string | null {
@@ -24,6 +25,31 @@ function resolveCourseLecture(course: CourseDetail | null, lecture: LectureDetai
   return { course, lecture };
 }
 
+const lectureStudioDraftSummarySchema = z.object({
+  id: z.string(),
+  course_id: z.string(),
+  lecture_id: z.string(),
+  lecture_title: z.string().optional(),
+}).passthrough();
+
+const lectureStudioDraftRecordSchema = z.object({
+  id: z.string(),
+  course_id: z.string(),
+  lecture_id: z.string(),
+  lecture_title: z.string().optional(),
+  title: z.string().optional(),
+}).passthrough();
+
+function parseDraftSummaries(data: unknown): LectureStudioDraftSummary[] | null {
+  const parsed = z.array(lectureStudioDraftSummarySchema).safeParse(data);
+  return parsed.success ? (parsed.data as LectureStudioDraftSummary[]) : null;
+}
+
+function parseDraftRecord(data: unknown): LectureStudioDraftRecord | null {
+  const parsed = lectureStudioDraftRecordSchema.safeParse(data);
+  return parsed.success ? (parsed.data as LectureStudioDraftRecord) : null;
+}
+
 export async function loadLectureStudioDrafts(courseId?: string | null, sessionToken?: string | null): Promise<LectureStudioDraftSummary[]> {
   const token = resolveToken(sessionToken);
 
@@ -35,12 +61,13 @@ export async function loadLectureStudioDrafts(courseId?: string | null, sessionT
     return listLectureStudioDraftsFallback(undefined);
   }
 
-  const response = await request<LectureStudioDraftSummary[]>(
+  const response = await request<unknown>(
     `/api/v1/lecture-drafts/course/${encodeURIComponent(courseId)}`,
     undefined,
     token,
   );
-  return response?.success && response.data ? response.data : listLectureStudioDraftsFallback(courseId);
+  const parsed = response?.success ? parseDraftSummaries(response.data) : null;
+  return parsed ?? listLectureStudioDraftsFallback(courseId);
 }
 
 export async function loadLectureStudioDraft(
@@ -54,13 +81,13 @@ export async function loadLectureStudioDraft(
     return getLectureStudioDraftFallback(draftId) ?? null;
   }
 
-  const response = await request<LectureStudioDraftRecord>(
+  const response = await request<unknown>(
     `/api/v1/lecture-drafts/course/${encodeURIComponent(courseId)}/${encodeURIComponent(draftId)}`,
     undefined,
     token,
   );
-
-  return response?.success && response.data ? response.data : getLectureStudioDraftFallback(draftId) ?? null;
+  const parsed = response?.success ? parseDraftRecord(response.data) : null;
+  return parsed ?? getLectureStudioDraftFallback(draftId) ?? null;
 }
 
 export async function saveLectureStudioDraft(
@@ -80,7 +107,7 @@ export async function saveLectureStudioDraft(
     return saveLectureStudioDraftFallback(courseData, lectureData, courseData.instructor_name, input);
   }
 
-  const response = await request<LectureStudioDraftRecord>(
+  const response = await request<unknown>(
     `/api/v1/lecture-drafts/course/${encodeURIComponent(courseData.id)}`,
     {
       method: 'POST',
@@ -88,8 +115,8 @@ export async function saveLectureStudioDraft(
     },
     token,
   );
-
-  return response?.success && response.data ? response.data : saveLectureStudioDraftFallback(courseData, lectureData, courseData.instructor_name, input);
+  const parsed = response?.success ? parseDraftRecord(response.data) : null;
+  return parsed ?? saveLectureStudioDraftFallback(courseData, lectureData, courseData.instructor_name, input);
 }
 
 export async function updateLectureStudioDraft(
@@ -110,7 +137,7 @@ export async function updateLectureStudioDraft(
     return updateLectureStudioDraftFallback(draftId, courseData, lectureData, courseData.instructor_name, input);
   }
 
-  const response = await request<LectureStudioDraftRecord>(
+  const response = await request<unknown>(
     `/api/v1/lecture-drafts/course/${encodeURIComponent(courseData.id)}/${encodeURIComponent(draftId)}`,
     {
       method: 'PUT',
@@ -118,10 +145,8 @@ export async function updateLectureStudioDraft(
     },
     token,
   );
-
-  return response?.success && response.data
-    ? response.data
-    : updateLectureStudioDraftFallback(draftId, courseData, lectureData, courseData.instructor_name, input);
+  const parsed = response?.success ? parseDraftRecord(response.data) : null;
+  return parsed ?? updateLectureStudioDraftFallback(draftId, courseData, lectureData, courseData.instructor_name, input);
 }
 
 export async function publishLectureStudioDraft(
@@ -135,13 +160,13 @@ export async function publishLectureStudioDraft(
     return publishLectureStudioDraftFallback(draftId);
   }
 
-  const response = await request<LectureStudioDraftRecord>(
+  const response = await request<unknown>(
     `/api/v1/lecture-drafts/course/${encodeURIComponent(courseId)}/${encodeURIComponent(draftId)}/publish`,
     {
       method: 'POST',
     },
     token,
   );
-
-  return response?.success && response.data ? response.data : publishLectureStudioDraftFallback(draftId);
+  const parsed = response?.success ? parseDraftRecord(response.data) : null;
+  return parsed ?? publishLectureStudioDraftFallback(draftId);
 }

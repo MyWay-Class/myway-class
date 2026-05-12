@@ -33,6 +33,21 @@
 - [ ] `docs/dev-logs/`에 변경 요약을 남겼다
 - [ ] 불필요한 리팩터링이 없다
 
+## QA Gates (docs/architecture/qa-gates.md)
+- [ ] 의존 방향 규칙 준수 (`api -> domain`, `api -> persistence` 직접 접근 없음)
+- [ ] 신규 `Map<String,Object>` 경계 도입 없음
+- [ ] DTO 경계 규칙 준수 (Entity 직접 API 반환 없음, Mapper 경유)
+- [ ] 트랜잭션 규칙 준수 (`@Transactional`은 application 계층)
+- [ ] 이벤트 메타/멱등 규칙 준수
+- [ ] Query key 중앙화 및 invalidate 대상 명시
+- [ ] 예외 규칙 사용 시 ADR 링크 첨부
+- [ ] 계층별 테스트 갱신 완료 (application unit / persistence integration / api contract-e2e)
+
+## 검증 로그 요약
+- verify: <!-- 예: npm run verify 통과 -->
+- layer tests: <!-- 예: npm run test:backend 통과 -->
+- risk/rollback: <!-- 변경 리스크와 롤백 방법 -->
+
 ## ADR 링크
 - ADR: `docs/decisions/ADR-xxxx-*.md`
 - 상태 변경: `Proposed -> Accepted` 또는 `Accepted -> Superseded` (해당 시 기입)

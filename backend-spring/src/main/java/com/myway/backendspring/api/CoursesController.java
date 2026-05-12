@@ -3,7 +3,12 @@ package com.myway.backendspring.api;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
-import com.myway.backendspring.domain.*;
+import com.myway.backendspring.domain.MaterialItem;
+import com.myway.backendspring.domain.NoticeItem;
+import com.myway.backendspring.domain.learning.application.LearningApplicationService;
+import com.myway.backendspring.domain.learning.model.CourseCard;
+import com.myway.backendspring.domain.learning.model.CourseDetail;
+import com.myway.backendspring.domain.learning.model.LectureItem;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,9 +20,9 @@ import java.util.List;
 @RequestMapping("/api/v1/courses")
 public class CoursesController {
     private final SessionService sessionService;
-    private final DemoLearningService learningService;
+    private final LearningApplicationService learningService;
 
-    public CoursesController(SessionService sessionService, DemoLearningService learningService) {
+    public CoursesController(SessionService sessionService, LearningApplicationService learningService) {
         this.sessionService = sessionService;
         this.learningService = learningService;
     }

@@ -3,10 +3,10 @@ package com.myway.backendspring.api;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
-import com.myway.backendspring.domain.CourseDetail;
-import com.myway.backendspring.domain.DemoLearningService;
-import com.myway.backendspring.domain.LectureDraft;
-import com.myway.backendspring.domain.LectureDraftService;
+import com.myway.backendspring.domain.learning.application.LearningApplicationService;
+import com.myway.backendspring.domain.learning.application.LectureDraftApplicationService;
+import com.myway.backendspring.domain.learning.model.CourseDetail;
+import com.myway.backendspring.domain.learning.model.LectureDraft;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,10 +17,10 @@ import java.util.List;
 @RequestMapping("/api/v1/lecture-drafts")
 public class LectureDraftsController {
     private final SessionService sessionService;
-    private final DemoLearningService learningService;
-    private final LectureDraftService draftService;
+    private final LearningApplicationService learningService;
+    private final LectureDraftApplicationService draftService;
 
-    public LectureDraftsController(SessionService sessionService, DemoLearningService learningService, LectureDraftService draftService) {
+    public LectureDraftsController(SessionService sessionService, LearningApplicationService learningService, LectureDraftApplicationService draftService) {
         this.sessionService = sessionService;
         this.learningService = learningService;
         this.draftService = draftService;

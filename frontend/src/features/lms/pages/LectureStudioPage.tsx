@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CourseCard, CourseDetail, Lecture, LectureDetail, LectureStudioDraftSummary } from '@myway/shared';
 import {
   createAudioExtractionDetailed,
@@ -8,6 +9,7 @@ import {
   saveLectureStudioDraft,
   updateLectureStudioDraft,
 } from '../../../lib/api';
+import { queryKeys } from '../../../lib/query-keys';
 import { LectureStudioEditor } from '../components/lecture-studio/LectureStudioEditor';
 import { LectureStudioPreview } from '../components/lecture-studio/LectureStudioPreview';
 import {
@@ -26,6 +28,7 @@ type LectureStudioPageProps = {
 };
 
 export function LectureStudioPage({ courses, selectedCourse, highlightedLecture, onSelectCourse }: LectureStudioPageProps) {
+  const queryClient = useQueryClient();
   const activeCourse = selectedCourse ?? demoCourseDetail;
   const activeLecture = highlightedLecture ?? demoLectureDetail;
   const demoMode = !selectedCourse;
@@ -37,6 +40,30 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
   const previewLecture = useMemo(() => activeLecture ?? activeCourse.lectures[0] ?? null, [activeCourse, activeLecture]);
   const outlineCount = draft.outlineText.split(/\r?\n/).filter(Boolean).length;
   const materialCount = draft.materialsText.split(/\r?\n/).filter(Boolean).length;
+  const selectedCourseId = selectedCourse?.id ?? '';
+
+  const draftsQuery = useQuery({
+    queryKey: queryKeys.learning.drafts(selectedCourseId),
+    queryFn: () => loadLectureStudioDrafts(selectedCourseId),
+    enabled: !demoMode && !!selectedCourseId,
+  });
+
+  const matchedSummary = useMemo(() => {
+    if (demoMode || !selectedCourse) {
+      return null;
+    }
+    const lectureId = previewLecture?.id ?? selectedCourse.lectures[0]?.id ?? null;
+    if (!lectureId || !draftsQuery.data) {
+      return null;
+    }
+    return draftsQuery.data.find((item) => item.lecture_id === lectureId) ?? null;
+  }, [demoMode, draftsQuery.data, previewLecture?.id, selectedCourse]);
+
+  const draftDetailQuery = useQuery({
+    queryKey: queryKeys.learning.draftDetail(selectedCourseId, matchedSummary?.id ?? ''),
+    queryFn: () => loadLectureStudioDraft(selectedCourseId, matchedSummary!.id),
+    enabled: !demoMode && !!selectedCourseId && !!matchedSummary?.id,
+  });
 
   useEffect(() => {
     if (demoMode) {
@@ -47,46 +74,41 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
       return;
     }
 
-    let alive = true;
-    const baseDraft = buildLectureStudioDraft(selectedCourse, highlightedLecture);
+    if (!selectedCourse) {
+      return;
+    }
 
-    setDraft(baseDraft);
+    setDraft(buildLectureStudioDraft(selectedCourse, highlightedLecture));
     setDraftId(null);
-
-    const lectureId = previewLecture?.id ?? selectedCourse.lectures[0]?.id ?? null;
     setStatusNote(`${selectedCourse.title} 기준 강의 제작 초안을 불러오는 중입니다.`);
+  }, [activeCourse, activeLecture, demoMode, highlightedLecture, selectedCourse]);
 
-    loadLectureStudioDrafts(selectedCourse.id).then(async (summaries) => {
-      if (!alive) {
-        return;
-      }
+  useEffect(() => {
+    if (demoMode || !selectedCourse || draftsQuery.isLoading) {
+      return;
+    }
 
-      setDraftSummaries(summaries);
+    const summaries = draftsQuery.data ?? [];
+    setDraftSummaries(summaries);
 
-      const matchedSummary = lectureId ? summaries.find((item) => item.lecture_id === lectureId) ?? null : null;
-      if (!matchedSummary) {
-        setStatusNote(
-          summaries.length > 0
-            ? `${selectedCourse.title}에 초안 ${summaries.length}개가 있습니다. 새 초안을 바로 시작할 수 있습니다.`
-            : `${selectedCourse.title} 기준 새 초안을 시작합니다.`,
-        );
-        return;
-      }
+    if (!matchedSummary) {
+      setStatusNote(
+        summaries.length > 0
+          ? `${selectedCourse.title}에 초안 ${summaries.length}개가 있습니다. 새 초안을 바로 시작할 수 있습니다.`
+          : `${selectedCourse.title} 기준 새 초안을 시작합니다.`,
+      );
+    }
+  }, [demoMode, draftsQuery.data, draftsQuery.isLoading, matchedSummary, selectedCourse]);
 
-      const record = await loadLectureStudioDraft(selectedCourse.id, matchedSummary.id);
-      if (!alive || !record) {
-        return;
-      }
-
-      setDraft(buildLectureStudioDraftFromRecord(record));
-      setDraftId(record.id);
-      setStatusNote(`${record.lecture_title} 초안을 불러왔습니다. 저장이나 발행 준비를 이어갈 수 있습니다.`);
-    });
-
-    return () => {
-      alive = false;
-    };
-  }, [activeCourse, activeLecture, demoMode, highlightedLecture?.id, previewLecture?.id, selectedCourse]);
+  useEffect(() => {
+    if (demoMode || !draftDetailQuery.data) {
+      return;
+    }
+    const record = draftDetailQuery.data;
+    setDraft(buildLectureStudioDraftFromRecord(record));
+    setDraftId(record.id);
+    setStatusNote(`${record.lecture_title} 초안을 불러왔습니다. 저장이나 발행 준비를 이어갈 수 있습니다.`);
+  }, [demoMode, draftDetailQuery.data]);
 
   async function persistDraft() {
     if (demoMode || !selectedCourse || !previewLecture) {
@@ -147,6 +169,11 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
     })();
   };
 
+  const publishDraftMutation = useMutation({
+    mutationFn: ({ courseId, targetDraftId }: { courseId: string; targetDraftId: string }) =>
+      publishLectureStudioDraft(courseId, targetDraftId),
+  });
+
   const handleMarkReady = () => {
     void (async () => {
       const record = await persistDraft();
@@ -154,7 +181,7 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
         return;
       }
 
-      const published = await publishLectureStudioDraft(record.course_id, record.id);
+      const published = await publishDraftMutation.mutateAsync({ courseId: record.course_id, targetDraftId: record.id });
       if (!published) {
         setStatusNote('발행 준비 상태로 전환하지 못했습니다. 다시 시도해 주세요.');
         return;
@@ -162,6 +189,8 @@ export function LectureStudioPage({ courses, selectedCourse, highlightedLecture,
 
       setDraftId(published.id);
       setDraft(buildLectureStudioDraftFromRecord(published));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.learning.drafts(record.course_id) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.learning.draftDetail(record.course_id, published.id) });
       setStatusNote(`${published.title} 초안을 발행 준비 상태로 전환했습니다.`);
       void startMediaPipelineAfterPublish(published.title, previewLecture);
     })();
