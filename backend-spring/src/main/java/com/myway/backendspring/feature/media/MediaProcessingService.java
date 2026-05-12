@@ -139,10 +139,9 @@ public class MediaProcessingService {
     }
 
     private void applyDispatchSuccess(Map<String, Object> extraction, String responseBody) throws Exception {
-        Map<?, ?> payload = objectMapper.readValue(responseBody, Map.class);
-        Object jobId = payload.get("job_id");
-        MediaStatus status = MediaStatus.fromNullable(jobId == null ? null : String.valueOf(payload.get("status")), MediaStatus.PROCESSING);
-        extraction.put("processing_job_id", jobId == null ? null : String.valueOf(jobId));
+        DispatchResponse payload = parseDispatchResponse(responseBody);
+        MediaStatus status = MediaStatus.fromNullable(payload.status(), MediaStatus.PROCESSING);
+        extraction.put("processing_job_id", payload.jobId());
         extraction.put("processing_step", "dispatched");
         extraction.put("processing_stage", PipelineStage.QUEUED.value());
         extraction.put("status", status.name());
@@ -172,10 +171,26 @@ public class MediaProcessingService {
             }
             HttpResponse<String> response = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) return null;
-            return objectMapper.readValue(response.body(), Map.class);
+            return parseRemoteHealth(response.body()).toMap();
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private DispatchResponse parseDispatchResponse(String responseBody) throws Exception {
+        Map<String, Object> payload = objectMapper.readValue(responseBody, Map.class);
+        String jobId = payload.get("job_id") == null ? null : String.valueOf(payload.get("job_id"));
+        String status = payload.get("status") == null ? null : String.valueOf(payload.get("status"));
+        return new DispatchResponse(jobId, status);
+    }
+
+    @SuppressWarnings("unchecked")
+    private RemoteHealth parseRemoteHealth(String responseBody) throws Exception {
+        Map<String, Object> payload = objectMapper.readValue(responseBody, Map.class);
+        boolean ok = Boolean.TRUE.equals(payload.getOrDefault("ok", false));
+        Map<String, Object> ffmpeg = payload.get("ffmpeg") instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of("available", false, "path", "unknown");
+        return new RemoteHealth(ok, ffmpeg);
     }
 
     private long countByStatus(List<Map<String, Object>> rows, MediaStatus expected) {
@@ -188,6 +203,17 @@ public class MediaProcessingService {
     private record ProviderInfo(String name, String label, String description, String status, List<String> capabilities) {
         Map<String, Object> toMap() {
             return Map.of("name", name, "label", label, "description", description, "status", status, "capabilities", capabilities);
+        }
+    }
+
+    private record DispatchResponse(String jobId, String status) {}
+
+    private record RemoteHealth(boolean ok, Map<String, Object> ffmpeg) {
+        Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("ok", ok);
+            map.put("ffmpeg", ffmpeg);
+            return map;
         }
     }
 
