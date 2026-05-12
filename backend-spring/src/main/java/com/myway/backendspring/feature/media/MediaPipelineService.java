@@ -111,7 +111,7 @@ public class MediaPipelineService {
         hydrated.putIfAbsent("audio_status", MediaStatus.PENDING.name());
         hydrated.putIfAbsent("transcript_status", MediaStatus.PENDING.name());
         hydrated.putIfAbsent("summary_status", MediaStatus.PENDING.name());
-        hydrated.putIfAbsent("processing_stage", "idle");
+        hydrated.putIfAbsent("processing_stage", PipelineStage.IDLE.value());
         hydrated.putIfAbsent("processing_step", "not_started");
         hydrated.putIfAbsent("processing_error_code", null);
         hydrated.putIfAbsent("processing_error", null);

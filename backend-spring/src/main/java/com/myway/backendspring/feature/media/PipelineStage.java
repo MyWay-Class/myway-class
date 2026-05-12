@@ -1,6 +1,7 @@
 package com.myway.backendspring.feature.media;
 
-enum PipelineStage {
+public enum PipelineStage {
+    IDLE("idle"),
     QUEUED("queued"),
     TRANSCRIBING("transcribing"),
     COMPLETED("completed"),
@@ -13,7 +14,7 @@ enum PipelineStage {
         this.value = value;
     }
 
-    String value() {
+    public String value() {
         return value;
     }
 }

@@ -6,6 +6,7 @@ import com.myway.backendspring.feature.admin.AdminAssignmentService;
 import com.myway.backendspring.feature.ai.AiFeatureService;
 import com.myway.backendspring.feature.course.CustomCourseService;
 import com.myway.backendspring.feature.media.MediaProcessingService;
+import com.myway.backendspring.feature.media.PipelineStage;
 import com.myway.backendspring.feature.media.MediaTranscriptionService;
 import com.myway.backendspring.feature.quota.AiUsageQuotaService;
 import com.myway.backendspring.feature.repository.FeatureStoreRepository;
@@ -370,7 +371,7 @@ public class FeatureStoreService {
         empty.put("audio_status", "PENDING");
         empty.put("transcript_status", "PENDING");
         empty.put("summary_status", "PENDING");
-        empty.put("processing_stage", "idle");
+        empty.put("processing_stage", PipelineStage.IDLE.value());
         empty.put("processing_step", "not_started");
         empty.put("processing_error_code", null);
         empty.put("processing_error", null);
@@ -386,7 +387,7 @@ public class FeatureStoreService {
         hydrated.putIfAbsent("audio_status", "PENDING");
         hydrated.putIfAbsent("transcript_status", "PENDING");
         hydrated.putIfAbsent("summary_status", "PENDING");
-        hydrated.putIfAbsent("processing_stage", "idle");
+        hydrated.putIfAbsent("processing_stage", PipelineStage.IDLE.value());
         hydrated.putIfAbsent("processing_step", "not_started");
         hydrated.putIfAbsent("processing_error_code", null);
         hydrated.putIfAbsent("processing_error", null);
