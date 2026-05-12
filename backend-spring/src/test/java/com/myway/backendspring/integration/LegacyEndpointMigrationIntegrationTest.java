@@ -143,6 +143,62 @@ class LegacyEndpointMigrationIntegrationTest {
     }
 
     @Test
+    void legacyMediaWriteEndpoints_shouldReturnModernCompatibleData() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        String extraction = mockMvc.perform(post("/api/v1/legacy/media/extract-audio")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String extractionId = objectMapper.readTree(extraction).path("data").path("id").asText();
+        assertThat(extractionId).isNotBlank();
+
+        String callback = mockMvc.perform(post("/api/v1/legacy/media/extract-audio/callback")
+                        .header("X-Callback-Token", "dev-media-callback-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"extraction_id\":\"" + extractionId + "\",\"status\":\"COMPLETED\",\"event_version\":1}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(callback).path("success").asBoolean()).isTrue();
+
+        String transcribe = mockMvc.perform(post("/api/v1/legacy/media/transcribe")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\",\"language\":\"ko\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(transcribe).path("success").asBoolean()).isTrue();
+
+        String summarize = mockMvc.perform(post("/api/v1/legacy/media/summarize")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\",\"style\":\"brief\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(summarize).path("success").asBoolean()).isTrue();
+
+        String notes = mockMvc.perform(get("/api/v1/legacy/media/notes/lec_java_01")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(notes).path("data").isArray()).isTrue();
+
+        String transcript = mockMvc.perform(get("/api/v1/legacy/media/transcript/lec_java_01")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(transcript).path("success").asBoolean()).isTrue();
+
+        String extractions = mockMvc.perform(get("/api/v1/legacy/media/audio-extractions/lec_java_01")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(extractions).path("data").isArray()).isTrue();
+    }
+
+    @Test
     void legacyCoursesEndpoints_shouldReturnModernCompatibleData() throws Exception {
         String auth = "Bearer " + loginAndGetToken("usr_std_001");
 
