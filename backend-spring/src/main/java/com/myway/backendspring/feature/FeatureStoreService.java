@@ -3,7 +3,9 @@ package com.myway.backendspring.feature;
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.domain.LectureItem;
 import com.myway.backendspring.domain.ActivityEventService;
+import com.myway.backendspring.feature.ai.AiFeatureService;
 import com.myway.backendspring.feature.quota.AiUsageQuotaService;
+import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import com.myway.backendspring.feature.rag.RagService;
 import com.myway.backendspring.feature.shortform.ShortformService;
 import com.myway.backendspring.persistence.FeatureJdbcStore;
@@ -30,7 +32,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class FeatureStoreService {
-    private static final String AI_SETTINGS_SCOPE = "ai_settings";
     private static final String TRANSCRIPT_SCOPE = "media_transcript";
     private static final String EXTRACTION_SCOPE = "media_extraction";
     private static final String PIPELINE_SCOPE = "media_pipeline";
@@ -45,10 +46,6 @@ public class FeatureStoreService {
     private static final String ADMIN_ASSIGNMENT_SCOPE = "admin_assignment";
     private static final String AI_USAGE_SCOPE = "ai_usage_daily";
     private static final String RAG_INDEX_SCOPE = "rag_chunk_index";
-    private static final String DEV_AI_PROVIDER = "ollama";
-    private static final String NON_DEV_AI_PROVIDER = "gemini";
-    private static final String DEV_AI_MODEL = "llama3.1:8b";
-    private static final String NON_DEV_AI_MODEL = "gemini-1.5-flash";
     private static final String STT_DEFAULT_PROVIDER = "cloudflare";
     private static final String STT_DEFAULT_MODEL = "cf-whisper";
     private static final int PUBLIC_STT_MAX_DURATION_MS = 180_000;
@@ -65,10 +62,10 @@ public class FeatureStoreService {
     private final String mediaProcessorToken;
     private final String mediaCallbackSecret;
     private final String mediaPublicBaseUrl;
-    private final String runtimeEnv;
     private final RagService ragService;
     private final AiUsageQuotaService aiUsageQuotaService;
     private final ShortformService shortformService;
+    private final AiFeatureService aiFeatureService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
@@ -81,10 +78,10 @@ public class FeatureStoreService {
             @Value("${myway.media.processor.token:}") String mediaProcessorToken,
             @Value("${myway.media.callback.secret:}") String mediaCallbackSecret,
             @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl,
-            @Value("${myway.runtime.env:${SPRING_PROFILES_ACTIVE:dev}}") String runtimeEnv,
             RagService ragService,
             AiUsageQuotaService aiUsageQuotaService,
-            ShortformService shortformService
+            ShortformService shortformService,
+            AiFeatureService aiFeatureService
     ) {
         this.store = store;
         this.learningService = learningService;
@@ -94,120 +91,52 @@ public class FeatureStoreService {
         this.mediaProcessorToken = mediaProcessorToken == null ? "" : mediaProcessorToken.trim();
         this.mediaCallbackSecret = mediaCallbackSecret == null ? "" : mediaCallbackSecret.trim();
         this.mediaPublicBaseUrl = mediaPublicBaseUrl == null ? "http://127.0.0.1:8787" : mediaPublicBaseUrl.trim();
-        this.runtimeEnv = runtimeEnv == null ? "dev" : runtimeEnv.trim();
         this.ragService = ragService;
         this.aiUsageQuotaService = aiUsageQuotaService;
         this.shortformService = shortformService;
-        ensureDefaults();
+        this.aiFeatureService = aiFeatureService;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
     public FeatureStoreService(FeatureJdbcStore store, int shortformMaxRetry) {
-        this(store, new DemoLearningService(), null, shortformMaxRetry, "", "", "", "http://127.0.0.1:8787", "dev", null, null, null);
-    }
-
-    private void ensureDefaults() {
-        Map<String, Object> settings = store.getKv(AI_SETTINGS_SCOPE, "global");
-        String policyProvider = resolvePolicyAiProvider();
-        String policyModel = resolvePolicyAiModel();
-        if (settings == null) {
-            store.upsertKv(AI_SETTINGS_SCOPE, "global", new HashMap<>(Map.of(
-                    "daily_limit", 100,
-                    "provider", policyProvider,
-                    "model", policyModel
-            )));
-            return;
-        }
-
-        boolean changed = false;
-        if (!settings.containsKey("daily_limit")) {
-            settings.put("daily_limit", 100);
-            changed = true;
-        }
-        if (!settings.containsKey("provider") || !policyProvider.equals(String.valueOf(settings.get("provider")))) {
-            settings.put("provider", policyProvider);
-            changed = true;
-        }
-        if (!settings.containsKey("model") || !policyModel.equals(String.valueOf(settings.get("model")))) {
-            settings.put("model", policyModel);
-            changed = true;
-        }
-        if (changed) {
-            store.upsertKv(AI_SETTINGS_SCOPE, "global", settings);
-        }
+        this(
+                store,
+                new DemoLearningService(),
+                null,
+                shortformMaxRetry,
+                "",
+                "",
+                "",
+                "http://127.0.0.1:8787",
+                null,
+                null,
+                null,
+                new AiFeatureService(new FeatureStoreRepository(store), null, "dev")
+        );
     }
 
     public Map<String, Object> aiInsights(String userId) {
-        Map<String, Object> settings = aiSettings(userId);
-        return Map.of(
-                "user_id", userId,
-                "total_requests", 0,
-                "success_rate", 1.0,
-                "provider", settings.getOrDefault("provider", "demo"),
-                "model", settings.getOrDefault("model", "demo-v1"),
-                "last_updated", Instant.now().toString()
-        );
+        return aiFeatureService == null ? Map.of() : aiFeatureService.aiInsights(userId);
     }
 
     public Map<String, Object> aiLogs(String userId) {
-        List<Map<String, Object>> rows = store.listAiUsageLogs(userId).stream()
-                .map(item -> {
-                    Map<String, Object> mapped = new HashMap<>();
-                    mapped.put("id", String.valueOf(item.getOrDefault("id", "")));
-                    mapped.put("user_id", String.valueOf(item.getOrDefault("user_id", userId)));
-                    mapped.put("feature", String.valueOf(item.getOrDefault("feature", "request")));
-                    mapped.put("success", asBoolean(item.get("success"), false));
-                    mapped.put("input_text", String.valueOf(item.getOrDefault("input_text", "")));
-                    mapped.put("created_at", String.valueOf(item.getOrDefault("created_at", Instant.now().toString())));
-                    return mapped;
-                })
-                .toList();
-        return Map.of("user_id", userId, "items", rows, "count", rows.size());
+        return aiFeatureService == null ? Map.of("user_id", userId, "items", List.of(), "count", 0) : aiFeatureService.aiLogs(userId);
     }
 
     public Map<String, Object> aiRecommendations(String userId) {
-        return Map.of(
-                "user_id", userId,
-                "items", List.of(
-                        Map.of("id", "rec-1", "type", "study", "title", "최근 질문 기반 복습 추천")
-                ),
-                "count", 1
-        );
+        return aiFeatureService == null ? Map.of("user_id", userId, "items", List.of(), "count", 0) : aiFeatureService.aiRecommendations(userId);
     }
 
     public Map<String, Object> aiSettings(String userId) {
-        Map<String, Object> global = store.getKv(AI_SETTINGS_SCOPE, "global");
-        Map<String, Object> settings = store.getKv(AI_SETTINGS_SCOPE, userId);
-        Map<String, Object> merged = new HashMap<>();
-        if (global != null) {
-            merged.putAll(global);
-        }
-        if (settings != null) {
-            merged.putAll(settings);
-        }
-        merged.putIfAbsent("provider", resolvePolicyAiProvider());
-        merged.putIfAbsent("model", resolvePolicyAiModel());
-        return merged;
+        return aiFeatureService == null ? Map.of() : aiFeatureService.aiSettings(userId);
     }
 
     public Map<String, Object> updateAiSettings(String userId, Map<String, Object> patch) {
-        Map<String, Object> settings = new HashMap<>(aiSettings(userId));
-        if (patch != null) {
-            settings.putAll(patch);
-            // When only daily_limit is patched, start a new quota window for deterministic quota tests.
-            if (patch.containsKey("daily_limit") && patch.size() == 1) {
-                settings.put("quota_window_started_at", Instant.now().toString());
-                store.upsertAiUsageDaily(userId, java.time.LocalDate.now(), 0);
-            } else if (patch.containsKey("daily_limit")) {
-                settings.remove("quota_window_started_at");
-            }
-        }
-        store.upsertKv(AI_SETTINGS_SCOPE, userId, settings);
-        return settings;
+        return aiFeatureService == null ? Map.of() : aiFeatureService.updateAiSettings(userId, patch);
     }
 
     public Map<String, Object> aiProviders(String userId) {
-        return Map.of("providers", List.of("demo", "ollama", "gemini"), "current", aiSettings(userId).getOrDefault("provider", "demo"));
+        return aiFeatureService == null ? Map.of("providers", List.of("demo", "ollama", "gemini"), "current", "demo") : aiFeatureService.aiProviders(userId);
     }
 
     public Map<String, Object> sttProviders() {
@@ -315,16 +244,12 @@ public class FeatureStoreService {
     }
 
     public boolean canConsumeAi(String userId) {
-        if (aiUsageQuotaService == null) {
-            return true;
-        }
-        return aiUsageQuotaService.canConsumeAi(userId, aiSettings(userId));
+        if (aiFeatureService == null) return true;
+        return aiFeatureService.canConsumeAi(userId);
     }
 
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
-        if (aiUsageQuotaService != null) {
-            aiUsageQuotaService.recordAiUsage(userId, feature, success, inputText);
-        }
+        if (aiFeatureService != null) aiFeatureService.recordAiUsage(userId, feature, success, inputText);
     }
 
     public Map<String, Object> ragOverview(String query, String lectureId, String courseId, Integer limit) {
@@ -991,28 +916,6 @@ public class FeatureStoreService {
         } catch (Exception ignored) {
             return 0;
         }
-    }
-
-    private String resolvePolicyAiProvider() {
-        return isNonDevRuntime() ? NON_DEV_AI_PROVIDER : DEV_AI_PROVIDER;
-    }
-
-    private String resolvePolicyAiModel() {
-        return isNonDevRuntime() ? NON_DEV_AI_MODEL : DEV_AI_MODEL;
-    }
-
-    private boolean isNonDevRuntime() {
-        String normalized = runtimeEnv == null ? "" : runtimeEnv.trim().toLowerCase();
-        if (normalized.isBlank()) {
-            return false;
-        }
-        String[] tokens = normalized.split("[,;\\s]+");
-        for (String token : tokens) {
-            if ("prod".equals(token) || "production".equals(token) || "staging".equals(token) || "stage".equals(token)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private boolean asBoolean(Object value, boolean defaultValue) {
