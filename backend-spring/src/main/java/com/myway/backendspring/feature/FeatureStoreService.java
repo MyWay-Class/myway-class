@@ -6,6 +6,7 @@ import com.myway.backendspring.feature.admin.AdminAssignmentService;
 import com.myway.backendspring.feature.ai.AiFeatureService;
 import com.myway.backendspring.feature.course.CustomCourseService;
 import com.myway.backendspring.feature.media.MediaProcessingService;
+import com.myway.backendspring.feature.media.MediaStatus;
 import com.myway.backendspring.feature.media.PipelineStage;
 import com.myway.backendspring.feature.media.MediaTranscriptionService;
 import com.myway.backendspring.feature.quota.AiUsageQuotaService;
@@ -212,36 +213,11 @@ public class FeatureStoreService {
     public Map<String, Object> createExtraction(String lectureId, String audioUrl) {
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
-        Map<String, Object> item = new HashMap<>();
-        item.put("id", id);
-        item.put("lecture_id", lectureId);
-        item.put("status", "PROCESSING");
-        item.put("audio_url", audioUrl);
-        item.put("processing_stage", "queued");
-        item.put("processing_step", "job_requested");
-        item.put("processing_error_code", null);
-        item.put("processing_error", null);
-        item.put("stt_status", "PENDING");
-        item.put("transcript_id", null);
-        item.put("last_event_version", 0L);
-        item.put("created_at", now);
-        item.put("updated_at", now);
+        Map<String, Object> item = new ExtractionSeed(id, lectureId, audioUrl, now).toMap();
 
         store.insertEvent(EXTRACTION_SCOPE, lectureId, id, item);
         store.upsertKv(EXTRACTION_SCOPE, id, item);
-        Map<String, Object> pipeline = new HashMap<>();
-        pipeline.put("lecture_id", lectureId);
-        pipeline.put("transcript_status", "PENDING");
-        pipeline.put("summary_status", "PENDING");
-        pipeline.put("audio_status", "PROCESSING");
-        pipeline.put("processing_stage", "queued");
-        pipeline.put("processing_step", "job_requested");
-        pipeline.put("processing_error_code", null);
-        pipeline.put("processing_error", null);
-        pipeline.put("transcript_id", null);
-        pipeline.put("note_id", null);
-        pipeline.put("extraction_id", id);
-        pipeline.put("updated_at", now);
+        Map<String, Object> pipeline = new PipelineSeed(lectureId, id, now).toMap();
         store.upsertKv(PIPELINE_SCOPE, lectureId, pipeline);
 
         return item;
@@ -496,6 +472,45 @@ public class FeatureStoreService {
 
     public Map<String, Object> saveAdminAssignment(String actorUserId, String courseId, List<String> studentIds) {
         return adminAssignmentService == null ? Map.of() : adminAssignmentService.saveAdminAssignment(actorUserId, courseId, studentIds);
+    }
+
+    private record ExtractionSeed(String id, String lectureId, String audioUrl, String now) {
+        Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", id);
+            map.put("lecture_id", lectureId);
+            map.put("status", MediaStatus.PROCESSING.name());
+            map.put("audio_url", audioUrl);
+            map.put("processing_stage", PipelineStage.QUEUED.value());
+            map.put("processing_step", "job_requested");
+            map.put("processing_error_code", null);
+            map.put("processing_error", null);
+            map.put("stt_status", MediaStatus.PENDING.name());
+            map.put("transcript_id", null);
+            map.put("last_event_version", 0L);
+            map.put("created_at", now);
+            map.put("updated_at", now);
+            return map;
+        }
+    }
+
+    private record PipelineSeed(String lectureId, String extractionId, String now) {
+        Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("lecture_id", lectureId);
+            map.put("transcript_status", MediaStatus.PENDING.name());
+            map.put("summary_status", MediaStatus.PENDING.name());
+            map.put("audio_status", MediaStatus.PROCESSING.name());
+            map.put("processing_stage", PipelineStage.QUEUED.value());
+            map.put("processing_step", "job_requested");
+            map.put("processing_error_code", null);
+            map.put("processing_error", null);
+            map.put("transcript_id", null);
+            map.put("note_id", null);
+            map.put("extraction_id", extractionId);
+            map.put("updated_at", now);
+            return map;
+        }
     }
 
 }
