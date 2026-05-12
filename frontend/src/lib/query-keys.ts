@@ -2,6 +2,7 @@
   learning: {
     detail: (lectureId: string) => ["learning", "detail", lectureId] as const,
     drafts: (courseId: string) => ["learning", "drafts", courseId] as const,
+    draftDetail: (courseId: string, draftId: string) => ["learning", "draft-detail", courseId, draftId] as const,
   },
   media: {
     pipeline: (lectureId: string) => ["media", "pipeline", lectureId] as const,
