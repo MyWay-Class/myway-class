@@ -27,12 +27,20 @@ import java.util.Map;
 @RequestMapping("/api/v1")
 public class NotImplementedController {
     private final AiController aiController;
+    private final ShortformController shortformController;
     private final DemoLearningService learningService;
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
 
-    public NotImplementedController(AiController aiController, DemoLearningService learningService, SessionService sessionService, FeatureStoreService featureStore) {
+    public NotImplementedController(
+            AiController aiController,
+            ShortformController shortformController,
+            DemoLearningService learningService,
+            SessionService sessionService,
+            FeatureStoreService featureStore
+    ) {
         this.aiController = aiController;
+        this.shortformController = shortformController;
         this.learningService = learningService;
         this.sessionService = sessionService;
         this.featureStore = featureStore;
@@ -225,6 +233,78 @@ public class NotImplementedController {
         return ResponseEntity.ok(ApiResponse.success(featureStore.shortformVideos(userId), "legacy shortform videos 응답을 /api/v1/shortform/videos/my와 동일하게 반환했습니다."));
     }
 
+    @PostMapping("/legacy/shortform/generate")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformGenerate(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return shortformController.generate(auth, body);
+    }
+
+    @PutMapping("/legacy/shortform/candidates/select")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformSelect(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return shortformController.select(auth, body);
+    }
+
+    @GetMapping("/legacy/shortform/extraction/{id}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformExtraction(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String id
+    ) {
+        return shortformController.extraction(auth, id);
+    }
+
+    @PostMapping("/legacy/shortform/compose")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformCompose(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return shortformController.compose(auth, body);
+    }
+
+    @GetMapping("/legacy/shortform/video/{id}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformVideo(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String id
+    ) {
+        return shortformController.video(auth, id);
+    }
+
+    @PostMapping("/legacy/shortform/share")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformShare(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return shortformController.share(auth, body);
+    }
+
+    @PostMapping("/legacy/shortform/save")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformSave(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return shortformController.save(auth, body);
+    }
+
+    @PostMapping("/legacy/shortform/like")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformLike(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body
+    ) {
+        return shortformController.like(auth, body);
+    }
+
+    @PostMapping("/legacy/shortform/{shortformId}/export/retry")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformRetry(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String shortformId
+    ) {
+        return shortformController.retry(auth, shortformId);
+    }
+
     @GetMapping("/legacy/dashboard")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyDashboard(@RequestHeader(value = "Authorization", required = false) String auth) {
         if (sessionService.me(auth) == null) {
@@ -275,7 +355,16 @@ public class NotImplementedController {
                         Map.of("legacy", "/api/v1/legacy/shortform/library", "replacement", "/api/v1/shortform/library", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/shortform/community", "replacement", "/api/v1/shortform/community", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/shortform/videos/my", "replacement", "/api/v1/shortform/videos/my", "status", "available"),
-                        Map.of("legacy", "/api/v1/legacy/shortform/*", "replacement", "/api/v1/shortform/*", "status", "migration_in_progress"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/generate", "replacement", "/api/v1/shortform/generate", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/candidates/select", "replacement", "/api/v1/shortform/candidates/select", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/extraction/{id}", "replacement", "/api/v1/shortform/extraction/{id}", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/compose", "replacement", "/api/v1/shortform/compose", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/video/{id}", "replacement", "/api/v1/shortform/video/{id}", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/share", "replacement", "/api/v1/shortform/share", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/save", "replacement", "/api/v1/shortform/save", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/like", "replacement", "/api/v1/shortform/like", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/{shortformId}/export/retry", "replacement", "/api/v1/shortform/{shortformId}/export/retry", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/shortform/*", "replacement", "/api/v1/shortform/*", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/dashboard", "replacement", "/api/v1/dashboard", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/enrollments", "replacement", "/api/v1/enrollments", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/dashboard/*", "replacement", "/api/v1/dashboard/*", "status", "migration_in_progress"),
