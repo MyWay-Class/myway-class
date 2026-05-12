@@ -32,6 +32,18 @@ public class FeatureStoreRepository {
         return store.listEventsByOwner(scope, ownerId);
     }
 
+    public List<Map<String, Object>> listEventsByScope(String scope) {
+        return store.listEventsByScope(scope);
+    }
+
+    public void insertEvent(String scope, String ownerId, String id, Map<String, Object> payload) {
+        store.insertEvent(scope, ownerId, id, payload);
+    }
+
+    public List<Map<String, Object>> listKvByScope(String scope) {
+        return store.listKvByScope(scope);
+    }
+
     public int getAiUsageDailyCount(String userId, LocalDate day) {
         return store.getAiUsageDailyCount(userId, day);
     }
