@@ -76,22 +76,24 @@ public class MediaTranscriptionService {
             Integer sampleRate,
             Integer channels
     ) {
-        Map<String, Object> extraction = findExtraction(extractionId);
+        ExtractionSnapshot extraction = findExtraction(extractionId);
         if (extraction == null) return null;
-        if (isStaleCallback(extraction, eventVersion)) return staleCallbackResponse(extraction);
+        if (isStaleCallback(extraction.toMap(), eventVersion)) return staleCallbackResponse(extraction.toMap());
 
         String now = Instant.now().toString();
         MediaStatus callbackStatus = MediaStatus.fromNullable(status, MediaStatus.COMPLETED);
         String resolvedError = resolveErrorMessage(callbackStatus, errorMessage);
-        applyCallbackMetadata(extraction, eventVersion, callbackStatus, resolvedError, audioUrl, processingJobId, processingStage, processingStep, audioFormat, sampleRate, channels, now);
-        repository.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
+        Map<String, Object> mutable = extraction.toMap();
+        applyCallbackMetadata(mutable, eventVersion, callbackStatus, resolvedError, audioUrl, processingJobId, processingStage, processingStep, audioFormat, sampleRate, channels, now);
+        repository.upsertKv(EXTRACTION_SCOPE, extractionId, mutable);
+        ExtractionSnapshot applied = ExtractionSnapshot.from(mutable);
 
-        String lectureId = String.valueOf(extraction.getOrDefault("lecture_id", "")).trim();
+        String lectureId = applied.lectureId();
         if (!lectureId.isBlank()) {
-            repository.upsertKv(PIPELINE_SCOPE, lectureId, buildPipelineFromCallback(extraction, lectureId, callbackStatus, resolvedError, now));
+            repository.upsertKv(PIPELINE_SCOPE, lectureId, buildPipelineFromCallback(applied, callbackStatus, resolvedError, now));
         }
-        appendActivity(extraction, extractionId, lectureId, callbackStatus);
-        return normalizeExtractionForResponse(extraction);
+        appendActivity(mutable, extractionId, lectureId, callbackStatus);
+        return normalizeExtractionForResponse(mutable);
     }
 
     private Map<String, Object> markExtractionInProgress(Map<String, Object> extraction, String now) {
@@ -241,10 +243,10 @@ public class MediaTranscriptionService {
         extraction.put("updated_at", now);
     }
 
-    private Map<String, Object> buildPipelineFromCallback(Map<String, Object> extraction, String lectureId, MediaStatus callbackStatus, String errorMessage, String now) {
+    private Map<String, Object> buildPipelineFromCallback(ExtractionSnapshot extraction, MediaStatus callbackStatus, String errorMessage, String now) {
         boolean failed = callbackStatus == MediaStatus.FAILED;
         Map<String, Object> pipeline = new HashMap<>();
-        pipeline.put("lecture_id", lectureId);
+        pipeline.put("lecture_id", extraction.lectureId());
         pipeline.put("audio_status", failed ? MediaStatus.FAILED.name() : MediaStatus.COMPLETED.name());
         pipeline.put("transcript_status", failed ? MediaStatus.FAILED.name() : MediaStatus.PROCESSING.name());
         pipeline.put("summary_status", "PENDING");
@@ -252,18 +254,18 @@ public class MediaTranscriptionService {
         pipeline.put("processing_step", failed ? "callback_failed" : "stt_started");
         pipeline.put("processing_error_code", failed ? "PROCESSOR_CALLBACK_FAILED" : null);
         pipeline.put("processing_error", failed ? errorMessage : null);
-        pipeline.put("transcript_id", extraction.get("transcript_id"));
+        pipeline.put("transcript_id", extraction.transcriptId());
         pipeline.put("note_id", null);
-        pipeline.put("extraction_id", extraction.get("id"));
+        pipeline.put("extraction_id", extraction.id());
         pipeline.put("updated_at", now);
         return pipeline;
     }
 
-    private Map<String, Object> findExtraction(String extractionId) {
+    private ExtractionSnapshot findExtraction(String extractionId) {
         Map<String, Object> extraction = repository.getKv(EXTRACTION_SCOPE, extractionId);
-        if (extraction != null) return new HashMap<>(extraction);
+        if (extraction != null) return ExtractionSnapshot.from(extraction);
         for (Map<String, Object> row : repository.listEventsByScope(EXTRACTION_SCOPE)) {
-            if (extractionId.equals(String.valueOf(row.getOrDefault("id", "")))) return new HashMap<>(row);
+            if (extractionId.equals(String.valueOf(row.getOrDefault("id", "")))) return ExtractionSnapshot.from(row);
         }
         return null;
     }
@@ -453,6 +455,22 @@ public class MediaTranscriptionService {
             map.put("extraction_id", extractionId);
             map.put("updated_at", updatedAt);
             return map;
+        }
+    }
+
+    private record ExtractionSnapshot(String id, String lectureId, String transcriptId, Map<String, Object> raw) {
+        static ExtractionSnapshot from(Map<String, Object> row) {
+            Map<String, Object> copy = new HashMap<>(row);
+            return new ExtractionSnapshot(
+                    String.valueOf(copy.getOrDefault("id", "")).trim(),
+                    String.valueOf(copy.getOrDefault("lecture_id", "")).trim(),
+                    copy.get("transcript_id") == null ? null : String.valueOf(copy.get("transcript_id")).trim(),
+                    copy
+            );
+        }
+
+        Map<String, Object> toMap() {
+            return new HashMap<>(raw);
         }
     }
 }
