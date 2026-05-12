@@ -176,6 +176,19 @@ public class AiController {
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 인덱스를 초기화했습니다."));
     }
 
+    @PostMapping("/rag/evaluate")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> evaluateRag(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody(required = false) Map<String, Object> body
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        Integer topK = intOrNull(body, "top_k");
+        List<Map<String, Object>> cases = listOfMap(body == null ? null : body.get("cases"));
+        Map<String, Object> data = featureStore.evaluateRagBatch(cases, topK);
+        return ResponseEntity.ok(ApiResponse.success(data, "RAG 배치 평가를 완료했습니다."));
+    }
+
     @PostMapping("/intent")
     public ResponseEntity<ApiResponse<Map<String, Object>>> intent(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
         SessionView session = require(auth);
@@ -332,5 +345,24 @@ public class AiController {
             return false;
         }
         return defaultValue;
+    }
+
+    private List<Map<String, Object>> listOfMap(Object raw) {
+        if (!(raw instanceof List<?> rows)) {
+            return List.of();
+        }
+        List<Map<String, Object>> items = new java.util.ArrayList<>();
+        for (Object row : rows) {
+            if (row instanceof Map<?, ?> map) {
+                Map<String, Object> converted = new HashMap<>();
+                for (Map.Entry<?, ?> entry : map.entrySet()) {
+                    if (entry.getKey() != null) {
+                        converted.put(String.valueOf(entry.getKey()), entry.getValue());
+                    }
+                }
+                items.add(converted);
+            }
+        }
+        return items;
     }
 }

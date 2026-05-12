@@ -82,6 +82,13 @@ class AiContractTest {
                         .content("{\"query\":\"요약해줘\",\"lecture_id\":\"lec_java_01\"}"))
                 .andExpect(status().isOk())
                 .andReturn());
+
+        assertSuccessEnvelope(mockMvc.perform(post("/api/v1/ai/rag/evaluate")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"top_k\":3,\"cases\":[{\"query\":\"핵심 개념 요약\",\"lecture_id\":\"lec_java_01\",\"expected\":\"트랜스크립트\"}]}"))
+                .andExpect(status().isOk())
+                .andReturn());
     }
 
     @Test
