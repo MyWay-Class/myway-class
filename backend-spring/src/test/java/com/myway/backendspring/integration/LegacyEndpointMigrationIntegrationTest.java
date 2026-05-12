@@ -196,6 +196,23 @@ class LegacyEndpointMigrationIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(objectMapper.readTree(extractions).path("data").isArray()).isTrue();
+
+        String upload = mockMvc.perform(post("/api/v1/legacy/media/upload-video")
+                        .header("Authorization", auth)
+                        .param("lecture_id", "lec_java_01"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String assetKey = objectMapper.readTree(upload).path("data").path("asset_key").asText();
+        assertThat(assetKey).isNotBlank();
+
+        mockMvc.perform(get("/api/v1/legacy/media/assets/{assetKey}", assetKey))
+                .andExpect(status().isUnauthorized());
+
+        String asset = mockMvc.perform(get("/api/v1/legacy/media/assets/{assetKey}", assetKey)
+                        .header("X-Processor-Token", "dev-media-callback-token"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(asset).path("data").path("asset_key").asText()).isEqualTo(assetKey);
     }
 
     @Test

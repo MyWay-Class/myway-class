@@ -19,6 +19,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.HandlerMapping;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -264,6 +268,30 @@ public class NotImplementedController {
         return mediaController.callback(token, callbackSecret, body);
     }
 
+    @PostMapping("/legacy/media/upload-video")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaUploadVideo(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestParam("lecture_id") String lectureId,
+            @RequestParam(value = "video_file", required = false) MultipartFile file
+    ) {
+        return mediaController.upload(auth, lectureId, file);
+    }
+
+    @GetMapping("/legacy/media/assets/**")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaAssets(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestHeader(value = "X-Processor-Token", required = false) String processorToken,
+            HttpServletRequest request
+    ) {
+        String path = String.valueOf(request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE));
+        String legacyPrefix = "/api/v1/legacy/media/assets/";
+        if (path.startsWith(legacyPrefix)) {
+            String suffix = path.substring(legacyPrefix.length());
+            request.setAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE, "/api/v1/media/assets/" + suffix);
+        }
+        return mediaController.assets(auth, processorToken, request);
+    }
+
     @GetMapping("/legacy/shortform/library")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> legacyShortformLibrary(@RequestHeader(value = "Authorization", required = false) String auth) {
         if (sessionService.me(auth) == null) {
@@ -418,6 +446,8 @@ public class NotImplementedController {
                         Map.of("legacy", "/api/v1/legacy/media/transcript/{lectureId}", "replacement", "/api/v1/media/transcript/{lectureId}", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/media/notes/{lectureId}", "replacement", "/api/v1/media/notes/{lectureId}", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/media/extract-audio/callback", "replacement", "/api/v1/media/extract-audio/callback", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/media/upload-video", "replacement", "/api/v1/media/upload-video", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/media/assets/**", "replacement", "/api/v1/media/assets/**", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/media/*", "replacement", "/api/v1/media/*", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/shortform/library", "replacement", "/api/v1/shortform/library", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/shortform/community", "replacement", "/api/v1/shortform/community", "status", "available"),
