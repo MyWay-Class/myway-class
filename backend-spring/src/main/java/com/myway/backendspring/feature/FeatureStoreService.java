@@ -265,13 +265,36 @@ public class FeatureStoreService {
 
     public Map<String, Object> transcribe(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl, String extractionId) {
         if (mediaTranscriptionService == null) return Map.of();
-        Map<String, Object> extraction = extractionId == null || extractionId.isBlank()
-                ? createExtraction(lectureId, audioUrl)
-                : store.getKv(EXTRACTION_SCOPE, extractionId);
-        if (extraction == null) {
-            extraction = createExtraction(lectureId, audioUrl);
+        Map<String, Object> extraction = resolveExtractionForTranscription(lectureId, audioUrl, extractionId);
+        return runTranscription(extraction, lectureId, language, durationMsInput, sttProvider, sttModel, audioUrl);
+    }
+
+    private Map<String, Object> resolveExtractionForTranscription(String lectureId, String audioUrl, String extractionId) {
+        if (extractionId == null || extractionId.isBlank()) {
+            return createExtraction(lectureId, audioUrl);
         }
-        return mediaTranscriptionService.transcribe(extraction, lectureId, language, durationMsInput, sttProvider, sttModel, audioUrl);
+        Map<String, Object> extraction = store.getKv(EXTRACTION_SCOPE, extractionId);
+        return extraction != null ? extraction : createExtraction(lectureId, audioUrl);
+    }
+
+    private Map<String, Object> runTranscription(
+            Map<String, Object> extraction,
+            String lectureId,
+            String language,
+            Integer durationMsInput,
+            String sttProvider,
+            String sttModel,
+            String audioUrl
+    ) {
+        return mediaTranscriptionService.transcribe(
+                extraction,
+                lectureId,
+                language,
+                durationMsInput,
+                sttProvider,
+                sttModel,
+                audioUrl
+        );
     }
 
     public List<Map<String, Object>> extractions(String lectureId) {
