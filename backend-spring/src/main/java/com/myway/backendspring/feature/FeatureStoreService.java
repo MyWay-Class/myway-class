@@ -301,17 +301,21 @@ public class FeatureStoreService {
         List<Map<String, Object>> rows = store.listEventsByOwner(EXTRACTION_SCOPE, lectureId);
         List<Map<String, Object>> merged = new ArrayList<>();
         for (Map<String, Object> row : rows) {
-            String extractionId = String.valueOf(row.getOrDefault("id", "")).trim();
-            Map<String, Object> latest = extractionId.isBlank() ? null : store.getKv(EXTRACTION_SCOPE, extractionId);
-            Map<String, Object> hydrated = latest == null ? new HashMap<>(row) : new HashMap<>(latest);
-            hydrated.putIfAbsent("processing_stage", "queued");
-            hydrated.putIfAbsent("processing_step", "job_requested");
-            hydrated.putIfAbsent("processing_error_code", null);
-            hydrated.putIfAbsent("processing_error", null);
-            hydrated.putIfAbsent("stt_status", "PENDING");
-            merged.add(hydrated);
+            merged.add(hydrateExtractionRow(row));
         }
         return merged;
+    }
+
+    private Map<String, Object> hydrateExtractionRow(Map<String, Object> row) {
+        String extractionId = String.valueOf(row.getOrDefault("id", "")).trim();
+        Map<String, Object> latest = extractionId.isBlank() ? null : store.getKv(EXTRACTION_SCOPE, extractionId);
+        Map<String, Object> hydrated = latest == null ? new HashMap<>(row) : new HashMap<>(latest);
+        hydrated.putIfAbsent("processing_stage", "queued");
+        hydrated.putIfAbsent("processing_step", "job_requested");
+        hydrated.putIfAbsent("processing_error_code", null);
+        hydrated.putIfAbsent("processing_error", null);
+        hydrated.putIfAbsent("stt_status", "PENDING");
+        return hydrated;
     }
 
     public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion) {
@@ -354,22 +358,30 @@ public class FeatureStoreService {
     public Map<String, Object> pipeline(String lectureId) {
         Map<String, Object> row = store.getKv(PIPELINE_SCOPE, lectureId);
         if (row == null) {
-            Map<String, Object> empty = new HashMap<>();
-            empty.put("lecture_id", lectureId);
-            empty.put("status", "EMPTY");
-            empty.put("audio_status", "PENDING");
-            empty.put("transcript_status", "PENDING");
-            empty.put("summary_status", "PENDING");
-            empty.put("processing_stage", "idle");
-            empty.put("processing_step", "not_started");
-            empty.put("processing_error_code", null);
-            empty.put("processing_error", null);
-            empty.put("transcript_id", null);
-            empty.put("note_id", null);
-            empty.put("extraction_id", null);
-            empty.put("updated_at", Instant.now().toString());
-            return empty;
+            return buildEmptyPipeline(lectureId);
         }
+        return hydratePipelineRow(row);
+    }
+
+    private Map<String, Object> buildEmptyPipeline(String lectureId) {
+        Map<String, Object> empty = new HashMap<>();
+        empty.put("lecture_id", lectureId);
+        empty.put("status", "EMPTY");
+        empty.put("audio_status", "PENDING");
+        empty.put("transcript_status", "PENDING");
+        empty.put("summary_status", "PENDING");
+        empty.put("processing_stage", "idle");
+        empty.put("processing_step", "not_started");
+        empty.put("processing_error_code", null);
+        empty.put("processing_error", null);
+        empty.put("transcript_id", null);
+        empty.put("note_id", null);
+        empty.put("extraction_id", null);
+        empty.put("updated_at", Instant.now().toString());
+        return empty;
+    }
+
+    private Map<String, Object> hydratePipelineRow(Map<String, Object> row) {
         Map<String, Object> hydrated = new HashMap<>(row);
         hydrated.putIfAbsent("audio_status", "PENDING");
         hydrated.putIfAbsent("transcript_status", "PENDING");
