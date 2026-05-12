@@ -3,6 +3,8 @@ package com.myway.backendspring.feature;
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.domain.LectureItem;
 import com.myway.backendspring.domain.ActivityEventService;
+import com.myway.backendspring.feature.quota.AiUsageQuotaService;
+import com.myway.backendspring.feature.rag.RagService;
 import com.myway.backendspring.persistence.FeatureJdbcStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +65,8 @@ public class FeatureStoreService {
     private final String mediaCallbackSecret;
     private final String mediaPublicBaseUrl;
     private final String runtimeEnv;
+    private final RagService ragService;
+    private final AiUsageQuotaService aiUsageQuotaService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
@@ -75,7 +79,9 @@ public class FeatureStoreService {
             @Value("${myway.media.processor.token:}") String mediaProcessorToken,
             @Value("${myway.media.callback.secret:}") String mediaCallbackSecret,
             @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl,
-            @Value("${myway.runtime.env:${SPRING_PROFILES_ACTIVE:dev}}") String runtimeEnv
+            @Value("${myway.runtime.env:${SPRING_PROFILES_ACTIVE:dev}}") String runtimeEnv,
+            RagService ragService,
+            AiUsageQuotaService aiUsageQuotaService
     ) {
         this.store = store;
         this.learningService = learningService;
@@ -86,12 +92,14 @@ public class FeatureStoreService {
         this.mediaCallbackSecret = mediaCallbackSecret == null ? "" : mediaCallbackSecret.trim();
         this.mediaPublicBaseUrl = mediaPublicBaseUrl == null ? "http://127.0.0.1:8787" : mediaPublicBaseUrl.trim();
         this.runtimeEnv = runtimeEnv == null ? "dev" : runtimeEnv.trim();
+        this.ragService = ragService;
+        this.aiUsageQuotaService = aiUsageQuotaService;
         ensureDefaults();
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
     public FeatureStoreService(FeatureJdbcStore store, int shortformMaxRetry) {
-        this(store, new DemoLearningService(), null, shortformMaxRetry, "", "", "", "http://127.0.0.1:8787", "dev");
+        this(store, new DemoLearningService(), null, shortformMaxRetry, "", "", "", "http://127.0.0.1:8787", "dev", null, null);
     }
 
     private void ensureDefaults() {
@@ -303,54 +311,15 @@ public class FeatureStoreService {
     }
 
     public boolean canConsumeAi(String userId) {
-        Map<String, Object> settings = aiSettings(userId);
-        int limit = asInt(settings.get("daily_limit"));
-        if (limit <= 0) {
-            limit = 100;
+        if (aiUsageQuotaService == null) {
+            return true;
         }
-        int usedToday = store.getAiUsageDailyCount(userId, java.time.LocalDate.now());
-        Instant quotaWindowStart = parseInstantOrNull(settings.get("quota_window_started_at"));
-        int usedByLogs = (int) aiLogs(userId).getOrDefault("count", 0);
-        if (quotaWindowStart != null) {
-            usedByLogs = (int) store.listAiUsageLogs(userId).stream()
-                .filter(item -> {
-                    Instant createdAt = parseInstantOrNull(item.get("created_at"));
-                    return createdAt != null && !createdAt.isBefore(quotaWindowStart);
-                })
-                .count();
-        } else if (usedByLogs == 0) {
-            usedByLogs = (int) store.listActivityEvents(userId, 100).stream()
-                    .map(item -> String.valueOf(item.getOrDefault("type", "")))
-                    .filter(type -> type.startsWith("ai_"))
-                    .count();
-        }
-        int used = quotaWindowStart != null ? usedByLogs : Math.max(usedToday, usedByLogs);
-        return used < limit;
+        return aiUsageQuotaService.canConsumeAi(userId, aiSettings(userId));
     }
 
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
-        java.time.LocalDate today = java.time.LocalDate.now();
-        String key = usageKey(userId);
-        int used = store.getAiUsageDailyCount(userId, today);
-        store.upsertAiUsageDaily(userId, today, used + 1);
-
-        Map<String, Object> next = new HashMap<>();
-        next.put("user_id", userId);
-        next.put("day", today.toString());
-        next.put("count", used + 1);
-        next.put("updated_at", Instant.now().toString());
-        store.upsertKv(AI_USAGE_SCOPE, key, next);
-
-        String logId = UUID.randomUUID().toString();
-        store.insertAiUsageLog(logId, userId, feature, success, inputText);
-        if (activityEventService != null) {
-            activityEventService.append(
-                    userId,
-                    "ai_" + (feature == null || feature.isBlank() ? "request" : feature),
-                    "ai",
-                    logId,
-                    Map.of("success", success, "feature", feature == null ? "" : feature)
-            );
+        if (aiUsageQuotaService != null) {
+            aiUsageQuotaService.recordAiUsage(userId, feature, success, inputText);
         }
     }
 
@@ -366,137 +335,31 @@ public class FeatureStoreService {
             Double minScore,
             boolean includeDebug
     ) {
-        int resolvedLimit = Math.max(1, Math.min(6, limit == null ? 4 : limit));
-        String normalizedQuery = normalizeText(query);
-        List<String> targetLectureIds = targetLectureIds(lectureId, courseId);
-        List<Map<String, Object>> corpus = indexedRagCorpus(targetLectureIds);
-        double threshold = minScore == null ? 0.0 : Math.max(0.0, Math.min(1.0, minScore));
-
-        List<Map<String, Object>> rankedChunks = corpus.stream()
-                .map(chunk -> {
-                    Map<String, Object> mutable = new HashMap<>(chunk);
-                    mutable.put("similarity", scoreChunk(normalizedQuery, mutable));
-                    return mutable;
-                })
-                .filter(item -> asDouble(item.get("similarity")) >= threshold)
-                .sorted(Comparator
-                        .comparingDouble((Map<String, Object> item) -> asDouble(item.get("similarity"))).reversed()
-                        .thenComparing(item -> String.valueOf(item.getOrDefault("title", ""))))
-                .limit(resolvedLimit)
-                .toList();
-
-        List<Map<String, Object>> entities = new ArrayList<>();
-        if (lectureId != null && !lectureId.isBlank()) {
-            entities.add(Map.of("kind", "lecture_id", "label", "강의", "value", lectureId));
+        if (ragService == null) {
+            return Map.of();
         }
-        if (courseId != null && !courseId.isBlank()) {
-            entities.add(Map.of("kind", "course_id", "label", "코스", "value", courseId));
-        }
-
-        String intent = inferIntent(normalizedQuery);
-        String answerText = buildAnswerText(normalizedQuery, rankedChunks);
-        String searchProvider = "spring-rag-keyword";
-
-        Map<String, Object> intentPayload = Map.of(
-                "intent", intent,
-                "confidence", rankedChunks.isEmpty() ? 0.62 : 0.84,
-                "action", "answer_with_references",
-                "reason", "Spring RAG keyword scoring"
-        );
-
-        Map<String, Object> answerPayload = new HashMap<>();
-        answerPayload.put("question", normalizedQuery);
-        answerPayload.put("lecture_id", lectureId);
-        answerPayload.put("intent", intentPayload);
-        answerPayload.put("answer", answerText);
-        answerPayload.put("references", rankedChunks);
-        answerPayload.put("suggestions", List.of("핵심 개념 요약", "시험 대비 문제", "이전 강의와 연결", "숏폼으로 복습"));
-
-        Map<String, Object> searchPayload = new HashMap<>();
-        searchPayload.put("query", normalizedQuery);
-        searchPayload.put("lecture_id", lectureId);
-        searchPayload.put("hits", rankedChunks);
-
-        Map<String, Object> providerPayload = Map.of(
-                "search_provider", searchProvider,
-                "answer_provider", "spring-rag-generator"
-        );
-
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("query", normalizedQuery);
-        payload.put("lecture_id", lectureId);
-        payload.put("course_id", courseId);
-        payload.put("intent", intentPayload);
-        payload.put("entities", entities);
-        payload.put("chunks", rankedChunks);
-        payload.put("search", searchPayload);
-        payload.put("answer", answerText);
-        payload.put("answer_payload", answerPayload);
-        payload.put("provider", providerPayload);
-        payload.put("limit", resolvedLimit);
-        payload.put("min_score", threshold);
-        if (includeDebug) {
-            double avgSimilarity = rankedChunks.stream().mapToDouble(item -> asDouble(item.get("similarity"))).average().orElse(0.0);
-            payload.put("debug", Map.of(
-                    "query_tokens", tokenize(normalizedQuery),
-                    "corpus_size", corpus.size(),
-                    "filtered_count", rankedChunks.size(),
-                    "avg_similarity", Math.round(avgSimilarity * 1000.0) / 1000.0
-            ));
-        }
-        return payload;
+        return ragService.ragOverview(query, lectureId, courseId, limit, minScore, includeDebug);
     }
 
     public Map<String, Object> ragIndexOverview(String lectureId, String courseId) {
-        List<String> lectureIds = targetLectureIds(lectureId, courseId);
-        List<Map<String, Object>> chunks = indexedRagCorpus(lectureIds);
-        Set<String> indexedLectures = chunks.stream()
-                .map(chunk -> String.valueOf(chunk.getOrDefault("lecture_id", "")))
-                .filter(id -> !id.isBlank())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        return Map.of(
-                "scope", RAG_INDEX_SCOPE,
-                "lecture_ids", indexedLectures,
-                "chunk_count", chunks.size(),
-                "indexed_at", Instant.now().toString()
-        );
+        if (ragService == null) {
+            return Map.of();
+        }
+        return ragService.ragIndexOverview(lectureId, courseId);
     }
 
     public Map<String, Object> rebuildRagIndex(String lectureId, String courseId) {
-        List<String> lectureIds = targetLectureIds(lectureId, courseId);
-        List<Map<String, Object>> chunks = buildRagCorpus(lectureIds);
-        String key = ragIndexKey(lectureId, courseId);
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("id", key);
-        payload.put("lecture_id", lectureId);
-        payload.put("course_id", courseId);
-        payload.put("chunk_count", chunks.size());
-        payload.put("chunks", chunks);
-        payload.put("updated_at", Instant.now().toString());
-        store.upsertKv(RAG_INDEX_SCOPE, key, payload);
-        return Map.of(
-                "index_id", key,
-                "chunk_count", chunks.size(),
-                "updated_at", payload.get("updated_at")
-        );
+        if (ragService == null) {
+            return Map.of();
+        }
+        return ragService.rebuildRagIndex(lectureId, courseId);
     }
 
     public Map<String, Object> clearRagIndex(String lectureId, String courseId) {
-        String key = ragIndexKey(lectureId, courseId);
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("id", key);
-        payload.put("lecture_id", lectureId);
-        payload.put("course_id", courseId);
-        payload.put("chunk_count", 0);
-        payload.put("chunks", List.of());
-        payload.put("updated_at", Instant.now().toString());
-        payload.put("cleared", true);
-        store.upsertKv(RAG_INDEX_SCOPE, key, payload);
-        return Map.of(
-                "index_id", key,
-                "cleared", true,
-                "updated_at", payload.get("updated_at")
-        );
+        if (ragService == null) {
+            return Map.of();
+        }
+        return ragService.clearRagIndex(lectureId, courseId);
     }
 
     private Instant parseInstantOrNull(Object raw) {
