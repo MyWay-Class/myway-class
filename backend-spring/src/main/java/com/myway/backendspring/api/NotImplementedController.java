@@ -355,7 +355,10 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return shortformController.generate(auth, body);
+        return shortformController.generate(auth, new ShortformController.GenerateRequest(
+                text(body, "course_id"),
+                text(body, "mode")
+        ));
     }
 
     @PutMapping("/legacy/shortform/candidates/select")
@@ -363,7 +366,10 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return shortformController.select(auth, body);
+        return shortformController.select(auth, new ShortformController.SelectCandidatesRequest(
+                text(body, "extraction_id"),
+                listOfString(body, "candidate_ids")
+        ));
     }
 
     @GetMapping("/legacy/shortform/extraction/{id}")
@@ -379,7 +385,11 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return shortformController.compose(auth, body);
+        return shortformController.compose(auth, new ShortformController.ComposeRequest(
+                text(body, "title"),
+                text(body, "description"),
+                text(body, "course_id")
+        ));
     }
 
     @GetMapping("/legacy/shortform/video/{id}")
@@ -395,7 +405,12 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return shortformController.share(auth, body);
+        return shortformController.share(auth, new ShortformController.ShareRequest(
+                text(body, "video_id"),
+                text(body, "course_id"),
+                text(body, "visibility"),
+                text(body, "message")
+        ));
     }
 
     @PostMapping("/legacy/shortform/save")
@@ -403,7 +418,11 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return shortformController.save(auth, body);
+        return shortformController.save(auth, new ShortformController.SaveRequest(
+                text(body, "video_id"),
+                text(body, "note"),
+                text(body, "folder")
+        ));
     }
 
     @PostMapping("/legacy/shortform/like")
@@ -411,7 +430,9 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return shortformController.like(auth, body);
+        return shortformController.like(auth, new ShortformController.LikeRequest(
+                text(body, "video_id")
+        ));
     }
 
     @PostMapping("/legacy/shortform/{shortformId}/export/retry")
@@ -534,5 +555,16 @@ public class NotImplementedController {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    private List<String> listOfString(Map<String, Object> body, String key) {
+        if (body == null) {
+            return List.of();
+        }
+        Object raw = body.get(key);
+        if (!(raw instanceof List<?> items)) {
+            return List.of();
+        }
+        return items.stream().map(String::valueOf).toList();
     }
 }
