@@ -464,8 +464,8 @@ public class NotImplementedController {
                         Map.of("legacy", "/api/v1/legacy/shortform/*", "replacement", "/api/v1/shortform/*", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/dashboard", "replacement", "/api/v1/dashboard", "status", "available"),
                         Map.of("legacy", "/api/v1/legacy/enrollments", "replacement", "/api/v1/enrollments", "status", "available"),
-                        Map.of("legacy", "/api/v1/legacy/dashboard/*", "replacement", "/api/v1/dashboard/*", "status", "migration_in_progress"),
-                        Map.of("legacy", "/api/v1/legacy/enrollments/*", "replacement", "/api/v1/enrollments/*", "status", "migration_in_progress")
+                        Map.of("legacy", "/api/v1/legacy/dashboard/*", "replacement", "/api/v1/dashboard/*", "status", "available"),
+                        Map.of("legacy", "/api/v1/legacy/enrollments/*", "replacement", "/api/v1/enrollments/*", "status", "available")
                 )
         ), "legacy API 매핑 정보를 반환했습니다."));
     }
