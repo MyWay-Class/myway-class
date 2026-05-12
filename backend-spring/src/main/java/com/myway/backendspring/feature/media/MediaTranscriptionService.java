@@ -5,11 +5,9 @@ import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.domain.LectureItem;
 import com.myway.backendspring.feature.rag.RagService;
 import com.myway.backendspring.feature.repository.FeatureStoreRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,148 +22,193 @@ public class MediaTranscriptionService {
     private static final String STT_DEFAULT_MODEL = "cf-whisper";
     private static final int PUBLIC_STT_MAX_DURATION_MS = 180_000;
     private static final int FALLBACK_TRANSCRIPT_DURATION_MS = 120_000;
-    private static final int FALLBACK_SEGMENT_MIN_MS = 1_000;
     private static final int STT_TARGET_SEGMENT_WORDS = 20;
 
     private final FeatureStoreRepository repository;
     private final DemoLearningService learningService;
     private final ActivityEventService activityEventService;
     private final RagService ragService;
+    private final TranscriptSegmenter segmenter;
 
     public MediaTranscriptionService(
             FeatureStoreRepository repository,
             DemoLearningService learningService,
             ActivityEventService activityEventService,
-            @Value("${myway.runtime.env:${SPRING_PROFILES_ACTIVE:dev}}") String runtimeEnv,
-            RagService ragService
+            RagService ragService,
+            TranscriptSegmenter segmenter
     ) {
         this.repository = repository;
         this.learningService = learningService;
         this.activityEventService = activityEventService;
         this.ragService = ragService;
+        this.segmenter = segmenter;
     }
 
-    public Map<String, Object> transcribe(Map<String, Object> extraction, String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl) {
+    public Map<String, Object> transcribe(
+            Map<String, Object> extraction,
+            String lectureId,
+            String language,
+            Integer durationMsInput,
+            String sttProvider,
+            String sttModel,
+            String audioUrl
+    ) {
         String now = Instant.now().toString();
-        Map<String, Object> extractionInProgress = new HashMap<>(extraction);
-        extractionInProgress.put("status", "PROCESSING");
-        extractionInProgress.put("stt_status", "PROCESSING");
-        extractionInProgress.put("processing_stage", "transcribing");
-        extractionInProgress.put("processing_step", "stt_started");
-        extractionInProgress.put("processing_error_code", null);
-        extractionInProgress.put("processing_error", null);
-        extractionInProgress.put("updated_at", now);
-        String extractionId = String.valueOf(extractionInProgress.getOrDefault("id", ""));
-        repository.upsertKv(EXTRACTION_SCOPE, extractionId, extractionInProgress);
-
-        LectureItem lecture = learningService.getLecture(lectureId);
-        int lectureDurationMs = lecture == null
-                ? FALLBACK_TRANSCRIPT_DURATION_MS
-                : Math.max(FALLBACK_SEGMENT_MIN_MS * 3, lecture.duration_minutes() * 60_000);
-        int requestedDurationMs = durationMsInput == null || durationMsInput <= 0 ? lectureDurationMs : durationMsInput;
-        int durationMs = Math.min(requestedDurationMs, PUBLIC_STT_MAX_DURATION_MS);
-        String normalizedLanguage = language == null || language.isBlank() ? "ko" : language;
-        String resolvedProvider = sttProvider == null || sttProvider.isBlank() ? STT_DEFAULT_PROVIDER : sttProvider.trim();
-        String resolvedModel = sttModel == null || sttModel.isBlank() ? STT_DEFAULT_MODEL : sttModel.trim();
-        String baseText = buildLectureNarrative(lectureId);
-        List<Map<String, Object>> segments = splitIntoSegments(baseText, durationMs);
-        String transcriptId = extractionId.isBlank() ? UUID.randomUUID().toString() : extractionId;
-        int wordCount = countWords(baseText);
-        Map<String, Object> sttQuality = sttQualityMetrics(segments, durationMs);
-
-        Map<String, Object> transcriptPayload = new HashMap<>();
-        transcriptPayload.put("id", transcriptId);
-        transcriptPayload.put("lecture_id", lectureId);
-        transcriptPayload.put("language", normalizedLanguage);
-        transcriptPayload.put("full_text", baseText);
-        transcriptPayload.put("segments", segments);
-        transcriptPayload.put("word_count", wordCount);
-        transcriptPayload.put("duration_ms", durationMs);
-        transcriptPayload.put("stt_provider", resolvedProvider);
-        transcriptPayload.put("stt_model", resolvedModel);
-        transcriptPayload.put("quality", sttQuality);
-        transcriptPayload.put("created_at", Instant.now().toString());
-        repository.upsertKv(TRANSCRIPT_SCOPE, lectureId, transcriptPayload);
-
-        Map<String, Object> pipelinePayload = new HashMap<>();
-        pipelinePayload.put("lecture_id", lectureId);
-        pipelinePayload.put("transcript_status", "COMPLETED");
-        pipelinePayload.put("summary_status", "PENDING");
-        pipelinePayload.put("audio_status", "COMPLETED");
-        pipelinePayload.put("processing_stage", "completed");
-        pipelinePayload.put("processing_step", "stt_completed");
-        pipelinePayload.put("processing_error_code", null);
-        pipelinePayload.put("processing_error", null);
-        pipelinePayload.put("transcript_id", transcriptId);
-        pipelinePayload.put("note_id", null);
-        pipelinePayload.put("extraction_id", extractionInProgress.get("id"));
-        pipelinePayload.put("updated_at", now);
-        repository.upsertKv(PIPELINE_SCOPE, lectureId, pipelinePayload);
-
-        Map<String, Object> extractionPayload = new HashMap<>(extractionInProgress);
-        extractionPayload.put("status", "COMPLETED");
-        extractionPayload.put("stt_status", "COMPLETED");
-        extractionPayload.put("transcript_id", transcriptId);
-        extractionPayload.put("audio_duration_ms", durationMs);
-        extractionPayload.put("processed_at", now);
-        extractionPayload.put("updated_at", now);
-        extractionPayload.put("language", normalizedLanguage);
-        extractionPayload.put("requested_stt_provider", resolvedProvider);
-        extractionPayload.put("requested_stt_model", resolvedModel);
-        extractionPayload.put("audio_url", audioUrl);
-        extractionPayload.put("processing_stage", "completed");
-        extractionPayload.put("processing_step", "stt_completed");
-        extractionPayload.put("processing_error_code", null);
-        extractionPayload.put("processing_error", null);
-        extractionPayload.put("stt_quality", sttQuality);
-        repository.upsertKv(EXTRACTION_SCOPE, transcriptId, extractionPayload);
-
+        Map<String, Object> extractionInProgress = markExtractionInProgress(extraction, now);
+        TranscriptionDraft draft = buildDraft(extractionInProgress, lectureId, language, durationMsInput, sttProvider, sttModel, audioUrl);
+        persistTranscript(lectureId, draft);
+        Map<String, Object> pipelinePayload = persistPipeline(lectureId, extractionInProgress, draft, now);
+        persistCompletedExtraction(extractionInProgress, draft, now);
         Map<String, Object> ragIndex = ragService == null ? Map.of() : ragService.rebuildRagIndex(lectureId, null);
-        Map<String, Object> response = new HashMap<>();
-        response.put("transcript_id", transcriptId);
-        response.put("lecture_id", lectureId);
-        response.put("segment_count", segments.size());
-        response.put("duration_ms", durationMs);
-        response.put("word_count", wordCount);
-        response.put("stt_provider", resolvedProvider);
-        response.put("stt_model", resolvedModel);
-        response.put("audio_url", audioUrl);
-        response.put("pipeline", pipelinePayload);
-        response.put("language", normalizedLanguage);
-        response.put("quality", sttQuality);
-        response.put("rag_index", ragIndex);
-        return response;
+        return buildResponse(draft, audioUrl, pipelinePayload, ragIndex);
     }
 
-    public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion, String audioUrl, String processingJobId, String processingStage, String processingStep, String audioFormat, Integer sampleRate, Integer channels) {
+    public Map<String, Object> completeExtractionCallback(
+            String extractionId,
+            String status,
+            String errorMessage,
+            long eventVersion,
+            String audioUrl,
+            String processingJobId,
+            String processingStage,
+            String processingStep,
+            String audioFormat,
+            Integer sampleRate,
+            Integer channels
+    ) {
         Map<String, Object> extraction = findExtraction(extractionId);
         if (extraction == null) return null;
-
-        long currentVersion = asLong(extraction.get("last_event_version"));
-        if (eventVersion <= currentVersion) {
-            extraction.put("callback_ignored", true);
-            extraction.put("callback_status", "IGNORED_STALE");
-            return normalizeExtractionForResponse(extraction);
-        }
+        if (isStaleCallback(extraction, eventVersion)) return staleCallbackResponse(extraction);
 
         String now = Instant.now().toString();
-        String resolvedStatus = status == null || status.isBlank() ? "COMPLETED" : status.toUpperCase();
-        String resolvedErrorCode = "FAILED".equalsIgnoreCase(resolvedStatus) ? "PROCESSOR_CALLBACK_FAILED" : null;
-        if ("FAILED".equalsIgnoreCase(resolvedStatus) && (errorMessage == null || errorMessage.isBlank())) errorMessage = "media processor callback failed";
-        applyCallbackMetadata(extraction, eventVersion, resolvedStatus, errorMessage, audioUrl, processingJobId, processingStage, processingStep, audioFormat, sampleRate, channels, now, resolvedErrorCode);
+        MediaStatus callbackStatus = MediaStatus.fromNullable(status, MediaStatus.COMPLETED);
+        String resolvedError = resolveErrorMessage(callbackStatus, errorMessage);
+        applyCallbackMetadata(extraction, eventVersion, callbackStatus, resolvedError, audioUrl, processingJobId, processingStage, processingStep, audioFormat, sampleRate, channels, now);
         repository.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
 
         String lectureId = String.valueOf(extraction.getOrDefault("lecture_id", "")).trim();
         if (!lectureId.isBlank()) {
-            repository.upsertKv(PIPELINE_SCOPE, lectureId, buildPipelineFromCallback(extraction, lectureId, resolvedStatus, resolvedErrorCode, errorMessage, now));
+            repository.upsertKv(PIPELINE_SCOPE, lectureId, buildPipelineFromCallback(extraction, lectureId, callbackStatus, resolvedError, now));
         }
-        appendActivity(extraction, extractionId, lectureId, resolvedStatus);
+        appendActivity(extraction, extractionId, lectureId, callbackStatus);
         return normalizeExtractionForResponse(extraction);
     }
 
-    private void applyCallbackMetadata(Map<String, Object> extraction, long eventVersion, String resolvedStatus, String errorMessage, String audioUrl, String processingJobId, String processingStage, String processingStep, String audioFormat, Integer sampleRate, Integer channels, String now, String resolvedErrorCode) {
+    private Map<String, Object> markExtractionInProgress(Map<String, Object> extraction, String now) {
+        Map<String, Object> payload = new HashMap<>(extraction);
+        payload.put("status", MediaStatus.PROCESSING.name());
+        payload.put("stt_status", MediaStatus.PROCESSING.name());
+        payload.put("processing_stage", PipelineStage.TRANSCRIBING.value());
+        payload.put("processing_step", "stt_started");
+        payload.put("processing_error_code", null);
+        payload.put("processing_error", null);
+        payload.put("updated_at", now);
+        String extractionId = String.valueOf(payload.getOrDefault("id", ""));
+        repository.upsertKv(EXTRACTION_SCOPE, extractionId, payload);
+        return payload;
+    }
+
+    private TranscriptionDraft buildDraft(Map<String, Object> extraction, String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl) {
+        int durationMs = resolveDurationMs(lectureId, durationMsInput);
+        String normalizedLanguage = language == null || language.isBlank() ? "ko" : language;
+        String provider = sttProvider == null || sttProvider.isBlank() ? STT_DEFAULT_PROVIDER : sttProvider.trim();
+        String model = sttModel == null || sttModel.isBlank() ? STT_DEFAULT_MODEL : sttModel.trim();
+        String text = buildLectureNarrative(lectureId);
+        List<Map<String, Object>> segments = segmenter.split(text, durationMs);
+        String transcriptId = String.valueOf(extraction.getOrDefault("id", UUID.randomUUID().toString()));
+        int wordCount = countWords(text);
+        Map<String, Object> quality = sttQualityMetrics(segments, durationMs);
+        return new TranscriptionDraft(transcriptId, lectureId, normalizedLanguage, provider, model, text, segments, durationMs, wordCount, quality, audioUrl);
+    }
+
+    private void persistTranscript(String lectureId, TranscriptionDraft draft) {
+        TranscriptPayload payload = new TranscriptPayload(draft.transcriptId(), lectureId, draft.language(), draft.fullText(), draft.segments(), draft.wordCount(), draft.durationMs(), draft.provider(), draft.model(), draft.quality(), Instant.now().toString());
+        repository.upsertKv(TRANSCRIPT_SCOPE, lectureId, payload.toMap());
+    }
+
+    private Map<String, Object> persistPipeline(String lectureId, Map<String, Object> extraction, TranscriptionDraft draft, String now) {
+        PipelinePayload payload = PipelinePayload.completed(lectureId, draft.transcriptId(), extraction.get("id"), now);
+        repository.upsertKv(PIPELINE_SCOPE, lectureId, payload.toMap());
+        return payload.toMap();
+    }
+
+    private void persistCompletedExtraction(Map<String, Object> extractionInProgress, TranscriptionDraft draft, String now) {
+        Map<String, Object> extractionPayload = new HashMap<>(extractionInProgress);
+        extractionPayload.put("status", MediaStatus.COMPLETED.name());
+        extractionPayload.put("stt_status", MediaStatus.COMPLETED.name());
+        extractionPayload.put("transcript_id", draft.transcriptId());
+        extractionPayload.put("audio_duration_ms", draft.durationMs());
+        extractionPayload.put("processed_at", now);
+        extractionPayload.put("updated_at", now);
+        extractionPayload.put("language", draft.language());
+        extractionPayload.put("requested_stt_provider", draft.provider());
+        extractionPayload.put("requested_stt_model", draft.model());
+        extractionPayload.put("audio_url", draft.audioUrl());
+        extractionPayload.put("processing_stage", PipelineStage.COMPLETED.value());
+        extractionPayload.put("processing_step", "stt_completed");
+        extractionPayload.put("processing_error_code", null);
+        extractionPayload.put("processing_error", null);
+        extractionPayload.put("stt_quality", draft.quality());
+        repository.upsertKv(EXTRACTION_SCOPE, draft.transcriptId(), extractionPayload);
+    }
+
+    private Map<String, Object> buildResponse(TranscriptionDraft draft, String audioUrl, Map<String, Object> pipelinePayload, Map<String, Object> ragIndex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("transcript_id", draft.transcriptId());
+        response.put("lecture_id", draft.lectureId());
+        response.put("segment_count", draft.segments().size());
+        response.put("duration_ms", draft.durationMs());
+        response.put("word_count", draft.wordCount());
+        response.put("stt_provider", draft.provider());
+        response.put("stt_model", draft.model());
+        response.put("audio_url", audioUrl);
+        response.put("pipeline", pipelinePayload);
+        response.put("language", draft.language());
+        response.put("quality", draft.quality());
+        response.put("rag_index", ragIndex);
+        return response;
+    }
+
+    private int resolveDurationMs(String lectureId, Integer durationMsInput) {
+        LectureItem lecture = learningService.getLecture(lectureId);
+        int lectureDurationMs = lecture == null ? FALLBACK_TRANSCRIPT_DURATION_MS : Math.max(3_000, lecture.duration_minutes() * 60_000);
+        int requested = durationMsInput == null || durationMsInput <= 0 ? lectureDurationMs : durationMsInput;
+        return Math.min(requested, PUBLIC_STT_MAX_DURATION_MS);
+    }
+
+    private boolean isStaleCallback(Map<String, Object> extraction, long eventVersion) {
+        return eventVersion <= asLong(extraction.get("last_event_version"));
+    }
+
+    private Map<String, Object> staleCallbackResponse(Map<String, Object> extraction) {
+        extraction.put("callback_ignored", true);
+        extraction.put("callback_status", "IGNORED_STALE");
+        return normalizeExtractionForResponse(extraction);
+    }
+
+    private String resolveErrorMessage(MediaStatus status, String errorMessage) {
+        if (status == MediaStatus.FAILED && (errorMessage == null || errorMessage.isBlank())) {
+            return "media processor callback failed";
+        }
+        return errorMessage;
+    }
+
+    private void applyCallbackMetadata(
+            Map<String, Object> extraction,
+            long eventVersion,
+            MediaStatus callbackStatus,
+            String errorMessage,
+            String audioUrl,
+            String processingJobId,
+            String processingStage,
+            String processingStep,
+            String audioFormat,
+            Integer sampleRate,
+            Integer channels,
+            String now
+    ) {
         extraction.put("last_event_version", eventVersion);
-        extraction.put("status", resolvedStatus);
+        extraction.put("status", callbackStatus.name());
         extraction.put("error_message", errorMessage);
         putIfText(extraction, "audio_url", audioUrl);
         putIfText(extraction, "processing_job_id", processingJobId);
@@ -174,40 +217,40 @@ public class MediaTranscriptionService {
         putIfText(extraction, "audio_format", audioFormat);
         if (sampleRate != null && sampleRate > 0) extraction.put("sample_rate", sampleRate);
         if (channels != null && channels > 0) extraction.put("channels", channels);
-        if ("COMPLETED".equalsIgnoreCase(resolvedStatus)) {
-            extraction.put("status", "PROCESSING");
-            extraction.put("processing_stage", "transcribing");
+
+        if (callbackStatus == MediaStatus.COMPLETED) {
+            extraction.put("status", MediaStatus.PROCESSING.name());
+            extraction.put("processing_stage", PipelineStage.TRANSCRIBING.value());
             extraction.put("processing_step", "stt_started");
-            extraction.put("stt_status", "PROCESSING");
+            extraction.put("stt_status", MediaStatus.PROCESSING.name());
             extraction.put("processing_error_code", null);
             extraction.put("processing_error", null);
-            extraction.put("processed_at", now);
-        } else if ("FAILED".equalsIgnoreCase(resolvedStatus)) {
-            extraction.put("processing_stage", "failed");
+        } else if (callbackStatus == MediaStatus.FAILED) {
+            extraction.put("processing_stage", PipelineStage.FAILED.value());
             extraction.put("processing_step", "callback_failed");
-            extraction.put("stt_status", "FAILED");
-            extraction.put("processing_error_code", resolvedErrorCode);
+            extraction.put("stt_status", MediaStatus.FAILED.name());
+            extraction.put("processing_error_code", "PROCESSOR_CALLBACK_FAILED");
             extraction.put("processing_error", errorMessage);
-            extraction.put("processed_at", now);
         } else {
-            extraction.put("processing_stage", "callback");
+            extraction.put("processing_stage", PipelineStage.CALLBACK.value());
             extraction.put("processing_step", "callback_received");
         }
+        extraction.put("processed_at", now);
         extraction.put("callback_ignored", false);
         extraction.put("callback_status", "APPLIED");
         extraction.put("updated_at", now);
     }
 
-    private Map<String, Object> buildPipelineFromCallback(Map<String, Object> extraction, String lectureId, String resolvedStatus, String resolvedErrorCode, String errorMessage, String now) {
+    private Map<String, Object> buildPipelineFromCallback(Map<String, Object> extraction, String lectureId, MediaStatus callbackStatus, String errorMessage, String now) {
+        boolean failed = callbackStatus == MediaStatus.FAILED;
         Map<String, Object> pipeline = new HashMap<>();
-        boolean failed = "FAILED".equalsIgnoreCase(resolvedStatus);
         pipeline.put("lecture_id", lectureId);
-        pipeline.put("audio_status", failed ? "FAILED" : "COMPLETED");
-        pipeline.put("transcript_status", failed ? "FAILED" : "PROCESSING");
+        pipeline.put("audio_status", failed ? MediaStatus.FAILED.name() : MediaStatus.COMPLETED.name());
+        pipeline.put("transcript_status", failed ? MediaStatus.FAILED.name() : MediaStatus.PROCESSING.name());
         pipeline.put("summary_status", "PENDING");
-        pipeline.put("processing_stage", failed ? "failed" : "transcribing");
+        pipeline.put("processing_stage", failed ? PipelineStage.FAILED.value() : PipelineStage.TRANSCRIBING.value());
         pipeline.put("processing_step", failed ? "callback_failed" : "stt_started");
-        pipeline.put("processing_error_code", failed ? resolvedErrorCode : null);
+        pipeline.put("processing_error_code", failed ? "PROCESSOR_CALLBACK_FAILED" : null);
         pipeline.put("processing_error", failed ? errorMessage : null);
         pipeline.put("transcript_id", extraction.get("transcript_id"));
         pipeline.put("note_id", null);
@@ -225,29 +268,25 @@ public class MediaTranscriptionService {
         return null;
     }
 
-    private void appendActivity(Map<String, Object> extraction, String extractionId, String lectureId, String resolvedStatus) {
+    private void appendActivity(Map<String, Object> extraction, String extractionId, String lectureId, MediaStatus status) {
         if (activityEventService == null) return;
         String userId = String.valueOf(extraction.getOrDefault("user_id", "")).trim();
         if (userId.isBlank()) return;
-        activityEventService.append(userId, "media_extraction_" + resolvedStatus.toLowerCase(), "extraction", extractionId, Map.of("lecture_id", lectureId, "status", resolvedStatus));
+        activityEventService.append(userId, "media_extraction_" + status.name().toLowerCase(), "extraction", extractionId, Map.of("lecture_id", lectureId, "status", status.name()));
     }
 
     private Map<String, Object> normalizeExtractionForResponse(Map<String, Object> extraction) {
         Map<String, Object> hydrated = new HashMap<>(extraction);
-        hydrated.putIfAbsent("processing_stage", "queued");
+        hydrated.putIfAbsent("processing_stage", PipelineStage.QUEUED.value());
         hydrated.putIfAbsent("processing_step", "job_requested");
         hydrated.putIfAbsent("processing_error_code", null);
         hydrated.putIfAbsent("processing_error", null);
-        hydrated.putIfAbsent("stt_status", "PENDING");
+        hydrated.putIfAbsent("stt_status", MediaStatus.PENDING.name());
         hydrated.putIfAbsent("error_message", null);
         hydrated.putIfAbsent("callback_ignored", false);
         hydrated.putIfAbsent("callback_status", "APPLIED");
         hydrated.putIfAbsent("last_event_version", 0L);
         return hydrated;
-    }
-
-    private void putIfText(Map<String, Object> target, String key, String value) {
-        if (value != null && !value.isBlank()) target.put(key, value);
     }
 
     private String buildLectureNarrative(String lectureId) {
@@ -257,30 +296,10 @@ public class MediaTranscriptionService {
                 "특히 자주 혼동되는 개념을 예시로 비교하고, 다음 차시와 연결되는 질문을 중심으로 학습합니다.";
     }
 
-    private List<Map<String, Object>> splitIntoSegments(String text, int durationMs) {
-        List<String> words = tokenizeForChunking(text);
-        if (words.isEmpty()) return List.of();
-        int segmentCount = Math.min(8, Math.max(3, (int) Math.ceil(words.size() / 20.0)));
-        int wordsPerSegment = Math.max(1, (int) Math.ceil(words.size() / (double) segmentCount));
-        List<Map<String, Object>> segments = new ArrayList<>();
-        for (int i = 0; i < segmentCount; i++) {
-            int start = i * wordsPerSegment;
-            int end = Math.min(words.size(), start + wordsPerSegment);
-            if (start >= end) break;
-            int startMs = (int) Math.round((i / (double) segmentCount) * durationMs);
-            int endMs = i == segmentCount - 1 ? durationMs : (int) Math.round(((i + 1) / (double) segmentCount) * durationMs);
-            Map<String, Object> segment = new HashMap<>();
-            segment.put("index", i);
-            segment.put("start_ms", startMs);
-            segment.put("end_ms", Math.max(startMs + FALLBACK_SEGMENT_MIN_MS, endMs));
-            segment.put("text", String.join(" ", words.subList(start, end)));
-            segments.add(segment);
-        }
-        return segments;
-    }
-
     private Map<String, Object> sttQualityMetrics(List<Map<String, Object>> segments, int durationMs) {
-        if (segments == null || segments.isEmpty()) return Map.of("segment_count", 0, "avg_words_per_segment", 0, "min_segment_ms", 0, "max_segment_ms", 0, "target_segment_words", STT_TARGET_SEGMENT_WORDS, "quality_score", 0.0);
+        if (segments == null || segments.isEmpty()) {
+            return Map.of("segment_count", 0, "avg_words_per_segment", 0, "min_segment_ms", 0, "max_segment_ms", 0, "target_segment_words", STT_TARGET_SEGMENT_WORDS, "quality_score", 0.0);
+        }
         int totalWords = 0;
         int minMs = Integer.MAX_VALUE;
         int maxMs = 0;
@@ -296,7 +315,14 @@ public class MediaTranscriptionService {
         double wordFit = 1.0 - Math.min(1.0, Math.abs(avgWords - STT_TARGET_SEGMENT_WORDS) / STT_TARGET_SEGMENT_WORDS);
         double durationFit = 1.0 - Math.min(1.0, Math.abs(durationMs - (segments.size() * 20_000.0)) / Math.max(1.0, durationMs));
         double score = Math.max(0.0, Math.min(1.0, (wordFit * 0.7) + (durationFit * 0.3)));
-        return Map.of("segment_count", segments.size(), "avg_words_per_segment", Math.round(avgWords * 100.0) / 100.0, "min_segment_ms", minMs == Integer.MAX_VALUE ? 0 : minMs, "max_segment_ms", maxMs, "target_segment_words", STT_TARGET_SEGMENT_WORDS, "quality_score", Math.round(score * 1000.0) / 1000.0);
+        return Map.of(
+                "segment_count", segments.size(),
+                "avg_words_per_segment", Math.round(avgWords * 100.0) / 100.0,
+                "min_segment_ms", minMs == Integer.MAX_VALUE ? 0 : minMs,
+                "max_segment_ms", maxMs,
+                "target_segment_words", STT_TARGET_SEGMENT_WORDS,
+                "quality_score", Math.round(score * 1000.0) / 1000.0
+        );
     }
 
     private int countWords(String text) {
@@ -304,17 +330,16 @@ public class MediaTranscriptionService {
     }
 
     private List<String> tokenize(String text) {
-        String normalized = normalizeText(text).toLowerCase();
-        return List.of(normalized.split("[^a-zA-Z0-9가-힣]+")).stream().map(String::trim).filter(token -> token.length() > 1).toList();
+        if (text == null) return List.of();
+        String normalized = text.replaceAll("\\s+", " ").trim().toLowerCase();
+        return List.of(normalized.split("[^a-zA-Z0-9가-힣]+")).stream()
+                .map(String::trim)
+                .filter(token -> token.length() > 1)
+                .toList();
     }
 
-    private List<String> tokenizeForChunking(String text) {
-        return List.of(normalizeText(text).split("\\s+")).stream().map(String::trim).filter(token -> !token.isBlank()).toList();
-    }
-
-    private String normalizeText(String text) {
-        if (text == null) return "";
-        return text.replaceAll("\\s+", " ").trim();
+    private void putIfText(Map<String, Object> target, String key, String value) {
+        if (value != null && !value.isBlank()) target.put(key, value);
     }
 
     private int asInt(Object value) {
@@ -334,6 +359,100 @@ public class MediaTranscriptionService {
             return Long.parseLong(String.valueOf(value));
         } catch (Exception ignored) {
             return 0L;
+        }
+    }
+
+    private record TranscriptionDraft(
+            String transcriptId,
+            String lectureId,
+            String language,
+            String provider,
+            String model,
+            String fullText,
+            List<Map<String, Object>> segments,
+            int durationMs,
+            int wordCount,
+            Map<String, Object> quality,
+            String audioUrl
+    ) {
+    }
+
+    private record TranscriptPayload(
+            String id,
+            String lectureId,
+            String language,
+            String fullText,
+            List<Map<String, Object>> segments,
+            int wordCount,
+            int durationMs,
+            String provider,
+            String model,
+            Map<String, Object> quality,
+            String createdAt
+    ) {
+        Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", id);
+            map.put("lecture_id", lectureId);
+            map.put("language", language);
+            map.put("full_text", fullText);
+            map.put("segments", segments);
+            map.put("word_count", wordCount);
+            map.put("duration_ms", durationMs);
+            map.put("stt_provider", provider);
+            map.put("stt_model", model);
+            map.put("quality", quality);
+            map.put("created_at", createdAt);
+            return map;
+        }
+    }
+
+    private record PipelinePayload(
+            String lectureId,
+            String transcriptStatus,
+            String summaryStatus,
+            String audioStatus,
+            String processingStage,
+            String processingStep,
+            Object processingErrorCode,
+            Object processingError,
+            String transcriptId,
+            Object noteId,
+            Object extractionId,
+            String updatedAt
+    ) {
+        static PipelinePayload completed(String lectureId, String transcriptId, Object extractionId, String now) {
+            return new PipelinePayload(
+                    lectureId,
+                    MediaStatus.COMPLETED.name(),
+                    MediaStatus.PENDING.name(),
+                    MediaStatus.COMPLETED.name(),
+                    PipelineStage.COMPLETED.value(),
+                    "stt_completed",
+                    null,
+                    null,
+                    transcriptId,
+                    null,
+                    extractionId,
+                    now
+            );
+        }
+
+        Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("lecture_id", lectureId);
+            map.put("transcript_status", transcriptStatus);
+            map.put("summary_status", summaryStatus);
+            map.put("audio_status", audioStatus);
+            map.put("processing_stage", processingStage);
+            map.put("processing_step", processingStep);
+            map.put("processing_error_code", processingErrorCode);
+            map.put("processing_error", processingError);
+            map.put("transcript_id", transcriptId);
+            map.put("note_id", noteId);
+            map.put("extraction_id", extractionId);
+            map.put("updated_at", updatedAt);
+            return map;
         }
     }
 }
