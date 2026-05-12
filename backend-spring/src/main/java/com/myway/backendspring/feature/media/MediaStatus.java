@@ -1,12 +1,12 @@
 package com.myway.backendspring.feature.media;
 
-enum MediaStatus {
+public enum MediaStatus {
     PENDING,
     PROCESSING,
     COMPLETED,
     FAILED;
 
-    static MediaStatus fromNullable(String raw, MediaStatus fallback) {
+    public static MediaStatus fromNullable(String raw, MediaStatus fallback) {
         if (raw == null || raw.isBlank()) {
             return fallback;
         }
