@@ -49,6 +49,8 @@ class LegacyEndpointMigrationIntegrationTest {
         JsonNode shortformLibraryMapping = null;
         JsonNode dashboardMapping = null;
         JsonNode enrollmentsMapping = null;
+        JsonNode dashboardWildcardMapping = null;
+        JsonNode enrollmentsWildcardMapping = null;
         JsonNode aiIntentMapping = null;
         for (JsonNode node : mappings) {
             if ("/api/v1/legacy/ai/settings".equals(node.path("legacy").asText())) {
@@ -66,6 +68,12 @@ class LegacyEndpointMigrationIntegrationTest {
             if ("/api/v1/legacy/enrollments".equals(node.path("legacy").asText())) {
                 enrollmentsMapping = node;
             }
+            if ("/api/v1/legacy/dashboard/*".equals(node.path("legacy").asText())) {
+                dashboardWildcardMapping = node;
+            }
+            if ("/api/v1/legacy/enrollments/*".equals(node.path("legacy").asText())) {
+                enrollmentsWildcardMapping = node;
+            }
             if ("/api/v1/legacy/ai/intent".equals(node.path("legacy").asText())) {
                 aiIntentMapping = node;
             }
@@ -80,6 +88,10 @@ class LegacyEndpointMigrationIntegrationTest {
         assertThat(dashboardMapping.path("status").asText()).isEqualTo("available");
         assertThat(enrollmentsMapping).isNotNull();
         assertThat(enrollmentsMapping.path("status").asText()).isEqualTo("available");
+        assertThat(dashboardWildcardMapping).isNotNull();
+        assertThat(dashboardWildcardMapping.path("status").asText()).isEqualTo("available");
+        assertThat(enrollmentsWildcardMapping).isNotNull();
+        assertThat(enrollmentsWildcardMapping.path("status").asText()).isEqualTo("available");
         assertThat(aiIntentMapping).isNotNull();
         assertThat(aiIntentMapping.path("status").asText()).isEqualTo("available");
     }
