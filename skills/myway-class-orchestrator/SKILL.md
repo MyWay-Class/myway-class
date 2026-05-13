@@ -19,11 +19,17 @@ description: "myway-class에서 기능 개발, 버그 수정, 리팩터링, API-
 1. Delegate API/domain work to `backend-engineer`.
 2. Delegate UI/integration work to `frontend-engineer`.
 3. Delegate boundary verification to `qa-integrator`.
+4. Add conditional tracks by request type.
+   - Root cause debugging request: `debug-specialist`
+   - Security/vulnerability audit request: `security-auditor`
+   - README/API/ops docs update request: `docs-writer`
+   - Commit/PR/changelog drafting request: `gitops-assistant`
 
 ## Phase 3: Verification
 1. Run relevant build/tests.
 2. Retry failed verification once.
 3. Report unresolved gaps with explicit scope.
+4. Re-verify debug/security-driven fixes through `qa-integrator`.
 
 ## Error Policy
 - Do not hide missing validation.
