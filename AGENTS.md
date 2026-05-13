@@ -8,6 +8,7 @@
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |------|----------|------|------|
 | 2026-04-29 | 프로젝트 전용 하네스 초기 구성 | agents/, skills/, AGENTS.md | 하네스 세분화 및 트리거 검증 요청 |
+| 2026-05-13 | 전담 서브에이전트 4종 추가 및 라우팅 검증 체계 확장 | agents/, skills/, tools/, _workspace/ | 디버깅/보안/문서/GitOps 분기 고도화 |
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
