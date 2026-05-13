@@ -287,11 +287,7 @@ public class FeatureStoreService {
         String extractionId = String.valueOf(row.getOrDefault("id", "")).trim();
         Map<String, Object> latest = extractionId.isBlank() ? null : store.getKv(EXTRACTION_SCOPE, extractionId);
         Map<String, Object> hydrated = latest == null ? new HashMap<>(row) : new HashMap<>(latest);
-        hydrated.putIfAbsent("processing_stage", "queued");
-        hydrated.putIfAbsent("processing_step", "job_requested");
-        hydrated.putIfAbsent("processing_error_code", null);
-        hydrated.putIfAbsent("processing_error", null);
-        hydrated.putIfAbsent("stt_status", "PENDING");
+        ExtractionDefaultProfile.applyIfMissing(hydrated);
         return hydrated;
     }
 
@@ -548,6 +544,16 @@ public class FeatureStoreService {
             target.putIfAbsent("note_id", noteId);
             target.putIfAbsent("extraction_id", extractionId);
             target.putIfAbsent("updated_at", updatedAt);
+        }
+    }
+
+    private static final class ExtractionDefaultProfile {
+        private static void applyIfMissing(Map<String, Object> target) {
+            target.putIfAbsent("processing_stage", "queued");
+            target.putIfAbsent("processing_step", "job_requested");
+            target.putIfAbsent("processing_error_code", null);
+            target.putIfAbsent("processing_error", null);
+            target.putIfAbsent("stt_status", "PENDING");
         }
     }
 
