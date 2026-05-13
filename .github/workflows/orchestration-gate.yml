@@ -30,21 +30,50 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Resolve project paths
+        run: |
+          set -euo pipefail
+          if [ -d "myway-class" ]; then
+            echo "PROJECT_DIR=myway-class" >> "$GITHUB_ENV"
+          else
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          fi
+
+          candidates=(
+            "${PROJECT_DIR}/_workspace/decision.json"
+            "_workspace/decision.json"
+            "decision.json"
+          )
+          for p in "${candidates[@]}"; do
+            if [ -f "$p" ]; then
+              echo "DECISION_PATH=$p" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "DECISION_PATH=" >> "$GITHUB_ENV"
+
       - name: Install dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
         run: npm ci
 
       - name: Run orchestrator gate
         run: npm run orch:run
+        working-directory: ${{ env.PROJECT_DIR }}
         env:
           ORCH_PROFILE: strict
           ORCH_TARGET_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
 
       - name: Ensure decision artifact exists
-        run: test -f _workspace/decision.json
+        run: |
+          set -euo pipefail
+          if [ -z "${DECISION_PATH}" ] || [ ! -f "${DECISION_PATH}" ]; then
+            echo "decision artifact missing. checked: ${PROJECT_DIR}/_workspace/decision.json, _workspace/decision.json, decision.json"
+            exit 1
+          fi
 
       - name: Enforce approved state
         run: |
-          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('_workspace/decision.json','utf8'));if(d.state!=='approved'){console.error('state is not approved:',d.state);process.exit(1);}"
+          node -e "const fs=require('fs');const p=process.env.DECISION_PATH;const d=JSON.parse(fs.readFileSync(p,'utf8'));if(d.state!=='approved'){console.error('state is not approved:',d.state,'path:',p);process.exit(1);}"
 
       - name: Upload orchestration artifacts
         if: always()
@@ -68,14 +97,17 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const d = fs.existsSync('_workspace/decision.json')
-              ? JSON.parse(fs.readFileSync('_workspace/decision.json','utf8'))
+            const decisionPath = process.env.DECISION_PATH || '_workspace/decision.json';
+            const scorecardPath = decisionPath.replace('decision.json', 'scorecard.json');
+            const remediationPath = decisionPath.replace('decision.json', 'remediation.json');
+            const d = fs.existsSync(decisionPath)
+              ? JSON.parse(fs.readFileSync(decisionPath,'utf8'))
               : { traceId: 'n/a', taskId: 'n/a', state: 'unknown', decision: 'unknown', reason: 'decision artifact missing', requestChangeCodes: [], nextActions: [] };
-            const s = fs.existsSync('_workspace/scorecard.json')
-              ? JSON.parse(fs.readFileSync('_workspace/scorecard.json','utf8'))
+            const s = fs.existsSync(scorecardPath)
+              ? JSON.parse(fs.readFileSync(scorecardPath,'utf8'))
               : null;
-            const r = fs.existsSync('_workspace/remediation.json')
-              ? JSON.parse(fs.readFileSync('_workspace/remediation.json','utf8'))
+            const r = fs.existsSync(remediationPath)
+              ? JSON.parse(fs.readFileSync(remediationPath,'utf8'))
               : null;
             const codes = Array.isArray(d.requestChangeCodes) && d.requestChangeCodes.length > 0
               ? d.requestChangeCodes.join(', ')
@@ -134,8 +166,9 @@ jobs:
           script: |
             if (!process.env.SLACK_WEBHOOK_URL) return;
             const fs = require('fs');
-            const d = fs.existsSync('_workspace/decision.json')
-              ? JSON.parse(fs.readFileSync('_workspace/decision.json','utf8'))
+            const decisionPath = process.env.DECISION_PATH || '_workspace/decision.json';
+            const d = fs.existsSync(decisionPath)
+              ? JSON.parse(fs.readFileSync(decisionPath,'utf8'))
               : { traceId: 'n/a', taskId: 'n/a', state: 'unknown', decision: 'unknown', reason: 'decision artifact missing', requestChangeCodes: [] };
             const codeText = Array.isArray(d.requestChangeCodes) && d.requestChangeCodes.length > 0
               ? d.requestChangeCodes.join(', ')
@@ -179,7 +212,8 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const d = JSON.parse(fs.readFileSync('_workspace/decision.json','utf8'));
+            const p = process.env.DECISION_PATH || '_workspace/decision.json';
+            const d = JSON.parse(fs.readFileSync(p,'utf8'));
             if (d.state !== 'approved') return;
             await github.rest.pulls.createReview({
               owner: context.repo.owner,
