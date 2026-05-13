@@ -242,35 +242,37 @@ public class FeatureStoreService {
 
     public Map<String, Object> transcribe(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl, String extractionId) {
         if (mediaTranscriptionService == null) return Map.of();
-        Map<String, Object> extraction = resolveExtractionForTranscription(lectureId, audioUrl, extractionId);
-        return runTranscription(extraction, lectureId, language, durationMsInput, sttProvider, sttModel, audioUrl);
-    }
-
-    private Map<String, Object> resolveExtractionForTranscription(String lectureId, String audioUrl, String extractionId) {
-        if (extractionId == null || extractionId.isBlank()) {
-            return createExtraction(lectureId, audioUrl);
-        }
-        Map<String, Object> extraction = store.getKv(EXTRACTION_SCOPE, extractionId);
-        return extraction != null ? extraction : createExtraction(lectureId, audioUrl);
-    }
-
-    private Map<String, Object> runTranscription(
-            Map<String, Object> extraction,
-            String lectureId,
-            String language,
-            Integer durationMsInput,
-            String sttProvider,
-            String sttModel,
-            String audioUrl
-    ) {
-        return mediaTranscriptionService.transcribe(
-                extraction,
+        TranscribeRequestContext request = new TranscribeRequestContext(
                 lectureId,
                 language,
                 durationMsInput,
                 sttProvider,
                 sttModel,
-                audioUrl
+                audioUrl,
+                extractionId
+        );
+        Map<String, Object> extraction = resolveExtractionForTranscription(request);
+        return runTranscription(extraction, request);
+    }
+
+    private Map<String, Object> resolveExtractionForTranscription(TranscribeRequestContext request) {
+        String extractionId = request.extractionId();
+        if (extractionId == null || extractionId.isBlank()) {
+            return createExtraction(request.lectureId(), request.audioUrl());
+        }
+        Map<String, Object> extraction = store.getKv(EXTRACTION_SCOPE, extractionId);
+        return extraction != null ? extraction : createExtraction(request.lectureId(), request.audioUrl());
+    }
+
+    private Map<String, Object> runTranscription(Map<String, Object> extraction, TranscribeRequestContext request) {
+        return mediaTranscriptionService.transcribe(
+                extraction,
+                request.lectureId(),
+                request.language(),
+                request.durationMsInput(),
+                request.sttProvider(),
+                request.sttModel(),
+                request.audioUrl()
         );
     }
 
@@ -555,6 +557,17 @@ public class FeatureStoreService {
             target.putIfAbsent("processing_error", null);
             target.putIfAbsent("stt_status", "PENDING");
         }
+    }
+
+    private record TranscribeRequestContext(
+            String lectureId,
+            String language,
+            Integer durationMsInput,
+            String sttProvider,
+            String sttModel,
+            String audioUrl,
+            String extractionId
+    ) {
     }
 
 }
