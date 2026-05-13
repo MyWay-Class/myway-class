@@ -60,7 +60,7 @@ public class MediaTranscriptionService {
         Map<String, Object> pipelinePayload = persistPipeline(lectureId, extractionInProgress, draft, now);
         persistCompletedExtraction(extractionInProgress, draft, now);
         Map<String, Object> ragIndex = ragService == null ? Map.of() : ragService.rebuildRagIndex(lectureId, null);
-        return buildResponse(draft, audioUrl, pipelinePayload, ragIndex);
+        return assembleTranscribeResponse(draft, audioUrl, pipelinePayload, ragIndex);
     }
 
     public Map<String, Object> completeExtractionCallback(
@@ -98,33 +98,32 @@ public class MediaTranscriptionService {
 
     private Map<String, Object> markExtractionInProgress(Map<String, Object> extraction, String now) {
         Map<String, Object> payload = new HashMap<>(extraction);
-        payload.put("status", MediaStatus.PROCESSING.name());
-        payload.put("stt_status", MediaStatus.PROCESSING.name());
-        payload.put("processing_stage", PipelineStage.TRANSCRIBING.value());
-        payload.put("processing_step", "stt_started");
-        payload.put("processing_error_code", null);
-        payload.put("processing_error", null);
-        payload.put("updated_at", now);
+        applyExtractionStatusUpdate(payload, new ExtractionStatusUpdate(
+                MediaStatus.PROCESSING.name(),
+                MediaStatus.PROCESSING.name(),
+                PipelineStage.TRANSCRIBING.value(),
+                "stt_started",
+                null,
+                null,
+                now
+        ));
         String extractionId = String.valueOf(payload.getOrDefault("id", ""));
         repository.upsertKv(EXTRACTION_SCOPE, extractionId, payload);
         return payload;
     }
 
     private TranscriptionDraft buildDraft(Map<String, Object> extraction, String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl) {
-        int durationMs = resolveDurationMs(lectureId, durationMsInput);
-        String normalizedLanguage = language == null || language.isBlank() ? "ko" : language;
-        String provider = sttProvider == null || sttProvider.isBlank() ? STT_DEFAULT_PROVIDER : sttProvider.trim();
-        String model = sttModel == null || sttModel.isBlank() ? STT_DEFAULT_MODEL : sttModel.trim();
+        SttRequest request = buildSttRequest(lectureId, language, durationMsInput, sttProvider, sttModel, audioUrl);
         String text = buildLectureNarrative(lectureId);
-        List<Map<String, Object>> segments = segmenter.split(text, durationMs);
+        List<Map<String, Object>> segments = buildSegmentGenerationPayload(text, request.durationMs()).toSegments(segmenter);
         String transcriptId = String.valueOf(extraction.getOrDefault("id", UUID.randomUUID().toString()));
         int wordCount = countWords(text);
-        Map<String, Object> quality = sttQualityMetrics(segments, durationMs);
-        return new TranscriptionDraft(transcriptId, lectureId, normalizedLanguage, provider, model, text, segments, durationMs, wordCount, quality, audioUrl);
+        Map<String, Object> quality = sttQualityMetrics(segments, request.durationMs());
+        return new TranscriptionDraft(transcriptId, lectureId, request.language(), request.provider(), request.model(), text, segments, request.durationMs(), wordCount, quality, request.audioUrl());
     }
 
     private void persistTranscript(String lectureId, TranscriptionDraft draft) {
-        TranscriptPayload payload = new TranscriptPayload(draft.transcriptId(), lectureId, draft.language(), draft.fullText(), draft.segments(), draft.wordCount(), draft.durationMs(), draft.provider(), draft.model(), draft.quality(), Instant.now().toString());
+        TranscriptPayload payload = createTranscriptPayload(lectureId, draft);
         repository.upsertKv(TRANSCRIPT_SCOPE, lectureId, payload.toMap());
     }
 
@@ -136,25 +135,27 @@ public class MediaTranscriptionService {
 
     private void persistCompletedExtraction(Map<String, Object> extractionInProgress, TranscriptionDraft draft, String now) {
         Map<String, Object> extractionPayload = new HashMap<>(extractionInProgress);
-        extractionPayload.put("status", MediaStatus.COMPLETED.name());
-        extractionPayload.put("stt_status", MediaStatus.COMPLETED.name());
+        applyExtractionStatusUpdate(extractionPayload, new ExtractionStatusUpdate(
+                MediaStatus.COMPLETED.name(),
+                MediaStatus.COMPLETED.name(),
+                PipelineStage.COMPLETED.value(),
+                "stt_completed",
+                null,
+                null,
+                now
+        ));
         extractionPayload.put("transcript_id", draft.transcriptId());
         extractionPayload.put("audio_duration_ms", draft.durationMs());
         extractionPayload.put("processed_at", now);
-        extractionPayload.put("updated_at", now);
         extractionPayload.put("language", draft.language());
         extractionPayload.put("requested_stt_provider", draft.provider());
         extractionPayload.put("requested_stt_model", draft.model());
         extractionPayload.put("audio_url", draft.audioUrl());
-        extractionPayload.put("processing_stage", PipelineStage.COMPLETED.value());
-        extractionPayload.put("processing_step", "stt_completed");
-        extractionPayload.put("processing_error_code", null);
-        extractionPayload.put("processing_error", null);
         extractionPayload.put("stt_quality", draft.quality());
         repository.upsertKv(EXTRACTION_SCOPE, draft.transcriptId(), extractionPayload);
     }
 
-    private Map<String, Object> buildResponse(TranscriptionDraft draft, String audioUrl, Map<String, Object> pipelinePayload, Map<String, Object> ragIndex) {
+    private Map<String, Object> assembleTranscribeResponse(TranscriptionDraft draft, String audioUrl, Map<String, Object> pipelinePayload, Map<String, Object> ragIndex) {
         Map<String, Object> response = new HashMap<>();
         response.put("transcript_id", draft.transcriptId());
         response.put("lecture_id", draft.lectureId());
@@ -169,6 +170,44 @@ public class MediaTranscriptionService {
         response.put("quality", draft.quality());
         response.put("rag_index", ragIndex);
         return response;
+    }
+
+    private SttRequest buildSttRequest(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl) {
+        int durationMs = resolveDurationMs(lectureId, durationMsInput);
+        String normalizedLanguage = language == null || language.isBlank() ? "ko" : language;
+        String provider = sttProvider == null || sttProvider.isBlank() ? STT_DEFAULT_PROVIDER : sttProvider.trim();
+        String model = sttModel == null || sttModel.isBlank() ? STT_DEFAULT_MODEL : sttModel.trim();
+        return new SttRequest(normalizedLanguage, provider, model, durationMs, audioUrl);
+    }
+
+    private SegmentGenerationPayload buildSegmentGenerationPayload(String text, int durationMs) {
+        return new SegmentGenerationPayload(text, durationMs);
+    }
+
+    private TranscriptPayload createTranscriptPayload(String lectureId, TranscriptionDraft draft) {
+        return new TranscriptPayload(
+                draft.transcriptId(),
+                lectureId,
+                draft.language(),
+                draft.fullText(),
+                draft.segments(),
+                draft.wordCount(),
+                draft.durationMs(),
+                draft.provider(),
+                draft.model(),
+                draft.quality(),
+                Instant.now().toString()
+        );
+    }
+
+    private void applyExtractionStatusUpdate(Map<String, Object> extraction, ExtractionStatusUpdate update) {
+        extraction.put("status", update.status());
+        extraction.put("stt_status", update.sttStatus());
+        extraction.put("processing_stage", update.processingStage());
+        extraction.put("processing_step", update.processingStep());
+        extraction.put("processing_error_code", update.processingErrorCode());
+        extraction.put("processing_error", update.processingError());
+        extraction.put("updated_at", update.updatedAt());
     }
 
     private int resolveDurationMs(String lectureId, Integer durationMsInput) {
@@ -377,6 +416,32 @@ public class MediaTranscriptionService {
             int wordCount,
             Map<String, Object> quality,
             String audioUrl
+    ) {
+    }
+
+    private record SttRequest(
+            String language,
+            String provider,
+            String model,
+            int durationMs,
+            String audioUrl
+    ) {
+    }
+
+    private record SegmentGenerationPayload(String text, int durationMs) {
+        List<Map<String, Object>> toSegments(TranscriptSegmenter segmenter) {
+            return segmenter.split(text, durationMs);
+        }
+    }
+
+    private record ExtractionStatusUpdate(
+            String status,
+            String sttStatus,
+            String processingStage,
+            String processingStep,
+            Object processingErrorCode,
+            Object processingError,
+            String updatedAt
     ) {
     }
 
