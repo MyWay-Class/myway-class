@@ -7,6 +7,11 @@
 - Check `_workspace/` first and pick one mode: initial run, partial rerun, or fresh rerun.
 - Keep backend/frontend contract changes synchronized.
 - Preserve intermediate artifacts in `_workspace/`.
+- Add conditional role routing by request type:
+  - debug/root-cause requests -> `debug-specialist`
+  - security/audit requests -> `security-auditor`
+  - docs update requests -> `docs-writer`
+  - commit/PR/changelog requests -> `gitops-assistant`
 
 ## Input / Output Protocol
 - Input: user request, scope, constraints
@@ -18,3 +23,4 @@
 
 ## Collaboration
 - Trigger `backend-engineer`, `frontend-engineer`, `qa-integrator` in dependency-aware order.
+- Route findings from `debug-specialist` and `security-auditor` to implementation roles, then re-verify through `qa-integrator`.
