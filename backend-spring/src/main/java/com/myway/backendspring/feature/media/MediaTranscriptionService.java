@@ -174,9 +174,9 @@ public class MediaTranscriptionService {
 
     private SttRequest buildSttRequest(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl) {
         int durationMs = resolveDurationMs(lectureId, durationMsInput);
-        String normalizedLanguage = language == null || language.isBlank() ? "ko" : language;
-        String provider = sttProvider == null || sttProvider.isBlank() ? STT_DEFAULT_PROVIDER : sttProvider.trim();
-        String model = sttModel == null || sttModel.isBlank() ? STT_DEFAULT_MODEL : sttModel.trim();
+        String normalizedLanguage = normalizeOrDefault(language, "ko");
+        String provider = normalizeOrDefault(sttProvider, STT_DEFAULT_PROVIDER);
+        String model = normalizeOrDefault(sttModel, STT_DEFAULT_MODEL);
         return new SttRequest(normalizedLanguage, provider, model, durationMs, audioUrl);
     }
 
@@ -382,6 +382,12 @@ public class MediaTranscriptionService {
 
     private void putIfText(Map<String, Object> target, String key, String value) {
         if (value != null && !value.isBlank()) target.put(key, value);
+    }
+
+    private String normalizeOrDefault(String value, String defaultValue) {
+        if (value == null) return defaultValue;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? defaultValue : trimmed;
     }
 
     private int asInt(Object value) {
