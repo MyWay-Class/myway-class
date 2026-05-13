@@ -353,17 +353,13 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> summarizeLecture(String lectureId, String style, String language) {
-        Map<String, Object> note = new HashMap<>();
-        note.put("id", UUID.randomUUID().toString());
-        note.put("lecture_id", lectureId);
-        note.put("title", "자동 요약 노트");
-        note.put("content", "Spring 백엔드에서 생성한 요약입니다.");
-        note.put("key_concepts", List.of("핵심 개념", "핵심 정리"));
-        note.put("keywords", List.of("spring", "summary"));
-        note.put("timestamps", List.of(Map.of("start_ms", 0, "end_ms", 30000, "label", "인트로")));
-        note.put("style", style == null || style.isBlank() ? "brief" : style);
-        note.put("language", language == null || language.isBlank() ? "ko" : language);
-        note.put("created_at", Instant.now().toString());
+        Map<String, Object> note = new LectureSummaryNotePayload(
+                UUID.randomUUID().toString(),
+                lectureId,
+                style == null || style.isBlank() ? "brief" : style,
+                language == null || language.isBlank() ? "ko" : language,
+                Instant.now().toString()
+        ).toMap();
         store.insertEvent(MEDIA_NOTE_SCOPE, lectureId, String.valueOf(note.get("id")), note);
         return note;
     }
@@ -568,6 +564,29 @@ public class FeatureStoreService {
             String audioUrl,
             String extractionId
     ) {
+    }
+
+    private record LectureSummaryNotePayload(
+            String id,
+            String lectureId,
+            String style,
+            String language,
+            String createdAt
+    ) {
+        Map<String, Object> toMap() {
+            Map<String, Object> note = new HashMap<>();
+            note.put("id", id);
+            note.put("lecture_id", lectureId);
+            note.put("title", "자동 요약 노트");
+            note.put("content", "Spring 백엔드에서 생성한 요약입니다.");
+            note.put("key_concepts", List.of("핵심 개념", "핵심 정리"));
+            note.put("keywords", List.of("spring", "summary"));
+            note.put("timestamps", List.of(Map.of("start_ms", 0, "end_ms", 30000, "label", "인트로")));
+            note.put("style", style);
+            note.put("language", language);
+            note.put("created_at", createdAt);
+            return note;
+        }
     }
 
 }
