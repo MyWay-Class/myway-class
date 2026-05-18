@@ -200,19 +200,15 @@ public class ShortformController {
             return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_ID_REQUIRED", "shortform_id가 필요합니다."));
         }
 
-        long eventVersion = body.event_version() != null ? body.event_version() : 1L;
-        if (eventVersion < 1L) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "event_version은 1 이상이어야 합니다."));
-        }
-        String status = body.status() != null ? body.status().trim().toUpperCase() : "COMPLETED";
-        if (!ALLOWED_EXPORT_CALLBACK_STATUSES.contains(status)) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "status는 COMPLETED 또는 FAILED만 허용됩니다."));
+        CallbackPolicyDecision decision = CallbackStateTransitionPolicy.decide(body);
+        if (!decision.valid()) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", decision.errorMessage()));
         }
 
         Map<String, Object> updated = shortformService.applyShortformExportCallback(
                 shortformId,
-                status,
-                eventVersion,
+                decision.status(),
+                decision.eventVersion(),
                 body.video_url(),
                 body.error_message()
         );
@@ -232,5 +228,29 @@ public class ShortformController {
             return ResponseEntity.ok(ApiResponse.success(updated, "숏폼 export가 실패했습니다."));
         }
         return ResponseEntity.ok(ApiResponse.success(updated, "숏폼 export가 완료되었습니다."));
+    }
+
+    private record CallbackPolicyDecision(boolean valid, String status, long eventVersion, String errorMessage) {
+        static CallbackPolicyDecision valid(String status, long eventVersion) {
+            return new CallbackPolicyDecision(true, status, eventVersion, null);
+        }
+
+        static CallbackPolicyDecision invalid(String errorMessage) {
+            return new CallbackPolicyDecision(false, null, 0L, errorMessage);
+        }
+    }
+
+    private static final class CallbackStateTransitionPolicy {
+        private static CallbackPolicyDecision decide(ExportCallbackRequest body) {
+            long eventVersion = body.event_version() != null ? body.event_version() : 1L;
+            if (eventVersion < 1L) {
+                return CallbackPolicyDecision.invalid("event_version은 1 이상이어야 합니다.");
+            }
+            String status = body.status() != null ? body.status().trim().toUpperCase() : "COMPLETED";
+            if (!ALLOWED_EXPORT_CALLBACK_STATUSES.contains(status)) {
+                return CallbackPolicyDecision.invalid("status는 COMPLETED 또는 FAILED만 허용됩니다.");
+            }
+            return CallbackPolicyDecision.valid(status, eventVersion);
+        }
     }
 }
