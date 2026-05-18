@@ -211,21 +211,17 @@ public class MediaController {
         if (extractionId.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "callback payload가 올바르지 않습니다."));
         }
-        long eventVersion = body.event_version() != null ? body.event_version() : 1L;
-        if (eventVersion < 1L) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "event_version은 1 이상이어야 합니다."));
-        }
-        String status = body.status() == null ? "COMPLETED" : body.status().trim().toUpperCase();
-        if (!ALLOWED_CALLBACK_STATUSES.contains(status)) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "status는 COMPLETED, FAILED, PROCESSING 중 하나여야 합니다."));
+        CallbackPolicyDecision decision = CallbackStateTransitionPolicy.decide(body);
+        if (!decision.valid()) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", decision.errorMessage()));
         }
         String errorMessage = body.error_message();
         String audioUrl = body.audio_url() == null ? null : body.audio_url().trim();
         Map<String, Object> result = mediaPipelineService.completeExtractionCallback(
                 extractionId,
-                status,
+                decision.status(),
                 errorMessage,
-                eventVersion,
+                decision.eventVersion(),
                 audioUrl,
                 body.processing_job_id(),
                 body.processing_stage(),
@@ -245,7 +241,7 @@ public class MediaController {
         }
         String lectureId = String.valueOf(result.getOrDefault("lecture_id", "")).trim();
         Map<String, Object> transcribeResult = null;
-        boolean shouldStartStt = "COMPLETED".equalsIgnoreCase(status)
+        boolean shouldStartStt = "COMPLETED".equalsIgnoreCase(decision.status())
                 || "transcribing".equalsIgnoreCase(String.valueOf(result.getOrDefault("processing_stage", "")));
         if (shouldStartStt && !lectureId.isBlank()) {
             transcribeResult = mediaPipelineService.transcribe(
@@ -271,6 +267,30 @@ public class MediaController {
                 ),
                 "오디오 추출 callback이 반영되어 STT가 자동 시작되었습니다."
         ));
+    }
+
+    private record CallbackPolicyDecision(boolean valid, String status, long eventVersion, String errorMessage) {
+        static CallbackPolicyDecision valid(String status, long eventVersion) {
+            return new CallbackPolicyDecision(true, status, eventVersion, null);
+        }
+
+        static CallbackPolicyDecision invalid(String errorMessage) {
+            return new CallbackPolicyDecision(false, null, 0L, errorMessage);
+        }
+    }
+
+    private static final class CallbackStateTransitionPolicy {
+        private static CallbackPolicyDecision decide(ExtractionCallbackRequest body) {
+            long eventVersion = body.event_version() != null ? body.event_version() : 1L;
+            if (eventVersion < 1L) {
+                return CallbackPolicyDecision.invalid("event_version은 1 이상이어야 합니다.");
+            }
+            String status = body.status() == null ? "COMPLETED" : body.status().trim().toUpperCase();
+            if (!ALLOWED_CALLBACK_STATUSES.contains(status)) {
+                return CallbackPolicyDecision.invalid("status는 COMPLETED, FAILED, PROCESSING 중 하나여야 합니다.");
+            }
+            return CallbackPolicyDecision.valid(status, eventVersion);
+        }
     }
 
     private static final class SummaryResponseAssembler {
