@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/shortform")
 public class ShortformController {
+    private static final Set<String> ALLOWED_EXPORT_CALLBACK_STATUSES = Set.of("COMPLETED", "FAILED");
     public record GenerateRequest(String course_id, String mode) {}
     public record SelectCandidatesRequest(String extraction_id, List<String> candidate_ids) {}
     public record ComposeRequest(String title, String description, String course_id) {}
@@ -199,7 +201,13 @@ public class ShortformController {
         }
 
         long eventVersion = body.event_version() != null ? body.event_version() : 1L;
-        String status = body.status() != null ? body.status() : "COMPLETED";
+        if (eventVersion < 1L) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "event_version은 1 이상이어야 합니다."));
+        }
+        String status = body.status() != null ? body.status().trim().toUpperCase() : "COMPLETED";
+        if (!ALLOWED_EXPORT_CALLBACK_STATUSES.contains(status)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "status는 COMPLETED 또는 FAILED만 허용됩니다."));
+        }
 
         Map<String, Object> updated = shortformService.applyShortformExportCallback(
                 shortformId,
