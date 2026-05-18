@@ -5,6 +5,9 @@ import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.feature.media.MediaPipelineService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,10 +17,12 @@ import org.springframework.web.servlet.HandlerMapping;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/media")
 public class MediaController {
+    private static final Set<String> ALLOWED_CALLBACK_STATUSES = Set.of("COMPLETED", "FAILED", "PROCESSING");
     private final SessionService sessionService;
     private final MediaPipelineService mediaPipelineService;
     private final DemoLearningService learningService;
@@ -36,11 +41,11 @@ public class MediaController {
     }
 
     public record ExtractionCallbackRequest(
-            String extraction_id,
+            @NotBlank String extraction_id,
             String lecture_id,
             String status,
             String error_message,
-            Long event_version,
+            @Min(1) Long event_version,
             String audio_url,
             String processing_job_id,
             String processing_stage,
@@ -51,12 +56,12 @@ public class MediaController {
     ) {}
 
     public record ExtractAudioRequest(
-            String lecture_id,
+            @NotBlank String lecture_id,
             String audio_url
     ) {}
 
     public record TranscribeRequest(
-            String lecture_id,
+            @NotBlank String lecture_id,
             String language,
             Integer duration_ms,
             String stt_provider,
@@ -65,7 +70,7 @@ public class MediaController {
     ) {}
 
     public record SummarizeRequest(
-            String lecture_id,
+            @NotBlank String lecture_id,
             String style,
             String language
     ) {}
@@ -88,7 +93,7 @@ public class MediaController {
     }
 
     @PostMapping("/extract-audio")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> extract(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody ExtractAudioRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> extract(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody ExtractAudioRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
@@ -102,7 +107,7 @@ public class MediaController {
     }
 
     @PostMapping("/transcribe")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody TranscribeRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody TranscribeRequest body) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
         String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
@@ -120,7 +125,7 @@ public class MediaController {
     }
 
     @PostMapping("/summarize")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SummarizeRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SummarizeRequest body) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
         String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
@@ -203,7 +208,7 @@ public class MediaController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> callback(
             @RequestHeader(value = "X-Callback-Token", required = false) String token,
             @RequestHeader(value = "x-myway-media-callback-secret", required = false) String callbackSecret,
-            @RequestBody ExtractionCallbackRequest body
+            @Valid @RequestBody ExtractionCallbackRequest body
     ) {
         String resolvedToken = (token != null && !token.isBlank()) ? token : callbackSecret;
         if (resolvedToken == null || resolvedToken.isBlank() || !resolvedToken.equals(callbackToken)) {
@@ -217,7 +222,13 @@ public class MediaController {
             return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "callback payload가 올바르지 않습니다."));
         }
         long eventVersion = body.event_version() != null ? body.event_version() : 1L;
-        String status = body.status() == null ? "COMPLETED" : body.status();
+        if (eventVersion < 1L) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "event_version은 1 이상이어야 합니다."));
+        }
+        String status = body.status() == null ? "COMPLETED" : body.status().trim().toUpperCase();
+        if (!ALLOWED_CALLBACK_STATUSES.contains(status)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "status는 COMPLETED, FAILED, PROCESSING 중 하나여야 합니다."));
+        }
         String errorMessage = body.error_message();
         String audioUrl = body.audio_url() == null ? null : body.audio_url().trim();
         Map<String, Object> result = mediaPipelineService.completeExtractionCallback(
