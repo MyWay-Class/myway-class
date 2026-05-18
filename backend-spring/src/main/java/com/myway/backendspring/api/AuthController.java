@@ -5,6 +5,7 @@ import com.myway.backendspring.auth.DemoUsers;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,11 +31,7 @@ public class AuthController {
     public record LoginBody(@NotBlank String userId) {}
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<SessionView>> login(@RequestBody LoginBody body) {
-        if (body == null || body.userId() == null || body.userId().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("USER_ID_REQUIRED", "로그인할 사용자 식별자가 필요합니다."));
-        }
-
+    public ResponseEntity<ApiResponse<SessionView>> login(@Valid @RequestBody LoginBody body) {
         DemoUser user = sessionService.findUser(body.userId().trim()).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
