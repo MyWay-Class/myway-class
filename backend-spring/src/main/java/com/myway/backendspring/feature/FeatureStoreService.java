@@ -342,14 +342,21 @@ public class FeatureStoreService {
         Map<String, Object> empty = new HashMap<>();
         empty.put("lecture_id", lectureId);
         empty.put("status", "EMPTY");
-        PipelineDefaultProfile.withCurrentTimestamp().applyTo(empty);
-        return empty;
+        return applyPipelineDefaults(empty, false);
     }
 
     private Map<String, Object> hydratePipelineRow(Map<String, Object> row) {
-        Map<String, Object> hydrated = new HashMap<>(row);
-        PipelineDefaultProfile.withCurrentTimestamp().applyIfMissing(hydrated);
-        return hydrated;
+        return applyPipelineDefaults(new HashMap<>(row), true);
+    }
+
+    private Map<String, Object> applyPipelineDefaults(Map<String, Object> target, boolean keepExistingValues) {
+        PipelineDefaultProfile defaults = PipelineDefaultProfile.withCurrentTimestamp();
+        if (keepExistingValues) {
+            defaults.applyIfMissing(target);
+        } else {
+            defaults.applyTo(target);
+        }
+        return target;
     }
 
     public Map<String, Object> summarizeLecture(String lectureId, String style, String language) {
