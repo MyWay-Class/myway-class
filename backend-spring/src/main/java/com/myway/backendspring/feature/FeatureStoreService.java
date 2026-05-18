@@ -303,7 +303,19 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion, String audioUrl) {
-        return completeExtractionCallback(extractionId, status, errorMessage, eventVersion, audioUrl, null, null, null, null, null, null);
+        return completeExtractionCallback(new ExtractionCallbackCommand(
+                extractionId,
+                status,
+                errorMessage,
+                eventVersion,
+                audioUrl,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
     }
 
     public Map<String, Object> completeExtractionCallback(
@@ -319,8 +331,7 @@ public class FeatureStoreService {
             Integer sampleRate,
             Integer channels
     ) {
-        if (mediaTranscriptionService == null) return null;
-        return mediaTranscriptionService.completeExtractionCallback(
+        return completeExtractionCallback(new ExtractionCallbackCommand(
                 extractionId,
                 status,
                 errorMessage,
@@ -332,6 +343,23 @@ public class FeatureStoreService {
                 audioFormat,
                 sampleRate,
                 channels
+        ));
+    }
+
+    private Map<String, Object> completeExtractionCallback(ExtractionCallbackCommand command) {
+        if (mediaTranscriptionService == null) return null;
+        return mediaTranscriptionService.completeExtractionCallback(
+                command.extractionId(),
+                command.status(),
+                command.errorMessage(),
+                command.eventVersion(),
+                command.audioUrl(),
+                command.processingJobId(),
+                command.processingStage(),
+                command.processingStep(),
+                command.audioFormat(),
+                command.sampleRate(),
+                command.channels()
         );
     }
 
@@ -597,6 +625,21 @@ public class FeatureStoreService {
             String sttModel,
             String audioUrl,
             String extractionId
+    ) {
+    }
+
+    private record ExtractionCallbackCommand(
+            String extractionId,
+            String status,
+            String errorMessage,
+            long eventVersion,
+            String audioUrl,
+            String processingJobId,
+            String processingStage,
+            String processingStep,
+            String audioFormat,
+            Integer sampleRate,
+            Integer channels
     ) {
     }
 
