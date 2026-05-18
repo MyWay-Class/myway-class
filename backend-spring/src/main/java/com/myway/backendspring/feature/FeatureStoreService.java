@@ -356,8 +356,8 @@ public class FeatureStoreService {
         Map<String, Object> note = new LectureSummaryNotePayload(
                 UUID.randomUUID().toString(),
                 lectureId,
-                style == null || style.isBlank() ? "brief" : style,
-                language == null || language.isBlank() ? "ko" : language,
+                normalizeOrDefault(style, "brief"),
+                normalizeOrDefault(language, "ko"),
                 Instant.now().toString()
         ).toMap();
         store.insertEvent(MEDIA_NOTE_SCOPE, lectureId, String.valueOf(note.get("id")), note);
@@ -553,6 +553,12 @@ public class FeatureStoreService {
             target.putIfAbsent("processing_error", null);
             target.putIfAbsent("stt_status", "PENDING");
         }
+    }
+
+    private static String normalizeOrDefault(String value, String defaultValue) {
+        if (value == null) return defaultValue;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? defaultValue : trimmed;
     }
 
     private record TranscribeRequestContext(
