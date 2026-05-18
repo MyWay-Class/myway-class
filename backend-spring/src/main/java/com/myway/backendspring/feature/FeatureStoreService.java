@@ -201,7 +201,12 @@ public class FeatureStoreService {
 
     public Map<String, Object> mediaUpload(String lectureId, String fileName) {
         String key = "asset/" + lectureId + "/" + UUID.randomUUID();
-        Map<String, Object> payload = Map.of("lecture_id", lectureId, "asset_key", key, "video_url", "/api/v1/media/assets/" + key, "file_name", fileName);
+        Map<String, Object> payload = new MediaUploadPayload(
+                lectureId,
+                key,
+                "/api/v1/media/assets/" + key,
+                fileName
+        ).toMap();
         store.upsertKv(MEDIA_ASSET_SCOPE, key, payload);
         return payload;
     }
@@ -599,6 +604,22 @@ public class FeatureStoreService {
             note.put("language", language);
             note.put("created_at", createdAt);
             return note;
+        }
+    }
+
+    private record MediaUploadPayload(
+            String lectureId,
+            String assetKey,
+            String videoUrl,
+            String fileName
+    ) {
+        Map<String, Object> toMap() {
+            return Map.of(
+                    "lecture_id", lectureId,
+                    "asset_key", assetKey,
+                    "video_url", videoUrl,
+                    "file_name", fileName
+            );
         }
     }
 
