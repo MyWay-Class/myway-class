@@ -134,17 +134,7 @@ public class MediaController {
         String style = body.style() == null || body.style().isBlank() ? "brief" : body.style().trim();
         String language = body.language() == null || body.language().isBlank() ? "ko" : body.language().trim();
         Map<String, Object> note = mediaPipelineService.summarizeLecture(lectureId, style, language);
-        Map<String, Object> response = Map.of(
-                "note_id", note.get("id"),
-                "lecture_id", note.get("lecture_id"),
-                "title", note.get("title"),
-                "content", note.get("content"),
-                "key_concepts", note.get("key_concepts"),
-                "keywords", note.get("keywords"),
-                "timestamps", note.get("timestamps"),
-                "style", style,
-                "pipeline", mediaPipelineService.pipeline(lectureId)
-        );
+        Map<String, Object> response = SummaryResponseAssembler.assemble(note, style, mediaPipelineService.pipeline(lectureId));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "요약이 생성되었습니다."));
     }
 
@@ -281,6 +271,22 @@ public class MediaController {
                 ),
                 "오디오 추출 callback이 반영되어 STT가 자동 시작되었습니다."
         ));
+    }
+
+    private static final class SummaryResponseAssembler {
+        private static Map<String, Object> assemble(Map<String, Object> note, String style, Map<String, Object> pipeline) {
+            return Map.of(
+                    "note_id", note.get("id"),
+                    "lecture_id", note.get("lecture_id"),
+                    "title", note.get("title"),
+                    "content", note.get("content"),
+                    "key_concepts", note.get("key_concepts"),
+                    "keywords", note.get("keywords"),
+                    "timestamps", note.get("timestamps"),
+                    "style", style,
+                    "pipeline", pipeline
+            );
+        }
     }
 
 }
