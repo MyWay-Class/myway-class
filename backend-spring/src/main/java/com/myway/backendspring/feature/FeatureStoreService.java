@@ -294,7 +294,7 @@ public class FeatureStoreService {
         String extractionId = String.valueOf(row.getOrDefault("id", "")).trim();
         Map<String, Object> latest = extractionId.isBlank() ? null : store.getKv(EXTRACTION_SCOPE, extractionId);
         Map<String, Object> hydrated = latest == null ? new HashMap<>(row) : new HashMap<>(latest);
-        ExtractionDefaultProfile.applyIfMissing(hydrated);
+        ExtractionDefaultProfile.defaults().applyIfMissing(hydrated);
         return hydrated;
     }
 
@@ -557,13 +557,29 @@ public class FeatureStoreService {
         }
     }
 
-    private static final class ExtractionDefaultProfile {
-        private static void applyIfMissing(Map<String, Object> target) {
-            target.putIfAbsent("processing_stage", "queued");
-            target.putIfAbsent("processing_step", "job_requested");
-            target.putIfAbsent("processing_error_code", null);
-            target.putIfAbsent("processing_error", null);
-            target.putIfAbsent("stt_status", "PENDING");
+    private record ExtractionDefaultProfile(
+            String processingStage,
+            String processingStep,
+            Object processingErrorCode,
+            Object processingError,
+            String sttStatus
+    ) {
+        static ExtractionDefaultProfile defaults() {
+            return new ExtractionDefaultProfile(
+                    "queued",
+                    "job_requested",
+                    null,
+                    null,
+                    "PENDING"
+            );
+        }
+
+        void applyIfMissing(Map<String, Object> target) {
+            target.putIfAbsent("processing_stage", processingStage);
+            target.putIfAbsent("processing_step", processingStep);
+            target.putIfAbsent("processing_error_code", processingErrorCode);
+            target.putIfAbsent("processing_error", processingError);
+            target.putIfAbsent("stt_status", sttStatus);
         }
     }
 
