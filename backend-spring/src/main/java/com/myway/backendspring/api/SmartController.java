@@ -5,6 +5,8 @@ import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.domain.SmartChatResult;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,16 +22,16 @@ public class SmartController {
         this.learningService = learningService;
     }
 
-    public record SmartChatRequest(String message) {}
+    public record SmartChatRequest(@NotBlank String message) {}
 
     @PostMapping("/chat")
-    public ResponseEntity<ApiResponse<SmartChatResult>> chat(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SmartChatRequest body) {
+    public ResponseEntity<ApiResponse<SmartChatResult>> chat(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SmartChatRequest body) {
         SessionView session = sessionService.me(auth);
         if (session == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         }
 
-        SmartChatResult result = learningService.chat(body != null ? body.message() : null);
+        SmartChatResult result = learningService.chat(body.message());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }
