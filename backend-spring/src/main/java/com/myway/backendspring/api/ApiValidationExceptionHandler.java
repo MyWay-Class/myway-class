@@ -34,6 +34,9 @@ public class ApiValidationExceptionHandler {
         if (isAiAnswerQuestionViolation(exception)) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("QUESTION_REQUIRED", "question이 필요합니다."));
         }
+        if (isAiLectureIdViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
+        }
         if (isShortformSelectExtractionViolation(exception)) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("EXTRACTION_ID_REQUIRED", "extraction_id가 필요합니다."));
         }
@@ -89,6 +92,11 @@ public class ApiValidationExceptionHandler {
 
     private boolean isAiAnswerQuestionViolation(MethodArgumentNotValidException exception) {
         return hasNotBlankViolation(exception, "answerRequest", "question");
+    }
+
+    private boolean isAiLectureIdViolation(MethodArgumentNotValidException exception) {
+        return hasNotBlankViolation(exception, "summaryRequest", "lecture_id")
+                || hasNotBlankViolation(exception, "quizRequest", "lecture_id");
     }
 
     private boolean hasNotBlankViolation(MethodArgumentNotValidException exception, String objectName, String fieldName) {

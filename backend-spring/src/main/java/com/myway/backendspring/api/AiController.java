@@ -26,8 +26,8 @@ public class AiController {
     public record IntentRequest(@NotBlank String message, String lecture_id) {}
     public record SearchRequest(@NotBlank String query, String lecture_id) {}
     public record AnswerRequest(@NotBlank String question, String lecture_id) {}
-    public record SummaryRequest(String lecture_id, String style, String language) {}
-    public record QuizRequest(String lecture_id) {}
+    public record SummaryRequest(@NotBlank String lecture_id, String style, String language) {}
+    public record QuizRequest(@NotBlank String lecture_id) {}
     private record RagScope(String lectureId, String courseId) {}
     public static final class AiSettingsUpdateRequest {
         private Map<String, Object> settings;
@@ -292,15 +292,14 @@ public class AiController {
     }
 
     @PostMapping("/summary")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> summary(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SummaryRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> summary(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SummaryRequest body) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
-        String lectureId = requireLectureId(body == null ? null : body.lecture_id());
-        if (lectureId == null) return badRequest("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다.");
+        String lectureId = requireLectureId(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        String style = defaultIfBlank(body == null ? null : body.style(), "brief");
-        String language = defaultIfBlank(body == null ? null : body.language(), "ko");
+        String style = defaultIfBlank(body.style(), "brief");
+        String language = defaultIfBlank(body.language(), "ko");
         Map<String, Object> data = Map.of(
                 "lecture_id", lectureId,
                 "content", "Spring 백엔드에서 생성한 강의 요약입니다.",
@@ -314,12 +313,11 @@ public class AiController {
     }
 
     @PostMapping("/quiz")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> quiz(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody QuizRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> quiz(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody QuizRequest body) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
-        String lectureId = requireLectureId(body == null ? null : body.lecture_id());
-        if (lectureId == null) return badRequest("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다.");
+        String lectureId = requireLectureId(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         Map<String, Object> data = Map.of(
                 "lecture_id", lectureId,
