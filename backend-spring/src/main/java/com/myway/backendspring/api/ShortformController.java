@@ -24,8 +24,8 @@ public class ShortformController {
     public record GenerateRequest(String course_id, String mode) {}
     public record SelectCandidatesRequest(@NotBlank String extraction_id, @NotEmpty List<@NotBlank String> candidate_ids) {}
     public record ComposeRequest(String title, String description, String course_id) {}
-    public record ShareRequest(String video_id, String course_id, String visibility, String message) {}
-    public record SaveRequest(String video_id, String note, String folder) {}
+    public record ShareRequest(@NotBlank String video_id, String course_id, String visibility, String message) {}
+    public record SaveRequest(@NotBlank String video_id, String note, String folder) {}
     public record LikeRequest(@NotBlank String video_id) {}
 
     private final SessionService sessionService;
@@ -114,14 +114,14 @@ public class ShortformController {
     }
 
     @PostMapping("/share")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> share(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody ShareRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> share(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody ShareRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         Map<String, Object> payload = Map.of(
-                "video_id", body != null && body.video_id() != null ? body.video_id() : "",
-                "course_id", body != null && body.course_id() != null ? body.course_id() : "",
-                "visibility", body != null && body.visibility() != null ? body.visibility() : "",
-                "message", body != null && body.message() != null ? body.message() : ""
+                "video_id", body.video_id(),
+                "course_id", body.course_id() != null ? body.course_id() : "",
+                "visibility", body.visibility() != null ? body.visibility() : "",
+                "message", body.message() != null ? body.message() : ""
         );
         Map<String, Object> row = shortformService.shareShortform(session.user().id(), payload);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SHARE_FAILED", "숏폼을 공유할 수 없습니다."));
@@ -129,13 +129,13 @@ public class ShortformController {
     }
 
     @PostMapping("/save")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> save(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SaveRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> save(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SaveRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         Map<String, Object> payload = Map.of(
-                "video_id", body != null && body.video_id() != null ? body.video_id() : "",
-                "note", body != null && body.note() != null ? body.note() : "",
-                "folder", body != null && body.folder() != null ? body.folder() : ""
+                "video_id", body.video_id(),
+                "note", body.note() != null ? body.note() : "",
+                "folder", body.folder() != null ? body.folder() : ""
         );
         Map<String, Object> row = shortformService.saveShortform(session.user().id(), payload);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SAVE_FAILED", "숏폼을 담아갈 수 없습니다."));
