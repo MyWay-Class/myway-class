@@ -1,5 +1,6 @@
 package com.myway.backendspring.api;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.CourseCard;
@@ -30,6 +31,19 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1")
 public class NotImplementedController {
+    public static final class LegacyBody {
+        private final Map<String, Object> payload = new java.util.HashMap<>();
+
+        @JsonAnySetter
+        public void put(String key, Object value) {
+            payload.put(key, value);
+        }
+
+        public Map<String, Object> payload() {
+            return payload;
+        }
+    }
+
     private final AiController aiController;
     private final MediaController mediaController;
     private final ShortformController shortformController;
@@ -147,55 +161,60 @@ public class NotImplementedController {
     @PostMapping("/legacy/ai/intent")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiIntent(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return aiController.intent(auth, new AiController.IntentRequest(
-                text(body, "message"),
-                text(body, "lecture_id")
+                text(payload, "message"),
+                text(payload, "lecture_id")
         ));
     }
 
     @PostMapping("/legacy/ai/search")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiSearch(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return aiController.search(auth, new AiController.SearchRequest(
-                text(body, "query"),
-                text(body, "lecture_id")
+                text(payload, "query"),
+                text(payload, "lecture_id")
         ));
     }
 
     @PostMapping("/legacy/ai/answer")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiAnswer(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return aiController.answer(auth, new AiController.AnswerRequest(
-                text(body, "question"),
-                text(body, "lecture_id")
+                text(payload, "question"),
+                text(payload, "lecture_id")
         ));
     }
 
     @PostMapping("/legacy/ai/summary")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiSummary(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return aiController.summary(auth, new AiController.SummaryRequest(
-                text(body, "lecture_id"),
-                text(body, "style"),
-                text(body, "language")
+                text(payload, "lecture_id"),
+                text(payload, "style"),
+                text(payload, "language")
         ));
     }
 
     @PostMapping("/legacy/ai/quiz")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiQuiz(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return aiController.quiz(auth, new AiController.QuizRequest(
-                text(body, "lecture_id")
+                text(payload, "lecture_id")
         ));
     }
 
@@ -537,6 +556,10 @@ public class NotImplementedController {
             return "";
         }
         return String.valueOf(body.get(key)).trim();
+    }
+
+    private Map<String, Object> payloadOf(LegacyBody body) {
+        return body == null ? Map.of() : body.payload();
     }
 
     private Integer intOrNull(Map<String, Object> body, String key) {
