@@ -58,6 +58,12 @@ public class ApiValidationExceptionHandler {
         if (isMediaLectureIdViolation(exception)) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         }
+        if (isAdminAssignmentStudentIdsViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("STUDENT_IDS_REQUIRED", "student_ids가 필요합니다."));
+        }
+        if (isAdminAssignmentStudentIdViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("STUDENT_ID_REQUIRED", "student_ids에는 비어 있지 않은 사용자 식별자가 필요합니다."));
+        }
         return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "요청 본문이 올바르지 않습니다."));
     }
 
@@ -144,6 +150,26 @@ public class ApiValidationExceptionHandler {
         return hasNotBlankViolation(exception, "extractAudioRequest", "lecture_id")
                 || hasNotBlankViolation(exception, "transcribeRequest", "lecture_id")
                 || hasNotBlankViolation(exception, "summarizeRequest", "lecture_id");
+    }
+
+    private boolean isAdminAssignmentStudentIdsViolation(MethodArgumentNotValidException exception) {
+        return hasViolationByCode(exception, "assignmentUpdateRequest", "student_ids", "NotNull");
+    }
+
+    private boolean isAdminAssignmentStudentIdViolation(MethodArgumentNotValidException exception) {
+        if (!"assignmentUpdateRequest".equals(exception.getBindingResult().getObjectName())) {
+            return false;
+        }
+        return exception.getBindingResult().getFieldErrors().stream()
+                .anyMatch(error -> error.getField().startsWith("student_ids[") && "NotBlank".equals(error.getCode()));
+    }
+
+    private boolean hasViolationByCode(MethodArgumentNotValidException exception, String objectName, String fieldName, String code) {
+        if (!objectName.equals(exception.getBindingResult().getObjectName())) {
+            return false;
+        }
+        return exception.getBindingResult().getFieldErrors().stream()
+                .anyMatch(error -> fieldName.equals(error.getField()) && code.equals(error.getCode()));
     }
 
 }
