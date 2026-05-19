@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -55,6 +56,51 @@ class ShortformCustomCoursesContractTest {
                         .andExpect(status().isUnauthorized())
                         .andReturn(),
                 "UNAUTHENTICATED");
+    }
+
+    @Test
+    void shortformWriteEndpoints_shouldKeepValidationErrorCodes_whenRequiredFieldsMissing() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+
+        assertFailureEnvelope(mockMvc.perform(put("/api/v1/shortform/candidates/select")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"extraction_id\":\"\",\"candidate_ids\":[\"c1\"]}"))
+                        .andExpect(status().isBadRequest())
+                        .andReturn(),
+                "EXTRACTION_ID_REQUIRED");
+
+        assertFailureEnvelope(mockMvc.perform(put("/api/v1/shortform/candidates/select")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"extraction_id\":\"ext-1\",\"candidate_ids\":[]}"))
+                        .andExpect(status().isBadRequest())
+                        .andReturn(),
+                "CANDIDATE_IDS_REQUIRED");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/shortform/share")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"video_id\":\"\"}"))
+                        .andExpect(status().isBadRequest())
+                        .andReturn(),
+                "VIDEO_ID_REQUIRED");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/shortform/save")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"video_id\":\"\"}"))
+                        .andExpect(status().isBadRequest())
+                        .andReturn(),
+                "VIDEO_ID_REQUIRED");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/shortform/like")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"video_id\":\"\"}"))
+                        .andExpect(status().isBadRequest())
+                        .andReturn(),
+                "VIDEO_ID_REQUIRED");
     }
 
     private String loginAndGetToken(String userId) throws Exception {
