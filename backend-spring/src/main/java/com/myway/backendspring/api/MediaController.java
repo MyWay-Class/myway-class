@@ -100,7 +100,6 @@ public class MediaController {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
         if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
-        if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
         String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
         String audioUrl = body.audio_url() == null ? "" : body.audio_url().trim();
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
@@ -112,7 +111,6 @@ public class MediaController {
     @PostMapping("/transcribe")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody TranscribeRequest body) {
         if (require(auth) == null) return unauthenticated();
-        if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
         String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
@@ -130,7 +128,6 @@ public class MediaController {
     @PostMapping("/summarize")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SummarizeRequest body) {
         if (require(auth) == null) return unauthenticated();
-        if (body == null) return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_PAYLOAD", "요청 본문이 필요합니다."));
         String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
         if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
@@ -207,13 +204,7 @@ public class MediaController {
         if (resolvedToken == null || resolvedToken.isBlank() || !resolvedToken.equals(callbackToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("CALLBACK_UNAUTHORIZED", "유효한 callback token이 필요합니다."));
         }
-        if (body == null) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "callback payload가 올바르지 않습니다."));
-        }
-        String extractionId = body.extraction_id() == null ? "" : body.extraction_id().trim();
-        if (extractionId.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", "callback payload가 올바르지 않습니다."));
-        }
+        String extractionId = body.extraction_id().trim();
         CallbackPolicyDecision decision = CallbackStateTransitionPolicy.decide(body);
         if (!decision.valid()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", decision.errorMessage()));
