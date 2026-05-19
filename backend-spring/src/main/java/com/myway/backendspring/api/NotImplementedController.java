@@ -248,38 +248,41 @@ public class NotImplementedController {
     @PostMapping("/legacy/media/extract-audio")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaExtractAudio(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return mediaController.extract(auth, new MediaController.ExtractAudioRequest(
-                text(body, "lecture_id"),
-                text(body, "audio_url")
+                text(payload, "lecture_id"),
+                text(payload, "audio_url")
         ));
     }
 
     @PostMapping("/legacy/media/transcribe")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaTranscribe(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return mediaController.transcribe(auth, new MediaController.TranscribeRequest(
-                text(body, "lecture_id"),
-                text(body, "language"),
-                intOrNull(body, "duration_ms"),
-                text(body, "stt_provider"),
-                text(body, "stt_model"),
-                text(body, "audio_url")
+                text(payload, "lecture_id"),
+                text(payload, "language"),
+                intOrNull(payload, "duration_ms"),
+                text(payload, "stt_provider"),
+                text(payload, "stt_model"),
+                text(payload, "audio_url")
         ));
     }
 
     @PostMapping("/legacy/media/summarize")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaSummarize(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return mediaController.summarize(auth, new MediaController.SummarizeRequest(
-                text(body, "lecture_id"),
-                text(body, "style"),
-                text(body, "language")
+                text(payload, "lecture_id"),
+                text(payload, "style"),
+                text(payload, "language")
         ));
     }
 
