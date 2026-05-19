@@ -100,9 +100,8 @@ public class MediaController {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
         if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
-        String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
+        String lectureId = body.lecture_id().trim();
         String audioUrl = body.audio_url() == null ? "" : body.audio_url().trim();
-        if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         Map<String, Object> extraction = mediaPipelineService.createExtraction(lectureId, audioUrl.isBlank() ? null : audioUrl);
         Map<String, Object> dispatched = mediaPipelineService.dispatchExtractionJob(String.valueOf(extraction.get("id")), audioUrl.isBlank() ? null : audioUrl);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(dispatched != null ? dispatched : extraction, "오디오 추출 job이 생성되었습니다."));
@@ -111,8 +110,7 @@ public class MediaController {
     @PostMapping("/transcribe")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody TranscribeRequest body) {
         if (require(auth) == null) return unauthenticated();
-        String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
-        if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
+        String lectureId = body.lecture_id().trim();
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         String language = body.language() == null || body.language().isBlank() ? "ko" : body.language().trim();
         Integer durationMs = body.duration_ms();
@@ -128,8 +126,7 @@ public class MediaController {
     @PostMapping("/summarize")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SummarizeRequest body) {
         if (require(auth) == null) return unauthenticated();
-        String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
-        if (lectureId.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
+        String lectureId = body.lecture_id().trim();
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         String style = body.style() == null || body.style().isBlank() ? "brief" : body.style().trim();
         String language = body.language() == null || body.language().isBlank() ? "ko" : body.language().trim();

@@ -52,6 +52,9 @@ public class ApiValidationExceptionHandler {
         if (isShortformCallbackIdViolation(exception)) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_ID_REQUIRED", "shortform_id가 필요합니다."));
         }
+        if (isMediaLectureIdViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
+        }
         return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "요청 본문이 올바르지 않습니다."));
     }
 
@@ -126,6 +129,12 @@ public class ApiValidationExceptionHandler {
 
     private boolean isShortformCallbackIdViolation(MethodArgumentNotValidException exception) {
         return hasNotBlankViolation(exception, "exportCallbackRequest", "shortform_id");
+    }
+
+    private boolean isMediaLectureIdViolation(MethodArgumentNotValidException exception) {
+        return hasNotBlankViolation(exception, "extractAudioRequest", "lecture_id")
+                || hasNotBlankViolation(exception, "transcribeRequest", "lecture_id")
+                || hasNotBlankViolation(exception, "summarizeRequest", "lecture_id");
     }
 
 }

@@ -142,6 +142,32 @@ class MediaContractTest {
     }
 
     @Test
+    void mediaWriteEndpoints_shouldKeepLectureIdRequiredErrorCode_whenLectureIdBlank() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/media/extract-audio")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn(), "LECTURE_ID_REQUIRED");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/media/transcribe")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn(), "LECTURE_ID_REQUIRED");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/media/summarize")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn(), "LECTURE_ID_REQUIRED");
+    }
+
+    @Test
     void transcribe_shouldCapDurationToPublicPolicyLimit() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
 
