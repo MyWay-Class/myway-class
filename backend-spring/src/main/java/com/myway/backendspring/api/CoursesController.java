@@ -45,8 +45,8 @@ public class CoursesController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<CourseDetail>> create(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody CourseCreateInput body) {
-        SessionView session = sessionService.me(auth);
-        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
         if (!canManageCourses(session.user().role())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의를 개설할 권한이 없습니다."));
 
         List<String> lectureTitles = new ArrayList<>();
@@ -63,23 +63,21 @@ public class CoursesController {
 
     @GetMapping
     public ApiResponse<List<CourseCard>> list(@RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = sessionService.me(auth);
-        String userId = session != null ? session.user().id() : "guest";
+        String userId = userIdOrGuest(auth);
         return ApiResponse.success(learningService.listCourseCards(userId));
     }
 
     @GetMapping("/manage")
     public ResponseEntity<ApiResponse<List<CourseCard>>> manage(@RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = sessionService.me(auth);
-        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
         if (!canManageCourses(session.user().role())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의 관리 페이지를 사용할 권한이 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(learningService.listManagedCourseCards(session.user().id(), session.user().role()), "내 강의 목록을 조회했습니다."));
     }
 
     @GetMapping("/{courseId}")
     public ResponseEntity<ApiResponse<CourseDetail>> detail(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = sessionService.me(auth);
-        String userId = session != null ? session.user().id() : "guest";
+        String userId = userIdOrGuest(auth);
         CourseDetail detail = learningService.getCourseDetail(courseId, userId);
         if (detail == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(detail));
@@ -99,8 +97,8 @@ public class CoursesController {
 
     @PostMapping("/{courseId}/materials")
     public ResponseEntity<ApiResponse<MaterialItem>> addMaterial(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody MaterialInput body) {
-        SessionView session = sessionService.me(auth);
-        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
         MaterialItem item = learningService.addMaterial(session.user().id(), courseId, body.title().trim(), body.summary().trim(), body.file_name().trim());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(item, "자료가 등록되었습니다."));
     }
@@ -112,10 +110,23 @@ public class CoursesController {
 
     @PostMapping("/{courseId}/notices")
     public ResponseEntity<ApiResponse<NoticeItem>> addNotice(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody NoticeInput body) {
-        SessionView session = sessionService.me(auth);
-        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
         NoticeItem item = learningService.addNotice(session.user().id(), courseId, body.title().trim(), body.content().trim(), Boolean.TRUE.equals(body.pinned()));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(item, "공지가 등록되었습니다."));
+    }
+
+    private SessionView require(String auth) {
+        return sessionService.me(auth);
+    }
+
+    private String userIdOrGuest(String auth) {
+        SessionView session = require(auth);
+        return session != null ? session.user().id() : "guest";
+    }
+
+    private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
     }
 
     private boolean canManageCourses(String role) {
