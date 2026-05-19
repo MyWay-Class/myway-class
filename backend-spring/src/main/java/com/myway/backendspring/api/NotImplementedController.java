@@ -220,16 +220,16 @@ public class NotImplementedController {
 
     @GetMapping("/legacy/media/providers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaProviders(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (requireUserId(auth) == null) {
+            return unauthenticated();
         }
         return ResponseEntity.ok(ApiResponse.success(featureStore.sttProviders(), "legacy media providers 응답을 /api/v1/media/providers와 동일하게 반환했습니다."));
     }
 
     @GetMapping("/legacy/media/processor-health")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaProcessorHealth(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (requireUserId(auth) == null) {
+            return unauthenticated();
         }
         return ResponseEntity.ok(ApiResponse.success(featureStore.processorHealth(), "legacy media processor health 응답을 /api/v1/media/processor-health와 동일하게 반환했습니다."));
     }
@@ -239,8 +239,8 @@ public class NotImplementedController {
             @PathVariable String lectureId,
             @RequestHeader(value = "Authorization", required = false) String auth
     ) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (requireUserId(auth) == null) {
+            return unauthenticated();
         }
         return ResponseEntity.ok(ApiResponse.success(featureStore.pipeline(lectureId), "legacy media pipeline 응답을 /api/v1/media/pipeline/{lectureId}와 동일하게 반환했습니다."));
     }
@@ -345,10 +345,10 @@ public class NotImplementedController {
 
     @GetMapping("/legacy/shortform/library")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> legacyShortformLibrary(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
         }
-        String userId = sessionService.me(auth).user().id();
         return ResponseEntity.ok(ApiResponse.success(featureStore.shortformLibrary(userId), "legacy shortform library 응답을 /api/v1/shortform/library와 동일하게 반환했습니다."));
     }
 
@@ -357,18 +357,18 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(value = "course_id", required = false) String courseId
     ) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (requireUserId(auth) == null) {
+            return unauthenticated();
         }
         return ResponseEntity.ok(ApiResponse.success(featureStore.shortformCommunity(courseId), "legacy shortform community 응답을 /api/v1/shortform/community와 동일하게 반환했습니다."));
     }
 
     @GetMapping("/legacy/shortform/videos/my")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> legacyShortformVideos(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
         }
-        String userId = sessionService.me(auth).user().id();
         return ResponseEntity.ok(ApiResponse.success(featureStore.shortformVideos(userId), "legacy shortform videos 응답을 /api/v1/shortform/videos/my와 동일하게 반환했습니다."));
     }
 
@@ -473,10 +473,10 @@ public class NotImplementedController {
 
     @GetMapping("/legacy/dashboard")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyDashboard(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
         }
-        String userId = sessionService.me(auth).user().id();
         var dashboard = learningService.getDashboard(userId);
         Map<String, Object> payload = Map.of(
                 "courses", dashboard.courses(),
@@ -487,10 +487,10 @@ public class NotImplementedController {
 
     @GetMapping("/legacy/enrollments")
     public ResponseEntity<ApiResponse<List<EnrollmentItem>>> legacyEnrollments(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
         }
-        String userId = sessionService.me(auth).user().id();
         return ResponseEntity.ok(ApiResponse.success(learningService.listEnrollments(userId), "legacy enrollments 응답을 /api/v1/enrollments와 동일하게 반환했습니다."));
     }
 
