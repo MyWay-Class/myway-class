@@ -153,6 +153,28 @@ class AiContractTest {
     }
 
     @Test
+    void aiSummaryQuiz_shouldKeepLectureIdRequiredErrorCode_whenLectureIdBlank() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+        setDailyLimit(authHeader, 999999);
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/ai/summary")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"\"}"))
+                        .andExpect(status().isBadRequest())
+                        .andReturn(),
+                "LECTURE_ID_REQUIRED");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/ai/quiz")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"\"}"))
+                        .andExpect(status().isBadRequest())
+                        .andReturn(),
+                "LECTURE_ID_REQUIRED");
+    }
+
+    @Test
     void aiProviders_shouldReflectRuntimeSelectionAndKeepDefaultFallback() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
 
