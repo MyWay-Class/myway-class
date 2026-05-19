@@ -375,22 +375,24 @@ public class NotImplementedController {
     @PostMapping("/legacy/shortform/generate")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformGenerate(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return shortformController.generate(auth, new ShortformController.GenerateRequest(
-                text(body, "course_id"),
-                text(body, "mode")
+                text(payload, "course_id"),
+                text(payload, "mode")
         ));
     }
 
     @PutMapping("/legacy/shortform/candidates/select")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformSelect(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return shortformController.select(auth, new ShortformController.SelectCandidatesRequest(
-                text(body, "extraction_id"),
-                listOfString(body, "candidate_ids")
+                text(payload, "extraction_id"),
+                listOfString(payload, "candidate_ids")
         ));
     }
 
@@ -405,12 +407,13 @@ public class NotImplementedController {
     @PostMapping("/legacy/shortform/compose")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformCompose(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return shortformController.compose(auth, new ShortformController.ComposeRequest(
-                text(body, "title"),
-                text(body, "description"),
-                text(body, "course_id")
+                text(payload, "title"),
+                text(payload, "description"),
+                text(payload, "course_id")
         ));
     }
 
@@ -425,35 +428,38 @@ public class NotImplementedController {
     @PostMapping("/legacy/shortform/share")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformShare(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return shortformController.share(auth, new ShortformController.ShareRequest(
-                text(body, "video_id"),
-                text(body, "course_id"),
-                text(body, "visibility"),
-                text(body, "message")
+                text(payload, "video_id"),
+                text(payload, "course_id"),
+                text(payload, "visibility"),
+                text(payload, "message")
         ));
     }
 
     @PostMapping("/legacy/shortform/save")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformSave(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return shortformController.save(auth, new ShortformController.SaveRequest(
-                text(body, "video_id"),
-                text(body, "note"),
-                text(body, "folder")
+                text(payload, "video_id"),
+                text(payload, "note"),
+                text(payload, "folder")
         ));
     }
 
     @PostMapping("/legacy/shortform/like")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyShortformLike(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
+        Map<String, Object> payload = payloadOf(body);
         return shortformController.like(auth, new ShortformController.LikeRequest(
-                text(body, "video_id")
+                text(payload, "video_id")
         ));
     }
 
