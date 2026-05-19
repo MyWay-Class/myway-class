@@ -33,9 +33,9 @@ public class LecturesController {
 
     @PostMapping("/{lectureId}/complete")
     public ResponseEntity<ApiResponse<Map<String, Object>>> complete(@PathVariable String lectureId, @RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = sessionService.me(auth);
+        SessionView session = require(auth);
         if (session == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+            return unauthenticated();
         }
 
         Map<String, Object> result = learningService.completeLecture(session.user().id(), lectureId);
@@ -47,5 +47,13 @@ public class LecturesController {
         }
 
         return ResponseEntity.ok(ApiResponse.success(result, "강의 진도가 저장되었습니다."));
+    }
+
+    private SessionView require(String auth) {
+        return sessionService.me(auth);
+    }
+
+    private ResponseEntity<ApiResponse<Map<String, Object>>> unauthenticated() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
     }
 }
