@@ -23,12 +23,18 @@ public class SmartController {
     }
 
     public record SmartChatRequest(@NotBlank String message) {}
+    private SessionView require(String auth) {
+        return sessionService.me(auth);
+    }
+    private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+    }
 
     @PostMapping("/chat")
     public ResponseEntity<ApiResponse<SmartChatResult>> chat(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SmartChatRequest body) {
-        SessionView session = sessionService.me(auth);
+        SessionView session = require(auth);
         if (session == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+            return unauthenticated();
         }
 
         SmartChatResult result = learningService.chat(body.message());
