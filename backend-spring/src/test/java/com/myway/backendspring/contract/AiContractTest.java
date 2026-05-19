@@ -175,6 +175,20 @@ class AiContractTest {
     }
 
     @Test
+    void aiRag_shouldKeepQueryRequiredErrorCode_whenQueryBlank() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+        setDailyLimit(authHeader, 999999);
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/ai/rag")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"\",\"lecture_id\":\"lec_java_01\"}"))
+                        .andExpect(status().isBadRequest())
+                        .andReturn(),
+                "QUERY_REQUIRED");
+    }
+
+    @Test
     void aiProviders_shouldReflectRuntimeSelectionAndKeepDefaultFallback() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
 

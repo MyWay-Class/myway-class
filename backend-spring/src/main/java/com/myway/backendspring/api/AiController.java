@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/ai")
 public class AiController {
-    public record RagRequest(String query, String lecture_id, String course_id, Integer limit, Double min_score, Boolean include_debug) {}
+    public record RagRequest(@NotBlank String query, String lecture_id, String course_id, Integer limit, Double min_score, Boolean include_debug) {}
     public record RagIndexMutationRequest(String lecture_id, String course_id) {}
     public record RagEvaluateRequest(Integer top_k, List<RagEvaluateCaseRequest> cases) {}
     public record IntentRequest(@NotBlank String message, String lecture_id) {}
@@ -146,15 +146,14 @@ public class AiController {
     }
 
     @PostMapping("/rag")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> rag(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody RagRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> rag(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody RagRequest body) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
 
-        String query = body == null || body.query() == null ? "" : body.query().trim();
-        if (query.isBlank()) return badRequest("QUERY_REQUIRED", "query가 필요합니다.");
+        String query = normalize(body.query());
 
-        RagScope scope = resolveRagScope(body == null ? null : body.lecture_id(), body == null ? null : body.course_id());
+        RagScope scope = resolveRagScope(body.lecture_id(), body.course_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> scopeError = validateRagScope(scope);
         if (scopeError != null) return scopeError;
 

@@ -87,7 +87,8 @@ public class ApiValidationExceptionHandler {
     }
 
     private boolean isAiSearchQueryViolation(MethodArgumentNotValidException exception) {
-        return hasNotBlankViolation(exception, "searchRequest", "query");
+        return hasNotBlankViolation(exception, "searchRequest", "query")
+                || hasNotBlankViolation(exception, "ragRequest", "query");
     }
 
     private boolean isAiAnswerQuestionViolation(MethodArgumentNotValidException exception) {
