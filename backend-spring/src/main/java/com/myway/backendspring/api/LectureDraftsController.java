@@ -53,10 +53,15 @@ public class LectureDraftsController {
         if (access != null) return cast(access);
 
         CourseDetail detail = learningService.getCourseDetail(courseId, session.user().id());
-        String lectureId = body != null && !isBlank(body.lecture_id()) ? body.lecture_id().trim() : detail.lectures().getFirst().id();
+        String lectureId = resolveCreateLectureId(body, detail);
         if (learningService.getCourseLecture(courseId, lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "차시를 찾을 수 없습니다."));
 
-        LectureDraft draft = draftService.create(courseId, lectureId, valueOrDefault(body == null ? null : body.title(), "강의 초안"), valueOrDefault(body == null ? null : body.content(), ""));
+        LectureDraft draft = draftService.create(
+                courseId,
+                lectureId,
+                resolveDraftTitle(body, "강의 초안"),
+                resolveDraftContent(body, "")
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(draft, "강의 초안이 저장되었습니다."));
     }
 
@@ -69,15 +74,15 @@ public class LectureDraftsController {
         LectureDraft existing = draftService.get(courseId, draftId);
         if (existing == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_DRAFT_NOT_FOUND", "강의 초안을 찾을 수 없습니다."));
 
-        String lectureId = body != null && !isBlank(body.lecture_id()) ? body.lecture_id().trim() : existing.lecture_id();
+        String lectureId = resolveUpdateLectureId(body, existing);
         if (learningService.getCourseLecture(courseId, lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "차시를 찾을 수 없습니다."));
 
         LectureDraft updated = draftService.update(
                 courseId,
                 draftId,
                 lectureId,
-                valueOrDefault(body == null ? null : body.title(), existing.title()),
-                valueOrDefault(body == null ? null : body.content(), existing.content())
+                resolveDraftTitle(body, existing.title()),
+                resolveDraftContent(body, existing.content())
         );
         return ResponseEntity.ok(ApiResponse.success(updated, "강의 초안이 수정되었습니다."));
     }
@@ -105,6 +110,28 @@ public class LectureDraftsController {
 
     private String valueOrDefault(String value, String fallback) {
         return isBlank(value) ? fallback : value.trim();
+    }
+
+    private String resolveCreateLectureId(DraftInput body, CourseDetail detail) {
+        if (body != null && !isBlank(body.lecture_id())) {
+            return body.lecture_id().trim();
+        }
+        return detail.lectures().getFirst().id();
+    }
+
+    private String resolveUpdateLectureId(DraftInput body, LectureDraft existing) {
+        if (body != null && !isBlank(body.lecture_id())) {
+            return body.lecture_id().trim();
+        }
+        return existing.lecture_id();
+    }
+
+    private String resolveDraftTitle(DraftInput body, String fallback) {
+        return valueOrDefault(body == null ? null : body.title(), fallback);
+    }
+
+    private String resolveDraftContent(DraftInput body, String fallback) {
+        return valueOrDefault(body == null ? null : body.content(), fallback);
     }
 
     private boolean isBlank(String value) {
