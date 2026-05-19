@@ -4,6 +4,9 @@ import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.feature.shortform.ShortformService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,11 +21,11 @@ import java.util.Set;
 public class ShortformController {
     private static final Set<String> ALLOWED_EXPORT_CALLBACK_STATUSES = Set.of("COMPLETED", "FAILED");
     public record GenerateRequest(String course_id, String mode) {}
-    public record SelectCandidatesRequest(String extraction_id, List<String> candidate_ids) {}
+    public record SelectCandidatesRequest(@NotBlank String extraction_id, @NotEmpty List<@NotBlank String> candidate_ids) {}
     public record ComposeRequest(String title, String description, String course_id) {}
     public record ShareRequest(String video_id, String course_id, String visibility, String message) {}
     public record SaveRequest(String video_id, String note, String folder) {}
-    public record LikeRequest(String video_id) {}
+    public record LikeRequest(@NotBlank String video_id) {}
 
     private final SessionService sessionService;
     private final ShortformService shortformService;
@@ -65,14 +68,10 @@ public class ShortformController {
     }
 
     @PutMapping("/candidates/select")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> select(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SelectCandidatesRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> select(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SelectCandidatesRequest body) {
         if (require(auth) == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String extractionId = body == null || body.extraction_id() == null ? "" : body.extraction_id().trim();
-        if (extractionId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("EXTRACTION_ID_REQUIRED", "extraction_id가 필요합니다."));
-        List<String> candidateIds = body == null || body.candidate_ids() == null ? List.of() : body.candidate_ids().stream().map(String::valueOf).toList();
-        if (candidateIds.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("CANDIDATE_IDS_REQUIRED", "candidate_ids가 필요합니다."));
-        }
+        String extractionId = body.extraction_id().trim();
+        List<String> candidateIds = body.candidate_ids().stream().map(String::valueOf).toList();
         Map<String, Object> updated = shortformService.selectShortformCandidates(extractionId, candidateIds);
         if (updated == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "추출 결과를 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(updated, "후보 선택이 반영되었습니다."));
@@ -143,11 +142,10 @@ public class ShortformController {
     }
 
     @PostMapping("/like")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> like(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody LikeRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> like(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody LikeRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String videoId = body == null || body.video_id() == null ? "" : body.video_id().trim();
-        if (videoId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("VIDEO_ID_REQUIRED", "video_id가 필요합니다."));
+        String videoId = body.video_id().trim();
         Map<String, Object> row = shortformService.toggleShortformLike(session.user().id(), videoId);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_LIKE_FAILED", "좋아요를 처리할 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(row, "좋아요 상태가 반영되었습니다."));
