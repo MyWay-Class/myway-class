@@ -49,6 +49,9 @@ public class ShortformController {
     private String orEmpty(String value) {
         return value == null ? "" : value;
     }
+    private String trimRequired(String value) {
+        return value.trim();
+    }
 
     @GetMapping("/library")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> library(@RequestHeader(value = "Authorization", required = false) String auth) {
@@ -77,8 +80,8 @@ public class ShortformController {
     @PutMapping("/candidates/select")
     public ResponseEntity<ApiResponse<Map<String, Object>>> select(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SelectCandidatesRequest body) {
         if (require(auth) == null) return unauthenticated();
-        String extractionId = body.extraction_id().trim();
-        List<String> candidateIds = body.candidate_ids().stream().map(String::valueOf).toList();
+        String extractionId = trimRequired(body.extraction_id());
+        List<String> candidateIds = body.candidate_ids().stream().map(String::trim).toList();
         Map<String, Object> updated = shortformService.selectShortformCandidates(extractionId, candidateIds);
         if (updated == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "추출 결과를 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(updated, "후보 선택이 반영되었습니다."));
@@ -152,7 +155,7 @@ public class ShortformController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> like(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody LikeRequest body) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        String videoId = body.video_id().trim();
+        String videoId = trimRequired(body.video_id());
         Map<String, Object> row = shortformService.toggleShortformLike(session.user().id(), videoId);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_LIKE_FAILED", "좋아요를 처리할 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(row, "좋아요 상태가 반영되었습니다."));
@@ -195,7 +198,7 @@ public class ShortformController {
         if (token == null || token.isBlank() || !token.equals(callbackToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "유효한 callback token이 필요합니다."));
         }
-        String shortformId = body.shortform_id().trim();
+        String shortformId = trimRequired(body.shortform_id());
 
         CallbackPolicyDecision decision = CallbackStateTransitionPolicy.decide(body);
         if (!decision.valid()) {
