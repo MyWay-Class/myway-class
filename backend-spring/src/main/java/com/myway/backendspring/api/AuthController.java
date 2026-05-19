@@ -43,10 +43,9 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<SessionView>> me(@RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = sessionService.me(auth);
+        SessionView session = require(auth);
         if (session == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+            return unauthenticated();
         }
 
         return ResponseEntity.ok(ApiResponse.success(session));
@@ -56,5 +55,14 @@ public class AuthController {
     public ApiResponse<Map<String, Boolean>> logout(@RequestHeader(value = "Authorization", required = false) String auth) {
         sessionService.logout(auth);
         return ApiResponse.success(Map.of("logged_out", true), "로그아웃되었습니다.");
+    }
+
+    private SessionView require(String auth) {
+        return sessionService.me(auth);
+    }
+
+    private ResponseEntity<ApiResponse<SessionView>> unauthenticated() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
     }
 }
