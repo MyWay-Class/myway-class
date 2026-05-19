@@ -34,6 +34,15 @@ public class ApiValidationExceptionHandler {
         if (isAiAnswerQuestionViolation(exception)) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("QUESTION_REQUIRED", "question이 필요합니다."));
         }
+        if (isShortformSelectExtractionViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("EXTRACTION_ID_REQUIRED", "extraction_id가 필요합니다."));
+        }
+        if (isShortformSelectCandidatesViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("CANDIDATE_IDS_REQUIRED", "candidate_ids가 필요합니다."));
+        }
+        if (isShortformLikeVideoViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("VIDEO_ID_REQUIRED", "video_id가 필요합니다."));
+        }
         return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "요청 본문이 올바르지 않습니다."));
     }
 
@@ -76,5 +85,25 @@ public class ApiValidationExceptionHandler {
         }
         return exception.getBindingResult().getFieldErrors().stream()
                 .anyMatch(error -> fieldName.equals(error.getField()) && "NotBlank".equals(error.getCode()));
+    }
+
+    private boolean hasNotEmptyViolation(MethodArgumentNotValidException exception, String objectName, String fieldName) {
+        if (!objectName.equals(exception.getBindingResult().getObjectName())) {
+            return false;
+        }
+        return exception.getBindingResult().getFieldErrors().stream()
+                .anyMatch(error -> fieldName.equals(error.getField()) && "NotEmpty".equals(error.getCode()));
+    }
+
+    private boolean isShortformSelectExtractionViolation(MethodArgumentNotValidException exception) {
+        return hasNotBlankViolation(exception, "selectCandidatesRequest", "extraction_id");
+    }
+
+    private boolean isShortformSelectCandidatesViolation(MethodArgumentNotValidException exception) {
+        return hasNotEmptyViolation(exception, "selectCandidatesRequest", "candidate_ids");
+    }
+
+    private boolean isShortformLikeVideoViolation(MethodArgumentNotValidException exception) {
+        return hasNotBlankViolation(exception, "likeRequest", "video_id");
     }
 }
