@@ -69,7 +69,7 @@ public class NotImplementedController {
 
     @GetMapping("/legacy/courses")
     public ResponseEntity<ApiResponse<List<CourseCard>>> legacyCourses(@RequestHeader(value = "Authorization", required = false) String auth) {
-        String userId = sessionService.me(auth) != null ? sessionService.me(auth).user().id() : "guest";
+        String userId = userIdOrGuest(auth);
         return ResponseEntity.ok(ApiResponse.success(learningService.listCourseCards(userId), "legacy courses 응답을 /api/v1/courses와 동일하게 반환했습니다."));
     }
 
@@ -78,7 +78,7 @@ public class NotImplementedController {
             @PathVariable String courseId,
             @RequestHeader(value = "Authorization", required = false) String auth
     ) {
-        String userId = sessionService.me(auth) != null ? sessionService.me(auth).user().id() : "guest";
+        String userId = userIdOrGuest(auth);
         CourseDetail detail = learningService.getCourseDetail(courseId, userId);
         if (detail == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -574,6 +574,11 @@ public class NotImplementedController {
     private String requireUserId(String auth) {
         var session = sessionService.me(auth);
         return session == null ? null : session.user().id();
+    }
+
+    private String userIdOrGuest(String auth) {
+        String userId = requireUserId(auth);
+        return userId == null ? "guest" : userId;
     }
 
     private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
