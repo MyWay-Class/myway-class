@@ -58,13 +58,15 @@ public class CustomCoursesController {
 
     @GetMapping("/community")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> community(@RequestHeader(value = "Authorization", required = false) String auth, @RequestParam(value = "course_id", required = false) String courseId) {
-        if (require(auth) == null) return unauthenticated();
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(featureStore.communityCustomCourses(courseId)));
     }
 
     @GetMapping("/{customCourseId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> detail(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String customCourseId) {
-        if (require(auth) == null) return unauthenticated();
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
         Map<String, Object> row = featureStore.customCourse(customCourseId);
         if (row == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("CUSTOM_COURSE_NOT_FOUND", "커스텀 강의를 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(row));
@@ -72,13 +74,15 @@ public class CustomCoursesController {
 
     @PostMapping("/{customCourseId}/share")
     public ResponseEntity<ApiResponse<Map<String, Object>>> share(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String customCourseId) {
-        if (require(auth) == null) return unauthenticated();
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(Map.of("shared", true, "custom_course_id", customCourseId), "커스텀 강의가 공유되었습니다."));
     }
 
     @PostMapping("/{customCourseId}/copy")
     public ResponseEntity<ApiResponse<Map<String, Object>>> copy(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String customCourseId) {
-        if (require(auth) == null) return unauthenticated();
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
         Map<String, Object> row = featureStore.customCourse(customCourseId);
         if (row == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("CUSTOM_COURSE_NOT_FOUND", "커스텀 강의를 찾을 수 없습니다."));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(row, "커스텀 강의를 담아갔습니다."));
