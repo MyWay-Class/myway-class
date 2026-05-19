@@ -24,6 +24,7 @@ public class AiController {
     public record AnswerRequest(String question, String lecture_id) {}
     public record SummaryRequest(String lecture_id, String style, String language) {}
     public record QuizRequest(String lecture_id) {}
+    private record RagScope(String lectureId, String courseId) {}
 
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
@@ -94,25 +95,17 @@ public class AiController {
         String query = body == null || body.query() == null ? "" : body.query().trim();
         if (query.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("QUERY_REQUIRED", "query가 필요합니다."));
 
-        String lectureId = body.lecture_id() == null ? "" : body.lecture_id().trim();
-        String courseId = body.course_id() == null ? "" : body.course_id().trim();
-        if (lectureId.isBlank() && courseId.isBlank()) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_OR_COURSE_REQUIRED", "lecture_id 또는 course_id가 필요합니다."));
-        }
-        if (!lectureId.isBlank() && learningService.getLecture(lectureId) == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        }
-        if (!courseId.isBlank() && learningService.getCourseLectures(courseId).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        }
+        RagScope scope = resolveRagScope(body == null ? null : body.lecture_id(), body == null ? null : body.course_id());
+        ResponseEntity<ApiResponse<Map<String, Object>>> scopeError = validateRagScope(scope);
+        if (scopeError != null) return scopeError;
 
         Integer limit = body.limit();
         Double minScore = body.min_score();
         boolean includeDebug = Boolean.TRUE.equals(body.include_debug());
         Map<String, Object> data = featureStore.ragOverview(
                 query,
-                lectureId.isBlank() ? null : lectureId,
-                courseId.isBlank() ? null : courseId,
+                optionalNormalized(scope.lectureId()),
+                optionalNormalized(scope.courseId()),
                 limit,
                 minScore,
                 includeDebug
@@ -130,8 +123,8 @@ public class AiController {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         Map<String, Object> data = featureStore.ragIndexOverview(
-                lectureId == null || lectureId.isBlank() ? null : lectureId.trim(),
-                courseId == null || courseId.isBlank() ? null : courseId.trim()
+                optionalNormalized(lectureId),
+                optionalNormalized(courseId)
         );
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 인덱스 현황을 조회했습니다."));
     }
@@ -143,20 +136,12 @@ public class AiController {
     ) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String lectureId = body == null || body.lecture_id() == null ? "" : body.lecture_id().trim();
-        String courseId = body == null || body.course_id() == null ? "" : body.course_id().trim();
-        if (lectureId.isBlank() && courseId.isBlank()) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_OR_COURSE_REQUIRED", "lecture_id 또는 course_id가 필요합니다."));
-        }
-        if (!lectureId.isBlank() && learningService.getLecture(lectureId) == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        }
-        if (!courseId.isBlank() && learningService.getCourseLectures(courseId).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        }
+        RagScope scope = resolveRagScope(body == null ? null : body.lecture_id(), body == null ? null : body.course_id());
+        ResponseEntity<ApiResponse<Map<String, Object>>> scopeError = validateRagScope(scope);
+        if (scopeError != null) return scopeError;
         Map<String, Object> data = featureStore.rebuildRagIndex(
-                lectureId.isBlank() ? null : lectureId,
-                courseId.isBlank() ? null : courseId
+                optionalNormalized(scope.lectureId()),
+                optionalNormalized(scope.courseId())
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(data, "RAG 인덱스를 재생성했습니다."));
     }
@@ -168,20 +153,12 @@ public class AiController {
     ) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        String lectureId = body == null || body.lecture_id() == null ? "" : body.lecture_id().trim();
-        String courseId = body == null || body.course_id() == null ? "" : body.course_id().trim();
-        if (lectureId.isBlank() && courseId.isBlank()) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_OR_COURSE_REQUIRED", "lecture_id 또는 course_id가 필요합니다."));
-        }
-        if (!lectureId.isBlank() && learningService.getLecture(lectureId) == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        }
-        if (!courseId.isBlank() && learningService.getCourseLectures(courseId).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        }
+        RagScope scope = resolveRagScope(body == null ? null : body.lecture_id(), body == null ? null : body.course_id());
+        ResponseEntity<ApiResponse<Map<String, Object>>> scopeError = validateRagScope(scope);
+        if (scopeError != null) return scopeError;
         Map<String, Object> data = featureStore.clearRagIndex(
-                lectureId.isBlank() ? null : lectureId,
-                courseId.isBlank() ? null : courseId
+                optionalNormalized(scope.lectureId()),
+                optionalNormalized(scope.courseId())
         );
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 인덱스를 초기화했습니다."));
     }
@@ -302,5 +279,31 @@ public class AiController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         }
         return null;
+    }
+
+    private RagScope resolveRagScope(String lectureIdRaw, String courseIdRaw) {
+        return new RagScope(normalize(lectureIdRaw), normalize(courseIdRaw));
+    }
+
+    private ResponseEntity<ApiResponse<Map<String, Object>>> validateRagScope(RagScope scope) {
+        if (scope.lectureId().isBlank() && scope.courseId().isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_OR_COURSE_REQUIRED", "lecture_id 또는 course_id가 필요합니다."));
+        }
+        if (!scope.lectureId().isBlank() && learningService.getLecture(scope.lectureId()) == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
+        }
+        if (!scope.courseId().isBlank() && learningService.getCourseLectures(scope.courseId()).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
+        }
+        return null;
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private String optionalNormalized(String value) {
+        String normalized = normalize(value);
+        return normalized.isBlank() ? null : normalized;
     }
 }
