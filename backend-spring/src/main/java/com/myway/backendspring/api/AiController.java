@@ -1,5 +1,6 @@
 package com.myway.backendspring.api;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
@@ -25,6 +26,37 @@ public class AiController {
     public record SummaryRequest(String lecture_id, String style, String language) {}
     public record QuizRequest(String lecture_id) {}
     private record RagScope(String lectureId, String courseId) {}
+    public static final class AiSettingsUpdateRequest {
+        private Map<String, Object> settings;
+        private final Map<String, Object> extras = new HashMap<>();
+
+        public AiSettingsUpdateRequest() {
+        }
+
+        public AiSettingsUpdateRequest(Map<String, Object> settings) {
+            this.settings = settings;
+        }
+
+        public Map<String, Object> settings() {
+            return settings;
+        }
+
+        public void setSettings(Map<String, Object> settings) {
+            this.settings = settings;
+        }
+
+        @JsonAnySetter
+        public void addExtra(String key, Object value) {
+            extras.put(key, value);
+        }
+
+        public Map<String, Object> toPatch() {
+            if (settings != null) {
+                return settings;
+            }
+            return extras;
+        }
+    }
 
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
@@ -67,15 +99,15 @@ public class AiController {
     }
 
     @PostMapping("/settings")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateSettings(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateSettings(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody(required = false) AiSettingsUpdateRequest body) {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        Map<String, Object> patch = body == null ? Map.of() : body;
+        Map<String, Object> patch = body == null ? Map.of() : body.toPatch();
         return ResponseEntity.ok(ApiResponse.success(featureStore.updateAiSettings(session.user().id(), patch), "설정이 저장되었습니다."));
     }
 
     @PutMapping("/settings")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> putSettings(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> putSettings(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody(required = false) AiSettingsUpdateRequest body) {
         return updateSettings(auth, body);
     }
 
