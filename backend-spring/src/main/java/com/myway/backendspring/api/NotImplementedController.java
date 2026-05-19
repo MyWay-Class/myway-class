@@ -99,46 +99,46 @@ public class NotImplementedController {
 
     @GetMapping("/legacy/ai/settings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiSettings(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
         }
-        String userId = sessionService.me(auth).user().id();
         return ResponseEntity.ok(ApiResponse.success(featureStore.aiSettings(userId), "legacy ai settings 응답을 /api/v1/ai/settings와 동일하게 반환했습니다."));
     }
 
     @GetMapping("/legacy/ai/providers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiProviders(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
         }
-        String userId = sessionService.me(auth).user().id();
         return ResponseEntity.ok(ApiResponse.success(featureStore.aiProviders(userId), "legacy ai providers 응답을 /api/v1/ai/providers와 동일하게 반환했습니다."));
     }
 
     @GetMapping("/legacy/ai/insights")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiInsights(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
         }
-        String userId = sessionService.me(auth).user().id();
         return ResponseEntity.ok(ApiResponse.success(featureStore.aiInsights(userId), "legacy ai insights 응답을 /api/v1/ai/insights와 동일하게 반환했습니다."));
     }
 
     @GetMapping("/legacy/ai/recommendations")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiRecommendations(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
         }
-        String userId = sessionService.me(auth).user().id();
         return ResponseEntity.ok(ApiResponse.success(featureStore.aiRecommendations(userId), "legacy ai recommendations 응답을 /api/v1/ai/recommendations와 동일하게 반환했습니다."));
     }
 
     @GetMapping("/legacy/ai/logs")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiLogs(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessionService.me(auth) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
         }
-        String userId = sessionService.me(auth).user().id();
         return ResponseEntity.ok(ApiResponse.success(featureStore.aiLogs(userId), "legacy ai logs 응답을 /api/v1/ai/logs와 동일하게 반환했습니다."));
     }
 
@@ -569,6 +569,16 @@ public class NotImplementedController {
 
     private Map<String, Object> payloadOf(LegacyBody body) {
         return body == null ? Map.of() : body.payload();
+    }
+
+    private String requireUserId(String auth) {
+        var session = sessionService.me(auth);
+        return session == null ? null : session.user().id();
+    }
+
+    private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
     }
 
     private Integer intOrNull(Map<String, Object> body, String key) {
