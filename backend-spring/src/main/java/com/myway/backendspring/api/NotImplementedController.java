@@ -211,18 +211,16 @@ public class NotImplementedController {
 
     @GetMapping("/legacy/media/providers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaProviders(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (requireUserId(auth) == null) {
-            return unauthenticated();
-        }
-        return ResponseEntity.ok(ApiResponse.success(featureStore.sttProviders(), "legacy media providers 응답을 /api/v1/media/providers와 동일하게 반환했습니다."));
+        return withUserId(auth, userId ->
+                ResponseEntity.ok(ApiResponse.success(featureStore.sttProviders(), "legacy media providers 응답을 /api/v1/media/providers와 동일하게 반환했습니다."))
+        );
     }
 
     @GetMapping("/legacy/media/processor-health")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaProcessorHealth(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (requireUserId(auth) == null) {
-            return unauthenticated();
-        }
-        return ResponseEntity.ok(ApiResponse.success(featureStore.processorHealth(), "legacy media processor health 응답을 /api/v1/media/processor-health와 동일하게 반환했습니다."));
+        return withUserId(auth, userId ->
+                ResponseEntity.ok(ApiResponse.success(featureStore.processorHealth(), "legacy media processor health 응답을 /api/v1/media/processor-health와 동일하게 반환했습니다."))
+        );
     }
 
     @GetMapping("/legacy/media/pipeline/{lectureId}")
@@ -230,10 +228,9 @@ public class NotImplementedController {
             @PathVariable String lectureId,
             @RequestHeader(value = "Authorization", required = false) String auth
     ) {
-        if (requireUserId(auth) == null) {
-            return unauthenticated();
-        }
-        return ResponseEntity.ok(ApiResponse.success(featureStore.pipeline(lectureId), "legacy media pipeline 응답을 /api/v1/media/pipeline/{lectureId}와 동일하게 반환했습니다."));
+        return withUserId(auth, userId ->
+                ResponseEntity.ok(ApiResponse.success(featureStore.pipeline(lectureId), "legacy media pipeline 응답을 /api/v1/media/pipeline/{lectureId}와 동일하게 반환했습니다."))
+        );
     }
 
     @PostMapping("/legacy/media/extract-audio")
