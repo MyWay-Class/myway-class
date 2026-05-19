@@ -31,6 +31,12 @@ public class AdminAssignmentsController {
     private SessionView require(String auth) {
         return sessionService.me(auth);
     }
+    private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+    }
+    private <T> ResponseEntity<ApiResponse<T>> forbidden() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "관리자 권한이 필요합니다."));
+    }
 
     private boolean isAdmin(SessionView session) {
         return session != null && "admin".equals(session.user().role());
@@ -43,10 +49,10 @@ public class AdminAssignmentsController {
     ) {
         SessionView session = require(auth);
         if (session == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+            return unauthenticated();
         }
         if (!isAdmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "관리자 권한이 필요합니다."));
+            return forbidden();
         }
         return ResponseEntity.ok(ApiResponse.success(featureStore.getAdminAssignment(courseId)));
     }
@@ -59,10 +65,10 @@ public class AdminAssignmentsController {
     ) {
         SessionView session = require(auth);
         if (session == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+            return unauthenticated();
         }
         if (!isAdmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "관리자 권한이 필요합니다."));
+            return forbidden();
         }
 
         List<String> studentIds = normalizeStudentIds(body.student_ids());
