@@ -7,6 +7,7 @@ import com.myway.backendspring.feature.shortform.ShortformService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -172,31 +173,23 @@ public class ShortformController {
     }
 
     public record ExportCallbackRequest(
-            String shortform_id,
+            @NotBlank String shortform_id,
             String video_id,
             String status,
             String video_url,
             String error_message,
-            Long event_version
+            @NotNull Long event_version
     ) {}
 
     @PostMapping("/export/callback")
     public ResponseEntity<ApiResponse<Map<String, Object>>> exportCallback(
             @RequestHeader(value = "X-Callback-Token", required = false) String token,
-            @RequestBody ExportCallbackRequest body
+            @Valid @RequestBody ExportCallbackRequest body
     ) {
         if (token == null || token.isBlank() || !token.equals(callbackToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "유효한 callback token이 필요합니다."));
         }
-        if (body == null) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "요청 본문이 올바르지 않습니다."));
-        }
-        String shortformId = body.shortform_id() != null && !body.shortform_id().isBlank()
-                ? body.shortform_id().trim()
-                : (body.video_id() != null ? body.video_id().trim() : "");
-        if (shortformId.isBlank()) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_ID_REQUIRED", "shortform_id가 필요합니다."));
-        }
+        String shortformId = body.shortform_id().trim();
 
         CallbackPolicyDecision decision = CallbackStateTransitionPolicy.decide(body);
         if (!decision.valid()) {
@@ -240,7 +233,7 @@ public class ShortformController {
 
     private static final class CallbackStateTransitionPolicy {
         private static CallbackPolicyDecision decide(ExportCallbackRequest body) {
-            long eventVersion = body.event_version() != null ? body.event_version() : 1L;
+            long eventVersion = body.event_version();
             if (eventVersion < 1L) {
                 return CallbackPolicyDecision.invalid("event_version은 1 이상이어야 합니다.");
             }
