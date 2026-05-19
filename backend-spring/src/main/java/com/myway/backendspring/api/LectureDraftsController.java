@@ -113,25 +113,25 @@ public class LectureDraftsController {
     }
 
     private String resolveCreateLectureId(DraftInput body, CourseDetail detail) {
-        if (body != null && !isBlank(body.lecture_id())) {
+        if (!isBlank(body.lecture_id())) {
             return body.lecture_id().trim();
         }
         return detail.lectures().getFirst().id();
     }
 
     private String resolveUpdateLectureId(DraftInput body, LectureDraft existing) {
-        if (body != null && !isBlank(body.lecture_id())) {
+        if (!isBlank(body.lecture_id())) {
             return body.lecture_id().trim();
         }
         return existing.lecture_id();
     }
 
     private String resolveDraftTitle(DraftInput body, String fallback) {
-        return valueOrDefault(body == null ? null : body.title(), fallback);
+        return valueOrDefault(body.title(), fallback);
     }
 
     private String resolveDraftContent(DraftInput body, String fallback) {
-        return valueOrDefault(body == null ? null : body.content(), fallback);
+        return valueOrDefault(body.content(), fallback);
     }
 
     private boolean isBlank(String value) {
