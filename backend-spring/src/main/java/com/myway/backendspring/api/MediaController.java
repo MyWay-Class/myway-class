@@ -97,6 +97,9 @@ public class MediaController {
     private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
     }
+    private boolean requireAuthenticated(String auth) {
+        return require(auth) != null;
+    }
     private boolean canManageMedia(SessionView session) {
         if (session == null) return false;
         String role = session.user().role();
@@ -127,7 +130,7 @@ public class MediaController {
 
     @PostMapping("/transcribe")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody TranscribeRequest body) {
-        if (require(auth) == null) return unauthenticated();
+        if (!requireAuthenticated(auth)) return unauthenticated();
         String lectureId = trimRequired(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         String language = optionalOrDefault(body.language(), "ko");
@@ -143,7 +146,7 @@ public class MediaController {
 
     @PostMapping("/summarize")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SummarizeRequest body) {
-        if (require(auth) == null) return unauthenticated();
+        if (!requireAuthenticated(auth)) return unauthenticated();
         String lectureId = trimRequired(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         String style = optionalOrDefault(body.style(), "brief");
@@ -155,37 +158,37 @@ public class MediaController {
 
     @GetMapping("/pipeline/{lectureId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> pipeline(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String lectureId) {
-        if (require(auth) == null) return unauthenticated();
+        if (!requireAuthenticated(auth)) return unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.pipeline(lectureId)));
     }
 
     @GetMapping("/audio-extractions/{lectureId}")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> audioExtractions(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String lectureId) {
-        if (require(auth) == null) return unauthenticated();
+        if (!requireAuthenticated(auth)) return unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.extractions(lectureId)));
     }
 
     @GetMapping("/transcript/{lectureId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcript(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String lectureId) {
-        if (require(auth) == null) return unauthenticated();
+        if (!requireAuthenticated(auth)) return unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.transcript(lectureId)));
     }
 
     @GetMapping("/notes/{lectureId}")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> notes(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String lectureId) {
-        if (require(auth) == null) return unauthenticated();
+        if (!requireAuthenticated(auth)) return unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.notes(lectureId)));
     }
 
     @GetMapping("/providers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> providers(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (require(auth) == null) return unauthenticated();
+        if (!requireAuthenticated(auth)) return unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.sttProviders()));
     }
 
     @GetMapping("/processor-health")
     public ResponseEntity<ApiResponse<Map<String, Object>>> processorHealth(@RequestHeader(value = "Authorization", required = false) String auth) {
-        if (require(auth) == null) return unauthenticated();
+        if (!requireAuthenticated(auth)) return unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.processorHealth()));
     }
 
@@ -202,7 +205,7 @@ public class MediaController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
         }
         if (processorToken == null || !processorToken.equals(callbackToken)) {
-            if (require(auth) == null) return unauthenticated();
+            if (!requireAuthenticated(auth)) return unauthenticated();
         }
         Map<String, Object> asset = mediaPipelineService.mediaAsset(assetKey);
         if (asset == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
