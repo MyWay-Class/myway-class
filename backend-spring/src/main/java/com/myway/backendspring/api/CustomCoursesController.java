@@ -1,5 +1,6 @@
 package com.myway.backendspring.api;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
@@ -14,6 +15,19 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/custom-courses")
 public class CustomCoursesController {
+    public static final class ComposeRequest {
+        private final Map<String, Object> payload = new java.util.HashMap<>();
+
+        @JsonAnySetter
+        public void add(String key, Object value) {
+            payload.put(key, value);
+        }
+
+        public Map<String, Object> payload() {
+            return payload;
+        }
+    }
+
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
 
@@ -25,10 +39,11 @@ public class CustomCoursesController {
     private SessionView require(String auth) { return sessionService.me(auth); }
 
     @PostMapping("/compose")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> compose(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> compose(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody(required = false) ComposeRequest body) {
         SessionView s = require(auth);
         if (s == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.customCompose(s.user().id(), body), "커스텀 강의가 생성되었습니다."));
+        Map<String, Object> payload = body == null ? Map.of() : body.payload();
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(featureStore.customCompose(s.user().id(), payload), "커스텀 강의가 생성되었습니다."));
     }
 
     @GetMapping("/my")
