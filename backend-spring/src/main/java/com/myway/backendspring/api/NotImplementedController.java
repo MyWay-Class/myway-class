@@ -133,7 +133,7 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return aiController.updateSettings(auth, body);
+        return aiController.updateSettings(auth, new AiController.AiSettingsUpdateRequest(body));
     }
 
     @PutMapping("/legacy/ai/settings")
@@ -141,7 +141,7 @@ public class NotImplementedController {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body
     ) {
-        return aiController.putSettings(auth, body);
+        return aiController.putSettings(auth, new AiController.AiSettingsUpdateRequest(body));
     }
 
     @PostMapping("/legacy/ai/intent")
