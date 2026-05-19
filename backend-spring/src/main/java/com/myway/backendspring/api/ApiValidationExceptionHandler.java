@@ -43,6 +43,9 @@ public class ApiValidationExceptionHandler {
         if (isShortformLikeVideoViolation(exception)) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("VIDEO_ID_REQUIRED", "video_id가 필요합니다."));
         }
+        if (isShortformCallbackIdViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_ID_REQUIRED", "shortform_id가 필요합니다."));
+        }
         return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "요청 본문이 올바르지 않습니다."));
     }
 
@@ -105,5 +108,9 @@ public class ApiValidationExceptionHandler {
 
     private boolean isShortformLikeVideoViolation(MethodArgumentNotValidException exception) {
         return hasNotBlankViolation(exception, "likeRequest", "video_id");
+    }
+
+    private boolean isShortformCallbackIdViolation(MethodArgumentNotValidException exception) {
+        return hasNotBlankViolation(exception, "exportCallbackRequest", "shortform_id");
     }
 }
