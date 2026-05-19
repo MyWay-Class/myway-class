@@ -89,7 +89,8 @@ public class ApiValidationExceptionHandler {
     }
 
     private boolean isAiIntentMessageViolation(MethodArgumentNotValidException exception) {
-        return hasNotBlankViolation(exception, "intentRequest", "message");
+        return hasNotBlankViolation(exception, "intentRequest", "message")
+                || hasNotBlankViolation(exception, "smartChatRequest", "message");
     }
 
     private boolean isAiSearchQueryViolation(MethodArgumentNotValidException exception) {
