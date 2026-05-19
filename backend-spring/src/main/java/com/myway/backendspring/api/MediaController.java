@@ -75,6 +75,24 @@ public class MediaController {
             String language
     ) {}
 
+    private String trimRequired(String value) {
+        return value.trim();
+    }
+
+    private String trimOptional(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private String optionalOrNull(String value) {
+        String trimmed = trimOptional(value);
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private String optionalOrDefault(String value, String defaultValue) {
+        String trimmed = trimOptional(value);
+        return trimmed.isBlank() ? defaultValue : trimmed;
+    }
+
     private SessionView require(String auth) { return sessionService.me(auth); }
     private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
@@ -100,25 +118,25 @@ public class MediaController {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
         if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
-        String lectureId = body.lecture_id().trim();
-        String audioUrl = body.audio_url() == null ? "" : body.audio_url().trim();
-        Map<String, Object> extraction = mediaPipelineService.createExtraction(lectureId, audioUrl.isBlank() ? null : audioUrl);
-        Map<String, Object> dispatched = mediaPipelineService.dispatchExtractionJob(String.valueOf(extraction.get("id")), audioUrl.isBlank() ? null : audioUrl);
+        String lectureId = trimRequired(body.lecture_id());
+        String audioUrl = optionalOrNull(body.audio_url());
+        Map<String, Object> extraction = mediaPipelineService.createExtraction(lectureId, audioUrl);
+        Map<String, Object> dispatched = mediaPipelineService.dispatchExtractionJob(String.valueOf(extraction.get("id")), audioUrl);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(dispatched != null ? dispatched : extraction, "오디오 추출 job이 생성되었습니다."));
     }
 
     @PostMapping("/transcribe")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody TranscribeRequest body) {
         if (require(auth) == null) return unauthenticated();
-        String lectureId = body.lecture_id().trim();
+        String lectureId = trimRequired(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        String language = body.language() == null || body.language().isBlank() ? "ko" : body.language().trim();
+        String language = optionalOrDefault(body.language(), "ko");
         Integer durationMs = body.duration_ms();
-        String sttProvider = body.stt_provider() == null ? "" : body.stt_provider().trim();
-        String sttModel = body.stt_model() == null ? "" : body.stt_model().trim();
-        String audioUrl = body.audio_url() == null ? "" : body.audio_url().trim();
+        String sttProvider = optionalOrNull(body.stt_provider());
+        String sttModel = optionalOrNull(body.stt_model());
+        String audioUrl = optionalOrNull(body.audio_url());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                mediaPipelineService.transcribe(lectureId, language, durationMs, sttProvider.isBlank() ? null : sttProvider, sttModel.isBlank() ? null : sttModel, audioUrl.isBlank() ? null : audioUrl),
+                mediaPipelineService.transcribe(lectureId, language, durationMs, sttProvider, sttModel, audioUrl),
                 "트랜스크립트가 생성되었습니다."
         ));
     }
@@ -126,10 +144,10 @@ public class MediaController {
     @PostMapping("/summarize")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SummarizeRequest body) {
         if (require(auth) == null) return unauthenticated();
-        String lectureId = body.lecture_id().trim();
+        String lectureId = trimRequired(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        String style = body.style() == null || body.style().isBlank() ? "brief" : body.style().trim();
-        String language = body.language() == null || body.language().isBlank() ? "ko" : body.language().trim();
+        String style = optionalOrDefault(body.style(), "brief");
+        String language = optionalOrDefault(body.language(), "ko");
         Map<String, Object> note = mediaPipelineService.summarizeLecture(lectureId, style, language);
         Map<String, Object> response = SummaryResponseAssembler.assemble(note, style, mediaPipelineService.pipeline(lectureId));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "요약이 생성되었습니다."));
@@ -201,13 +219,13 @@ public class MediaController {
         if (resolvedToken == null || resolvedToken.isBlank() || !resolvedToken.equals(callbackToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("CALLBACK_UNAUTHORIZED", "유효한 callback token이 필요합니다."));
         }
-        String extractionId = body.extraction_id().trim();
+        String extractionId = trimRequired(body.extraction_id());
         CallbackPolicyDecision decision = CallbackStateTransitionPolicy.decide(body);
         if (!decision.valid()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", decision.errorMessage()));
         }
         String errorMessage = body.error_message();
-        String audioUrl = body.audio_url() == null ? null : body.audio_url().trim();
+        String audioUrl = optionalOrNull(body.audio_url());
         Map<String, Object> result = mediaPipelineService.completeExtractionCallback(
                 extractionId,
                 decision.status(),
