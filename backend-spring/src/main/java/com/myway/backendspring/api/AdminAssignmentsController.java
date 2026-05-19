@@ -15,6 +15,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/admin/assignments")
 public class AdminAssignmentsController {
+    public record AssignmentUpdateRequest(List<String> student_ids) {}
+
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
 
@@ -50,7 +52,7 @@ public class AdminAssignmentsController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> saveAssignment(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @PathVariable String courseId,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) AssignmentUpdateRequest body
     ) {
         SessionView session = require(auth);
         if (session == null) {
@@ -60,17 +62,22 @@ public class AdminAssignmentsController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "관리자 권한이 필요합니다."));
         }
 
-        List<String> studentIds = new ArrayList<>();
-        Object rawStudentIds = body == null ? null : body.get("student_ids");
-        if (rawStudentIds instanceof List<?> list) {
-            for (Object item : list) {
-                if (item != null) {
-                    studentIds.add(String.valueOf(item));
-                }
-            }
-        }
+        List<String> studentIds = normalizeStudentIds(body);
 
         Map<String, Object> saved = featureStore.saveAdminAssignment(session.user().id(), courseId, studentIds);
         return ResponseEntity.ok(ApiResponse.success(saved, "배정이 저장되었습니다."));
+    }
+
+    private List<String> normalizeStudentIds(AssignmentUpdateRequest body) {
+        if (body == null || body.student_ids() == null) {
+            return List.of();
+        }
+        List<String> normalized = new ArrayList<>();
+        for (String item : body.student_ids()) {
+            if (item != null) {
+                normalized.add(item);
+            }
+        }
+        return normalized;
     }
 }
