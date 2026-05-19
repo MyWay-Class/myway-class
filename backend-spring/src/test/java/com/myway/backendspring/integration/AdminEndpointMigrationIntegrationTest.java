@@ -286,6 +286,27 @@ class AdminEndpointMigrationIntegrationTest {
         assertThat(data.path("items").isArray()).isTrue();
     }
 
+    @Test
+    void adminAssignments_shouldValidateStudentIdsPayload() throws Exception {
+        String adminAuth = "Bearer " + loginAndGetToken("usr_admin_001");
+
+        String missingList = mockMvc.perform(put("/api/v1/admin/assignments/crs_java_01")
+                        .header("Authorization", adminAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(missingList).path("error").path("code").asText()).isEqualTo("STUDENT_IDS_REQUIRED");
+
+        String blankStudentId = mockMvc.perform(put("/api/v1/admin/assignments/crs_java_01")
+                        .header("Authorization", adminAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"student_ids\":[\"\", \"usr_std_001\"]}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(blankStudentId).path("error").path("code").asText()).isEqualTo("STUDENT_ID_REQUIRED");
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

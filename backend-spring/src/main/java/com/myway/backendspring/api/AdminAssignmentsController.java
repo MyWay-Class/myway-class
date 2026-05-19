@@ -4,18 +4,21 @@ import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.feature.FeatureStoreService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/admin/assignments")
 public class AdminAssignmentsController {
-    public record AssignmentUpdateRequest(List<String> student_ids) {}
+    public record AssignmentUpdateRequest(@NotNull List<@NotBlank String> student_ids) {}
 
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
@@ -52,7 +55,7 @@ public class AdminAssignmentsController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> saveAssignment(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @PathVariable String courseId,
-            @RequestBody(required = false) AssignmentUpdateRequest body
+            @Valid @RequestBody AssignmentUpdateRequest body
     ) {
         SessionView session = require(auth);
         if (session == null) {
@@ -62,22 +65,15 @@ public class AdminAssignmentsController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "관리자 권한이 필요합니다."));
         }
 
-        List<String> studentIds = normalizeStudentIds(body);
+        List<String> studentIds = normalizeStudentIds(body.student_ids());
 
         Map<String, Object> saved = featureStore.saveAdminAssignment(session.user().id(), courseId, studentIds);
         return ResponseEntity.ok(ApiResponse.success(saved, "배정이 저장되었습니다."));
     }
 
-    private List<String> normalizeStudentIds(AssignmentUpdateRequest body) {
-        if (body == null || body.student_ids() == null) {
-            return List.of();
-        }
-        List<String> normalized = new ArrayList<>();
-        for (String item : body.student_ids()) {
-            if (item != null) {
-                normalized.add(item);
-            }
-        }
-        return normalized;
+    private List<String> normalizeStudentIds(List<String> studentIds) {
+        return studentIds.stream()
+                .map(String::trim)
+                .collect(Collectors.toList());
     }
 }
