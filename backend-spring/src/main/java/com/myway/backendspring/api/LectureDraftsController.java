@@ -30,7 +30,7 @@ public class LectureDraftsController {
 
     @GetMapping("/course/{courseId}")
     public ResponseEntity<ApiResponse<List<LectureDraft>>> list(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = sessionService.me(auth);
+        SessionView session = require(auth);
         ResponseEntity<ApiResponse<Object>> access = requireManageAccess(session, courseId, false);
         if (access != null) return cast(access);
         return ResponseEntity.ok(ApiResponse.success(draftService.listByCourse(courseId)));
@@ -38,7 +38,7 @@ public class LectureDraftsController {
 
     @GetMapping("/course/{courseId}/{draftId}")
     public ResponseEntity<ApiResponse<LectureDraft>> get(@PathVariable String courseId, @PathVariable String draftId, @RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = sessionService.me(auth);
+        SessionView session = require(auth);
         ResponseEntity<ApiResponse<Object>> access = requireManageAccess(session, courseId, false);
         if (access != null) return cast(access);
         LectureDraft draft = draftService.get(courseId, draftId);
@@ -48,7 +48,7 @@ public class LectureDraftsController {
 
     @PostMapping("/course/{courseId}")
     public ResponseEntity<ApiResponse<LectureDraft>> create(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth, @RequestBody DraftInput body) {
-        SessionView session = sessionService.me(auth);
+        SessionView session = require(auth);
         ResponseEntity<ApiResponse<Object>> access = requireManageAccess(session, courseId, true);
         if (access != null) return cast(access);
 
@@ -67,7 +67,7 @@ public class LectureDraftsController {
 
     @PutMapping("/course/{courseId}/{draftId}")
     public ResponseEntity<ApiResponse<LectureDraft>> update(@PathVariable String courseId, @PathVariable String draftId, @RequestHeader(value = "Authorization", required = false) String auth, @RequestBody DraftInput body) {
-        SessionView session = sessionService.me(auth);
+        SessionView session = require(auth);
         ResponseEntity<ApiResponse<Object>> access = requireManageAccess(session, courseId, true);
         if (access != null) return cast(access);
 
@@ -89,7 +89,7 @@ public class LectureDraftsController {
 
     @PostMapping("/course/{courseId}/{draftId}/publish")
     public ResponseEntity<ApiResponse<LectureDraft>> publish(@PathVariable String courseId, @PathVariable String draftId, @RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = sessionService.me(auth);
+        SessionView session = require(auth);
         ResponseEntity<ApiResponse<Object>> access = requireManageAccess(session, courseId, true);
         if (access != null) return cast(access);
 
@@ -106,6 +106,10 @@ public class LectureDraftsController {
         boolean canReadDrafts = canManage || (!ownerOnly && "instructor".equals(session.user().role()));
         if (!canReadDrafts) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의 초안에 접근할 권한이 없습니다."));
         return null;
+    }
+
+    private SessionView require(String auth) {
+        return sessionService.me(auth);
     }
 
     private String valueOrDefault(String value, String fallback) {
