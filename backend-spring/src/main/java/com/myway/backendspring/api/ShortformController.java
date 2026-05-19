@@ -62,8 +62,8 @@ public class ShortformController {
         SessionView s = require(auth);
         if (s == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         Map<String, Object> payload = Map.of(
-                "course_id", body != null && body.course_id() != null ? body.course_id() : "",
-                "mode", body != null && body.mode() != null ? body.mode() : ""
+                "course_id", body.course_id() != null ? body.course_id() : "",
+                "mode", body.mode() != null ? body.mode() : ""
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.createShortformExtraction(s.user().id(), payload), "숏폼 후보가 생성되었습니다."));
     }
@@ -91,9 +91,9 @@ public class ShortformController {
         SessionView s = require(auth);
         if (s == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         Map<String, Object> payload = Map.of(
-                "title", body != null && body.title() != null ? body.title() : "",
-                "description", body != null && body.description() != null ? body.description() : "",
-                "course_id", body != null && body.course_id() != null ? body.course_id() : ""
+                "title", body.title() != null ? body.title() : "",
+                "description", body.description() != null ? body.description() : "",
+                "course_id", body.course_id() != null ? body.course_id() : ""
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.composeShortform(s.user().id(), payload), "숏폼이 생성되었습니다."));
     }
