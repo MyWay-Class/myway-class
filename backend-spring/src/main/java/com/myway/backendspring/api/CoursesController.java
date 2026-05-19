@@ -9,6 +9,8 @@ import com.myway.backendspring.domain.learning.application.LearningApplicationSe
 import com.myway.backendspring.domain.learning.model.CourseCard;
 import com.myway.backendspring.domain.learning.model.CourseDetail;
 import com.myway.backendspring.domain.learning.model.LectureItem;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,23 +29,30 @@ public class CoursesController {
         this.learningService = learningService;
     }
 
-    public record MaterialInput(String title, String summary, String file_name) {}
-    public record NoticeInput(String title, String content, Boolean pinned) {}
-    public record CourseCreateInput(String title, String description, String category, String difficulty, List<String> lecture_titles) {}
+    public record MaterialInput(
+            @NotBlank String title,
+            @NotBlank String summary,
+            @NotBlank String file_name
+    ) {}
+    public record NoticeInput(@NotBlank String title, @NotBlank String content, Boolean pinned) {}
+    public record CourseCreateInput(
+            @NotBlank String title,
+            @NotBlank String description,
+            @NotBlank String category,
+            @NotBlank String difficulty,
+            List<String> lecture_titles
+    ) {}
 
     @PostMapping
-    public ResponseEntity<ApiResponse<CourseDetail>> create(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody CourseCreateInput body) {
+    public ResponseEntity<ApiResponse<CourseDetail>> create(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody CourseCreateInput body) {
         SessionView session = sessionService.me(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         if (!canManageCourses(session.user().role())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의를 개설할 권한이 없습니다."));
-        if (body == null || isBlank(body.title()) || isBlank(body.description()) || isBlank(body.category()) || isBlank(body.difficulty())) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("COURSE_CREATE_FIELDS_REQUIRED", "강의 제목, 설명, 카테고리, 난이도가 필요합니다."));
-        }
 
         List<String> lectureTitles = new ArrayList<>();
         if (body.lecture_titles() != null) {
             for (String lectureTitle : body.lecture_titles()) {
-                if (!isBlank(lectureTitle)) {
+                if (lectureTitle != null && !lectureTitle.trim().isEmpty()) {
                     lectureTitles.add(lectureTitle.trim());
                 }
             }
@@ -87,12 +96,9 @@ public class CoursesController {
     }
 
     @PostMapping("/{courseId}/materials")
-    public ResponseEntity<ApiResponse<MaterialItem>> addMaterial(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth, @RequestBody MaterialInput body) {
+    public ResponseEntity<ApiResponse<MaterialItem>> addMaterial(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody MaterialInput body) {
         SessionView session = sessionService.me(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        if (body == null || isBlank(body.title()) || isBlank(body.summary()) || isBlank(body.file_name())) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("MATERIAL_FIELDS_REQUIRED", "자료 제목, 요약, 파일명이 필요합니다."));
-        }
         MaterialItem item = learningService.addMaterial(session.user().id(), courseId, body.title().trim(), body.summary().trim(), body.file_name().trim());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(item, "자료가 등록되었습니다."));
     }
@@ -103,18 +109,11 @@ public class CoursesController {
     }
 
     @PostMapping("/{courseId}/notices")
-    public ResponseEntity<ApiResponse<NoticeItem>> addNotice(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth, @RequestBody NoticeInput body) {
+    public ResponseEntity<ApiResponse<NoticeItem>> addNotice(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody NoticeInput body) {
         SessionView session = sessionService.me(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-        if (body == null || isBlank(body.title()) || isBlank(body.content())) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("NOTICE_FIELDS_REQUIRED", "공지 제목과 내용이 필요합니다."));
-        }
         NoticeItem item = learningService.addNotice(session.user().id(), courseId, body.title().trim(), body.content().trim(), Boolean.TRUE.equals(body.pinned()));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(item, "공지가 등록되었습니다."));
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
     }
 
     private boolean canManageCourses(String role) {
