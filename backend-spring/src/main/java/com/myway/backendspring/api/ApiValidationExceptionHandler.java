@@ -25,6 +25,15 @@ public class ApiValidationExceptionHandler {
         if (isEnrollmentRequestViolation(exception)) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("COURSE_ID_REQUIRED", "강의 식별자가 필요합니다."));
         }
+        if (isAiIntentMessageViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("MESSAGE_REQUIRED", "message가 필요합니다."));
+        }
+        if (isAiSearchQueryViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("QUERY_REQUIRED", "query가 필요합니다."));
+        }
+        if (isAiAnswerQuestionViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("QUESTION_REQUIRED", "question이 필요합니다."));
+        }
         return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "요청 본문이 올바르지 않습니다."));
     }
 
@@ -47,5 +56,25 @@ public class ApiValidationExceptionHandler {
 
     private boolean isEnrollmentRequestViolation(MethodArgumentNotValidException exception) {
         return "enrollmentRequest".equals(exception.getBindingResult().getObjectName());
+    }
+
+    private boolean isAiIntentMessageViolation(MethodArgumentNotValidException exception) {
+        return hasNotBlankViolation(exception, "intentRequest", "message");
+    }
+
+    private boolean isAiSearchQueryViolation(MethodArgumentNotValidException exception) {
+        return hasNotBlankViolation(exception, "searchRequest", "query");
+    }
+
+    private boolean isAiAnswerQuestionViolation(MethodArgumentNotValidException exception) {
+        return hasNotBlankViolation(exception, "answerRequest", "question");
+    }
+
+    private boolean hasNotBlankViolation(MethodArgumentNotValidException exception, String objectName, String fieldName) {
+        if (!objectName.equals(exception.getBindingResult().getObjectName())) {
+            return false;
+        }
+        return exception.getBindingResult().getFieldErrors().stream()
+                .anyMatch(error -> fieldName.equals(error.getField()) && "NotBlank".equals(error.getCode()));
     }
 }

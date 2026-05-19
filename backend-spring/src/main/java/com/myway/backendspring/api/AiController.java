@@ -6,6 +6,8 @@ import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.feature.FeatureStoreService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,9 +23,9 @@ public class AiController {
     public record RagRequest(String query, String lecture_id, String course_id, Integer limit, Double min_score, Boolean include_debug) {}
     public record RagIndexMutationRequest(String lecture_id, String course_id) {}
     public record RagEvaluateRequest(Integer top_k, List<RagEvaluateCaseRequest> cases) {}
-    public record IntentRequest(String message, String lecture_id) {}
-    public record SearchRequest(String query, String lecture_id) {}
-    public record AnswerRequest(String question, String lecture_id) {}
+    public record IntentRequest(@NotBlank String message, String lecture_id) {}
+    public record SearchRequest(@NotBlank String query, String lecture_id) {}
+    public record AnswerRequest(@NotBlank String question, String lecture_id) {}
     public record SummaryRequest(String lecture_id, String style, String language) {}
     public record QuizRequest(String lecture_id) {}
     private record RagScope(String lectureId, String courseId) {}
@@ -236,12 +238,11 @@ public class AiController {
     }
 
     @PostMapping("/intent")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> intent(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody IntentRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> intent(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody IntentRequest body) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
-        String message = normalize(body == null ? null : body.message());
-        if (message.isBlank()) return badRequest("MESSAGE_REQUIRED", "message가 필요합니다.");
+        String message = normalize(body.message());
         Map<String, Object> data = new HashMap<>();
         data.put("intent", "recommendation");
         data.put("confidence", 0.82);
@@ -255,13 +256,12 @@ public class AiController {
     }
 
     @PostMapping("/search")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> search(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody SearchRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> search(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SearchRequest body) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
-        String query = normalize(body == null ? null : body.query());
-        if (query.isBlank()) return badRequest("QUERY_REQUIRED", "query가 필요합니다.");
-        ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body == null ? null : body.lecture_id());
+        String query = normalize(body.query());
+        ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
         Map<String, Object> data = Map.of(
                 "query", query,
@@ -274,13 +274,12 @@ public class AiController {
     }
 
     @PostMapping("/answer")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> answer(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody AnswerRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> answer(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody AnswerRequest body) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
-        String question = normalize(body == null ? null : body.question());
-        if (question.isBlank()) return badRequest("QUESTION_REQUIRED", "question이 필요합니다.");
-        ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body == null ? null : body.lecture_id());
+        String question = normalize(body.question());
+        ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
         Map<String, Object> data = new HashMap<>();
         data.put("answer", "[Spring AI 응답] " + question);
