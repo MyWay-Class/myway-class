@@ -145,17 +145,17 @@ public class NotImplementedController {
     @PostMapping("/legacy/ai/settings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiUpdateSettings(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
-        return aiController.updateSettings(auth, new AiController.AiSettingsUpdateRequest(body));
+        return aiController.updateSettings(auth, new AiController.AiSettingsUpdateRequest(payloadOf(body)));
     }
 
     @PutMapping("/legacy/ai/settings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiPutSettings(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) LegacyBody body
     ) {
-        return aiController.putSettings(auth, new AiController.AiSettingsUpdateRequest(body));
+        return aiController.putSettings(auth, new AiController.AiSettingsUpdateRequest(payloadOf(body)));
     }
 
     @PostMapping("/legacy/ai/intent")
