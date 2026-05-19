@@ -46,6 +46,9 @@ public class ShortformController {
     private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
     }
+    private String orEmpty(String value) {
+        return value == null ? "" : value;
+    }
 
     @GetMapping("/library")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> library(@RequestHeader(value = "Authorization", required = false) String auth) {
@@ -65,8 +68,8 @@ public class ShortformController {
         SessionView s = require(auth);
         if (s == null) return unauthenticated();
         Map<String, Object> payload = Map.of(
-                "course_id", body.course_id() != null ? body.course_id() : "",
-                "mode", body.mode() != null ? body.mode() : ""
+                "course_id", orEmpty(body.course_id()),
+                "mode", orEmpty(body.mode())
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.createShortformExtraction(s.user().id(), payload), "숏폼 후보가 생성되었습니다."));
     }
@@ -94,9 +97,9 @@ public class ShortformController {
         SessionView s = require(auth);
         if (s == null) return unauthenticated();
         Map<String, Object> payload = Map.of(
-                "title", body.title() != null ? body.title() : "",
-                "description", body.description() != null ? body.description() : "",
-                "course_id", body.course_id() != null ? body.course_id() : ""
+                "title", orEmpty(body.title()),
+                "description", orEmpty(body.description()),
+                "course_id", orEmpty(body.course_id())
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.composeShortform(s.user().id(), payload), "숏폼이 생성되었습니다."));
     }
@@ -122,9 +125,9 @@ public class ShortformController {
         if (session == null) return unauthenticated();
         Map<String, Object> payload = Map.of(
                 "video_id", body.video_id(),
-                "course_id", body.course_id() != null ? body.course_id() : "",
-                "visibility", body.visibility() != null ? body.visibility() : "",
-                "message", body.message() != null ? body.message() : ""
+                "course_id", orEmpty(body.course_id()),
+                "visibility", orEmpty(body.visibility()),
+                "message", orEmpty(body.message())
         );
         Map<String, Object> row = shortformService.shareShortform(session.user().id(), payload);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SHARE_FAILED", "숏폼을 공유할 수 없습니다."));
@@ -137,8 +140,8 @@ public class ShortformController {
         if (session == null) return unauthenticated();
         Map<String, Object> payload = Map.of(
                 "video_id", body.video_id(),
-                "note", body.note() != null ? body.note() : "",
-                "folder", body.folder() != null ? body.folder() : ""
+                "note", orEmpty(body.note()),
+                "folder", orEmpty(body.folder())
         );
         Map<String, Object> row = shortformService.saveShortform(session.user().id(), payload);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SAVE_FAILED", "숏폼을 담아갈 수 없습니다."));
