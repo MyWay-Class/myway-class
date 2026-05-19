@@ -13,13 +13,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/ai")
 public class AiController {
     public record RagRequest(String query, String lecture_id, String course_id, Integer limit, Double min_score, Boolean include_debug) {}
     public record RagIndexMutationRequest(String lecture_id, String course_id) {}
-    public record RagEvaluateRequest(Integer top_k, List<Map<String, Object>> cases) {}
+    public record RagEvaluateRequest(Integer top_k, List<RagEvaluateCaseRequest> cases) {}
     public record IntentRequest(String message, String lecture_id) {}
     public record SearchRequest(String query, String lecture_id) {}
     public record AnswerRequest(String question, String lecture_id) {}
@@ -55,6 +56,19 @@ public class AiController {
                 return settings;
             }
             return extras;
+        }
+    }
+
+    public static final class RagEvaluateCaseRequest {
+        private final Map<String, Object> payload = new HashMap<>();
+
+        @JsonAnySetter
+        public void put(String key, Object value) {
+            payload.put(key, value);
+        }
+
+        public Map<String, Object> payload() {
+            return payload;
         }
     }
 
@@ -203,7 +217,9 @@ public class AiController {
         SessionView session = require(auth);
         if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
         Integer topK = body == null ? null : body.top_k();
-        List<Map<String, Object>> cases = body == null || body.cases() == null ? List.of() : body.cases();
+        List<Map<String, Object>> cases = body == null || body.cases() == null
+                ? List.of()
+                : body.cases().stream().map(RagEvaluateCaseRequest::payload).collect(Collectors.toList());
         Map<String, Object> data = featureStore.evaluateRagBatch(cases, topK);
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 배치 평가를 완료했습니다."));
     }
