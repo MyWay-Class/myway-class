@@ -22,6 +22,9 @@ public class ApiValidationExceptionHandler {
         if (isNoticeInputViolation(exception)) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("NOTICE_FIELDS_REQUIRED", "공지 제목과 내용이 필요합니다."));
         }
+        if (isEnrollmentRequestViolation(exception)) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("COURSE_ID_REQUIRED", "강의 식별자가 필요합니다."));
+        }
         return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", "요청 본문이 올바르지 않습니다."));
     }
 
@@ -40,5 +43,9 @@ public class ApiValidationExceptionHandler {
 
     private boolean isNoticeInputViolation(MethodArgumentNotValidException exception) {
         return "noticeInput".equals(exception.getBindingResult().getObjectName());
+    }
+
+    private boolean isEnrollmentRequestViolation(MethodArgumentNotValidException exception) {
+        return "enrollmentRequest".equals(exception.getBindingResult().getObjectName());
     }
 }
