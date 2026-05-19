@@ -228,7 +228,7 @@ public class AiController {
             @RequestBody(required = false) RagEvaluateRequest body
     ) {
         SessionView session = require(auth);
-        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (session == null) return unauthenticated();
         Integer topK = body == null ? null : body.top_k();
         List<Map<String, Object>> cases = body == null || body.cases() == null
                 ? List.of()
