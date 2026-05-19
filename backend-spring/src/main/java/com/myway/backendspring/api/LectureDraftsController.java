@@ -99,7 +99,7 @@ public class LectureDraftsController {
     }
 
     private ResponseEntity<ApiResponse<Object>> requireManageAccess(SessionView session, String courseId, boolean ownerOnly) {
-        if (session == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+        if (session == null) return unauthenticated();
         CourseDetail detail = learningService.getCourseDetail(courseId, session.user().id());
         if (detail == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         boolean canManage = "admin".equals(session.user().role()) || session.user().id().equals(detail.instructor_id());
@@ -110,6 +110,10 @@ public class LectureDraftsController {
 
     private SessionView require(String auth) {
         return sessionService.me(auth);
+    }
+
+    private ResponseEntity<ApiResponse<Object>> unauthenticated() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
     }
 
     private String valueOrDefault(String value, String fallback) {
