@@ -194,7 +194,7 @@ public class AiController {
     ) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        RagScope scope = resolveRagScope(body == null ? null : body.lecture_id(), body == null ? null : body.course_id());
+        RagScope scope = resolveRagScope(body.lecture_id(), body.course_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> scopeError = validateRagScope(scope);
         if (scopeError != null) return scopeError;
         Map<String, Object> data = featureStore.rebuildRagIndex(
@@ -211,7 +211,7 @@ public class AiController {
     ) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        RagScope scope = resolveRagScope(body == null ? null : body.lecture_id(), body == null ? null : body.course_id());
+        RagScope scope = resolveRagScope(body.lecture_id(), body.course_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> scopeError = validateRagScope(scope);
         if (scopeError != null) return scopeError;
         Map<String, Object> data = featureStore.clearRagIndex(
