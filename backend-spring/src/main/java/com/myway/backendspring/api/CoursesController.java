@@ -63,7 +63,8 @@ public class CoursesController {
 
     @GetMapping
     public ApiResponse<List<CourseCard>> list(@RequestHeader(value = "Authorization", required = false) String auth) {
-        String userId = sessionService.me(auth) != null ? sessionService.me(auth).user().id() : "guest";
+        SessionView session = sessionService.me(auth);
+        String userId = session != null ? session.user().id() : "guest";
         return ApiResponse.success(learningService.listCourseCards(userId));
     }
 
@@ -77,7 +78,8 @@ public class CoursesController {
 
     @GetMapping("/{courseId}")
     public ResponseEntity<ApiResponse<CourseDetail>> detail(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth) {
-        String userId = sessionService.me(auth) != null ? sessionService.me(auth).user().id() : "guest";
+        SessionView session = sessionService.me(auth);
+        String userId = session != null ? session.user().id() : "guest";
         CourseDetail detail = learningService.getCourseDetail(courseId, userId);
         if (detail == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("COURSE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(detail));
