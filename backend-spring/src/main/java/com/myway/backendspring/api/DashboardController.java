@@ -35,9 +35,9 @@ public class DashboardController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> dashboard(@RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = sessionService.me(auth);
+        SessionView session = require(auth);
         if (session == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
+            return unauthenticated();
         }
         DashboardView view = learningService.getDashboard(session.user().id());
         int totalCourses = view.courses().size();
@@ -86,6 +86,14 @@ public class DashboardController {
                 "next_action", "이어서 학습할 강의를 선택하세요."
         );
         return ResponseEntity.ok(ApiResponse.success(payload));
+    }
+
+    private SessionView require(String auth) {
+        return sessionService.me(auth);
+    }
+
+    private ResponseEntity<ApiResponse<Map<String, Object>>> unauthenticated() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
     }
 
     private String normalizeRole(String role) {
