@@ -93,10 +93,6 @@ public class AiController {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
     }
 
-    private ResponseEntity<ApiResponse<Map<String, Object>>> badRequest(String code, String message) {
-        return ResponseEntity.badRequest().body(ApiResponse.failure(code, message));
-    }
-
     @GetMapping("/insights")
     public ResponseEntity<ApiResponse<Map<String, Object>>> insights(@RequestHeader(value = "Authorization", required = false) String auth) {
         SessionView session = require(auth);
@@ -247,7 +243,7 @@ public class AiController {
         data.put("confidence", 0.82);
         data.put("action", "show_recommendations");
         data.put("reason", "Spring demo intent classifier");
-        data.put("lecture_id", body.lecture_id() == null || body.lecture_id().isBlank() ? null : body.lecture_id().trim());
+        data.put("lecture_id", optionalNormalized(body.lecture_id()));
         data.put("provider", "demo");
         data.put("model", "demo-intent-v1");
         featureStore.recordAiUsage(session.user().id(), "intent", true, message);
@@ -283,7 +279,7 @@ public class AiController {
         Map<String, Object> data = new HashMap<>();
         data.put("answer", "[Spring AI 응답] " + question);
         data.put("sources", List.of("lecture:lec_java_01"));
-        data.put("lecture_id", body.lecture_id() == null || body.lecture_id().isBlank() ? null : body.lecture_id().trim());
+        data.put("lecture_id", optionalNormalized(body.lecture_id()));
         data.put("provider", "demo");
         data.put("model", "demo-answer-v1");
         featureStore.recordAiUsage(session.user().id(), "answer", true, question);
