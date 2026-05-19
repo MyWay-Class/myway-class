@@ -27,6 +27,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -99,47 +100,37 @@ public class NotImplementedController {
 
     @GetMapping("/legacy/ai/settings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiSettings(@RequestHeader(value = "Authorization", required = false) String auth) {
-        String userId = requireUserId(auth);
-        if (userId == null) {
-            return unauthenticated();
-        }
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiSettings(userId), "legacy ai settings 응답을 /api/v1/ai/settings와 동일하게 반환했습니다."));
+        return withUserId(auth, userId ->
+                ResponseEntity.ok(ApiResponse.success(featureStore.aiSettings(userId), "legacy ai settings 응답을 /api/v1/ai/settings와 동일하게 반환했습니다."))
+        );
     }
 
     @GetMapping("/legacy/ai/providers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiProviders(@RequestHeader(value = "Authorization", required = false) String auth) {
-        String userId = requireUserId(auth);
-        if (userId == null) {
-            return unauthenticated();
-        }
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiProviders(userId), "legacy ai providers 응답을 /api/v1/ai/providers와 동일하게 반환했습니다."));
+        return withUserId(auth, userId ->
+                ResponseEntity.ok(ApiResponse.success(featureStore.aiProviders(userId), "legacy ai providers 응답을 /api/v1/ai/providers와 동일하게 반환했습니다."))
+        );
     }
 
     @GetMapping("/legacy/ai/insights")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiInsights(@RequestHeader(value = "Authorization", required = false) String auth) {
-        String userId = requireUserId(auth);
-        if (userId == null) {
-            return unauthenticated();
-        }
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiInsights(userId), "legacy ai insights 응답을 /api/v1/ai/insights와 동일하게 반환했습니다."));
+        return withUserId(auth, userId ->
+                ResponseEntity.ok(ApiResponse.success(featureStore.aiInsights(userId), "legacy ai insights 응답을 /api/v1/ai/insights와 동일하게 반환했습니다."))
+        );
     }
 
     @GetMapping("/legacy/ai/recommendations")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiRecommendations(@RequestHeader(value = "Authorization", required = false) String auth) {
-        String userId = requireUserId(auth);
-        if (userId == null) {
-            return unauthenticated();
-        }
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiRecommendations(userId), "legacy ai recommendations 응답을 /api/v1/ai/recommendations와 동일하게 반환했습니다."));
+        return withUserId(auth, userId ->
+                ResponseEntity.ok(ApiResponse.success(featureStore.aiRecommendations(userId), "legacy ai recommendations 응답을 /api/v1/ai/recommendations와 동일하게 반환했습니다."))
+        );
     }
 
     @GetMapping("/legacy/ai/logs")
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyAiLogs(@RequestHeader(value = "Authorization", required = false) String auth) {
-        String userId = requireUserId(auth);
-        if (userId == null) {
-            return unauthenticated();
-        }
-        return ResponseEntity.ok(ApiResponse.success(featureStore.aiLogs(userId), "legacy ai logs 응답을 /api/v1/ai/logs와 동일하게 반환했습니다."));
+        return withUserId(auth, userId ->
+                ResponseEntity.ok(ApiResponse.success(featureStore.aiLogs(userId), "legacy ai logs 응답을 /api/v1/ai/logs와 동일하게 반환했습니다."))
+        );
     }
 
     @PostMapping("/legacy/ai/settings")
@@ -579,6 +570,14 @@ public class NotImplementedController {
     private String userIdOrGuest(String auth) {
         String userId = requireUserId(auth);
         return userId == null ? "guest" : userId;
+    }
+
+    private <T> ResponseEntity<ApiResponse<T>> withUserId(String auth, Function<String, ResponseEntity<ApiResponse<T>>> action) {
+        String userId = requireUserId(auth);
+        if (userId == null) {
+            return unauthenticated();
+        }
+        return action.apply(userId);
     }
 
     private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
