@@ -144,10 +144,14 @@ npm run dev:backend
 ### 검증 및 빌드
 
 ```bash
+npm run check:deps
+npm run verify
 npm run build
 npm run test:backend
 ```
 
+- `npm run check:deps`는 frontend/backend(workspace) 의존성 누락을 점검합니다.
+- `npm run verify`는 의존성 점검 후 프론트엔드 빌드와 Spring 백엔드 패키징을 연속 실행합니다.
 - `npm run build`는 프론트엔드 빌드 + Spring 백엔드 패키징을 수행합니다.
 - `npm run test:backend`는 Spring 백엔드 테스트를 실행합니다.
 
@@ -159,6 +163,10 @@ npm run test:backend
 | `npm run dev:frontend` | 프론트엔드만 실행 |
 | `npm run dev:backend` | Spring 백엔드 실행 |
 | `npm run dev:backend:legacy` | 레거시(TypeScript) 백엔드 실행 |
+| `npm run check:frontend-deps` | frontend workspace 의존성 점검 |
+| `npm run check:backend-deps` | backend workspace 의존성 점검 |
+| `npm run check:deps` | frontend/backend 의존성 점검 |
+| `npm run verify` | 의존성 점검 + 프론트/백엔드 빌드 |
 | `npm run build` | 프론트엔드 + 백엔드 빌드 |
 | `npm run test:backend` | Spring 백엔드 테스트 |
 

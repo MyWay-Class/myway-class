@@ -141,11 +141,13 @@ npm run dev:backend
 ### Verification and Build
 
 ```bash
+npm run check:deps
 npm run verify
 npm run build
 ```
 
-- `npm run verify` checks dependencies, media-processor type safety, backend build output, and frontend type checking.
+- `npm run check:deps` checks frontend/backend workspace dependency integrity.
+- `npm run verify` runs dependency checks, frontend build, and Spring backend packaging in sequence.
 - `npm run build` builds both the frontend and backend.
 
 ## Scripts
@@ -155,10 +157,11 @@ npm run build
 | `npm run dev` | Run the full local development environment |
 | `npm run dev:frontend` | Run only the frontend |
 | `npm run dev:backend` | Run only the backend |
-| `npm run dev:media-processor` | Run the media processor bundle |
+| `npm run check:frontend-deps` | Check frontend workspace dependencies |
+| `npm run check:backend-deps` | Check backend workspace dependencies |
+| `npm run check:deps` | Check frontend/backend dependencies |
 | `npm run build` | Build frontend and backend |
-| `npm run verify` | Run dependency, type, and build checks |
-| `npm run check:media-processor` | Type-check the media processor |
+| `npm run verify` | Run dependency checks and frontend/backend build verification |
 
 ## Docs
 
