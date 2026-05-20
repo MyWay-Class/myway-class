@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS kv_store (
   scope VARCHAR(64) NOT NULL,
   id VARCHAR(128) NOT NULL,
-  payload CLOB NOT NULL,
+  payload TEXT NOT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (scope, id)
 );
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS scoped_events (
   scope VARCHAR(64) NOT NULL,
   owner_id VARCHAR(128) NOT NULL,
   id VARCHAR(128) NOT NULL,
-  payload CLOB NOT NULL,
+  payload TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (scope, id)
 );
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS ai_usage_log (
   user_id VARCHAR(128) NOT NULL,
   feature VARCHAR(64) NOT NULL,
   success BOOLEAN NOT NULL,
-  input_text CLOB NULL,
+  input_text TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 );
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS activity_event (
   type VARCHAR(64) NOT NULL,
   resource_type VARCHAR(64) NULL,
   resource_id VARCHAR(128) NULL,
-  metadata CLOB NULL,
+  metadata TEXT NULL,
   occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 );
