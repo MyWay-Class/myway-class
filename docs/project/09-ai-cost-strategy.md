@@ -21,13 +21,14 @@
 - 공급자 우선순위 문서화
 
 ## 규칙
-- 공급자 우선순위는 `Cloudflare AI(Workers AI)` → `Gemini 무료 API` → `Codex 5.2` → `Ollama 3.2` 순서로 둔다.
+- 공급자 우선순위는 `demo` → `Ollama` → `Gemini 무료 API` → `Cloudflare AI(Workers AI)` 순서로 둔다.
 - 가능한 한 가장 저렴하거나 운영이 쉬운 공급자를 우선한다.
 - 모델을 호출하기 전에 로컬 로직을 먼저 사용한다.
 - 반복 생성 결과는 캐시한다.
 - 모델에 보내기 전에 컨텍스트를 압축한다.
 - 무료 공급자가 실패하면 다음 단계로 자연스럽게 넘긴다.
-- 공개 테스트에서는 `dev=Ollama`, `staging/production=Gemini -> demo`, `STT=Cloudflare AI` 정책을 따른다.
+- 공개 테스트에서는 `demo`를 기본으로 두고, 필요 시 `Ollama` 또는 `Gemini`를 선택적으로 켠다.
+- STT는 기본 `demo`를 쓰고 실제 전사가 필요할 때 `Cloudflare AI`를 사용한다.
 
 ## 예외 상황
 - 강의가 길면 단계별 요약이 필요하다.
@@ -42,10 +43,10 @@
 ## 공급자 선택 기준
 | 우선순위 | 공급자 | 사용 기준 |
 |----------|--------|----------|
-| 1 | Cloudflare AI(Workers AI) | Cloudflare 안에서 바로 처리 가능한 짧은 작업 |
-| 2 | Gemini 무료 API | 무료 범위 안에서 긴 컨텍스트 또는 일반 생성 |
-| 3 | Codex 5.2 | 코드/구조/문서 생성처럼 정밀한 작업 |
-| 4 | Ollama 3.2 | 로컬에서 빠르게 돌릴 수 있는 작업 또는 fallback |
+| 1 | demo | 기본 0원 경로, 기능/계약 검증 |
+| 2 | Ollama 3.2 | 로컬에서 빠르게 돌릴 수 있는 작업 또는 fallback |
+| 3 | Gemini 무료 API | 무료 범위 안에서 긴 컨텍스트 또는 일반 생성 |
+| 4 | Cloudflare AI(Workers AI) | STT/엣지 처리 등 Cloudflare 경로가 필요한 작업 |
 
 ## 검증 기준
 - 요청 경로가 왜 특정 공급자를 선택했는지 설명할 수 있다.

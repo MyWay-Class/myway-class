@@ -384,7 +384,7 @@ public class MediaController {
                     .uri(URI.create(target))
                     .GET();
             if (!remoteAssetToken.isBlank()) {
-                builder.header("X-Processor-Token", remoteAssetToken);
+                builder.header("x-myway-media-processor-token", remoteAssetToken);
             }
             HttpResponse<byte[]> response = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
             if (response.statusCode() < 200 || response.statusCode() >= 300) return null;

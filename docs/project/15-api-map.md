@@ -84,7 +84,7 @@
   - 강의 완료와 진도 저장
 - `POST /api/v1/media/transcribe`
   - 트랜스크립트 생성
-  - `audio_url`이 있으면 Cloudflare Workers AI 전사 경로 우선
+  - 기본 STT provider는 demo이고 필요 시 외부 provider를 선택
 - `POST /api/v1/media/upload-video`
   - 강의 영상 업로드와 R2 asset key 생성
 - `GET /api/v1/media/providers`
@@ -106,8 +106,12 @@
   - 강의 오디오 추출 기록 조회
 - `GET /api/v1/media/pipeline/:lectureId`
   - 강의 미디어 파이프라인 상태 조회
-- `GET /api/v1/media/assets/:assetKey`
+- `GET /api/v1/media/assets/{assetKey}`
   - 업로드된 미디어 asset 조회
+- `POST /api/v1/media/lecture-video`
+  - 강의와 영상 asset key 매핑 저장
+- `GET /api/v1/media/lecture-video/{lectureId}`
+  - 강의에 연결된 영상 asset key 조회
 - `POST /api/v1/shortform/generate`
   - 숏폼 후보 생성
 - `PUT /api/v1/shortform/candidates/select`
