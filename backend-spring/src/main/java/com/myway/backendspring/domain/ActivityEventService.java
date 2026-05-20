@@ -1,6 +1,5 @@
 package com.myway.backendspring.domain;
 
-import com.myway.backendspring.persistence.FeatureJdbcStore;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -9,9 +8,9 @@ import java.util.UUID;
 
 @Service
 public class ActivityEventService {
-    private final FeatureJdbcStore store;
+    private final ActivityEventStore store;
 
-    public ActivityEventService(FeatureJdbcStore store) {
+    public ActivityEventService(ActivityEventStore store) {
         this.store = store;
     }
 
@@ -19,7 +18,7 @@ public class ActivityEventService {
         if (userId == null || userId.isBlank()) {
             return;
         }
-        store.insertActivityEvent(
+        store.insert(
                 UUID.randomUUID().toString(),
                 userId,
                 type == null || type.isBlank() ? "unknown" : type,
@@ -30,7 +29,7 @@ public class ActivityEventService {
     }
 
     public List<Map<String, Object>> recent(String userId, int limit) {
-        return store.listActivityEvents(userId, limit);
+        return store.listRecent(userId, limit);
     }
 
     public List<Map<String, Object>> recent(
@@ -40,6 +39,6 @@ public class ActivityEventService {
             String occurredToIso,
             int limit
     ) {
-        return store.listActivityEvents(userId, type, occurredFromIso, occurredToIso, limit);
+        return store.listRecent(userId, type, occurredFromIso, occurredToIso, limit);
     }
 }
