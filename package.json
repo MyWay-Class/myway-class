@@ -22,7 +22,6 @@
     "test:backend:clean": "node -e \"const fs=require('fs');fs.rmSync('backend-spring/data',{recursive:true,force:true});\" && npm run test:backend",
     "build:backend:legacy": "npm --workspace @myway/backend run build",
     "build": "npm run build:frontend && npm run build:backend",
-<<<<<<< HEAD
     "orch:run": "tsx tools/orchestrator/run.ts",
     "orch:run:collab": "set \"ORCH_PROFILE=collab\" && tsx tools/orchestrator/run.ts",
     "orch:checks": "tsx tools/orchestrator/checks.ts",
