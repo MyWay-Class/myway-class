@@ -15,18 +15,23 @@ import java.util.UUID;
 
 @Service
 public class AiUsageQuotaService {
+    private static final String AI_USAGE_SCOPE = "ai_usage_daily";
+
     private final FeatureStoreRepository repository;
     private final ActivityEventService activityEventService;
     private final AiUsageLogService aiUsageLogService;
+    private final AiUsageDailyStore aiUsageDailyStore;
 
     public AiUsageQuotaService(
             FeatureStoreRepository repository,
             ActivityEventService activityEventService,
-            AiUsageLogService aiUsageLogService
+            AiUsageLogService aiUsageLogService,
+            AiUsageDailyStore aiUsageDailyStore
     ) {
         this.repository = repository;
         this.activityEventService = activityEventService;
         this.aiUsageLogService = aiUsageLogService;
+        this.aiUsageDailyStore = aiUsageDailyStore;
     }
 
     public boolean canConsumeAi(String userId, Map<String, Object> settings) {
@@ -34,7 +39,7 @@ public class AiUsageQuotaService {
         if (limit <= 0) {
             limit = 100;
         }
-        int usedToday = repository.getAiUsageDailyCount(userId, LocalDate.now());
+        int usedToday = aiUsageDailyStore.getCount(userId, LocalDate.now());
         Instant quotaWindowStart = parseInstantOrNull(settings == null ? null : settings.get("quota_window_started_at"));
         int usedByLogs = aiUsageLogService == null ? 0 : aiUsageLogService.listRaw(userId).size();
         if (quotaWindowStart != null) {
@@ -57,15 +62,15 @@ public class AiUsageQuotaService {
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
         LocalDate today = LocalDate.now();
         String key = userId + ":" + today;
-        int used = repository.getAiUsageDailyCount(userId, today);
-        repository.upsertAiUsageDaily(userId, today, used + 1);
+        int used = aiUsageDailyStore.getCount(userId, today);
+        aiUsageDailyStore.upsertCount(userId, today, used + 1);
 
         Map<String, Object> usage = new HashMap<>();
         usage.put("user_id", userId);
         usage.put("day", today.toString());
         usage.put("count", used + 1);
         usage.put("updated_at", Instant.now().toString());
-        repository.upsertKv(FeatureStoreRepository.AI_USAGE_SCOPE, key, usage);
+        repository.upsertKv(AI_USAGE_SCOPE, key, usage);
 
         String logId = aiUsageLogService == null
                 ? UUID.randomUUID().toString()
