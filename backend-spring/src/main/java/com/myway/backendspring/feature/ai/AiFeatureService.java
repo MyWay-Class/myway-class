@@ -1,6 +1,7 @@
 package com.myway.backendspring.feature.ai;
 
 import com.myway.backendspring.feature.quota.AiUsageQuotaService;
+import com.myway.backendspring.feature.quota.AiUsageDailyStore;
 import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -22,17 +23,20 @@ public class AiFeatureService {
     private final FeatureStoreRepository repository;
     private final AiUsageQuotaService aiUsageQuotaService;
     private final AiUsageLogService aiUsageLogService;
+    private final AiUsageDailyStore aiUsageDailyStore;
     private final String runtimeEnv;
 
     public AiFeatureService(
             FeatureStoreRepository repository,
             AiUsageQuotaService aiUsageQuotaService,
             AiUsageLogService aiUsageLogService,
+            AiUsageDailyStore aiUsageDailyStore,
             @Value("${myway.runtime.env:${SPRING_PROFILES_ACTIVE:dev}}") String runtimeEnv
     ) {
         this.repository = repository;
         this.aiUsageQuotaService = aiUsageQuotaService;
         this.aiUsageLogService = aiUsageLogService;
+        this.aiUsageDailyStore = aiUsageDailyStore;
         this.runtimeEnv = runtimeEnv == null ? "dev" : runtimeEnv.trim();
         ensureDefaults();
     }
@@ -85,7 +89,9 @@ public class AiFeatureService {
             settings.putAll(patch);
             if (patch.containsKey("daily_limit") && patch.size() == 1) {
                 settings.put("quota_window_started_at", Instant.now().toString());
-                repository.upsertAiUsageDaily(userId, LocalDate.now(), 0);
+                if (aiUsageDailyStore != null) {
+                    aiUsageDailyStore.upsertCount(userId, LocalDate.now(), 0);
+                }
             } else if (patch.containsKey("daily_limit")) {
                 settings.remove("quota_window_started_at");
             }
