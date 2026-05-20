@@ -16,9 +16,11 @@
 
 ## 핵심 원칙
 - 프론트는 백엔드 API만 호출한다.
-- 백엔드는 D1, R2, AI 작업을 오케스트레이션한다.
+- 프론트 배포는 Cloudflare Pages를 사용한다.
+- 백엔드 API의 주 실행 경로는 Spring(`backend-spring/`)이며, 주 데이터 저장소는 Supabase PostgreSQL이다.
+- Cloudflare Workers/D1은 보조 경로(캐시/실험/점진 이관)로만 사용한다.
 - 대용량 파일과 미디어는 R2에 둔다.
-- 메타데이터와 검색용 정보는 D1에 둔다.
+- 메타데이터와 핵심 도메인 데이터의 단일 진실 원천(SoT)은 Supabase PostgreSQL로 유지한다.
 
 ## 상세 문서
 - 시스템 동작 순서: `docs/project/02-architecture.md`

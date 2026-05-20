@@ -6,6 +6,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collections;
@@ -19,6 +20,7 @@ public class FeatureJdbcStore {
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private volatile Boolean postgres;
 
     public FeatureJdbcStore(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
@@ -27,6 +29,18 @@ public class FeatureJdbcStore {
 
     public void upsertKv(String scope, String id, Map<String, Object> payload) {
         String json = toJson(payload);
+        if (isPostgres()) {
+            jdbcTemplate.update(
+                    """
+                    INSERT INTO kv_store(scope, id, payload, updated_at)
+                    VALUES(?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT (scope, id)
+                    DO UPDATE SET payload = EXCLUDED.payload, updated_at = CURRENT_TIMESTAMP
+                    """,
+                    scope, id, json
+            );
+            return;
+        }
         jdbcTemplate.update(
                 """
                 MERGE INTO kv_store(scope, id, payload, updated_at)
@@ -94,6 +108,18 @@ public class FeatureJdbcStore {
     }
 
     public void upsertAiUsageDaily(String userId, LocalDate day, int count) {
+        if (isPostgres()) {
+            jdbcTemplate.update(
+                    """
+                    INSERT INTO ai_usage_daily(user_id, usage_day, usage_count, updated_at)
+                    VALUES(?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT (user_id, usage_day)
+                    DO UPDATE SET usage_count = EXCLUDED.usage_count, updated_at = CURRENT_TIMESTAMP
+                    """,
+                    userId, day, count
+            );
+            return;
+        }
         jdbcTemplate.update(
                 """
                 MERGE INTO ai_usage_daily(user_id, usage_day, usage_count, updated_at)
@@ -193,6 +219,16 @@ public class FeatureJdbcStore {
             return null;
         }
         return OffsetDateTime.parse(value);
+    }
+
+    private boolean isPostgres() {
+        if (postgres != null) {
+            return postgres;
+        }
+        Boolean detected = jdbcTemplate.execute((Connection connection) ->
+                connection.getMetaData().getDatabaseProductName().toLowerCase().contains("postgres"));
+        postgres = detected != null && detected;
+        return postgres;
     }
 
     private String toJson(Map<String, Object> payload) {
