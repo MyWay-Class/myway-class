@@ -5,9 +5,13 @@ import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -36,6 +40,8 @@ public class MediaPipelineService {
                 "file_name", fileName
         );
         repository.upsertKv(MEDIA_ASSET_SCOPE, key, payload);
+        // Keep existing upload contract and persist lecture->asset mapping automatically.
+        bindLectureVideoAsset(lectureId, key, null);
         return payload;
     }
 
@@ -145,6 +151,82 @@ public class MediaPipelineService {
         return repository.getKv(LECTURE_VIDEO_SCOPE, lectureId.trim());
     }
 
+    public Map<String, Object> runBatchPipeline(
+            List<String> lectureIds,
+            Integer retryCountInput,
+            boolean forceRun,
+            String language,
+            String sttProvider,
+            String sttModel
+    ) {
+        List<Map<String, Object>> mappings = repository.listKvByScope(LECTURE_VIDEO_SCOPE);
+        Map<String, Map<String, Object>> mappedByLecture = new LinkedHashMap<>();
+        for (Map<String, Object> mapping : mappings) {
+            String lectureId = String.valueOf(mapping.getOrDefault("lecture_id", "")).trim();
+            if (!lectureId.isBlank()) {
+                mappedByLecture.put(lectureId, mapping);
+            }
+        }
+
+        Set<String> targetLectures = resolveTargetLectures(lectureIds, mappedByLecture.keySet());
+        int retryCount = normalizeRetryCount(retryCountInput);
+        int maxAttempts = retryCount + 1;
+        String normalizedLanguage = normalizeOrDefault(language, "ko");
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        int success = 0;
+        int failed = 0;
+        int pending = 0;
+
+        for (String lectureId : targetLectures) {
+            Map<String, Object> mapping = mappedByLecture.get(lectureId);
+            if (mapping == null) {
+                pending++;
+                items.add(batchPending(lectureId, "MAPPING_MISSING", "강의에 연결된 영상 에셋이 없어 대기 상태로 남겼습니다."));
+                continue;
+            }
+
+            Map<String, Object> currentPipeline = pipeline(lectureId);
+            if (!forceRun && isPipelineRunning(currentPipeline)) {
+                pending++;
+                items.add(batchPending(lectureId, "PIPELINE_IN_PROGRESS", "기존 파이프라인이 처리 중이라 이번 배치에서 건너뛰었습니다."));
+                continue;
+            }
+
+            BatchAttemptResult result = executeSingleLecture(
+                    lectureId,
+                    mapping,
+                    maxAttempts,
+                    normalizedLanguage,
+                    sttProvider,
+                    sttModel
+            );
+            if ("SUCCESS".equals(result.status())) {
+                success++;
+            } else if ("FAILED".equals(result.status())) {
+                failed++;
+            } else {
+                pending++;
+            }
+            items.add(result.toMap());
+        }
+
+        return Map.of(
+                "batch_scope", "mapped_lectures",
+                "requested_count", targetLectures.size(),
+                "processed_count", items.size(),
+                "retry_count", retryCount,
+                "force_run", forceRun,
+                "summary", Map.of(
+                        "success", success,
+                        "failed", failed,
+                        "pending", pending
+                ),
+                "items", items,
+                "updated_at", Instant.now().toString()
+        );
+    }
+
     public Map<String, Object> completeExtractionCallback(
             String extractionId,
             String status,
@@ -208,6 +290,147 @@ public class MediaPipelineService {
             map.put("note_id", null);
             map.put("extraction_id", extractionId);
             map.put("updated_at", now);
+            return map;
+        }
+    }
+
+    private BatchAttemptResult executeSingleLecture(
+            String lectureId,
+            Map<String, Object> mapping,
+            int maxAttempts,
+            String language,
+            String sttProvider,
+            String sttModel
+    ) {
+        String assetKey = String.valueOf(mapping.getOrDefault("asset_key", "")).trim();
+        String audioUrl = String.valueOf(mapping.getOrDefault("video_url", "")).trim();
+        if (audioUrl.isBlank() && !assetKey.isBlank()) {
+            audioUrl = "/api/v1/media/assets/" + assetKey;
+        }
+        if (audioUrl.isBlank()) {
+            return new BatchAttemptResult(lectureId, "FAILED", 1, "ASSET_URL_MISSING", "영상 URL을 찾을 수 없습니다.", null, null, null, null);
+        }
+
+        int attemptsUsed = 0;
+        String lastErrorCode = null;
+        String lastErrorMessage = null;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            attemptsUsed = attempt;
+            try {
+                Map<String, Object> extraction = createExtraction(lectureId, audioUrl);
+                String extractionId = String.valueOf(extraction.getOrDefault("id", "")).trim();
+                Map<String, Object> dispatch = dispatchExtractionJob(extractionId, audioUrl);
+                if (dispatch == null) {
+                    throw new IllegalStateException("오디오 추출 작업 디스패치에 실패했습니다.");
+                }
+                Map<String, Object> transcript = transcribe(
+                        lectureId,
+                        language,
+                        null,
+                        normalizeNullable(sttProvider),
+                        normalizeNullable(sttModel),
+                        audioUrl,
+                        extractionId
+                );
+                Map<String, Object> ragIndex = featureStoreService.rebuildRagIndex(lectureId, null);
+                Map<String, Object> pipeline = pipeline(lectureId);
+                return new BatchAttemptResult(
+                        lectureId,
+                        "SUCCESS",
+                        attemptsUsed,
+                        null,
+                        null,
+                        extractionId,
+                        transcript,
+                        ragIndex,
+                        pipeline
+                );
+            } catch (RuntimeException ex) {
+                lastErrorCode = "PIPELINE_EXECUTION_FAILED";
+                lastErrorMessage = ex.getMessage() == null ? "파이프라인 실행 중 오류가 발생했습니다." : ex.getMessage();
+            }
+        }
+        return new BatchAttemptResult(
+                lectureId,
+                "FAILED",
+                attemptsUsed,
+                lastErrorCode,
+                lastErrorMessage,
+                null,
+                null,
+                null,
+                pipeline(lectureId)
+        );
+    }
+
+    private Map<String, Object> batchPending(String lectureId, String code, String message) {
+        return Map.of(
+                "lecture_id", lectureId,
+                "status", "PENDING",
+                "attempts_used", 0,
+                "error_code", code,
+                "error_message", message
+        );
+    }
+
+    private Set<String> resolveTargetLectures(List<String> requestedLectureIds, Set<String> mappedLectureIds) {
+        if (requestedLectureIds == null || requestedLectureIds.isEmpty()) {
+            return new LinkedHashSet<>(mappedLectureIds);
+        }
+        Set<String> resolved = new LinkedHashSet<>();
+        for (String lectureId : requestedLectureIds) {
+            String normalized = lectureId == null ? "" : lectureId.trim();
+            if (!normalized.isBlank()) {
+                resolved.add(normalized);
+            }
+        }
+        return resolved;
+    }
+
+    private boolean isPipelineRunning(Map<String, Object> pipeline) {
+        String stage = String.valueOf(pipeline.getOrDefault("processing_stage", "")).toLowerCase();
+        return "queued".equals(stage) || "transcribing".equals(stage) || "callback".equals(stage);
+    }
+
+    private int normalizeRetryCount(Integer retryCountInput) {
+        if (retryCountInput == null) return 0;
+        return Math.max(0, Math.min(5, retryCountInput));
+    }
+
+    private String normalizeOrDefault(String value, String defaultValue) {
+        if (value == null) return defaultValue;
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? defaultValue : trimmed;
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private record BatchAttemptResult(
+            String lectureId,
+            String status,
+            int attemptsUsed,
+            String errorCode,
+            String errorMessage,
+            String extractionId,
+            Map<String, Object> transcript,
+            Map<String, Object> ragIndex,
+            Map<String, Object> pipeline
+    ) {
+        Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("lecture_id", lectureId);
+            map.put("status", status);
+            map.put("attempts_used", attemptsUsed);
+            map.put("error_code", errorCode);
+            map.put("error_message", errorMessage);
+            map.put("extraction_id", extractionId);
+            map.put("transcript", transcript);
+            map.put("rag_index", ragIndex);
+            map.put("pipeline", pipeline);
             return map;
         }
     }

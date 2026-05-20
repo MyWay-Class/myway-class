@@ -95,6 +95,27 @@ class MediaContractTest {
     }
 
     @Test
+    void uploadVideo_shouldAutoBindLectureVideoAsset_withoutManualBindingEndpoint() throws Exception {
+        String instructorAuth = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        JsonNode uploadData = readData(mockMvc.perform(post("/api/v1/media/upload-video")
+                        .header("Authorization", instructorAuth)
+                        .queryParam("lecture_id", "lec_java_01"))
+                .andExpect(status().isCreated())
+                .andReturn());
+        String uploadedAssetKey = uploadData.path("asset_key").asText();
+        assertThat(uploadedAssetKey).isNotBlank();
+
+        JsonNode boundData = readData(mockMvc.perform(get("/api/v1/media/lecture-video/lec_java_01")
+                        .header("Authorization", instructorAuth))
+                .andExpect(status().isOk())
+                .andReturn());
+        assertThat(boundData.path("lecture_id").asText()).isEqualTo("lec_java_01");
+        assertThat(boundData.path("asset_key").asText()).isEqualTo(uploadedAssetKey);
+        assertThat(boundData.path("video_url").asText()).isEqualTo("/api/v1/media/assets/" + uploadedAssetKey);
+    }
+
+    @Test
     void mediaProviders_shouldExposeDemoAsDefaultPolicyForTranscribePlan() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
 
@@ -196,6 +217,32 @@ class MediaContractTest {
 
         assertThat(transcript.path("stt_provider").asText()).isEqualTo("demo");
         assertThat(transcript.path("stt_model").asText()).isEqualTo("cf-whisper");
+    }
+
+    @Test
+    void pipelineRunBatch_shouldAllowOnlyAdmin_andReturnSummary() throws Exception {
+        String adminAuth = "Bearer " + loginAndGetToken("usr_adm_001");
+        String instructorAuth = "Bearer " + loginAndGetToken("usr_ins_001");
+
+        assertFailureEnvelope(mockMvc.perform(post("/api/v1/media/pipeline/run-batch")
+                        .header("Authorization", instructorAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"retry_count\":1}"))
+                .andExpect(status().isForbidden())
+                .andReturn(), "FORBIDDEN");
+
+        JsonNode response = readData(mockMvc.perform(post("/api/v1/media/pipeline/run-batch")
+                        .header("Authorization", adminAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_ids\":[\"lec_java_01\"],\"retry_count\":1,\"force_run\":true}"))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        JsonNode summary = response.path("summary");
+        assertThat(summary.has("success")).isTrue();
+        assertThat(summary.has("failed")).isTrue();
+        assertThat(summary.has("pending")).isTrue();
+        assertThat(response.path("items").isArray()).isTrue();
     }
 
     private String loginAndGetToken(String userId) throws Exception {

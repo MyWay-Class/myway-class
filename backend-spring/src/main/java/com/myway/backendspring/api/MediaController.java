@@ -91,6 +91,15 @@ public class MediaController {
             String video_url
     ) {}
 
+    public record RunBatchPipelineRequest(
+            List<String> lecture_ids,
+            @Min(0) Integer retry_count,
+            Boolean force_run,
+            String language,
+            String stt_provider,
+            String stt_model
+    ) {}
+
     private String trimRequired(String value) {
         return value.trim();
     }
@@ -120,6 +129,10 @@ public class MediaController {
         if (session == null) return false;
         String role = session.user().role();
         return "admin".equals(role) || "instructor".equals(role);
+    }
+
+    private boolean isAdmin(SessionView session) {
+        return session != null && "admin".equals(session.user().role());
     }
 
     @PostMapping("/upload-video")
@@ -262,6 +275,34 @@ public class MediaController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_VIDEO_NOT_FOUND", "연결된 강의 영상 에셋이 없습니다."));
         }
         return ResponseEntity.ok(ApiResponse.success(payload));
+    }
+
+    @PostMapping("/pipeline/run-batch")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> runBatchPipeline(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody(required = false) @Valid RunBatchPipelineRequest body
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
+        if (!isAdmin(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.failure("FORBIDDEN", "배치 파이프라인 실행은 운영자만 사용할 수 있습니다."));
+        }
+        List<String> lectureIds = body == null ? null : body.lecture_ids();
+        Integer retryCount = body == null ? 0 : body.retry_count();
+        boolean forceRun = body != null && Boolean.TRUE.equals(body.force_run());
+        String language = body == null ? null : body.language();
+        String sttProvider = body == null ? null : body.stt_provider();
+        String sttModel = body == null ? null : body.stt_model();
+        Map<String, Object> result = mediaPipelineService.runBatchPipeline(
+                lectureIds,
+                retryCount,
+                forceRun,
+                language,
+                sttProvider,
+                sttModel
+        );
+        return ResponseEntity.ok(ApiResponse.success(result, "STT/RAG 배치 파이프라인 실행이 완료되었습니다."));
     }
 
     @PostMapping("/extract-audio/callback")
