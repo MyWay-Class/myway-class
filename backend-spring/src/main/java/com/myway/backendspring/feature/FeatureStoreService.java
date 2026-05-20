@@ -1,6 +1,5 @@
 package com.myway.backendspring.feature;
 
-import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.feature.admin.AdminAssignmentService;
 import com.myway.backendspring.feature.ai.AiFeatureService;
 import com.myway.backendspring.feature.course.CustomCourseService;
@@ -41,7 +40,6 @@ public class FeatureStoreService {
     @Autowired
     public FeatureStoreService(
             FeatureJdbcStore store,
-            DemoLearningService learningService,
             RagService ragService,
             ShortformService shortformService,
             AiFeatureService aiFeatureService,
@@ -64,7 +62,6 @@ public class FeatureStoreService {
     public FeatureStoreService(FeatureJdbcStore store, int shortformMaxRetry) {
         this(
                 store,
-                null,
                 null,
                 null,
                 new AiFeatureService(new FeatureStoreRepository(store), null, null, null, "dev"),
