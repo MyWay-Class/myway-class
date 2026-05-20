@@ -6,6 +6,7 @@ import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.ai.AiRuntimeService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
@@ -77,11 +78,13 @@ public class AiController {
     private final SessionService sessionService;
     private final FeatureStoreService featureStore;
     private final DemoLearningService learningService;
+    private final AiRuntimeService aiRuntimeService;
 
-    public AiController(SessionService sessionService, FeatureStoreService featureStore, DemoLearningService learningService) {
+    public AiController(SessionService sessionService, FeatureStoreService featureStore, DemoLearningService learningService, AiRuntimeService aiRuntimeService) {
         this.sessionService = sessionService;
         this.featureStore = featureStore;
         this.learningService = learningService;
+        this.aiRuntimeService = aiRuntimeService;
     }
 
     private SessionView require(String auth) { return sessionService.me(auth); }
@@ -238,14 +241,21 @@ public class AiController {
         if (session == null) return unauthenticated();
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
         String message = normalize(body.message());
+        Map<String, Object> runtime = aiRuntimeService.generate(
+                "intent",
+                "메시지 의도를 한 단어로 분류하고 이유를 한 줄로 설명하세요: " + message,
+                featureStore.aiSettings(session.user().id())
+        );
         Map<String, Object> data = new HashMap<>();
         data.put("intent", "recommendation");
         data.put("confidence", 0.82);
         data.put("action", "show_recommendations");
-        data.put("reason", "Spring demo intent classifier");
+        data.put("reason", runtime.getOrDefault("text", "Spring demo intent classifier"));
         data.put("lecture_id", optionalNormalized(body.lecture_id()));
-        data.put("provider", "demo");
-        data.put("model", "demo-intent-v1");
+        data.put("provider", runtime.getOrDefault("provider", "demo"));
+        data.put("model", runtime.getOrDefault("model", "demo-intent-v1"));
+        data.put("live", runtime.getOrDefault("live", false));
+        if (runtime.containsKey("error")) data.put("error", runtime.get("error"));
         featureStore.recordAiUsage(session.user().id(), "intent", true, message);
         return ResponseEntity.ok(ApiResponse.success(data, "인텐트가 분류되었습니다."));
     }
@@ -258,12 +268,18 @@ public class AiController {
         String query = normalize(body.query());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
-        Map<String, Object> data = Map.of(
-                "query", query,
-                "hits", List.of(Map.of("id", "hit-1", "title", "Spring Boot 시작", "score", 0.91)),
-                "provider", "demo",
-                "model", "demo-search-v1"
+        Map<String, Object> runtime = aiRuntimeService.generate(
+                "search",
+                "다음 질의와 관련된 강의 검색 결과를 요약하세요: " + query,
+                featureStore.aiSettings(session.user().id())
         );
+        Map<String, Object> data = new HashMap<>();
+        data.put("query", query);
+        data.put("hits", List.of(Map.of("id", "hit-1", "title", String.valueOf(runtime.getOrDefault("text", "Spring Boot 시작")), "score", 0.91)));
+        data.put("provider", runtime.getOrDefault("provider", "demo"));
+        data.put("model", runtime.getOrDefault("model", "demo-search-v1"));
+        data.put("live", runtime.getOrDefault("live", false));
+        if (runtime.containsKey("error")) data.put("error", runtime.get("error"));
         featureStore.recordAiUsage(session.user().id(), "search", true, query);
         return ResponseEntity.ok(ApiResponse.success(data, "검색 결과를 조회했습니다."));
     }
@@ -276,12 +292,15 @@ public class AiController {
         String question = normalize(body.question());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
+        Map<String, Object> runtime = aiRuntimeService.generate("answer", question, featureStore.aiSettings(session.user().id()));
         Map<String, Object> data = new HashMap<>();
-        data.put("answer", "[Spring AI 응답] " + question);
+        data.put("answer", runtime.getOrDefault("text", "[Spring AI 응답] " + question));
         data.put("sources", List.of("lecture:lec_java_01"));
         data.put("lecture_id", optionalNormalized(body.lecture_id()));
-        data.put("provider", "demo");
-        data.put("model", "demo-answer-v1");
+        data.put("provider", runtime.getOrDefault("provider", "demo"));
+        data.put("model", runtime.getOrDefault("model", "demo-answer-v1"));
+        data.put("live", runtime.getOrDefault("live", false));
+        if (runtime.containsKey("error")) data.put("error", runtime.get("error"));
         featureStore.recordAiUsage(session.user().id(), "answer", true, question);
         return ResponseEntity.ok(ApiResponse.success(data, "답변을 생성했습니다."));
     }
@@ -295,14 +314,20 @@ public class AiController {
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         String style = defaultIfBlank(body.style(), "brief");
         String language = defaultIfBlank(body.language(), "ko");
-        Map<String, Object> data = Map.of(
-                "lecture_id", lectureId,
-                "content", "Spring 백엔드에서 생성한 강의 요약입니다.",
-                "style", style,
-                "language", language,
-                "provider", "demo",
-                "model", "demo-summary-v1"
+        Map<String, Object> runtime = aiRuntimeService.generate(
+                "summary",
+                lectureId + " 강의 내용을 " + style + " 스타일로 " + language + " 요약",
+                featureStore.aiSettings(session.user().id())
         );
+        Map<String, Object> data = new HashMap<>();
+        data.put("lecture_id", lectureId);
+        data.put("content", runtime.getOrDefault("text", "Spring 백엔드에서 생성한 강의 요약입니다."));
+        data.put("style", style);
+        data.put("language", language);
+        data.put("provider", runtime.getOrDefault("provider", "demo"));
+        data.put("model", runtime.getOrDefault("model", "demo-summary-v1"));
+        data.put("live", runtime.getOrDefault("live", false));
+        if (runtime.containsKey("error")) data.put("error", runtime.get("error"));
         featureStore.recordAiUsage(session.user().id(), "summary", true, lectureId);
         return ResponseEntity.ok(ApiResponse.success(data, "요약이 생성되었습니다."));
     }
@@ -314,12 +339,18 @@ public class AiController {
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
         String lectureId = requireLectureId(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        Map<String, Object> data = Map.of(
-                "lecture_id", lectureId,
-                "questions", List.of(Map.of("id", "q-1", "question", "Spring Boot의 장점은?", "answer", "빠른 REST API 개발")),
-                "provider", "demo",
-                "model", "demo-quiz-v1"
+        Map<String, Object> runtime = aiRuntimeService.generate(
+                "quiz",
+                lectureId + " 강의 기반 객관식 퀴즈 1문항 생성",
+                featureStore.aiSettings(session.user().id())
         );
+        Map<String, Object> data = new HashMap<>();
+        data.put("lecture_id", lectureId);
+        data.put("questions", List.of(Map.of("id", "q-1", "question", String.valueOf(runtime.getOrDefault("text", "Spring Boot의 장점은?")), "answer", "AI 생성 답안")));
+        data.put("provider", runtime.getOrDefault("provider", "demo"));
+        data.put("model", runtime.getOrDefault("model", "demo-quiz-v1"));
+        data.put("live", runtime.getOrDefault("live", false));
+        if (runtime.containsKey("error")) data.put("error", runtime.get("error"));
         featureStore.recordAiUsage(session.user().id(), "quiz", true, lectureId);
         return ResponseEntity.ok(ApiResponse.success(data, "퀴즈가 생성되었습니다."));
     }
