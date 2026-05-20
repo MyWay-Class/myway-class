@@ -21,15 +21,18 @@ public class AiFeatureService {
 
     private final FeatureStoreRepository repository;
     private final AiUsageQuotaService aiUsageQuotaService;
+    private final AiUsageLogService aiUsageLogService;
     private final String runtimeEnv;
 
     public AiFeatureService(
             FeatureStoreRepository repository,
             AiUsageQuotaService aiUsageQuotaService,
+            AiUsageLogService aiUsageLogService,
             @Value("${myway.runtime.env:${SPRING_PROFILES_ACTIVE:dev}}") String runtimeEnv
     ) {
         this.repository = repository;
         this.aiUsageQuotaService = aiUsageQuotaService;
+        this.aiUsageLogService = aiUsageLogService;
         this.runtimeEnv = runtimeEnv == null ? "dev" : runtimeEnv.trim();
         ensureDefaults();
     }
@@ -47,18 +50,7 @@ public class AiFeatureService {
     }
 
     public Map<String, Object> aiLogs(String userId) {
-        List<Map<String, Object>> rows = repository.listAiUsageLogs(userId).stream()
-                .map(item -> {
-                    Map<String, Object> mapped = new HashMap<>();
-                    mapped.put("id", String.valueOf(item.getOrDefault("id", "")));
-                    mapped.put("user_id", String.valueOf(item.getOrDefault("user_id", userId)));
-                    mapped.put("feature", String.valueOf(item.getOrDefault("feature", "request")));
-                    mapped.put("success", asBoolean(item.get("success"), false));
-                    mapped.put("input_text", String.valueOf(item.getOrDefault("input_text", "")));
-                    mapped.put("created_at", String.valueOf(item.getOrDefault("created_at", Instant.now().toString())));
-                    return mapped;
-                })
-                .toList();
+        List<Map<String, Object>> rows = aiUsageLogService == null ? List.of() : aiUsageLogService.listNormalized(userId);
         return Map.of("user_id", userId, "items", rows, "count", rows.size());
     }
 
@@ -170,15 +162,5 @@ public class AiFeatureService {
             }
         }
         return false;
-    }
-
-    private boolean asBoolean(Object value, boolean defaultValue) {
-        if (value == null) return defaultValue;
-        if (value instanceof Boolean bool) return bool;
-        String normalized = String.valueOf(value).trim().toLowerCase();
-        if (normalized.isEmpty()) return defaultValue;
-        if ("true".equals(normalized) || "1".equals(normalized) || "y".equals(normalized) || "yes".equals(normalized)) return true;
-        if ("false".equals(normalized) || "0".equals(normalized) || "n".equals(normalized) || "no".equals(normalized)) return false;
-        return defaultValue;
     }
 }

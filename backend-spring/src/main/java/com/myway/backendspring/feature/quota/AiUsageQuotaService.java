@@ -1,6 +1,7 @@
 package com.myway.backendspring.feature.quota;
 
 import com.myway.backendspring.domain.ActivityEventService;
+import com.myway.backendspring.feature.ai.AiUsageLogService;
 import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import org.springframework.stereotype.Service;
 
@@ -8,6 +9,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -15,10 +17,16 @@ import java.util.UUID;
 public class AiUsageQuotaService {
     private final FeatureStoreRepository repository;
     private final ActivityEventService activityEventService;
+    private final AiUsageLogService aiUsageLogService;
 
-    public AiUsageQuotaService(FeatureStoreRepository repository, ActivityEventService activityEventService) {
+    public AiUsageQuotaService(
+            FeatureStoreRepository repository,
+            ActivityEventService activityEventService,
+            AiUsageLogService aiUsageLogService
+    ) {
         this.repository = repository;
         this.activityEventService = activityEventService;
+        this.aiUsageLogService = aiUsageLogService;
     }
 
     public boolean canConsumeAi(String userId, Map<String, Object> settings) {
@@ -28,9 +36,9 @@ public class AiUsageQuotaService {
         }
         int usedToday = repository.getAiUsageDailyCount(userId, LocalDate.now());
         Instant quotaWindowStart = parseInstantOrNull(settings == null ? null : settings.get("quota_window_started_at"));
-        int usedByLogs = repository.listAiUsageLogs(userId).size();
+        int usedByLogs = aiUsageLogService == null ? 0 : aiUsageLogService.listRaw(userId).size();
         if (quotaWindowStart != null) {
-            usedByLogs = (int) repository.listAiUsageLogs(userId).stream()
+            usedByLogs = (int) (aiUsageLogService == null ? List.<Map<String, Object>>of() : aiUsageLogService.listRaw(userId)).stream()
                     .filter(item -> {
                         Instant createdAt = parseInstantOrNull(item.get("created_at"));
                         return createdAt != null && !createdAt.isBefore(quotaWindowStart);
@@ -59,8 +67,9 @@ public class AiUsageQuotaService {
         usage.put("updated_at", Instant.now().toString());
         repository.upsertKv(FeatureStoreRepository.AI_USAGE_SCOPE, key, usage);
 
-        String logId = UUID.randomUUID().toString();
-        repository.insertAiUsageLog(logId, userId, feature, success, inputText);
+        String logId = aiUsageLogService == null
+                ? UUID.randomUUID().toString()
+                : aiUsageLogService.append(userId, feature, success, inputText);
         if (activityEventService != null) {
             activityEventService.append(
                     userId,
