@@ -1,7 +1,6 @@
 package com.myway.backendspring.feature;
 
 import com.myway.backendspring.domain.DemoLearningService;
-import com.myway.backendspring.domain.ActivityEventService;
 import com.myway.backendspring.feature.admin.AdminAssignmentService;
 import com.myway.backendspring.feature.ai.AiFeatureService;
 import com.myway.backendspring.feature.course.CustomCourseService;
@@ -9,13 +8,11 @@ import com.myway.backendspring.feature.media.MediaProcessingService;
 import com.myway.backendspring.feature.media.MediaStatus;
 import com.myway.backendspring.feature.media.PipelineStage;
 import com.myway.backendspring.feature.media.MediaTranscriptionService;
-import com.myway.backendspring.feature.quota.AiUsageQuotaService;
 import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import com.myway.backendspring.feature.rag.RagService;
 import com.myway.backendspring.feature.shortform.ShortformService;
 import com.myway.backendspring.persistence.FeatureJdbcStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -32,21 +29,8 @@ public class FeatureStoreService {
     private static final String PIPELINE_SCOPE = "media_pipeline";
     private static final String MEDIA_NOTE_SCOPE = "media_note";
     private static final String MEDIA_ASSET_SCOPE = "media_asset";
-    private static final String SHORTFORM_EXTRACTION_SCOPE = "shortform_extraction";
-    private static final String SHORTFORM_VIDEO_SCOPE = "shortform_video";
-    private static final String SHORTFORM_SAVE_SCOPE = "shortform_save";
-    private static final String SHORTFORM_SHARE_SCOPE = "shortform_share";
-    private static final String SHORTFORM_LIKE_SCOPE = "shortform_like";
-    private static final String AI_USAGE_SCOPE = "ai_usage_daily";
     private final FeatureJdbcStore store;
-    private final int shortformMaxRetry;
-    private final ActivityEventService activityEventService;
-    private final String mediaProcessorUrl;
-    private final String mediaProcessorToken;
-    private final String mediaCallbackSecret;
-    private final String mediaPublicBaseUrl;
     private final RagService ragService;
-    private final AiUsageQuotaService aiUsageQuotaService;
     private final ShortformService shortformService;
     private final AiFeatureService aiFeatureService;
     private final MediaProcessingService mediaProcessingService;
@@ -58,14 +42,7 @@ public class FeatureStoreService {
     public FeatureStoreService(
             FeatureJdbcStore store,
             DemoLearningService learningService,
-            ActivityEventService activityEventService,
-            @Value("${myway.shortform.retry.max-attempts:3}") int shortformMaxRetry,
-            @Value("${myway.media.processor.url:}") String mediaProcessorUrl,
-            @Value("${myway.media.processor.token:}") String mediaProcessorToken,
-            @Value("${myway.media.callback.secret:}") String mediaCallbackSecret,
-            @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl,
             RagService ragService,
-            AiUsageQuotaService aiUsageQuotaService,
             ShortformService shortformService,
             AiFeatureService aiFeatureService,
             MediaProcessingService mediaProcessingService,
@@ -74,14 +51,7 @@ public class FeatureStoreService {
             AdminAssignmentService adminAssignmentService
     ) {
         this.store = store;
-        this.activityEventService = activityEventService;
-        this.shortformMaxRetry = Math.max(1, shortformMaxRetry);
-        this.mediaProcessorUrl = mediaProcessorUrl == null ? "" : mediaProcessorUrl.trim();
-        this.mediaProcessorToken = mediaProcessorToken == null ? "" : mediaProcessorToken.trim();
-        this.mediaCallbackSecret = mediaCallbackSecret == null ? "" : mediaCallbackSecret.trim();
-        this.mediaPublicBaseUrl = mediaPublicBaseUrl == null ? "http://127.0.0.1:8787" : mediaPublicBaseUrl.trim();
         this.ragService = ragService;
-        this.aiUsageQuotaService = aiUsageQuotaService;
         this.shortformService = shortformService;
         this.aiFeatureService = aiFeatureService;
         this.mediaProcessingService = mediaProcessingService;
@@ -94,13 +64,6 @@ public class FeatureStoreService {
     public FeatureStoreService(FeatureJdbcStore store, int shortformMaxRetry) {
         this(
                 store,
-                null,
-                null,
-                shortformMaxRetry,
-                "",
-                "",
-                "",
-                "http://127.0.0.1:8787",
                 null,
                 null,
                 null,
