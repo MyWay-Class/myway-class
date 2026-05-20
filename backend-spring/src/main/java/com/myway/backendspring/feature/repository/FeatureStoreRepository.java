@@ -8,7 +8,6 @@ import java.util.Map;
 
 @Repository
 public class FeatureStoreRepository {
-    public static final String AI_USAGE_SCOPE = "ai_usage_daily";
     public static final String MEDIA_TRANSCRIPT_SCOPE = "media_transcript";
     public static final String MEDIA_NOTE_SCOPE = "media_note";
     public static final String RAG_INDEX_SCOPE = "rag_chunk_index";
