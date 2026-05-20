@@ -3,7 +3,6 @@ package com.myway.backendspring.feature.repository;
 import com.myway.backendspring.persistence.FeatureJdbcStore;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -42,14 +41,6 @@ public class FeatureStoreRepository {
 
     public List<Map<String, Object>> listKvByScope(String scope) {
         return store.listKvByScope(scope);
-    }
-
-    public int getAiUsageDailyCount(String userId, LocalDate day) {
-        return store.getAiUsageDailyCount(userId, day);
-    }
-
-    public void upsertAiUsageDaily(String userId, LocalDate day, int count) {
-        store.upsertAiUsageDaily(userId, day, count);
     }
 
     public void insertAiUsageLog(String id, String userId, String feature, boolean success, String inputText) {
