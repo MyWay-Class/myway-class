@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { getLectureDisplayDurationMinutes, type CourseDetail, type LectureDetail } from '@myway/shared';
 import { CourseSessionTimeline } from './CourseSessionTimeline';
 import { StatePanel } from './StatePanel';
 import { buildProtectedVideoUrl } from '../../../lib/video-url';
+import { saveLectureVideoMappingDetailed } from '../../../lib/api-media';
 
 type CourseExploreDetailPanelProps = {
   course: CourseDetail | null;
@@ -173,6 +175,9 @@ export function CourseExploreDetailPanel({
   onTabChange,
   onNavigate,
 }: CourseExploreDetailPanelProps) {
+  const [remapAssetKey, setRemapAssetKey] = useState('');
+  const [remapBusy, setRemapBusy] = useState(false);
+  const [remapMessage, setRemapMessage] = useState<string | null>(null);
   const detailLecture = highlightedLecture;
   const isLocked = Boolean(course && !course.enrolled && !canManageCurrent);
   const protectedVideoUrl = buildProtectedVideoUrl(detailLecture?.video_url, sessionToken);
@@ -182,6 +187,22 @@ export function CourseExploreDetailPanel({
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       void navigator.clipboard.writeText(fileName);
     }
+  };
+
+  const handleRemapAssetKey = async () => {
+    if (!detailLecture?.id || !remapAssetKey.trim()) {
+      setRemapMessage('asset key를 입력해 주세요.');
+      return;
+    }
+
+    setRemapBusy(true);
+    setRemapMessage(null);
+    const response = await saveLectureVideoMappingDetailed({
+      lecture_id: detailLecture.id,
+      asset_key: remapAssetKey.trim(),
+    }, sessionToken);
+    setRemapBusy(false);
+    setRemapMessage(response?.success ? '재매핑 저장 완료' : (response?.error?.message ?? '재매핑 실패'));
   };
 
   return (
@@ -351,6 +372,35 @@ export function CourseExploreDetailPanel({
                             />
                           </div>
                         )
+                      ) : viewMode === 'watch' ? (
+                        <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                          <div className="text-[12px] font-semibold text-slate-700">재생 가능한 영상이 없습니다.</div>
+                          <p className="mt-2 text-[12px] leading-6 text-slate-500">
+                            강의 영상 URL이 비어 있습니다. 관리자라면 아래에서 R2 asset key를 재매핑할 수 있습니다.
+                          </p>
+                          {canManageCurrent ? (
+                            <div className="mt-3">
+                              <div className="flex flex-wrap gap-2">
+                                <input
+                                  type="text"
+                                  value={remapAssetKey}
+                                  onChange={(event) => setRemapAssetKey(event.target.value)}
+                                  placeholder="media/crs_xxx/lec_xxx.mp4"
+                                  className="min-w-[260px] flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-cyan-300 focus:outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  disabled={remapBusy}
+                                  onClick={() => void handleRemapAssetKey()}
+                                  className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-60"
+                                >
+                                  R2 재매핑
+                                </button>
+                              </div>
+                              {remapMessage ? <div className="mt-2 text-[11px] text-slate-500">{remapMessage}</div> : null}
+                            </div>
+                          ) : null}
+                        </div>
                       ) : null}
                       <div className="mt-4 flex flex-wrap gap-2">
                         {viewMode === 'watch' ? (

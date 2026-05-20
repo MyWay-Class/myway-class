@@ -25,6 +25,18 @@ export type MediaExtractionResult = {
   pipeline: LecturePipeline;
 };
 
+export type LectureVideoMappingInput = {
+  lecture_id: string;
+  asset_key: string;
+  video_url?: string;
+};
+
+export type LectureVideoMappingResult = {
+  lecture_id: string;
+  asset_key: string;
+  video_url: string;
+};
+
 export async function uploadLectureVideoDetailed(
   lectureId: string,
   file: File,
@@ -112,4 +124,15 @@ export async function loadMediaProcessorHealth(sessionToken?: string | null): Pr
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   const response = await request<MediaProcessorHealth>('/api/v1/media/processor-health', undefined, token);
   return response?.success && response.data ? response.data : null;
+}
+
+export async function saveLectureVideoMappingDetailed(
+  input: LectureVideoMappingInput,
+  sessionToken?: string | null,
+): Promise<ApiRequestResult<LectureVideoMappingResult> | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  return await request<LectureVideoMappingResult>('/api/v1/media/lecture-video', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }, token);
 }

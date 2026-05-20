@@ -3,7 +3,7 @@ import type { CourseCard, CourseDetail, LectureDetail, LectureTranscript } from 
 import { CourseSessionTimeline } from '../components/CourseSessionTimeline';
 import { LectureSideChatPanel } from '../components/LectureSideChatPanel';
 import { StatePanel } from '../components/StatePanel';
-import { loadLectureTranscriptDetailed } from '../../../lib/api-media';
+import { loadLectureTranscriptDetailed, saveLectureVideoMappingDetailed } from '../../../lib/api-media';
 import { buildProtectedVideoUrl } from '../../../lib/video-url';
 
 type LectureWatchPageProps = {
@@ -21,6 +21,7 @@ type LectureWatchPageProps = {
 
 type RightTab = 'sessions' | 'script' | 'chat';
 type ScriptTab = RightTab;
+type VideoPlaybackErrorKind = 'forbidden' | 'not_found' | 'unknown' | null;
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
@@ -47,6 +48,12 @@ export function LectureWatchPage({
   const [activePanelTab, setActivePanelTab] = useState<ScriptTab>('sessions');
   const [transcript, setTranscript] = useState<LectureTranscript | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
+  const [videoErrorKind, setVideoErrorKind] = useState<VideoPlaybackErrorKind>(null);
+  const [videoErrorMessage, setVideoErrorMessage] = useState<string | null>(null);
+  const [videoChecking, setVideoChecking] = useState(false);
+  const [remapAssetKey, setRemapAssetKey] = useState('');
+  const [remapMessage, setRemapMessage] = useState<string | null>(null);
+  const [remapBusy, setRemapBusy] = useState(false);
   const isLocked = Boolean(selectedCourse && !selectedCourse.enrolled && !canManageCurrent);
   const currentLecture = useMemo(() => {
     if (!selectedCourse) {
@@ -55,6 +62,7 @@ export function LectureWatchPage({
 
     return selectedCourse.lectures.find((lecture) => lecture.id === selectedLectureId) ?? highlightedLecture ?? selectedCourse.lectures[0] ?? null;
   }, [highlightedLecture, selectedCourse, selectedLectureId]);
+  const protectedVideoUrl = buildProtectedVideoUrl(currentLecture?.video_url, sessionToken);
 
   const upcomingLectures = useMemo(() => {
     if (!selectedCourse || !currentLecture) {
@@ -92,6 +100,87 @@ export function LectureWatchPage({
       active = false;
     };
   }, [currentLecture?.id, isLocked, sessionToken]);
+
+  useEffect(() => {
+    let active = true;
+    setVideoErrorKind(null);
+    setVideoErrorMessage(null);
+    setVideoChecking(false);
+
+    if (isLocked || !currentLecture?.video_url || !protectedVideoUrl) {
+      return () => {
+        active = false;
+      };
+    }
+
+    const check = async () => {
+      setVideoChecking(true);
+      try {
+        const response = await fetch(protectedVideoUrl, {
+          method: 'GET',
+          headers: { Range: 'bytes=0-1' },
+        });
+        if (!active) {
+          return;
+        }
+        if (response.ok) {
+          setVideoErrorKind(null);
+          setVideoErrorMessage(null);
+          return;
+        }
+        if (response.status === 403) {
+          setVideoErrorKind('forbidden');
+          setVideoErrorMessage('영상 접근 권한이 없습니다. 토큰 또는 자산 권한을 확인해 주세요.');
+          return;
+        }
+        if (response.status === 404) {
+          setVideoErrorKind('not_found');
+          setVideoErrorMessage('영상 파일을 찾지 못했습니다. R2 키 매핑을 확인해 주세요.');
+          return;
+        }
+        setVideoErrorKind('unknown');
+        setVideoErrorMessage(`영상 재생 확인에 실패했습니다. (HTTP ${response.status})`);
+      } catch {
+        if (active) {
+          setVideoErrorKind('unknown');
+          setVideoErrorMessage('영상 재생 확인 중 네트워크 오류가 발생했습니다.');
+        }
+      } finally {
+        if (active) {
+          setVideoChecking(false);
+        }
+      }
+    };
+
+    void check();
+    return () => {
+      active = false;
+    };
+  }, [currentLecture?.video_url, isLocked, protectedVideoUrl]);
+
+  async function handleRemapAssetKey() {
+    if (!currentLecture?.id || !remapAssetKey.trim()) {
+      setRemapMessage('강의 ID와 asset key를 확인해 주세요.');
+      return;
+    }
+
+    setRemapBusy(true);
+    setRemapMessage(null);
+    const response = await saveLectureVideoMappingDetailed({
+      lecture_id: currentLecture.id,
+      asset_key: remapAssetKey.trim(),
+    }, sessionToken);
+    setRemapBusy(false);
+
+    if (response?.success) {
+      setRemapMessage('R2 재매핑을 저장했습니다. 잠시 후 다시 재생을 시도해 주세요.');
+      setVideoErrorKind(null);
+      setVideoErrorMessage(null);
+      return;
+    }
+
+    setRemapMessage(response?.error?.message ?? '재매핑 저장에 실패했습니다.');
+  }
 
   function formatTimecode(value: number): string {
     const totalSeconds = Math.max(0, Math.floor(value / 1000));
@@ -198,12 +287,37 @@ export function LectureWatchPage({
                   </div>
                 </div>
               ) : currentLecture?.video_url ? (
-                <video
-                  className="aspect-video w-full bg-black"
-                  controls
-                  preload="metadata"
-                  src={buildProtectedVideoUrl(currentLecture.video_url, sessionToken)}
-                />
+                <div className="relative">
+                  <video
+                    className="aspect-video w-full bg-black"
+                    controls
+                    preload="metadata"
+                    src={protectedVideoUrl}
+                    onError={() => {
+                      if (!videoErrorKind) {
+                        setVideoErrorKind('unknown');
+                        setVideoErrorMessage('브라우저 재생 중 오류가 발생했습니다.');
+                      }
+                    }}
+                  />
+                  {videoChecking ? (
+                    <div className="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold text-white/90">
+                      재생 상태 확인 중...
+                    </div>
+                  ) : null}
+                  {videoErrorKind ? (
+                    <div className="border-t border-white/10 bg-slate-950/90 px-4 py-3 text-[12px] text-white/90">
+                      <div className="font-semibold">
+                        {videoErrorKind === 'forbidden'
+                          ? '403 권한 오류'
+                          : videoErrorKind === 'not_found'
+                            ? '404 파일 없음'
+                            : '재생 오류'}
+                      </div>
+                      <div className="mt-1 text-white/70">{videoErrorMessage ?? '영상 상태를 확인해 주세요.'}</div>
+                    </div>
+                  ) : null}
+                </div>
               ) : (
                 <div className="flex aspect-video items-center justify-center bg-[linear-gradient(135deg,#020617_0%,#111827_50%,#1e293b_100%)] text-white">
                   <div className="text-center">
@@ -212,6 +326,32 @@ export function LectureWatchPage({
                     </div>
                     <div className="mt-4 text-[15px] font-semibold">재생 가능한 영상이 없습니다.</div>
                     <div className="mt-1 text-[12px] text-white/65">이 차시는 텍스트/자료 기반으로 확인할 수 있습니다.</div>
+                    {canManageCurrent ? (
+                      <div className="mx-auto mt-4 flex max-w-xl flex-col gap-2 text-left">
+                        <label htmlFor="lecture-remap-asset-key" className="text-[11px] font-semibold text-white/80">
+                          관리자: R2 asset key 재매핑
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <input
+                            id="lecture-remap-asset-key"
+                            type="text"
+                            value={remapAssetKey}
+                            onChange={(event) => setRemapAssetKey(event.target.value)}
+                            placeholder="media/crs_xxx/lec_xxx.mp4"
+                            className="min-w-[260px] flex-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[12px] text-white placeholder:text-white/45 focus:border-cyan-300 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            disabled={remapBusy}
+                            onClick={() => void handleRemapAssetKey()}
+                            className="rounded-xl bg-cyan-500 px-4 py-2 text-[12px] font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:opacity-60"
+                          >
+                            R2 재매핑
+                          </button>
+                        </div>
+                        {remapMessage ? <div className="text-[11px] text-white/70">{remapMessage}</div> : null}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}
