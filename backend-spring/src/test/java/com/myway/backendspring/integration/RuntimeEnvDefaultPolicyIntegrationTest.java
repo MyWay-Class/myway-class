@@ -28,7 +28,7 @@ class RuntimeEnvDefaultPolicyIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void aiSettings_shouldDefaultToGemini_onNonDevRuntime() throws Exception {
+    void aiSettings_shouldDefaultToDemo_onNonDevRuntime() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
 
         JsonNode settings = readData(mockMvc.perform(get("/api/v1/ai/settings")
@@ -38,8 +38,8 @@ class RuntimeEnvDefaultPolicyIntegrationTest {
                 .getResponse()
                 .getContentAsString());
 
-        assertThat(settings.path("provider").asText()).isEqualTo("gemini");
-        assertThat(settings.path("model").asText()).isEqualTo("gemini-1.5-flash");
+        assertThat(settings.path("provider").asText()).isEqualTo("demo");
+        assertThat(settings.path("model").asText()).isEqualTo("demo-v1");
     }
 
     private String loginAndGetToken(String userId) throws Exception {

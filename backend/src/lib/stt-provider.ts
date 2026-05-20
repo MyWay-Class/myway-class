@@ -8,9 +8,9 @@ export type STTProviderSelection = {
 };
 
 const DEFAULT_FALLBACK_ORDER: Record<STTProviderCapability, STTProviderName[]> = {
-  transcribe: ['cloudflare', 'gemini', 'demo'],
-  segment: ['cloudflare', 'gemini', 'demo'],
-  pipeline: ['cloudflare', 'gemini', 'demo'],
+  transcribe: ['demo', 'cloudflare', 'gemini'],
+  segment: ['demo', 'cloudflare', 'gemini'],
+  pipeline: ['demo', 'cloudflare', 'gemini'],
 };
 
 function uniqueProviders(chain: STTProviderName[]): STTProviderName[] {

@@ -18,7 +18,7 @@ import java.util.Map;
 @Service
 public class MediaProcessingService {
     private static final String EXTRACTION_SCOPE = "media_extraction";
-    private static final String STT_DEFAULT_PROVIDER = "cloudflare";
+    private static final String STT_DEFAULT_PROVIDER = "demo";
 
     private final FeatureStoreRepository repository;
     private final String mediaProcessorUrl;
@@ -47,7 +47,7 @@ public class MediaProcessingService {
                 new ProviderInfo("cloudflare", "Cloudflare AI", "배포 환경에서 실제 Workers AI 전사를 수행하는 STT 계층입니다.", "available", List.of("transcribe", "segment", "pipeline")),
                 new ProviderInfo("gemini", "Gemini", "무료 API 쿼터 기반으로 전사 보조와 정리 작업에 활용할 수 있습니다.", "planned", List.of("transcribe", "segment", "pipeline"))
         );
-        List<String> chain = List.of(STT_DEFAULT_PROVIDER, "gemini", "demo");
+        List<String> chain = List.of(STT_DEFAULT_PROVIDER, "cloudflare", "gemini");
         List<Map<String, Object>> steps = chain.stream().map(provider -> {
             String reason = provider.equals(chain.get(0)) ? "이 기능의 기본 경로" : (provider.equals(chain.get(chain.size() - 1)) ? "최후의 안전망" : "기본 경로가 실패할 때의 대체 경로");
             String status = ("cloudflare".equals(provider) || "demo".equals(provider)) ? "available" : "planned";

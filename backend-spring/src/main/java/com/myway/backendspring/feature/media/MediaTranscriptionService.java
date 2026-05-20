@@ -18,7 +18,7 @@ public class MediaTranscriptionService {
     private static final String TRANSCRIPT_SCOPE = "media_transcript";
     private static final String EXTRACTION_SCOPE = "media_extraction";
     private static final String PIPELINE_SCOPE = "media_pipeline";
-    private static final String STT_DEFAULT_PROVIDER = "cloudflare";
+    private static final String STT_DEFAULT_PROVIDER = "demo";
     private static final String STT_DEFAULT_MODEL = "cf-whisper";
     private static final int PUBLIC_STT_MAX_DURATION_MS = 180_000;
     private static final int FALLBACK_TRANSCRIPT_DURATION_MS = 120_000;

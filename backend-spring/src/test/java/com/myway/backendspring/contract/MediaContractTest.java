@@ -95,7 +95,7 @@ class MediaContractTest {
     }
 
     @Test
-    void mediaProviders_shouldExposeCloudflareAsDefaultPolicyForTranscribePlan() throws Exception {
+    void mediaProviders_shouldExposeDemoAsDefaultPolicyForTranscribePlan() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
 
         JsonNode data = readData(mockMvc.perform(get("/api/v1/media/providers")
@@ -112,12 +112,12 @@ class MediaContractTest {
             }
         }
         assertThat(transcribePlan).isNotNull();
-        assertThat(transcribePlan.path("current_provider").asText()).isEqualTo("cloudflare");
-        assertThat(transcribePlan.path("recommended_chain").get(0).asText()).isEqualTo("cloudflare");
+        assertThat(transcribePlan.path("current_provider").asText()).isEqualTo("demo");
+        assertThat(transcribePlan.path("recommended_chain").get(0).asText()).isEqualTo("demo");
     }
 
     @Test
-    void mediaCallbackAutoTranscribe_shouldUseCloudflareDefault_whenProviderNotExplicitlyRequested() throws Exception {
+    void mediaCallbackAutoTranscribe_shouldUseDemoDefault_whenProviderNotExplicitlyRequested() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
 
         JsonNode extraction = readData(mockMvc.perform(post("/api/v1/media/extract-audio")
@@ -137,7 +137,7 @@ class MediaContractTest {
                 .andReturn());
 
         JsonNode transcript = callbackData.path("transcript");
-        assertThat(transcript.path("stt_provider").asText()).isEqualTo("cloudflare");
+        assertThat(transcript.path("stt_provider").asText()).isEqualTo("demo");
         assertThat(transcript.path("stt_model").asText()).isEqualTo("cf-whisper");
     }
 
@@ -179,12 +179,12 @@ class MediaContractTest {
                 .andReturn());
 
         assertThat(transcript.path("duration_ms").asInt()).isEqualTo(180000);
-        assertThat(transcript.path("stt_provider").asText()).isEqualTo("cloudflare");
+        assertThat(transcript.path("stt_provider").asText()).isEqualTo("demo");
         assertThat(transcript.path("stt_model").asText()).isEqualTo("cf-whisper");
     }
 
     @Test
-    void transcribe_shouldUseCloudflareDefaults_whenProviderAndModelAreOmitted() throws Exception {
+    void transcribe_shouldUseDemoDefaults_whenProviderAndModelAreOmitted() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
 
         JsonNode transcript = readData(mockMvc.perform(post("/api/v1/media/transcribe")
@@ -194,7 +194,7 @@ class MediaContractTest {
                 .andExpect(status().isCreated())
                 .andReturn());
 
-        assertThat(transcript.path("stt_provider").asText()).isEqualTo("cloudflare");
+        assertThat(transcript.path("stt_provider").asText()).isEqualTo("demo");
         assertThat(transcript.path("stt_model").asText()).isEqualTo("cf-whisper");
     }
 

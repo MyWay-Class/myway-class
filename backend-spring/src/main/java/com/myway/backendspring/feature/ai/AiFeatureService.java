@@ -16,9 +16,9 @@ import java.util.Map;
 public class AiFeatureService {
     private static final String AI_SETTINGS_SCOPE = "ai_settings";
     private static final String DEV_AI_PROVIDER = "ollama";
-    private static final String NON_DEV_AI_PROVIDER = "gemini";
+    private static final String NON_DEV_AI_PROVIDER = "demo";
     private static final String DEV_AI_MODEL = "llama3.1:8b";
-    private static final String NON_DEV_AI_MODEL = "gemini-1.5-flash";
+    private static final String NON_DEV_AI_MODEL = "demo-v1";
 
     private final FeatureStoreRepository repository;
     private final AiUsageQuotaService aiUsageQuotaService;

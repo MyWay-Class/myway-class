@@ -260,8 +260,8 @@ public class MediaController {
                     lectureId,
                     "ko",
                     null,
-                    "cloudflare",
-                    "cf-whisper",
+                    null,
+                    null,
                     audioUrl,
                     extractionId
             );
