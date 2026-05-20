@@ -34,13 +34,14 @@ jobs:
         run: |
           set -euo pipefail
           if [ -d "myway-class" ]; then
-            echo "PROJECT_DIR=myway-class" >> "$GITHUB_ENV"
+            project_dir="myway-class"
           else
-            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+            project_dir="."
           fi
+          echo "PROJECT_DIR=${project_dir}" >> "$GITHUB_ENV"
 
           candidates=(
-            "${PROJECT_DIR}/_workspace/decision.json"
+            "${project_dir}/_workspace/decision.json"
             "_workspace/decision.json"
             "decision.json"
           )
