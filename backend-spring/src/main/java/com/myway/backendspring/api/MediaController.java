@@ -15,6 +15,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.HandlerMapping;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,17 +31,23 @@ public class MediaController {
     private final MediaPipelineService mediaPipelineService;
     private final DemoLearningService learningService;
     private final String callbackToken;
+    private final String remoteAssetBaseUrl;
+    private final String remoteAssetToken;
 
     public MediaController(
             SessionService sessionService,
             MediaPipelineService mediaPipelineService,
             DemoLearningService learningService,
-            @Value("${myway.media.callback.token:dev-media-callback-token}") String callbackToken
+            @Value("${myway.media.callback.token:dev-media-callback-token}") String callbackToken,
+            @Value("${myway.media.asset-proxy.base-url:}") String remoteAssetBaseUrl,
+            @Value("${myway.media.asset-proxy.token:}") String remoteAssetToken
     ) {
         this.sessionService = sessionService;
         this.mediaPipelineService = mediaPipelineService;
         this.learningService = learningService;
         this.callbackToken = callbackToken;
+        this.remoteAssetBaseUrl = remoteAssetBaseUrl == null ? "" : remoteAssetBaseUrl.trim();
+        this.remoteAssetToken = remoteAssetToken == null ? "" : remoteAssetToken.trim();
     }
 
     public record ExtractionCallbackRequest(
@@ -73,6 +83,12 @@ public class MediaController {
             @NotBlank String lecture_id,
             String style,
             String language
+    ) {}
+
+    public record BindLectureVideoRequest(
+            @NotBlank String lecture_id,
+            @NotBlank String asset_key,
+            String video_url
     ) {}
 
     private String trimRequired(String value) {
@@ -193,7 +209,7 @@ public class MediaController {
     }
 
     @GetMapping("/assets/**")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> assets(
+    public ResponseEntity<?> assets(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestHeader(value = "X-Processor-Token", required = false) String processorToken,
             HttpServletRequest request
@@ -208,8 +224,44 @@ public class MediaController {
             if (!requireAuthenticated(auth)) return unauthenticated();
         }
         Map<String, Object> asset = mediaPipelineService.mediaAsset(assetKey);
-        if (asset == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
-        return ResponseEntity.ok(ApiResponse.success(asset));
+        if (asset != null) return ResponseEntity.ok(ApiResponse.success(asset));
+        ResponseEntity<?> proxied = proxyRemoteAsset(assetKey);
+        if (proxied != null) return proxied;
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
+    }
+
+    @PostMapping("/lecture-video")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> bindLectureVideo(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @Valid @RequestBody BindLectureVideoRequest body
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
+        if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의 영상 연결은 강사와 운영자만 사용할 수 있습니다."));
+        String lectureId = trimRequired(body.lecture_id());
+        if (learningService.getLecture(lectureId) == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
+        }
+        String assetKey = trimRequired(body.asset_key());
+        String videoUrl = optionalOrNull(body.video_url());
+        Map<String, Object> payload = mediaPipelineService.bindLectureVideoAsset(lectureId, assetKey, videoUrl);
+        if (payload == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_ASSET_BINDING", "lecture_id와 asset_key를 확인해 주세요."));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(payload, "강의와 영상 에셋이 연결되었습니다."));
+    }
+
+    @GetMapping("/lecture-video/{lectureId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> lectureVideo(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String lectureId
+    ) {
+        if (!requireAuthenticated(auth)) return unauthenticated();
+        Map<String, Object> payload = mediaPipelineService.lectureVideoAsset(lectureId);
+        if (payload == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_VIDEO_NOT_FOUND", "연결된 강의 영상 에셋이 없습니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(payload));
     }
 
     @PostMapping("/extract-audio/callback")
@@ -318,6 +370,36 @@ public class MediaController {
                     "style", style,
                     "pipeline", pipeline
             );
+        }
+    }
+
+    private ResponseEntity<?> proxyRemoteAsset(String assetKey) {
+        if (remoteAssetBaseUrl.isBlank()) return null;
+        try {
+            String encoded = java.net.URLEncoder.encode(assetKey, java.nio.charset.StandardCharsets.UTF_8);
+            String target = remoteAssetBaseUrl.endsWith("/")
+                    ? remoteAssetBaseUrl + encoded
+                    : remoteAssetBaseUrl + "/" + encoded;
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(target))
+                    .GET();
+            if (!remoteAssetToken.isBlank()) {
+                builder.header("X-Processor-Token", remoteAssetToken);
+            }
+            HttpResponse<byte[]> response = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) return null;
+            ResponseEntity.BodyBuilder bodyBuilder = ResponseEntity.status(response.statusCode());
+            String contentType = response.headers().firstValue("content-type").orElse(null);
+            String contentDisposition = response.headers().firstValue("content-disposition").orElse(null);
+            if (contentType != null && !contentType.isBlank()) {
+                bodyBuilder.header("Content-Type", contentType);
+            }
+            if (contentDisposition != null && !contentDisposition.isBlank()) {
+                bodyBuilder.header("Content-Disposition", contentDisposition);
+            }
+            return bodyBuilder.body(response.body());
+        } catch (Exception ignored) {
+            return null;
         }
     }
 
