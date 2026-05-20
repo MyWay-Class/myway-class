@@ -17,6 +17,7 @@ public class MediaPipelineService {
     private static final String PIPELINE_SCOPE = "media_pipeline";
     private static final String MEDIA_NOTE_SCOPE = "media_note";
     private static final String MEDIA_ASSET_SCOPE = "media_asset";
+    private static final String LECTURE_VIDEO_SCOPE = "lecture_video_asset";
 
     private final FeatureStoreRepository repository;
     private final FeatureStoreService featureStoreService;
@@ -119,6 +120,29 @@ public class MediaPipelineService {
 
     public Map<String, Object> mediaAsset(String assetKey) {
         return repository.getKv(MEDIA_ASSET_SCOPE, assetKey);
+    }
+
+    public Map<String, Object> bindLectureVideoAsset(String lectureId, String assetKey, String videoUrl) {
+        String normalizedLectureId = lectureId == null ? "" : lectureId.trim();
+        String normalizedAssetKey = assetKey == null ? "" : assetKey.trim();
+        if (normalizedLectureId.isBlank() || normalizedAssetKey.isBlank()) {
+            return null;
+        }
+        String resolvedVideoUrl = (videoUrl == null || videoUrl.trim().isBlank())
+                ? "/api/v1/media/assets/" + normalizedAssetKey
+                : videoUrl.trim();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("lecture_id", normalizedLectureId);
+        payload.put("asset_key", normalizedAssetKey);
+        payload.put("video_url", resolvedVideoUrl);
+        payload.put("updated_at", Instant.now().toString());
+        repository.upsertKv(LECTURE_VIDEO_SCOPE, normalizedLectureId, payload);
+        return payload;
+    }
+
+    public Map<String, Object> lectureVideoAsset(String lectureId) {
+        if (lectureId == null || lectureId.isBlank()) return null;
+        return repository.getKv(LECTURE_VIDEO_SCOPE, lectureId.trim());
     }
 
     public Map<String, Object> completeExtractionCallback(

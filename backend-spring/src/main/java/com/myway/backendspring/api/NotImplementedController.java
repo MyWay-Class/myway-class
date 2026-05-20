@@ -317,7 +317,7 @@ public class NotImplementedController {
     }
 
     @GetMapping("/legacy/media/assets/**")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaAssets(
+    public ResponseEntity<?> legacyMediaAssets(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestHeader(value = "X-Processor-Token", required = false) String processorToken,
             HttpServletRequest request
