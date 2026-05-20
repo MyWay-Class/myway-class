@@ -104,7 +104,7 @@ public class FeatureStoreService {
                 null,
                 null,
                 null,
-                new AiFeatureService(new FeatureStoreRepository(store), null, "dev"),
+                new AiFeatureService(new FeatureStoreRepository(store), null, null, "dev"),
                 null,
                 null,
                 null,
