@@ -26,7 +26,7 @@
 - 큰 미디어 자산은 `Cloudflare R2`에 저장한다.
 - 공개 호스팅은 `Cloudflare Pages`를 사용한다.
 - 배포와 실행은 Cloudflare 생태계를 기준으로 한다.
-- AI는 `Cloudflare AI(Workers AI)`, `Gemini 무료 API`, `Codex 5.2`, `Ollama 3.2` 순으로 우선순위를 둔다.
+- AI 기본 정책은 `demo`를 우선으로 두고, 필요할 때 `Ollama`, `Gemini`, `Cloudflare AI`를 단계적으로 사용한다.
 
 ## 권장 스택
 - 웹: React, TypeScript, Vite, Pages
@@ -34,14 +34,14 @@
 - DB: D1
 - 저장소: R2
 - 캐시/세션: Workers 캐시 또는 KV
-- AI: Cloudflare AI → Gemini 무료 API → Codex 5.2 → Ollama 3.2
+- AI: demo → Ollama → Gemini 무료 API → Cloudflare AI
 
 ## 선택 이유
 - 하나의 언어 계열로 개발 부담을 줄일 수 있다.
 - 엣지 호스팅은 cold start 문제를 줄여준다.
 - D1과 R2는 메타데이터와 자산을 분리하기에 잘 맞는다.
 - Cloudflare 배포는 프론트, 백엔드, 저장소를 같은 운영 모델로 묶기 쉽다.
-- 지정한 AI 공급자 조합은 무료/로컬/외부 API를 단계적으로 묶기 좋다.
+- demo-first 조합은 비용 0원 경로를 기본으로 유지하면서 필요 시 외부 API를 단계적으로 붙이기 좋다.
 
 ## 예외 상황
 - AI 작업이 너무 비싸면 더 작은 프롬프트로 쪼갠다.

@@ -10,10 +10,11 @@
 - AI 레이어
   - AI provider 카탈로그와 adapter 분리
   - 실제 엔진 연결 가이드 문서화
-  - dev / staging / production별 runtime provider 정책 정리
+  - runtime provider를 demo-first 정책으로 정리
   - AI 요약, 퀴즈, 채팅, 인사이트 흐름 정리
 - STT / 미디어
-  - STT provider adapter와 실제 Cloudflare 전사 경로 연결
+  - STT provider adapter와 demo-first 기본 경로 정리, 필요 시 Cloudflare 전사 경로 연결
+  - 강의와 R2 asset key 매핑 API, Spring remote asset proxy 경로 추가
   - 강의 전사와 요약, 타임라인형 요약 데이터 구조 정리
   - 공개 테스트용 미디어/STT 운영 범위와 3분 제한 정리
 - 커스텀 코스와 숏폼
@@ -50,8 +51,8 @@
 
 ## 앞으로 해야 할 기능
 - 실제 엔진 연결
-  - AI provider는 runtime policy 기반으로 dev는 Ollama, staging/production은 Gemini 중심으로 분기한다.
-  - STT provider는 Cloudflare 전사 경로를 유지하고, 공개 테스트용 길이 제한과 quota를 함께 적용한다.
+  - AI provider는 runtime policy 기반으로 demo를 기본으로 두고 필요 시 Ollama/Gemini를 선택한다.
+  - STT provider는 demo 기본 경로를 유지하고, 공개 테스트용 길이 제한과 quota를 함께 적용한다.
 - 데이터 지속성
   - 데모 메모리 기반 append 구조를 유지하면서, DB나 영속 저장소 이관 시점을 검토한다.
   - 활동 타임라인과 AI 로그를 저장소 추상화로 분리할지 검토한다.

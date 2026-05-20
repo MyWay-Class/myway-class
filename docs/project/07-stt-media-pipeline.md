@@ -38,7 +38,9 @@
 - `POST /api/v1/media/extract-audio`로 영상 기반 오디오 추출 job을 외부 media processor에 등록하고, 이미 `audio_url`이 있으면 전사까지 바로 연결한다.
 - `POST /api/v1/media/extract-audio/callback`으로 외부 media processor가 오디오 추출 완료 또는 실패 상태를 다시 전달한다.
 - `GET /api/v1/media/transcript/:lectureId`, `GET /api/v1/media/notes/:lectureId`, `GET /api/v1/media/audio-extractions/:lectureId`, `GET /api/v1/media/pipeline/:lectureId`로 상태와 산출물을 확인한다.
-- `GET /api/v1/media/assets/:assetKey`로 R2 업로드 영상을 내려받는다.
+- `GET /api/v1/media/assets/{assetKey}`로 업로드 영상을 내려받는다.
+- `POST /api/v1/media/lecture-video`로 `lecture_id`와 `asset_key`를 매핑한다.
+- `GET /api/v1/media/lecture-video/{lectureId}`로 매핑된 영상 키를 조회한다.
 - 데모 데이터는 `packages/shared/src/data/media.ts`와 `packages/shared/src/demo-data.ts`에서 관리한다.
 
 ## 상태
@@ -66,8 +68,8 @@
 - 타임스탬프 정렬이 깨지는 경우
 
 ## Provider 계층
-- 현재 구현은 `audio_url`이 있으면 `Cloudflare AI` 전사를 먼저 시도하고, 텍스트 전용이나 실패 시에는 `demo` STT로 되돌아간다.
-- 공개 테스트 운영 경로는 `Cloudflare AI -> demo`로 보고, `3분`을 넘는 입력은 사전에 차단한다.
+- 현재 기본 STT 정책은 `demo` 우선이며, 필요 시 `Cloudflare AI` 전사 경로를 선택적으로 사용한다.
+- 공개 테스트 운영 경로는 `demo -> Cloudflare AI`로 보고, `3분`을 넘는 입력은 사전에 차단한다.
 - `POST /api/v1/media/transcribe`는 provider 메타데이터를 함께 기록한다.
 - `GET /api/v1/media/providers`로 provider 계층을 조회할 수 있다.
 - STT 결과에는 `stt_provider`, `stt_model`, `segments`, `word_count`가 함께 남아야 한다.

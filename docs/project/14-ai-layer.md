@@ -80,11 +80,11 @@
 
 ## Provider 계층
 - 현재 구현은 `demo` 엔진을 기본 동작으로 유지한다.
-- 공개 테스트용 운영 경로는 `dev=Ollama`, `staging/production=Gemini -> demo`, `STT=Cloudflare AI`로 나눈다.
+- 공개 테스트용 운영 경로는 `demo`를 기본으로 두고, 필요 시 `Ollama`/`Gemini`를 선택적으로 사용한다.
 - 공개 테스트에서는 `Ollama`를 배포 환경에서 사용하지 않고, `AI/STT`는 로그인과 quota 제한을 함께 적용한다.
 - provider 선택과 fallback 순서는 `GET /api/v1/ai/providers`로 조회할 수 있다.
-- backend는 `summary`와 `quiz`에서 환경 정책에 따라 `Ollama -> Gemini -> demo` 또는 `Gemini -> demo` 순으로 실제 JSON 생성 응답을 시도한다.
-- `POST /api/v1/media/transcribe`는 `audio_url`이 있을 때 Cloudflare Workers AI 전사를 먼저 시도하고, 3분을 넘는 입력은 차단한다.
+- backend는 `summary`와 `quiz`에서 환경 정책에 따라 `demo` 우선 경로를 유지하고 필요 시 `Ollama`/`Gemini`를 시도한다.
+- `POST /api/v1/media/transcribe`는 기본 STT provider로 `demo`를 사용하고, 필요 시 Cloudflare Workers AI 전사를 사용하며 3분을 넘는 입력은 차단한다.
 
 ## 현재 구현
 - `POST /api/v1/ai/intent`로 사용자 메시지의 의도를 분류한다.
