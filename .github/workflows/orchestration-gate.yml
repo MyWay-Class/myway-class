@@ -64,6 +64,22 @@ jobs:
           ORCH_PROFILE: strict
           ORCH_TARGET_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
 
+      - name: Refresh decision path after gate run
+        run: |
+          set -euo pipefail
+          candidates=(
+            "${PROJECT_DIR}/_workspace/decision.json"
+            "_workspace/decision.json"
+            "decision.json"
+          )
+          for p in "${candidates[@]}"; do
+            if [ -f "$p" ]; then
+              echo "DECISION_PATH=$p" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "DECISION_PATH=" >> "$GITHUB_ENV"
+
       - name: Ensure decision artifact exists
         run: |
           set -euo pipefail
