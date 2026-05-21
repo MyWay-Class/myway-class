@@ -1,9 +1,0 @@
-version: 1
-waivers: []
-# example:
-# - metric: tests
-#   branch: dev
-#   expires_at: "2026-05-31T23:59:59+09:00"
-#   reason: "temporary external dependency outage"
-#   approved_by: "tech-lead"
-#   ticket: "OPS-123"
