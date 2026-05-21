@@ -21,11 +21,21 @@ export function resolvePlayableVideoUrl(videoUrl: string | undefined): string | 
 }
 
 export function buildProtectedVideoUrl(videoUrl: string | undefined, sessionToken?: string | null): string | undefined {
-  if (!videoUrl || !sessionToken) {
+  if (!videoUrl) {
     return undefined;
   }
 
   const resolvedUrl = resolveMediaUrl(videoUrl);
+  if (!sessionToken) {
+    return resolvedUrl;
+  }
+
+  const needsToken =
+    resolvedUrl.includes('/api/v1/media/assets/') ||
+    resolvedUrl.includes('/legacy/media/assets/');
+  if (!needsToken) {
+    return resolvedUrl;
+  }
 
   try {
     const url = new URL(resolvedUrl);

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -183,17 +184,29 @@ public class FeatureJdbcStore {
         OffsetDateTime occurredFrom = parseIsoDateTimeOrNull(occurredFromIso);
         OffsetDateTime occurredTo = parseIsoDateTimeOrNull(occurredToIso);
         String safeType = (type == null || type.isBlank()) ? null : type.trim();
-        return jdbcTemplate.query(
-                """
+        StringBuilder sql = new StringBuilder("""
                 SELECT id, user_id, type, resource_type, resource_id, metadata, occurred_at
                 FROM activity_event
                 WHERE user_id = ?
-                  AND (? IS NULL OR type = ?)
-                  AND (? IS NULL OR occurred_at >= ?)
-                  AND (? IS NULL OR occurred_at <= ?)
-                ORDER BY occurred_at DESC
-                LIMIT ?
-                """,
+                """);
+        List<Object> params = new ArrayList<>();
+        params.add(userId);
+        if (safeType != null) {
+            sql.append(" AND type = ?");
+            params.add(safeType);
+        }
+        if (occurredFrom != null) {
+            sql.append(" AND occurred_at >= ?");
+            params.add(occurredFrom);
+        }
+        if (occurredTo != null) {
+            sql.append(" AND occurred_at <= ?");
+            params.add(occurredTo);
+        }
+        sql.append(" ORDER BY occurred_at DESC LIMIT ?");
+        params.add(safeLimit);
+        return jdbcTemplate.query(
+                sql.toString(),
                 (rs, rowNum) -> {
                     Map<String, Object> row = new HashMap<>();
                     row.put("id", rs.getString("id"));
@@ -206,11 +219,7 @@ public class FeatureJdbcStore {
                     row.put("occurred_at", rs.getTimestamp("occurred_at").toInstant().toString());
                     return row;
                 },
-                userId,
-                safeType, safeType,
-                occurredFrom, occurredFrom,
-                occurredTo, occurredTo,
-                safeLimit
+                params.toArray()
         );
     }
 

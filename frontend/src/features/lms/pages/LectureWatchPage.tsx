@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CourseCard, CourseDetail, LectureDetail, LectureTranscript } from '@myway/shared';
 import { CourseSessionTimeline } from '../components/CourseSessionTimeline';
 import { LectureSideChatPanel } from '../components/LectureSideChatPanel';
@@ -54,6 +54,7 @@ export function LectureWatchPage({
   const [remapAssetKey, setRemapAssetKey] = useState('');
   const [remapMessage, setRemapMessage] = useState<string | null>(null);
   const [remapBusy, setRemapBusy] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const isLocked = Boolean(selectedCourse && !selectedCourse.enrolled && !canManageCurrent);
   const currentLecture = useMemo(() => {
     if (!selectedCourse) {
@@ -195,6 +196,20 @@ export function LectureWatchPage({
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }
 
+  function seekVideoTo(startMs: number) {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+    video.currentTime = Math.max(0, Math.floor(startMs / 1000));
+    const playResult = video.play();
+    if (playResult && typeof playResult.catch === 'function') {
+      void playResult.catch(() => {
+        // Ignore autoplay rejection; manual playback remains available.
+      });
+    }
+  }
+
   if (!selectedCourse) {
     return (
       <StatePanel
@@ -289,6 +304,7 @@ export function LectureWatchPage({
               ) : currentLecture?.video_url ? (
                 <div className="relative">
                   <video
+                    ref={videoRef}
                     className="aspect-video w-full bg-black"
                     controls
                     preload="metadata"
@@ -490,7 +506,7 @@ export function LectureWatchPage({
                       <div className="text-[12px] font-semibold text-indigo-600">스크립트</div>
                       <div className="mt-1 text-[16px] font-bold text-[var(--app-text)]">타임스탬프 기준으로 바로 찾아볼 수 있습니다.</div>
                       <p className="mt-2 text-[12px] leading-6 text-[var(--app-text-muted)]">
-                        필요한 구간의 시작 시간을 눌러 복사하거나, 차시 이동 전에 먼저 확인할 수 있습니다.
+                        필요한 구간의 시작 시간을 누르면 영상이 해당 위치로 이동하고 재생을 시도합니다.
                       </p>
                     </div>
 
@@ -504,7 +520,7 @@ export function LectureWatchPage({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  void navigator.clipboard.writeText(formatTimecode(segment.start_ms));
+                                  seekVideoTo(segment.start_ms);
                                 }}
                                 className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-indigo-600"
                               >
@@ -528,7 +544,13 @@ export function LectureWatchPage({
                   </div>
                 ) : null}
 
-                {activePanelTab === 'chat' ? <LectureSideChatPanel highlightedLecture={highlightedLecture} sessionToken={sessionToken} /> : null}
+                {activePanelTab === 'chat' ? (
+                  <LectureSideChatPanel
+                    highlightedLecture={highlightedLecture}
+                    sessionToken={sessionToken}
+                    onSeekTimestamp={seekVideoTo}
+                  />
+                ) : null}
               </div>
             </>
           )}

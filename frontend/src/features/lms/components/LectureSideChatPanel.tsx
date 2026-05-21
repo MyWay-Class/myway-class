@@ -8,6 +8,7 @@ import { AIChatThread, type AIChatMessage } from './AIChatThread';
 type LectureSideChatPanelProps = {
   highlightedLecture: LectureDetail | null;
   sessionToken?: string | null;
+  onSeekTimestamp?: (startMs: number) => void;
 };
 
 function createWelcomeMessage(highlightedLecture: LectureDetail | null): AIChatMessage {
@@ -34,7 +35,7 @@ function mapSmartChatResult(result: SmartChatResult): AIChatMessage {
   };
 }
 
-export function LectureSideChatPanel({ highlightedLecture, sessionToken }: LectureSideChatPanelProps) {
+export function LectureSideChatPanel({ highlightedLecture, sessionToken, onSeekTimestamp }: LectureSideChatPanelProps) {
   const [messages, setMessages] = useState<AIChatMessage[]>(() => [createWelcomeMessage(highlightedLecture)]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -157,7 +158,7 @@ export function LectureSideChatPanel({ highlightedLecture, sessionToken }: Lectu
             </div>
           </div>
 
-          <AIChatThread messages={messages} loading={sending} />
+          <AIChatThread messages={messages} loading={sending} onSeekTimestamp={onSeekTimestamp} />
         </div>
       </div>
 

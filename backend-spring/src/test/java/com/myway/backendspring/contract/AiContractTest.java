@@ -219,6 +219,30 @@ class AiContractTest {
         assertThat(nonDevLike.path("providers").toString()).contains("demo");
     }
 
+    @Test
+    void aiSearchAndAnswer_shouldIncludeStructuredSources() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+        setDailyLimit(authHeader, 999999);
+
+        JsonNode searchData = readData(mockMvc.perform(post("/api/v1/ai/search")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"Spring\",\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        JsonNode answerData = readData(mockMvc.perform(post("/api/v1/ai/answer")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"REST API가 뭐야?\",\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        assertStructuredSource(searchData.path("sources").get(0));
+        assertStructuredSource(answerData.path("sources").get(0));
+        assertThat(answerData.path("source_ids").isArray()).isTrue();
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -258,5 +282,14 @@ class AiContractTest {
         JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
         assertThat(root.path("success").asBoolean()).isTrue();
         return root.path("data");
+    }
+
+    private void assertStructuredSource(JsonNode source) {
+        assertThat(source).isNotNull();
+        assertThat(source.path("lecture_id").asText()).isNotBlank();
+        assertThat(source.path("start_ms").isNumber()).isTrue();
+        assertThat(source.path("end_ms").isNumber()).isTrue();
+        assertThat(source.path("text").asText()).isNotNull();
+        assertThat(source.path("score").isNumber()).isTrue();
     }
 }
