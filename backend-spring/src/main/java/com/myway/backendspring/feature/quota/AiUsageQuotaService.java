@@ -55,7 +55,8 @@ public class AiUsageQuotaService {
                     .filter(type -> type.startsWith("ai_"))
                     .count();
         }
-        int used = quotaWindowStart != null ? usedByLogs : Math.max(usedToday, usedByLogs);
+        // Prefer deterministic daily counter to avoid clock-skew issues between app and DB hosts.
+        int used = Math.max(usedToday, usedByLogs);
         return used < limit;
     }
 
