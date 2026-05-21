@@ -211,9 +211,11 @@ public class ShortformController {
     @PostMapping("/export/callback")
     public ResponseEntity<ApiResponse<Map<String, Object>>> exportCallback(
             @RequestHeader(value = "X-Callback-Token", required = false) String token,
+            @RequestHeader(value = "x-myway-media-callback-secret", required = false) String callbackSecret,
             @Valid @RequestBody ExportCallbackRequest body
     ) {
-        if (token == null || token.isBlank() || !token.equals(callbackToken)) {
+        String resolvedToken = (token != null && !token.isBlank()) ? token : callbackSecret;
+        if (resolvedToken == null || resolvedToken.isBlank() || !resolvedToken.equals(callbackToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "유효한 callback token이 필요합니다."));
         }
         String shortformId = trimRequired(body.shortform_id());
