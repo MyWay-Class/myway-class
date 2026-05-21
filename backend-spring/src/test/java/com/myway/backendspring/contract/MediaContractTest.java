@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -17,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("media-contract-test")
 class MediaContractTest {
 
     @Autowired
@@ -221,7 +223,7 @@ class MediaContractTest {
 
     @Test
     void pipelineRunBatch_shouldAllowOnlyAdmin_andReturnSummary() throws Exception {
-        String adminAuth = "Bearer " + loginAndGetToken("usr_adm_001");
+        String adminAuth = "Bearer " + loginAndGetToken("usr_admin_001");
         String instructorAuth = "Bearer " + loginAndGetToken("usr_ins_001");
 
         assertFailureEnvelope(mockMvc.perform(post("/api/v1/media/pipeline/run-batch")
