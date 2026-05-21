@@ -106,6 +106,12 @@ public class DemoLearningService {
         return getCourseLectures(courseId).stream().filter(l -> l.id().equals(lectureId)).findFirst().orElse(null);
     }
 
+    public List<LectureItem> listAllLectures() {
+        return listAllCourses().stream()
+                .flatMap(course -> course.lectures().stream())
+                .toList();
+    }
+
     public DashboardView getDashboard(String userId) {
         List<CourseCard> cards = listCourseCards(userId);
         int enrolled = listEnrollments(userId).size();
