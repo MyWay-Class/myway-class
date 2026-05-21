@@ -5,9 +5,12 @@ import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -125,6 +128,94 @@ public class MediaPipelineService {
         return repository.getKv(MEDIA_ASSET_SCOPE, assetKey);
     }
 
+    public Map<String, Object> bindLectureVideoAsset(String lectureId, String assetKey, String videoUrl) {
+        String normalizedLectureId = lectureId == null ? "" : lectureId.trim();
+        String normalizedAssetKey = assetKey == null ? "" : assetKey.trim();
+        if (normalizedLectureId.isBlank() || normalizedAssetKey.isBlank()) {
+            return null;
+        }
+        String resolvedVideoUrl = (videoUrl == null || videoUrl.trim().isBlank())
+                ? "/api/v1/media/assets/" + normalizedAssetKey
+                : videoUrl.trim();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("lecture_id", normalizedLectureId);
+        payload.put("asset_key", normalizedAssetKey);
+        payload.put("video_url", resolvedVideoUrl);
+        payload.put("updated_at", Instant.now().toString());
+        repository.upsertKv(LECTURE_VIDEO_ASSET_SCOPE, normalizedLectureId, payload);
+        return payload;
+    }
+
+    public Map<String, Object> lectureVideoAsset(String lectureId) {
+        if (lectureId == null || lectureId.isBlank()) return null;
+        return repository.getKv(LECTURE_VIDEO_ASSET_SCOPE, lectureId.trim());
+    }
+
+    public Map<String, Object> runBatchPipeline(
+            List<String> lectureIds,
+            Integer retryCountInput,
+            boolean forceRun,
+            String language,
+            String sttProvider,
+            String sttModel
+    ) {
+        Set<String> targets = new LinkedHashSet<>();
+        if (lectureIds != null) {
+            for (String lectureId : lectureIds) {
+                if (lectureId != null && !lectureId.trim().isBlank()) {
+                    targets.add(lectureId.trim());
+                }
+            }
+        }
+        if (targets.isEmpty()) {
+            targets.addAll(lectureVideoAssetMap().keySet());
+        }
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        int success = 0;
+        int failed = 0;
+        int pending = 0;
+        for (String lectureId : targets) {
+            Map<String, Object> mapping = lectureVideoAsset(lectureId);
+            if (mapping == null) {
+                pending++;
+                items.add(Map.of("lecture_id", lectureId, "status", "PENDING", "error_code", "MAPPING_MISSING"));
+                continue;
+            }
+            String assetKey = String.valueOf(mapping.getOrDefault("asset_key", "")).trim();
+            if (assetKey.isBlank()) {
+                pending++;
+                items.add(Map.of("lecture_id", lectureId, "status", "PENDING", "error_code", "ASSET_KEY_MISSING"));
+                continue;
+            }
+
+            String audioUrl = "/api/v1/media/assets/" + assetKey;
+            Map<String, Object> extraction = createExtraction(lectureId, audioUrl);
+            String extractionId = String.valueOf(extraction.getOrDefault("id", ""));
+            Map<String, Object> dispatched = dispatchExtractionJob(extractionId, audioUrl);
+            String status = String.valueOf(dispatched == null ? "" : dispatched.getOrDefault("status", "")).toUpperCase();
+            if ("FAILED".equals(status)) {
+                failed++;
+            } else if ("PROCESSING".equals(status) || "PENDING".equals(status) || status.isBlank()) {
+                pending++;
+            } else {
+                success++;
+            }
+            items.add(Map.of("lecture_id", lectureId, "status", status.isBlank() ? "PENDING" : status, "extraction_id", extractionId));
+        }
+
+        return Map.of(
+                "batch_scope", "mapped_lectures",
+                "requested_count", targets.size(),
+                "processed_count", items.size(),
+                "retry_count", retryCountInput == null ? 0 : Math.max(0, retryCountInput),
+                "force_run", forceRun,
+                "summary", Map.of("success", success, "failed", failed, "pending", pending),
+                "items", items,
+                "updated_at", Instant.now().toString()
+        );
+    }
+
     public void upsertMediaAsset(String assetKey, String lectureId) {
         repository.upsertKv(MEDIA_ASSET_SCOPE, assetKey, Map.of(
                 "lecture_id", lectureId,
@@ -136,11 +227,7 @@ public class MediaPipelineService {
     }
 
     public void upsertLectureVideoAssetMapping(String lectureId, String assetKey) {
-        repository.upsertKv(LECTURE_VIDEO_ASSET_SCOPE, lectureId, Map.of(
-                "lecture_id", lectureId,
-                "asset_key", assetKey,
-                "updated_at", Instant.now().toString()
-        ));
+        bindLectureVideoAsset(lectureId, assetKey, null);
     }
 
     public Map<String, Object> lectureVideoAssetMapping(String lectureId) {

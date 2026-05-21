@@ -223,7 +223,7 @@ class MediaContractTest {
 
     @Test
     void pipelineRunBatch_shouldAllowOnlyAdmin_andReturnSummary() throws Exception {
-        String adminAuth = "Bearer " + loginAndGetToken("usr_adm_001");
+        String adminAuth = "Bearer " + loginAndGetToken("usr_admin_001");
         String instructorAuth = "Bearer " + loginAndGetToken("usr_ins_001");
 
         assertFailureEnvelope(mockMvc.perform(post("/api/v1/media/pipeline/run-batch")
