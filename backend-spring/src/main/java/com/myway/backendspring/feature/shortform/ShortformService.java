@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,17 +86,24 @@ public class ShortformService {
 
     public Map<String, Object> composeShortform(String userId, Map<String, Object> payload) {
         String id = UUID.randomUUID().toString();
+        String courseId = String.valueOf(payload.getOrDefault("course_id", "")).trim();
+        List<Map<String, Object>> normalizedClips = normalizeComposeClips(payload.get("clips"), courseId);
+        Map<String, Object> exportPayload = buildShortformExportPayload(id, payload, courseId, normalizedClips);
         Map<String, Object> video = new HashMap<>();
         video.put("id", id);
         video.put("user_id", userId);
         video.put("title", payload.getOrDefault("title", "untitled"));
         video.put("description", payload.getOrDefault("description", ""));
+        video.put("course_id", courseId);
+        video.put("clips", normalizedClips);
         video.put("video_url", null);
         video.put("export_status", "PROCESSING");
         video.put("retry_count", 0);
         video.put("last_event_version", 0L);
         video.put("export_result_url", null);
         video.put("export_job_id", "job_" + id);
+        video.put("export_job_payload", exportPayload);
+        video.put("export_dispatch_todo", true);
         video.put("error_message", null);
         video.put("updated_at", Instant.now().toString());
         repository.upsertKv(SHORTFORM_VIDEO_SCOPE, id, video);
@@ -252,5 +260,72 @@ public class ShortformService {
         } catch (Exception ignored) {
             return 0L;
         }
+    }
+
+    private List<Map<String, Object>> normalizeComposeClips(Object rawClips, String fallbackCourseId) {
+        if (!(rawClips instanceof List<?> list) || list.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> normalized = new ArrayList<>();
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> clipMap)) {
+                continue;
+            }
+            Object lectureIdValue = clipMap.containsKey("lecture_id") ? clipMap.get("lecture_id") : "";
+            String lectureId = String.valueOf(lectureIdValue).trim();
+            long startMs = asLong(clipMap.get("start_ms"));
+            long endMs = asLong(clipMap.get("end_ms"));
+            if (lectureId.isBlank() || startMs < 0 || endMs <= startMs) {
+                continue;
+            }
+            Map<String, Object> clip = new HashMap<>();
+            clip.put("lecture_id", lectureId);
+            clip.put("start_ms", startMs);
+            clip.put("end_ms", endMs);
+            clip.put("course_id", fallbackCourseId);
+            normalized.add(clip);
+        }
+        normalized.sort(Comparator.comparing((Map<String, Object> c) -> String.valueOf(c.get("lecture_id")))
+                .thenComparingLong(c -> asLong(c.get("start_ms"))));
+        return normalized;
+    }
+
+    private Map<String, Object> buildShortformExportPayload(
+            String shortformId,
+            Map<String, Object> payload,
+            String courseId,
+            List<Map<String, Object>> normalizedClips
+    ) {
+        List<Map<String, Object>> exportClips = new ArrayList<>();
+        for (int index = 0; index < normalizedClips.size(); index += 1) {
+            Map<String, Object> clip = normalizedClips.get(index);
+            String lectureId = String.valueOf(clip.getOrDefault("lecture_id", "")).trim();
+            long startMs = asLong(clip.get("start_ms"));
+            long endMs = asLong(clip.get("end_ms"));
+            exportClips.add(Map.of(
+                    "lecture_id", lectureId,
+                    "lecture_title", lectureId,
+                    "course_id", courseId,
+                    "start_time_ms", startMs,
+                    "end_time_ms", endMs,
+                    "label", "clip-" + (index + 1),
+                    "description", "",
+                    "order_index", index,
+                    // TODO: resolve lecture_id -> source_video_url before dispatching real export jobs.
+                    "source_video_url", ""
+            ));
+        }
+
+        return Map.of(
+                "shortform_id", shortformId,
+                "course_id", courseId,
+                "title", String.valueOf(payload.getOrDefault("title", "untitled")),
+                "description", String.valueOf(payload.getOrDefault("description", "")),
+                "clips", exportClips,
+                "callback", Map.of(
+                        "url", "/api/v1/shortform/export/callback",
+                        "token_header", "X-Callback-Token"
+                )
+        );
     }
 }

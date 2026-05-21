@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @RestController
@@ -266,6 +267,7 @@ public class AiController {
         if (session == null) return unauthenticated();
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
         String query = normalize(body.query());
+        String lectureId = optionalNormalized(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
         Map<String, Object> runtime = aiRuntimeService.generate(
@@ -276,6 +278,7 @@ public class AiController {
         Map<String, Object> data = new HashMap<>();
         data.put("query", query);
         data.put("hits", List.of(Map.of("id", "hit-1", "title", String.valueOf(runtime.getOrDefault("text", "Spring Boot 시작")), "score", 0.91)));
+        data.put("sources", resolveRagSources(query, lectureId, null, 4));
         data.put("provider", runtime.getOrDefault("provider", "demo"));
         data.put("model", runtime.getOrDefault("model", "demo-search-v1"));
         data.put("live", runtime.getOrDefault("live", false));
@@ -290,13 +293,21 @@ public class AiController {
         if (session == null) return unauthenticated();
         if (!featureStore.canConsumeAi(session.user().id())) return dailyLimitExceeded();
         String question = normalize(body.question());
+        String lectureId = optionalNormalized(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
         Map<String, Object> runtime = aiRuntimeService.generate("answer", question, featureStore.aiSettings(session.user().id()));
+        List<Map<String, Object>> sources = resolveRagSources(question, lectureId, null, 4);
         Map<String, Object> data = new HashMap<>();
         data.put("answer", runtime.getOrDefault("text", "[Spring AI 응답] " + question));
-        data.put("sources", List.of("lecture:lec_java_01"));
-        data.put("lecture_id", optionalNormalized(body.lecture_id()));
+        data.put("sources", sources);
+        data.put("source_ids", sources.stream()
+                .map(source -> String.valueOf(source.getOrDefault("lecture_id", "")))
+                .filter(id -> !id.isBlank())
+                .distinct()
+                .map(id -> "lecture:" + id)
+                .toList());
+        data.put("lecture_id", lectureId);
         data.put("provider", runtime.getOrDefault("provider", "demo"));
         data.put("model", runtime.getOrDefault("model", "demo-answer-v1"));
         data.put("live", runtime.getOrDefault("live", false));
@@ -397,5 +408,100 @@ public class AiController {
     private String requireLectureId(String lectureIdRaw) {
         String lectureId = normalize(lectureIdRaw);
         return lectureId.isBlank() ? null : lectureId;
+    }
+
+    private List<Map<String, Object>> resolveRagSources(String query, String lectureId, String courseId, int limit) {
+        try {
+            Map<String, Object> rag = featureStore.ragOverview(query, lectureId, courseId, limit, 0.0, false);
+            List<Map<String, Object>> chunks = extractChunkList(rag);
+            List<Map<String, Object>> sources = new ArrayList<>();
+            for (Map<String, Object> chunk : chunks) {
+                String sourceLectureId = normalize(String.valueOf(chunk.getOrDefault("lecture_id", lectureId == null ? "" : lectureId)));
+                int startMs = asInt(chunk.get("start_ms"));
+                int endMs = asInt(chunk.get("end_ms"));
+                String text = firstNotBlank(
+                        String.valueOf(chunk.getOrDefault("excerpt", "")),
+                        String.valueOf(chunk.getOrDefault("content", "")),
+                        String.valueOf(chunk.getOrDefault("title", ""))
+                );
+                double score = asDouble(chunk.get("similarity"));
+                Map<String, Object> source = new HashMap<>();
+                source.put("lecture_id", sourceLectureId.isBlank() ? lectureId : sourceLectureId);
+                source.put("start_ms", Math.max(0, startMs));
+                source.put("end_ms", Math.max(Math.max(0, startMs), endMs));
+                source.put("text", text);
+                source.put("score", score);
+                sources.add(source);
+            }
+            if (!sources.isEmpty()) {
+                return sources;
+            }
+        } catch (Exception ignored) {
+            // Keep response contract stable even when RAG retrieval fails.
+        }
+        return List.of(Map.of(
+                "lecture_id", lectureId == null ? "" : lectureId,
+                "start_ms", 0,
+                "end_ms", 0,
+                "text", "근거를 준비 중입니다.",
+                "score", 0.0
+        ));
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> extractChunkList(Map<String, Object> ragPayload) {
+        if (ragPayload == null || ragPayload.isEmpty()) {
+            return List.of();
+        }
+        Object chunks = ragPayload.get("chunks");
+        if (chunks instanceof List<?> list) {
+            return list.stream()
+                    .filter(Map.class::isInstance)
+                    .map(item -> (Map<String, Object>) item)
+                    .toList();
+        }
+        Object search = ragPayload.get("search");
+        if (search instanceof Map<?, ?> searchMap) {
+            Object hits = searchMap.get("hits");
+            if (hits instanceof List<?> list) {
+                return list.stream()
+                        .filter(Map.class::isInstance)
+                        .map(item -> (Map<String, Object>) item)
+                        .toList();
+            }
+        }
+        return List.of();
+    }
+
+    private int asInt(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private double asDouble(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        try {
+            return Double.parseDouble(String.valueOf(value));
+        } catch (Exception ignored) {
+            return 0.0;
+        }
+    }
+
+    private String firstNotBlank(String... values) {
+        for (String value : values) {
+            String normalized = normalize(value);
+            if (!normalized.isBlank()) {
+                return normalized;
+            }
+        }
+        return "";
     }
 }

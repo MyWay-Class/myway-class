@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,16 @@ public class ShortformController {
     private static final Set<String> ALLOWED_EXPORT_CALLBACK_STATUSES = Set.of("COMPLETED", "FAILED");
     public record GenerateRequest(String course_id, String mode) {}
     public record SelectCandidatesRequest(@NotBlank String extraction_id, @NotEmpty List<@NotBlank String> candidate_ids) {}
-    public record ComposeRequest(String title, String description, String course_id) {}
+    public record ComposeClipRequest(
+            @NotBlank String lecture_id,
+            @NotNull @PositiveOrZero Long start_ms,
+            @NotNull @PositiveOrZero Long end_ms
+    ) {}
+    public record ComposeRequest(String title, String description, String course_id, List<@Valid ComposeClipRequest> clips) {
+        public ComposeRequest(String title, String description, String course_id) {
+            this(title, description, course_id, List.of());
+        }
+    }
     public record ShareRequest(@NotBlank String video_id, String course_id, String visibility, String message) {}
     public record SaveRequest(@NotBlank String video_id, String note, String folder) {}
     public record LikeRequest(@NotBlank String video_id) {}
@@ -99,10 +109,18 @@ public class ShortformController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> compose(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody ComposeRequest body) {
         SessionView s = require(auth);
         if (s == null) return unauthenticated();
+        List<Map<String, Object>> clips = body.clips() == null ? List.of() : body.clips().stream()
+                .map(clip -> Map.<String, Object>of(
+                        "lecture_id", clip.lecture_id().trim(),
+                        "start_ms", clip.start_ms(),
+                        "end_ms", clip.end_ms()
+                ))
+                .toList();
         Map<String, Object> payload = Map.of(
                 "title", orEmpty(body.title()),
                 "description", orEmpty(body.description()),
-                "course_id", orEmpty(body.course_id())
+                "course_id", orEmpty(body.course_id()),
+                "clips", clips
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.composeShortform(s.user().id(), payload), "숏폼이 생성되었습니다."));
     }

@@ -1,4 +1,5 @@
 import type { AIReference, AIIntentResult } from '@myway/shared';
+import { extractReferenceStartMs, formatSeekTimecode } from './chat-reference-time';
 
 type ChatRole = 'assistant' | 'user';
 
@@ -14,6 +15,7 @@ export type AIChatMessage = {
 type AIChatThreadProps = {
   messages: AIChatMessage[];
   loading: boolean;
+  onSeekTimestamp?: (startMs: number) => void;
 };
 
 function sanitizeDisplayText(value: string): string {
@@ -21,7 +23,7 @@ function sanitizeDisplayText(value: string): string {
   return collapsed.length > 0 ? collapsed : '내용을 불러오지 못했습니다.';
 }
 
-export function AIChatThread({ messages, loading }: AIChatThreadProps) {
+export function AIChatThread({ messages, loading, onSeekTimestamp }: AIChatThreadProps) {
   return (
     <div className="space-y-4">
       {messages.map((message) => {
@@ -48,15 +50,28 @@ export function AIChatThread({ messages, loading }: AIChatThreadProps) {
               <p>{sanitizeDisplayText(message.content)}</p>
               {message.references?.length ? (
                 <div className="mt-3 space-y-2">
-                  {message.references.slice(0, 3).map((reference) => (
-                    <div key={reference.id} className="rounded-xl border border-[#c9e0f2] bg-white/90 px-3 py-2 text-[11px] text-[#31516f]">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-[#0079b8]">{sanitizeDisplayText(reference.title)}</span>
-                        <span className="text-[#6988a7]">{Math.round(reference.similarity * 100)}%</span>
+                  {message.references.slice(0, 3).map((reference) => {
+                    const startMs = extractReferenceStartMs(reference);
+                    return (
+                      <div key={reference.id} className="rounded-xl border border-[#c9e0f2] bg-white/90 px-3 py-2 text-[11px] text-[#31516f]">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-[#0079b8]">{sanitizeDisplayText(reference.title)}</span>
+                          <span className="text-[#6988a7]">{Math.round(reference.similarity * 100)}%</span>
+                        </div>
+                        <p className="mt-1 text-[#3a5d7d]">{sanitizeDisplayText(reference.excerpt)}</p>
+                        {startMs !== null && onSeekTimestamp ? (
+                          <button
+                            type="button"
+                            onClick={() => onSeekTimestamp(startMs)}
+                            className="mt-2 inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-indigo-600"
+                          >
+                            <i className="ri-time-line" />
+                            {formatSeekTimecode(startMs)} 이동
+                          </button>
+                        ) : null}
                       </div>
-                      <p className="mt-1 text-[#3a5d7d]">{sanitizeDisplayText(reference.excerpt)}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : null}
               {message.suggestions?.length ? (

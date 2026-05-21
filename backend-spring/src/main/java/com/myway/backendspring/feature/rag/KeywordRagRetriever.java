@@ -69,9 +69,12 @@ public class KeywordRagRetriever implements RagRetriever {
                         Object rawText = map.containsKey("text") ? map.get("text") : "";
                         String text = normalizeText(String.valueOf(rawText));
                         if (!text.isBlank()) {
-                            chunks.add(buildChunk("transcript_" + lectureId + "_" + (index + 1), lectureId, "transcript",
+                            Map<String, Object> chunk = buildChunk("transcript_" + lectureId + "_" + (index + 1), lectureId, "transcript",
                                     String.valueOf(transcript.getOrDefault("id", lectureId)),
-                                    lecture.title() + " · 트랜스크립트", text, index));
+                                    lecture.title() + " · 트랜스크립트", text, index);
+                            chunk.put("start_ms", asInt(map.get("start_ms")));
+                            chunk.put("end_ms", asInt(map.get("end_ms")));
+                            chunks.add(chunk);
                             index++;
                         }
                     }
@@ -221,6 +224,17 @@ public class KeywordRagRetriever implements RagRetriever {
             return Double.parseDouble(String.valueOf(value));
         } catch (Exception ignored) {
             return 0.0;
+        }
+    }
+
+    private int asInt(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (Exception ignored) {
+            return 0;
         }
     }
 }

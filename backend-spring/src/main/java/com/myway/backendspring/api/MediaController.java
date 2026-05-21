@@ -19,6 +19,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +47,7 @@ public class MediaController {
         this.mediaPipelineService = mediaPipelineService;
         this.learningService = learningService;
         this.callbackToken = callbackToken;
-        this.remoteAssetBaseUrl = remoteAssetBaseUrl == null ? "" : remoteAssetBaseUrl.trim();
+        this.remoteAssetBaseUrl = normalizeRemoteAssetBaseUrl(remoteAssetBaseUrl);
         this.remoteAssetToken = remoteAssetToken == null ? "" : remoteAssetToken.trim();
     }
 
@@ -225,6 +226,7 @@ public class MediaController {
     public ResponseEntity<?> assets(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestHeader(value = "X-Processor-Token", required = false) String processorToken,
+            @RequestParam(value = "token", required = false) String queryToken,
             HttpServletRequest request
     ) {
         String path = String.valueOf(request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE));
@@ -233,14 +235,38 @@ public class MediaController {
         if (assetKey.isBlank()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
         }
-        if (processorToken == null || !processorToken.equals(callbackToken)) {
-            if (!requireAuthenticated(auth)) return unauthenticated();
+        String resolvedQueryToken = resolveQueryToken(queryToken, request);
+        String resolvedAuth = auth;
+        if ((resolvedAuth == null || resolvedAuth.isBlank()) && resolvedQueryToken != null && !resolvedQueryToken.isBlank()) {
+            resolvedAuth = "Bearer " + resolvedQueryToken;
+        }
+        String rawQuery = trimOptional(request.getQueryString());
+        boolean queryHasSessToken = rawQuery.contains("token=sess_");
+        boolean playbackMode = isPlaybackRequest(request, resolvedQueryToken) || queryHasSessToken;
+        boolean processorBypass = processorToken != null && processorToken.equals(callbackToken);
+        if (!processorBypass && !playbackMode) {
+            if (!requireAuthenticated(resolvedAuth)) return unauthenticated();
+        }
+        ResponseEntity<?> proxied = proxyRemoteAsset(assetKey);
+        if (playbackMode && proxied != null) return proxied;
+        if (playbackMode) {
+            String redirectUrl = buildDirectAssetRedirect(assetKey);
+            if (redirectUrl != null) {
+                return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
+            }
         }
         Map<String, Object> asset = mediaPipelineService.mediaAsset(assetKey);
         if (asset != null) return ResponseEntity.ok(ApiResponse.success(asset));
-        ResponseEntity<?> proxied = proxyRemoteAsset(assetKey);
         if (proxied != null) return proxied;
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
+    }
+
+    public ResponseEntity<?> assets(
+            String auth,
+            String processorToken,
+            HttpServletRequest request
+    ) {
+        return assets(auth, processorToken, null, request);
     }
 
     @PostMapping("/lecture-video")
@@ -417,31 +443,95 @@ public class MediaController {
     private ResponseEntity<?> proxyRemoteAsset(String assetKey) {
         if (remoteAssetBaseUrl.isBlank()) return null;
         try {
-            String encoded = java.net.URLEncoder.encode(assetKey, java.nio.charset.StandardCharsets.UTF_8);
-            String target = remoteAssetBaseUrl.endsWith("/")
-                    ? remoteAssetBaseUrl + encoded
-                    : remoteAssetBaseUrl + "/" + encoded;
-            HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(target))
-                    .GET();
-            if (!remoteAssetToken.isBlank()) {
-                builder.header("x-myway-media-processor-token", remoteAssetToken);
+            String[] candidates = buildRemoteCandidates(assetKey);
+            for (String candidate : candidates) {
+                String encoded = java.net.URLEncoder.encode(candidate, StandardCharsets.UTF_8);
+                String target = remoteAssetBaseUrl.endsWith("/")
+                        ? remoteAssetBaseUrl + encoded
+                        : remoteAssetBaseUrl + "/" + encoded;
+                HttpRequest.Builder builder = HttpRequest.newBuilder()
+                        .uri(URI.create(target))
+                        .GET();
+                if (!remoteAssetToken.isBlank()) {
+                    builder.header("Authorization", "Bearer " + remoteAssetToken);
+                }
+                HttpResponse<byte[]> response = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+                if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                    continue;
+                }
+                ResponseEntity.BodyBuilder bodyBuilder = ResponseEntity.status(response.statusCode());
+                String contentType = response.headers().firstValue("content-type").orElse(null);
+                String contentDisposition = response.headers().firstValue("content-disposition").orElse(null);
+                if (contentType != null && !contentType.isBlank()) {
+                    bodyBuilder.header("Content-Type", contentType);
+                }
+                if (contentDisposition != null && !contentDisposition.isBlank()) {
+                    bodyBuilder.header("Content-Disposition", contentDisposition);
+                }
+                return bodyBuilder.body(response.body());
             }
-            HttpResponse<byte[]> response = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) return null;
-            ResponseEntity.BodyBuilder bodyBuilder = ResponseEntity.status(response.statusCode());
-            String contentType = response.headers().firstValue("content-type").orElse(null);
-            String contentDisposition = response.headers().firstValue("content-disposition").orElse(null);
-            if (contentType != null && !contentType.isBlank()) {
-                bodyBuilder.header("Content-Type", contentType);
-            }
-            if (contentDisposition != null && !contentDisposition.isBlank()) {
-                bodyBuilder.header("Content-Disposition", contentDisposition);
-            }
-            return bodyBuilder.body(response.body());
         } catch (Exception ignored) {
             return null;
         }
+        return null;
+    }
+
+    private String resolveQueryToken(String queryToken, HttpServletRequest request) {
+        String fromParam = trimOptional(queryToken);
+        if (!fromParam.isBlank()) return fromParam;
+        String fromRequestParam = trimOptional(request.getParameter("token"));
+        if (!fromRequestParam.isBlank()) return fromRequestParam;
+        String query = request.getQueryString();
+        if (query == null || query.isBlank()) return "";
+        for (String pair : query.split("&")) {
+            if (!pair.startsWith("token=")) continue;
+            String raw = pair.substring("token=".length());
+            if (raw.isBlank()) return "";
+            try {
+                return java.net.URLDecoder.decode(raw, StandardCharsets.UTF_8);
+            } catch (IllegalArgumentException ignored) {
+                return raw;
+            }
+        }
+        return "";
+    }
+
+    private boolean isPlaybackRequest(HttpServletRequest request, String queryToken) {
+        String range = trimOptional(request.getHeader("Range"));
+        String accept = trimOptional(request.getHeader("Accept")).toLowerCase();
+        return !range.isBlank() || accept.contains("video/") || !trimOptional(queryToken).isBlank();
+    }
+
+    private String[] buildRemoteCandidates(String assetKey) {
+        String trimmed = trimOptional(assetKey);
+        if (trimmed.isBlank()) return new String[0];
+        String[] segments = trimmed.split("/");
+        String last = segments[segments.length - 1];
+        if (last.endsWith(".mp4")) {
+            return new String[] {trimmed, last};
+        }
+        return new String[] {trimmed, last, last + ".mp4"};
+    }
+
+    private String normalizeRemoteAssetBaseUrl(String configuredBaseUrl) {
+        String trimmed = configuredBaseUrl == null ? "" : configuredBaseUrl.trim();
+        if (trimmed.isBlank()) return "";
+        String lowered = trimmed.toLowerCase();
+        if (lowered.contains("/api/v1/media/assets")) {
+            return "http://127.0.0.1:8788/assets";
+        }
+        return trimmed;
+    }
+
+    private String buildDirectAssetRedirect(String assetKey) {
+        if (remoteAssetBaseUrl.isBlank()) return null;
+        String[] candidates = buildRemoteCandidates(assetKey);
+        if (candidates.length == 0) return null;
+        String directCandidate = candidates[candidates.length - 1];
+        String encoded = java.net.URLEncoder.encode(directCandidate, StandardCharsets.UTF_8);
+        return remoteAssetBaseUrl.endsWith("/")
+                ? remoteAssetBaseUrl + encoded
+                : remoteAssetBaseUrl + "/" + encoded;
     }
 
 }
