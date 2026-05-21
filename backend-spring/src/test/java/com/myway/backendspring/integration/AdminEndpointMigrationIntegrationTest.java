@@ -15,7 +15,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "myway.runtime.env=dev",
+        "myway.app.env=development"
+})
 @AutoConfigureMockMvc
 class AdminEndpointMigrationIntegrationTest {
 
