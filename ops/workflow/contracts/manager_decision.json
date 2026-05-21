@@ -1,0 +1,34 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ManagerDecision",
+  "type": "object",
+  "required": ["taskId", "traceId", "state", "decision", "reason", "timestamp"],
+  "properties": {
+    "taskId": { "type": "string", "minLength": 1 },
+    "traceId": { "type": "string", "minLength": 1 },
+    "state": { "type": "string", "enum": ["draft", "debate", "review", "approved", "merged", "rejected"] },
+    "decision": { "type": "string", "enum": ["approve", "reject", "request_changes"] },
+    "reason": { "type": "string", "minLength": 1 },
+    "requestChangeCodes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "WORKER_BACKEND_FAILED",
+          "WORKER_FRONTEND_FAILED",
+          "WORKER_TEST_FAILED",
+          "WORKER_DOCS_FAILED",
+          "CHECK_TESTS_FAILED",
+          "CHECK_STYLE_FAILED",
+          "CHECK_SECURITY_FAILED",
+          "CHECK_PERFORMANCE_FAILED",
+          "CHECK_UNKNOWN_FAILED",
+          "REMOTE_RUNTIME_UNAVAILABLE"
+        ]
+      }
+    },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "nextActions": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

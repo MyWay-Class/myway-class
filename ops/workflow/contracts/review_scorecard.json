@@ -1,0 +1,39 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReviewScorecard",
+  "type": "object",
+  "required": ["taskId", "scores", "required_pass", "required_failed", "waived_required", "waiver_notes", "fail_fast_triggered", "total", "verdict", "timestamp"],
+  "properties": {
+    "taskId": { "type": "string", "minLength": 1 },
+    "scores": {
+      "type": "object",
+      "required": ["tests", "style", "security", "performance"],
+      "properties": {
+        "tests": { "type": "number", "minimum": 0, "maximum": 100 },
+        "style": { "type": "number", "minimum": 0, "maximum": 100 },
+        "security": { "type": "number", "minimum": 0, "maximum": 100 },
+        "performance": { "type": "number", "minimum": 0, "maximum": 100 }
+      },
+      "additionalProperties": false
+    },
+    "required_pass": { "type": "boolean" },
+    "required_failed": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["tests", "style", "security", "performance"] }
+    },
+    "waived_required": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["tests", "style", "security", "performance"] }
+    },
+    "waiver_notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "fail_fast_triggered": { "type": "boolean" },
+    "total": { "type": "number", "minimum": 0, "maximum": 100 },
+    "verdict": { "type": "string", "enum": ["approve", "reject"] },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "timestamp": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

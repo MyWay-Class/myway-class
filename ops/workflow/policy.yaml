@@ -1,0 +1,42 @@
+﻿version: 1
+retry:
+  worker_max_retries: 1
+  check_max_retries: 1
+timeouts:
+  worker_timeout_minutes: 15
+  review_timeout_minutes: 10
+fallback:
+  on_repeated_failure: manual_review_required
+  allow_partial_report: true
+debate:
+  max_rounds: 2
+  remote_autonomous_enabled: false
+  remote_autonomous_rounds: 2
+learning:
+  enabled: true
+  history_limit: 100
+  dynamic_role_routing: true
+  ttl_days: 30
+  summary_bucket_days: 7
+  bias_guard_reject_ratio_min: 0.1
+experiments:
+  enabled: true
+  seed: "myway-orch-ab"
+  variant_ratio: 0.5
+  warmup_runs: 20
+  control:
+    remote_autonomous_enabled: false
+    remote_autonomous_rounds: 1
+    dynamic_role_routing: true
+  variant:
+    remote_autonomous_enabled: true
+    remote_autonomous_rounds: 2
+    dynamic_role_routing: true
+agent_runtime:
+  mode: local
+  endpoint: ""
+  timeout_seconds: 60
+  api_key_env: ORCH_AGENT_API_KEY
+autofix:
+  enabled: false
+  mode: safe

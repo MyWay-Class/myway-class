@@ -1,0 +1,30 @@
+<svg width="1400" height="420" viewBox="0 0 1400 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">내맘대로 배너</title>
+  <desc id="desc">강의를 재구성하는 AI 교육 플랫폼 배너</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1400" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1020"/>
+      <stop offset="0.55" stop-color="#123B5D"/>
+      <stop offset="1" stop-color="#0E766E"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="200" y1="70" x2="1200" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8BE9FF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#7CF7C7" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="18" result="blur" />
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.35 0" />
+    </filter>
+  </defs>
+  <rect width="1400" height="420" rx="36" fill="url(#bg)" />
+  <circle cx="240" cy="90" r="96" fill="#4DD6FF" fill-opacity="0.16" filter="url(#glow)" />
+  <circle cx="1180" cy="70" r="120" fill="#7CF7C7" fill-opacity="0.16" filter="url(#glow)" />
+  <circle cx="1220" cy="330" r="140" fill="#4DD6FF" fill-opacity="0.12" filter="url(#glow)" />
+  <path d="M110 300C220 220 320 220 430 300C540 380 640 380 750 300C860 220 960 220 1070 300C1180 380 1280 380 1390 300" stroke="url(#accent)" stroke-width="12" stroke-linecap="round" opacity="0.35" />
+  <rect x="96" y="88" width="1208" height="244" rx="30" fill="white" fill-opacity="0.05" stroke="white" stroke-opacity="0.08" />
+  <text x="120" y="170" fill="#F8FBFF" font-family="Inter, Pretendard, Arial, sans-serif" font-size="64" font-weight="700">내맘대로클래스</text>
+  <text x="120" y="228" fill="#CDE8FF" font-family="Inter, Pretendard, Arial, sans-serif" font-size="30" font-weight="500">강의를 “소비”가 아니라 “재구성”하는 AI 교육 플랫폼</text>
+  <text x="120" y="280" fill="#B7DDF5" font-family="Inter, Pretendard, Arial, sans-serif" font-size="22">STT · Chunking · RAG · AI reasoning · Short-form learning</text>
+  <rect x="1110" y="120" width="132" height="132" rx="28" fill="white" fill-opacity="0.08" stroke="white" stroke-opacity="0.12" />
+  <path d="M1146 198L1182 162L1210 190L1240 158" stroke="url(#accent)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

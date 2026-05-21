@@ -1,0 +1,11 @@
+- 로컬 mp4 업로드 후 강의 개설, STT 전사, 자동 요약, 검색, 숏폼 편집까지 이어지는 흐름을 정리했다.
+- `backend/src/routes/media.ts`와 `backend/src/lib/media-pipeline.ts`에서 전사 완료 시 자동 타임라인 요약 노트를 생성하도록 연결했다.
+- `backend/src/lib/ai-engine-utils.ts`는 요약용 원문을 전사 본문 우선으로 읽도록 바꿨다.
+- `frontend/src/features/lms/components/ShortformWizard.tsx`와 `ShortformWizardStep3.tsx`에서 전사 기반 숏폼 추천과 타임스탬프 직접 수정 기능을 추가했다.
+- `frontend/src/features/lms/pages/CourseCreatePage.tsx`와 `MediaPipelinePage.tsx`는 자동 요약 완료 상태를 더 명확히 보여주도록 문구를 갱신했다.
+- `frontend/src/features/lms/components/CourseExploreDetailPanel.tsx`, `StudentDashboardPage.tsx`, `RolePageRouter.tsx`에서 학생용 동선은 강의 상세/챗봇/숏폼으로 묶고, 업로드·전사는 교강사 전용으로 분리했다.
+- `frontend/src/features/lms/pages/CoursesPage.tsx`는 선택한 강의 작업 공간을 먼저 보여주고, 다른 강의 둘러보기는 아래로 내리는 구조로 바꿨다.
+- 배포/실서버 기준으로는 `backend/src/dev-server.ts`에서만 파일 기반 `ASSETS` 폴백을 쓰고, 업로드된 파일의 `Content-Disposition`은 ASCII 안전 값으로 정규화해 Unicode 파일명 때문에 헤더가 깨지지 않도록 했다.
+- `scripts/media-processor/config.ts`와 `scripts/media-processor/ffmpeg.ts`는 `ffmpeg-static` 또는 `FFMPEG_PATH`를 우선 사용하고, 오디오 추출/트리밍/합치기 모두 같은 spawn 경로를 타게 정리했다.
+- `docs/project/19-deployment.md`에는 로컬 개발과 배포 환경에서 필요한 `ASSETS`/`ffmpeg` 전제 조건을 다시 적어 두었다.
+- 검증은 `npm --workspace @myway/backend run build`와 `npm --workspace @myway/frontend exec -- tsc -p tsconfig.json --noEmit`로 통과했다.
