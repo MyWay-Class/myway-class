@@ -83,7 +83,7 @@ function ensurePackageScripts(targetRoot) {
 function main() {
   const args = parseArgs(process.argv);
   if (!args.target) {
-    process.stderr.write("usage: node tools/orchestrator/portable/install.mjs --target <absolute-path> [--project-name <name>] [--force]\n");
+    process.stderr.write("usage: tsx tools/orchestrator/portable/install.ts --target <absolute-path> [--project-name <name>] [--force]\n");
     process.exit(1);
   }
 
@@ -129,3 +129,4 @@ function main() {
 }
 
 main();
+

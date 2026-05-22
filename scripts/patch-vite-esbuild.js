@@ -27,7 +27,7 @@ function patchChunkFile(chunkFile, shimRelativePath) {
 
 function main() {
   const rootDir = path.resolve(__dirname, '..');
-  const shimSource = path.join(__dirname, 'vite-esbuild-shim.mjs');
+  const shimSource = path.join(__dirname, 'vite-esbuild-shim.ts');
   const viteChunksDir = findViteChunkDir(rootDir);
 
   if (!viteChunksDir || !fs.existsSync(shimSource)) {
@@ -51,3 +51,4 @@ function main() {
 }
 
 main();
+
