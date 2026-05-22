@@ -23,6 +23,7 @@ public class MediaPipelineService {
     private static final String MEDIA_ASSET_SCOPE = "media_asset";
     private static final String LECTURE_VIDEO_ASSET_SCOPE = "lecture_video_asset";
     private static final String MEDIA_BATCH_STATUS_SCOPE = "media_batch_status";
+    private static final String SPEAKER_REVIEW_SCOPE = "media_speaker_review";
 
     private final FeatureStoreRepository repository;
     private final FeatureStoreService featureStoreService;
@@ -109,7 +110,38 @@ public class MediaPipelineService {
     }
 
     public Map<String, Object> transcript(String lectureId) {
-        return repository.getKv(TRANSCRIPT_SCOPE, lectureId);
+        Map<String, Object> transcript = repository.getKv(TRANSCRIPT_SCOPE, lectureId);
+        if (transcript == null) {
+            return null;
+        }
+        Map<String, Object> merged = new HashMap<>(transcript);
+        merged.putIfAbsent("speaker_review", speakerReview(lectureId));
+        return merged;
+    }
+
+    public Map<String, Object> speakerReview(String lectureId) {
+        if (lectureId == null || lectureId.isBlank()) {
+            return Map.of("status", "PENDING");
+        }
+        Map<String, Object> review = repository.getKv(SPEAKER_REVIEW_SCOPE, lectureId.trim());
+        return review == null ? Map.of("status", "PENDING") : review;
+    }
+
+    public Map<String, Object> upsertSpeakerReview(String lectureId, String speakerLabel, String instructorName, Double confidence, String note, String reviewerId) {
+        if (lectureId == null || lectureId.isBlank()) {
+            return null;
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("lecture_id", lectureId.trim());
+        payload.put("speaker_label", speakerLabel == null || speakerLabel.isBlank() ? "SPEAKER_01" : speakerLabel.trim());
+        payload.put("instructor_name", instructorName == null ? "" : instructorName.trim());
+        payload.put("confidence", confidence == null ? 0.0 : Math.max(0.0, Math.min(1.0, confidence)));
+        payload.put("note", note == null ? "" : note.trim());
+        payload.put("reviewer_id", reviewerId == null ? "" : reviewerId.trim());
+        payload.put("status", "CONFIRMED");
+        payload.put("updated_at", Instant.now().toString());
+        repository.upsertKv(SPEAKER_REVIEW_SCOPE, lectureId.trim(), payload);
+        return payload;
     }
 
     public List<Map<String, Object>> notes(String lectureId) {

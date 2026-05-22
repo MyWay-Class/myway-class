@@ -40,7 +40,15 @@ export async function refreshLearningState(
   deps.setCourseCards(courses);
 
   if (courses.length > 0) {
-    deps.setSelectedCourseId((current) => current || courses[0].id);
+    deps.setSelectedCourseId((current) => {
+      if (!current) {
+        return courses[0].id;
+      }
+
+      return courses.some((course) => course.id === current) ? current : courses[0].id;
+    });
+  } else {
+    deps.setSelectedCourseId('');
   }
 
   if (activeSession) {

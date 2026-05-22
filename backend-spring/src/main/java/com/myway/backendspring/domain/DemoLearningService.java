@@ -1,6 +1,7 @@
 package com.myway.backendspring.domain;
 
 import com.myway.backendspring.persistence.FeatureJdbcStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -14,6 +15,9 @@ public class DemoLearningService {
     private static final String COURSE_SCOPE = "learning_course";
     private static final String MATERIAL_SCOPE = "learning_material";
     private static final String NOTICE_SCOPE = "learning_notice";
+    private static final String TRANSCRIPT_SCOPE = "media_transcript";
+    private static final String EXTRACTION_SCOPE = "media_extraction";
+    private static final String DEFAULT_DEMO_STUDENT_ID = "usr_std_001";
     private final Map<String, CourseDetail> courses = new LinkedHashMap<>();
     private final Map<String, List<MaterialItem>> materialsByCourse = new ConcurrentHashMap<>();
     private final Map<String, List<NoticeItem>> noticesByCourse = new ConcurrentHashMap<>();
@@ -22,6 +26,7 @@ public class DemoLearningService {
     private final FeatureJdbcStore store;
     private final ActivityEventService activityEventService;
 
+    @Autowired
     public DemoLearningService(FeatureJdbcStore store, ActivityEventService activityEventService) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -38,6 +43,7 @@ public class DemoLearningService {
     private void initSeedData() {
         if (useStore()) {
             seedStoreDataIfMissing();
+            ensureDefaultDemoStudentEnrollmentsInStore();
             return;
         }
         List<LectureItem> javaLectures = List.of(
@@ -58,6 +64,7 @@ public class DemoLearningService {
         noticesByCourse.put("crs_java_01", new ArrayList<>(List.of(
                 new NoticeItem("not_java_01", "crs_java_01", "과제 공지", "1주차 과제를 제출하세요.", true)
         )));
+        ensureDefaultDemoStudentEnrollmentsInMemory();
     }
 
     public List<CourseCard> listCourseCards(String userId) {
@@ -90,12 +97,13 @@ public class DemoLearningService {
     public CourseDetail getCourseDetail(String courseId, String userId) {
         CourseDetail base = findCourse(courseId);
         if (base == null) return null;
-        return new CourseDetail(base.id(), base.title(), base.instructor_id(), base.lectures(), progressPercent(userId, base.id()));
+        List<LectureItem> alignedLectures = alignLectureDurations(base.lectures());
+        return new CourseDetail(base.id(), base.title(), base.instructor_id(), alignedLectures, progressPercent(userId, base.id()));
     }
 
     public List<LectureItem> getCourseLectures(String courseId) {
         CourseDetail detail = findCourse(courseId);
-        return detail == null ? List.of() : detail.lectures();
+        return detail == null ? List.of() : alignLectureDurations(detail.lectures());
     }
 
     public LectureItem getLecture(String lectureId) {
@@ -290,6 +298,87 @@ public class DemoLearningService {
 
     private boolean useStore() {
         return store != null;
+    }
+
+    private void ensureDefaultDemoStudentEnrollmentsInMemory() {
+        for (CourseDetail course : new ArrayList<>(courses.values())) {
+            if (findEnrollment(DEFAULT_DEMO_STUDENT_ID, course.id()) == null) {
+                enrollments.add(new EnrollmentItem(UUID.randomUUID().toString(), DEFAULT_DEMO_STUDENT_ID, course.id()));
+            }
+        }
+    }
+
+    private void ensureDefaultDemoStudentEnrollmentsInStore() {
+        for (CourseDetail course : listAllCourses()) {
+            if (findEnrollment(DEFAULT_DEMO_STUDENT_ID, course.id()) != null) {
+                continue;
+            }
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", UUID.randomUUID().toString());
+            payload.put("user_id", DEFAULT_DEMO_STUDENT_ID);
+            payload.put("course_id", course.id());
+            payload.put("created_at", Instant.now().toString());
+            store.upsertKv(ENROLLMENT_SCOPE, enrollmentKey(DEFAULT_DEMO_STUDENT_ID, course.id()), payload);
+        }
+    }
+
+    private List<LectureItem> alignLectureDurations(List<LectureItem> lectures) {
+        if (lectures == null || lectures.isEmpty()) {
+            return List.of();
+        }
+        if (!useStore()) {
+            return lectures;
+        }
+        return lectures.stream()
+                .map(this::alignLectureDuration)
+                .toList();
+    }
+
+    private LectureItem alignLectureDuration(LectureItem lecture) {
+        if (lecture == null || lecture.id() == null || lecture.id().isBlank()) {
+            return lecture;
+        }
+        int fallbackMinutes = Math.max(1, lecture.duration_minutes());
+        int resolvedMinutes = resolveDurationMinutesFromMedia(lecture.id(), fallbackMinutes);
+        if (resolvedMinutes == lecture.duration_minutes()) {
+            return lecture;
+        }
+        return new LectureItem(lecture.id(), lecture.course_id(), lecture.title(), resolvedMinutes);
+    }
+
+    private int resolveDurationMinutesFromMedia(String lectureId, int fallbackMinutes) {
+        Map<String, Object> transcript = store.getKv(TRANSCRIPT_SCOPE, lectureId);
+        int fromTranscript = toDurationMinutes(transcript == null ? null : transcript.get("duration_ms"));
+        if (fromTranscript > 0) {
+            return fromTranscript;
+        }
+
+        return store.listKvByScope(EXTRACTION_SCOPE).stream()
+                .filter(row -> lectureId.equals(String.valueOf(row.getOrDefault("lecture_id", "")).trim()))
+                .map(row -> toDurationMinutes(row.get("audio_duration_ms")))
+                .filter(duration -> duration > 0)
+                .findFirst()
+                .orElse(fallbackMinutes);
+    }
+
+    private int toDurationMinutes(Object rawDurationMs) {
+        if (rawDurationMs == null) {
+            return 0;
+        }
+        long durationMs;
+        if (rawDurationMs instanceof Number number) {
+            durationMs = number.longValue();
+        } else {
+            try {
+                durationMs = Long.parseLong(String.valueOf(rawDurationMs).trim());
+            } catch (Exception ignored) {
+                return 0;
+            }
+        }
+        if (durationMs <= 0) {
+            return 0;
+        }
+        return (int) Math.max(1L, Math.round(durationMs / 60000.0d));
     }
 
     private void seedStoreDataIfMissing() {

@@ -54,10 +54,17 @@ export default function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [notice, setNotice] = useState('로그인 후 내 정보와 진도가 활성화됩니다.');
 
-  const enrolledCourses = useMemo(
-    () => dashboard?.courses.filter((course) => course.enrolled) ?? [],
-    [dashboard],
-  );
+  const enrolledCourses = useMemo(() => {
+    if (!session) {
+      return [];
+    }
+
+    if (session.user.role === 'STUDENT') {
+      return courseCards.filter((course) => course.enrolled);
+    }
+
+    return dashboard?.courses.filter((course) => course.enrolled) ?? [];
+  }, [courseCards, dashboard, session]);
 
   const canEnrollCurrent = session ? canEnroll(session.user.role) : false;
   const canManageCurrent = session ? canManageCourses(session.user.role) : false;
@@ -114,6 +121,14 @@ export default function App() {
         return;
       }
 
+      if (!course) {
+        const fallbackCourseId = courseCards[0]?.id ?? '';
+        if (fallbackCourseId && fallbackCourseId !== selectedCourseId) {
+          setSelectedCourseId(fallbackCourseId);
+          return;
+        }
+      }
+
       setSelectedCourse(course);
       setSelectedLectureId(course?.lectures[0]?.id ?? '');
     }
@@ -123,12 +138,25 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [selectedCourseId, session?.session_token]);
+  }, [courseCards, selectedCourseId, session?.session_token]);
 
   useEffect(() => {
     if (!selectedLectureId) {
       setSelectedLecture(null);
       return;
+    }
+
+    if (selectedCourse) {
+      const exists = selectedCourse.lectures.some((lecture) => lecture.id === selectedLectureId);
+      if (!exists) {
+        const fallbackLectureId = selectedCourse.lectures[0]?.id ?? '';
+        if (fallbackLectureId && fallbackLectureId !== selectedLectureId) {
+          setSelectedLectureId(fallbackLectureId);
+        } else {
+          setSelectedLecture(null);
+        }
+        return;
+      }
     }
 
     let active = true;
@@ -148,7 +176,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [selectedLectureId, session?.session_token]);
+  }, [selectedCourse, selectedLectureId, session?.session_token]);
 
   async function handleLogin(userId: string) {
     setBusy(true);

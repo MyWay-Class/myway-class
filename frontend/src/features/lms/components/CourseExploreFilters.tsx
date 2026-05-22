@@ -27,7 +27,11 @@ export function CourseExploreFilters({
   onStatusChange,
   resultCount,
 }: CourseExploreFiltersProps) {
-  const uniqueCategories = [...new Set(categories.filter((category) => category.trim().length > 0))];
+  const uniqueCategories = [
+    ...new Set(
+      categories.filter((category): category is string => typeof category === 'string' && category.trim().length > 0),
+    ),
+  ];
 
   return (
     <section className="rounded-[26px] border border-slate-200 bg-white px-5 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">

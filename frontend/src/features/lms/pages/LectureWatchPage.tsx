@@ -4,7 +4,7 @@ import { CourseSessionTimeline } from '../components/CourseSessionTimeline';
 import { LectureSideChatPanel } from '../components/LectureSideChatPanel';
 import { StatePanel } from '../components/StatePanel';
 import { loadLectureTranscriptDetailed, saveLectureVideoMappingDetailed } from '../../../lib/api-media';
-import { buildProtectedVideoUrl } from '../../../lib/video-url';
+import { buildProtectedVideoUrl, resolveLectureVideoUrl } from '../../../lib/video-url';
 
 type LectureWatchPageProps = {
   courses: CourseCard[];
@@ -63,7 +63,8 @@ export function LectureWatchPage({
 
     return selectedCourse.lectures.find((lecture) => lecture.id === selectedLectureId) ?? highlightedLecture ?? selectedCourse.lectures[0] ?? null;
   }, [highlightedLecture, selectedCourse, selectedLectureId]);
-  const protectedVideoUrl = buildProtectedVideoUrl(currentLecture?.video_url, sessionToken);
+  const resolvedLectureVideoUrl = currentLecture ? resolveLectureVideoUrl(currentLecture) : undefined;
+  const protectedVideoUrl = buildProtectedVideoUrl(resolvedLectureVideoUrl, sessionToken);
 
   const upcomingLectures = useMemo(() => {
     if (!selectedCourse || !currentLecture) {
@@ -77,7 +78,7 @@ export function LectureWatchPage({
   useEffect(() => {
     let active = true;
 
-    if (!currentLecture?.id || isLocked) {
+    if (!currentLecture?.id || isLocked || !sessionToken) {
       setTranscript(null);
       return () => {
         active = false;
@@ -108,7 +109,7 @@ export function LectureWatchPage({
     setVideoErrorMessage(null);
     setVideoChecking(false);
 
-    if (isLocked || !currentLecture?.video_url || !protectedVideoUrl) {
+    if (isLocked || !resolvedLectureVideoUrl || !protectedVideoUrl) {
       return () => {
         active = false;
       };
@@ -157,7 +158,7 @@ export function LectureWatchPage({
     return () => {
       active = false;
     };
-  }, [currentLecture?.video_url, isLocked, protectedVideoUrl]);
+  }, [resolvedLectureVideoUrl, isLocked, protectedVideoUrl]);
 
   async function handleRemapAssetKey() {
     if (!currentLecture?.id || !remapAssetKey.trim()) {

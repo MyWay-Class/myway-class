@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { getLectureDisplayDurationMinutes, type CourseDetail, type LectureDetail } from '@myway/shared';
 import { CourseSessionTimeline } from './CourseSessionTimeline';
 import { StatePanel } from './StatePanel';
-import { buildProtectedVideoUrl } from '../../../lib/video-url';
+import { buildProtectedVideoUrl, resolveLectureVideoUrl } from '../../../lib/video-url';
 import { saveLectureVideoMappingDetailed } from '../../../lib/api-media';
 
 type CourseExploreDetailPanelProps = {
@@ -180,7 +180,8 @@ export function CourseExploreDetailPanel({
   const [remapMessage, setRemapMessage] = useState<string | null>(null);
   const detailLecture = highlightedLecture;
   const isLocked = Boolean(course && !course.enrolled && !canManageCurrent);
-  const protectedVideoUrl = buildProtectedVideoUrl(detailLecture?.video_url, sessionToken);
+  const resolvedLectureVideoUrl = detailLecture ? resolveLectureVideoUrl(detailLecture) : undefined;
+  const protectedVideoUrl = buildProtectedVideoUrl(resolvedLectureVideoUrl, sessionToken);
   const safeRating = Number.isFinite(course?.rating) ? course.rating : 0;
 
   const handleOpenMaterial = (fileName: string) => {
@@ -338,7 +339,7 @@ export function CourseExploreDetailPanel({
                       <p className="mt-4 text-[13px] leading-7 text-slate-600">
                         {viewMode === 'watch' ? detailLecture.transcript_excerpt : course.description}
                       </p>
-                      {viewMode === 'watch' && detailLecture.video_url ? (
+                      {viewMode === 'watch' && resolvedLectureVideoUrl ? (
                         isLocked ? (
                           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
                             <div className="text-[12px] font-semibold text-amber-700">수강 신청이 필요합니다.</div>
