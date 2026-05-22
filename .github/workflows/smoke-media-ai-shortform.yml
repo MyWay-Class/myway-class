@@ -1,6 +1,8 @@
 name: smoke-media-ai-shortform
 
 on:
+  schedule:
+    - cron: "17 2 * * *"
   workflow_dispatch:
     inputs:
       base_url:
@@ -48,12 +50,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate smoke base URL
+        env:
+          SMOKE_BASE_URL: ${{ inputs.base_url || vars.SMOKE_BASE_URL }}
+        run: |
+          if [ -z "$SMOKE_BASE_URL" ]; then
+            echo "SMOKE_BASE_URL is required. Set workflow input (manual) or repository variable SMOKE_BASE_URL (schedule)." >&2
+            exit 1
+          fi
+
       - name: Run media-ai-shortform smoke
         env:
-          SMOKE_BASE_URL: ${{ inputs.base_url }}
+          SMOKE_BASE_URL: ${{ inputs.base_url || vars.SMOKE_BASE_URL }}
           SMOKE_SHORTFORM_CALLBACK_TOKEN: ${{ secrets.SMOKE_SHORTFORM_CALLBACK_TOKEN }}
-          SMOKE_LECTURE_ID: ${{ inputs.lecture_id }}
-          SMOKE_COURSE_ID: ${{ inputs.course_id }}
-          SMOKE_STUDENT_USER_ID: ${{ inputs.student_user_id }}
-          SMOKE_ADMIN_USER_ID: ${{ inputs.admin_user_id }}
+          SMOKE_LECTURE_ID: ${{ inputs.lecture_id || vars.SMOKE_LECTURE_ID || 'lec_java_01' }}
+          SMOKE_COURSE_ID: ${{ inputs.course_id || vars.SMOKE_COURSE_ID || 'crs_java_01' }}
+          SMOKE_STUDENT_USER_ID: ${{ inputs.student_user_id || vars.SMOKE_STUDENT_USER_ID || 'usr_std_001' }}
+          SMOKE_ADMIN_USER_ID: ${{ inputs.admin_user_id || vars.SMOKE_ADMIN_USER_ID || 'usr_admin_001' }}
         run: npm run smoke:media-ai-shortform

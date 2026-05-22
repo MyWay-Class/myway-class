@@ -4,7 +4,7 @@
 - 로컬/배포에서 데모 영상 실행 경로(강의 질의 + 숏폼 export 완료)를 빠르게 재확인할 공통 스모크 명령이 필요했다.
 
 ## 변경
-- `scripts/smoke-media-ai-shortform.mjs` 추가
+- `scripts/smoke-media-ai-shortform.ts` 추가
   - `/api/v1/health`
   - `/api/v1/auth/login` (학생/관리자)
   - `/api/v1/ai/rag` (청킹 결과 확인)
