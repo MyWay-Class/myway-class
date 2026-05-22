@@ -12,6 +12,10 @@ type BatchStatusData = {
 type ShortformData = {
   id?: string;
   export_status?: string;
+  clips?: Array<{ lecture_id?: string; start_ms?: number; end_ms?: number }>;
+  export_job_payload?: {
+    clips?: Array<{ lecture_id?: string; start_time_ms?: number; end_time_ms?: number }>;
+  };
 };
 
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://127.0.0.1:8787").replace(/\/$/, "");
@@ -75,6 +79,27 @@ async function run(): Promise<void> {
   assertOk(rag.res.ok, `rag failed (${rag.res.status})`);
   assertOk(Array.isArray(rag.body?.data?.chunks), "rag chunks missing");
 
+  const search = await api<{ sources?: Array<{ start_ms?: number; end_ms?: number; lecture_id?: string }> }>("/api/v1/ai/search", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeader(studentToken) },
+    body: JSON.stringify({
+      query: "핵심 개념 찾기",
+      lecture_id: smokeLectureId,
+    }),
+  });
+  assertOk(search.res.ok, `ai search failed (${search.res.status})`);
+  assertOk(Array.isArray(search.body?.data?.sources), "ai search sources missing");
+  assertOk(
+    (search.body?.data?.sources ?? []).some(
+      (source) =>
+        typeof source?.start_ms === "number" &&
+        source.start_ms >= 0 &&
+        typeof source?.end_ms === "number" &&
+        source.end_ms >= source.start_ms,
+    ),
+    "ai search sources range missing",
+  );
+
   const compose = await api<ShortformData>("/api/v1/shortform/compose", {
     method: "POST",
     headers: { "content-type": "application/json", ...authHeader(studentToken) },
@@ -111,6 +136,29 @@ async function run(): Promise<void> {
   });
   assertOk(video.res.ok, `shortform video query failed (${video.res.status})`);
   assertOk(video.body?.data?.export_status === "COMPLETED", "shortform export not completed");
+
+  const multiLectureCompose = await api<ShortformData>("/api/v1/shortform/compose", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeader(studentToken) },
+    body: JSON.stringify({
+      title: "smoke-multi-lecture-shortform",
+      description: "multi lecture clip compose",
+      course_id: "crs_java_bundle",
+      clips: [
+        { lecture_id: "lec_java_01", start_ms: 120000, end_ms: 180000 },
+        { lecture_id: "lec_java_02", start_ms: 60000, end_ms: 240000 },
+        { lecture_id: "lec_java_03", start_ms: 480000, end_ms: 540000 },
+      ],
+    }),
+  });
+  assertOk(multiLectureCompose.res.status === 201, `multi lecture shortform compose failed (${multiLectureCompose.res.status})`);
+  const multiClips = multiLectureCompose.body?.data?.clips ?? [];
+  const multiPayloadClips = multiLectureCompose.body?.data?.export_job_payload?.clips ?? [];
+  assertOk(multiClips.length === 3, "multi lecture shortform clips missing");
+  assertOk(multiPayloadClips.length === 3, "multi lecture export payload clips missing");
+  assertOk(multiPayloadClips[0]?.lecture_id === "lec_java_01", "multi lecture clip #1 mismatch");
+  assertOk(multiPayloadClips[1]?.lecture_id === "lec_java_02", "multi lecture clip #2 mismatch");
+  assertOk(multiPayloadClips[2]?.lecture_id === "lec_java_03", "multi lecture clip #3 mismatch");
 
   const batchStatus = await api<BatchStatusData>("/api/v1/admin/media/batch/status", {
     method: "GET",
