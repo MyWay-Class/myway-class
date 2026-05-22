@@ -20,7 +20,10 @@
 
 ## 운영
 - 수동 일괄 매핑: `scripts/backend-r2-bulk-map.ps1`
-- 배치 스케줄 튜닝: `myway.media.batch.schedule-ms`
+- 배치 스케줄 튜닝:
+  - `myway.media.batch.auto.enabled`
+  - `myway.media.batch.auto.interval-ms`
+  - `myway.media.batch.auto.initial-delay-ms`
 
 ## 검증
 - `backend-spring`: `.\mvnw.cmd -q "-Dtest=MediaContractTest,AdminMediaBatchIntegrationTest" test` 통과
