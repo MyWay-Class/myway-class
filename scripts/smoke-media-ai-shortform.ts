@@ -16,6 +16,10 @@ type ShortformData = {
 
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://127.0.0.1:8787").replace(/\/$/, "");
 const callbackToken = process.env.SMOKE_SHORTFORM_CALLBACK_TOKEN || "dev-shortform-callback-token";
+const studentUserId = process.env.SMOKE_STUDENT_USER_ID || "usr_std_001";
+const adminUserId = process.env.SMOKE_ADMIN_USER_ID || "usr_admin_001";
+const smokeLectureId = process.env.SMOKE_LECTURE_ID || "lec_java_01";
+const smokeCourseId = process.env.SMOKE_COURSE_ID || "crs_java_01";
 
 function assertOk(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -56,15 +60,15 @@ async function run(): Promise<void> {
   const health = await api<unknown>("/api/v1/health");
   assertOk(health.res.ok, `health check failed (${health.res.status})`);
 
-  const studentToken = await login("usr_std_001");
-  const adminToken = await login("usr_admin_001");
+  const studentToken = await login(studentUserId);
+  const adminToken = await login(adminUserId);
 
   const rag = await api<{ chunks?: unknown[] }>("/api/v1/ai/rag", {
     method: "POST",
     headers: { "content-type": "application/json", ...authHeader(studentToken) },
     body: JSON.stringify({
       query: "핵심 내용을 요약해줘",
-      lecture_id: "lec_java_01",
+      lecture_id: smokeLectureId,
       limit: 3,
     }),
   });
@@ -77,8 +81,8 @@ async function run(): Promise<void> {
     body: JSON.stringify({
       title: "smoke-shortform",
       description: "smoke compose and callback",
-      course_id: "crs_java_01",
-      clips: [{ lecture_id: "lec_java_01", start_ms: 120000, end_ms: 180000 }],
+      course_id: smokeCourseId,
+      clips: [{ lecture_id: smokeLectureId, start_ms: 120000, end_ms: 180000 }],
     }),
   });
   assertOk(compose.res.status === 201, `shortform compose failed (${compose.res.status})`);

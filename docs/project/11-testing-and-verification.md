@@ -48,3 +48,14 @@
 - `npm run verify`
 - `npm run build`
 - `npm run smoke:media-ai-shortform` (영상/STT-RAG/숏폼 callback API 스모크)
+
+## 스모크 실행 변수
+- `SMOKE_BASE_URL`: 대상 backend URL (`http://127.0.0.1:8787` 기본)
+- `SMOKE_SHORTFORM_CALLBACK_TOKEN`: shortform callback secret (`dev-shortform-callback-token` 기본)
+- `SMOKE_STUDENT_USER_ID`, `SMOKE_ADMIN_USER_ID`: 로그인 사용자 ID
+- `SMOKE_LECTURE_ID`, `SMOKE_COURSE_ID`: 스모크 대상 강의/코스 ID
+
+## GitHub 수동 실행
+- workflow: `.github/workflows/smoke-media-ai-shortform.yml`
+- 입력: `base_url` 필수, 나머지 ID는 선택
+- secret: `SMOKE_SHORTFORM_CALLBACK_TOKEN` 권장
