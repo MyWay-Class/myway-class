@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,19 +50,21 @@ public class MediaBatchService {
             int success = 0;
             int failure = 0;
             int pending = 0;
-            List<String> failedLectures = new ArrayList<>();
+            List<Map<String, Object>> failedLectures = new ArrayList<>();
+            String failedAt = Instant.now().toString();
 
             for (String lectureId : targets) {
+                LectureItem lecture = learningService.getLecture(lectureId);
                 Map<String, Object> mapping = mediaPipelineService.lectureVideoAssetMapping(lectureId);
                 if (mapping == null) {
                     pending++;
-                    failedLectures.add(lectureId);
+                    failedLectures.add(failedLectureItem(lecture, "MAPPING_MISSING", failedAt));
                     continue;
                 }
                 String assetKey = String.valueOf(mapping.getOrDefault("asset_key", "")).trim();
                 if (assetKey.isBlank()) {
                     pending++;
-                    failedLectures.add(lectureId);
+                    failedLectures.add(failedLectureItem(lecture, "ASSET_KEY_MISSING", failedAt));
                     continue;
                 }
 
@@ -72,7 +75,7 @@ public class MediaBatchService {
                 String status = String.valueOf(dispatched == null ? "" : dispatched.getOrDefault("status", "")).toUpperCase();
                 if ("FAILED".equals(status)) {
                     failure++;
-                    failedLectures.add(lectureId);
+                    failedLectures.add(failedLectureItem(lecture, "DISPATCH_FAILED", failedAt));
                 } else if ("PROCESSING".equals(status) || "PENDING".equals(status) || status.isBlank()) {
                     pending++;
                 } else {
@@ -135,6 +138,14 @@ public class MediaBatchService {
             return learningService.listAllLectures().stream().map(LectureItem::id).toList();
         }
 
+        Map<String, Object> previousStatus = mediaPipelineService.batchStatus();
+        if (previousStatus != null) {
+            List<String> fromPrevious = extractFailedLectureIds(previousStatus.get("failed_lectures"));
+            if (!fromPrevious.isEmpty()) {
+                return fromPrevious;
+            }
+        }
+
         List<String> failed = new ArrayList<>();
         for (LectureItem lecture : learningService.listAllLectures()) {
             Map<String, Object> pipeline = mediaPipelineService.pipeline(lecture.id());
@@ -148,5 +159,39 @@ public class MediaBatchService {
             }
         }
         return failed;
+    }
+
+    private Map<String, Object> failedLectureItem(LectureItem lecture, String reason, String failedAt) {
+        Map<String, Object> item = new HashMap<>();
+        String lectureId = lecture == null ? "" : lecture.id();
+        item.put("lecture_id", lectureId);
+        item.put("lecture_title", lecture == null ? lectureId : lecture.title());
+        item.put("course_title", lecture == null ? null : lecture.course_id());
+        item.put("failed_reason", reason);
+        item.put("failed_at", failedAt);
+        return item;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> extractFailedLectureIds(Object rawFailedLectures) {
+        if (!(rawFailedLectures instanceof List<?> list)) {
+            return List.of();
+        }
+
+        List<String> ids = new ArrayList<>();
+        for (Object row : list) {
+            if (row instanceof String s && !s.isBlank()) {
+                ids.add(s.trim());
+                continue;
+            }
+            if (row instanceof Map<?, ?> map) {
+                Object lectureIdRaw = map.containsKey("lecture_id") ? map.get("lecture_id") : "";
+                String lectureId = String.valueOf(lectureIdRaw).trim();
+                if (!lectureId.isBlank()) {
+                    ids.add(lectureId);
+                }
+            }
+        }
+        return ids;
     }
 }
