@@ -72,6 +72,7 @@ class AdminMediaBatchIntegrationTest {
             assertThat(firstFailed.path("lecture_id").asText()).isNotBlank();
             assertThat(firstFailed.has("failed_reason")).isTrue();
             assertThat(firstFailed.has("failed_at")).isTrue();
+            assertThat(firstFailed.path("course_title").asText()).isNotBlank();
         }
     }
 
