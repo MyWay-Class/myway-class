@@ -1,6 +1,7 @@
 package com.myway.backendspring.feature.media;
 
 import com.myway.backendspring.domain.DemoLearningService;
+import com.myway.backendspring.domain.CourseDetail;
 import com.myway.backendspring.domain.LectureItem;
 import org.springframework.stereotype.Service;
 
@@ -164,9 +165,18 @@ public class MediaBatchService {
     private Map<String, Object> failedLectureItem(LectureItem lecture, String reason, String failedAt) {
         Map<String, Object> item = new HashMap<>();
         String lectureId = lecture == null ? "" : lecture.id();
+        String courseTitle = null;
+        if (lecture != null && lecture.course_id() != null && !lecture.course_id().isBlank()) {
+            CourseDetail course = learningService.getCourseDetail(lecture.course_id(), "");
+            if (course != null && course.title() != null && !course.title().isBlank()) {
+                courseTitle = course.title();
+            } else {
+                courseTitle = lecture.course_id();
+            }
+        }
         item.put("lecture_id", lectureId);
         item.put("lecture_title", lecture == null ? lectureId : lecture.title());
-        item.put("course_title", lecture == null ? null : lecture.course_id());
+        item.put("course_title", courseTitle);
         item.put("failed_reason", reason);
         item.put("failed_at", failedAt);
         return item;
