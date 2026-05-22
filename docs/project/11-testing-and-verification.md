@@ -47,3 +47,4 @@
 - `npm run check:deps`
 - `npm run verify`
 - `npm run build`
+- `npm run smoke:media-ai-shortform` (영상/STT-RAG/숏폼 callback API 스모크)

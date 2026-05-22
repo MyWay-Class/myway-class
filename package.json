@@ -33,6 +33,7 @@
     "agent-runtime:start": "tsx tools/agent-runtime/server.ts",
     "lint": "npm --workspace @myway/backend run build && npm --workspace @myway/frontend run build",
     "perf:smoke": "npm run build:frontend",
+    "smoke:media-ai-shortform": "tsx scripts/smoke-media-ai-shortform.ts",
     "verify": "npm run check:deps && npm run build:frontend && npm run test:backend"
   },
   "devDependencies": {
