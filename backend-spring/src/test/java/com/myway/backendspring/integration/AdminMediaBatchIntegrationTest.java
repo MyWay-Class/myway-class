@@ -56,6 +56,7 @@ class AdminMediaBatchIntegrationTest {
         JsonNode runData = objectMapper.readTree(run).path("data");
         assertThat(runData.path("last_run_at").asText()).isNotBlank();
         assertThat(runData.path("target_count").asInt()).isGreaterThan(0);
+        assertThat(runData.path("failed_lectures").isArray()).isTrue();
 
         String statusRes = mockMvc.perform(get("/api/v1/admin/media/batch/status")
                         .header("Authorization", adminAuth))
@@ -66,6 +67,12 @@ class AdminMediaBatchIntegrationTest {
         JsonNode statusData = objectMapper.readTree(statusRes).path("data");
         assertThat(statusData.path("last_run_at").asText()).isNotBlank();
         assertThat(statusData.path("mode").asText()).isIn("all", "failed-only");
+        if (statusData.path("failed_lectures").isArray() && statusData.path("failed_lectures").size() > 0) {
+            JsonNode firstFailed = statusData.path("failed_lectures").get(0);
+            assertThat(firstFailed.path("lecture_id").asText()).isNotBlank();
+            assertThat(firstFailed.has("failed_reason")).isTrue();
+            assertThat(firstFailed.has("failed_at")).isTrue();
+        }
     }
 
     @Test
