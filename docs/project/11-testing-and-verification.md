@@ -59,3 +59,10 @@
 - workflow: `.github/workflows/smoke-media-ai-shortform.yml`
 - 입력: `base_url` 필수, 나머지 ID는 선택
 - secret: `SMOKE_SHORTFORM_CALLBACK_TOKEN` 권장
+
+## GitHub 스케줄 실행
+- workflow: `.github/workflows/smoke-media-ai-shortform.yml` (`schedule` 포함)
+- 기본 주기: 하루 1회 (UTC `02:17`, KST `11:17`)
+- 필수 Repository Variable: `SMOKE_BASE_URL`
+- 선택 Repository Variables: `SMOKE_LECTURE_ID`, `SMOKE_COURSE_ID`, `SMOKE_STUDENT_USER_ID`, `SMOKE_ADMIN_USER_ID`
+- 필수 Secret: `SMOKE_SHORTFORM_CALLBACK_TOKEN`
