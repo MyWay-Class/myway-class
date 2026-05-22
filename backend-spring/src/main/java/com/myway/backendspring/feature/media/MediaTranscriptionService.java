@@ -23,6 +23,7 @@ public class MediaTranscriptionService {
     private static final int PUBLIC_STT_MAX_DURATION_MS = 180_000;
     private static final int FALLBACK_TRANSCRIPT_DURATION_MS = 120_000;
     private static final int STT_TARGET_SEGMENT_WORDS = 20;
+    private static final String SPEAKER_REVIEW_SCOPE = "media_speaker_review";
 
     private final FeatureStoreRepository repository;
     private final DemoLearningService learningService;
@@ -116,10 +117,26 @@ public class MediaTranscriptionService {
         SttRequest request = buildSttRequest(lectureId, language, durationMsInput, sttProvider, sttModel, audioUrl);
         String text = buildLectureNarrative(lectureId);
         List<Map<String, Object>> segments = buildSegmentGenerationPayload(text, request.durationMs()).toSegments(segmenter);
+        Map<String, Object> instructorGuess = inferInstructorGuess(lectureId);
+        List<Map<String, Object>> speakerSegments = buildSpeakerSegments(segments, instructorGuess);
         String transcriptId = String.valueOf(extraction.getOrDefault("id", UUID.randomUUID().toString()));
         int wordCount = countWords(text);
         Map<String, Object> quality = sttQualityMetrics(segments, request.durationMs());
-        return new TranscriptionDraft(transcriptId, lectureId, request.language(), request.provider(), request.model(), text, segments, request.durationMs(), wordCount, quality, request.audioUrl());
+        return new TranscriptionDraft(
+                transcriptId,
+                lectureId,
+                request.language(),
+                request.provider(),
+                request.model(),
+                text,
+                segments,
+                speakerSegments,
+                request.durationMs(),
+                wordCount,
+                quality,
+                request.audioUrl(),
+                instructorGuess
+        );
     }
 
     private void persistTranscript(String lectureId, TranscriptionDraft draft) {
@@ -169,6 +186,9 @@ public class MediaTranscriptionService {
         response.put("language", draft.language());
         response.put("quality", draft.quality());
         response.put("rag_index", ragIndex);
+        response.put("speaker_segments", draft.speakerSegments());
+        response.put("instructor_guess", draft.instructorGuess());
+        response.put("speaker_review", getSpeakerReview(draft.lectureId()));
         return response;
     }
 
@@ -191,13 +211,77 @@ public class MediaTranscriptionService {
                 draft.language(),
                 draft.fullText(),
                 draft.segments(),
+                draft.speakerSegments(),
                 draft.wordCount(),
                 draft.durationMs(),
                 draft.provider(),
                 draft.model(),
                 draft.quality(),
-                Instant.now().toString()
+                Instant.now().toString(),
+                draft.instructorGuess(),
+                getSpeakerReview(lectureId)
         );
+    }
+
+    private Map<String, Object> inferInstructorGuess(String lectureId) {
+        LectureItem lecture = learningService.getLecture(lectureId);
+        if (lecture == null) {
+            return Map.of(
+                    "speaker_label", "SPEAKER_01",
+                    "instructor_name", "Unknown Instructor",
+                    "confidence", 0.35,
+                    "source", "fallback"
+            );
+        }
+        String instructorName = "Instructor";
+        String source = "heuristic";
+        try {
+            var detail = learningService.getCourseDetail(lecture.course_id(), "usr_admin_001");
+            String instructorId = detail == null ? "" : String.valueOf(detail.instructor_id());
+            if ("usr_ins_001".equals(instructorId)) {
+                instructorName = "Instructor Lee";
+            } else if (!instructorId.isBlank()) {
+                instructorName = instructorId;
+                source = "course_instructor_id";
+            }
+        } catch (Exception ignored) {
+            source = "fallback";
+        }
+
+        return Map.of(
+                "speaker_label", "SPEAKER_01",
+                "instructor_name", instructorName,
+                "confidence", 0.72,
+                "source", source
+        );
+    }
+
+    private List<Map<String, Object>> buildSpeakerSegments(List<Map<String, Object>> segments, Map<String, Object> instructorGuess) {
+        if (segments == null || segments.isEmpty()) {
+            return List.of();
+        }
+        String instructorSpeaker = String.valueOf(instructorGuess.getOrDefault("speaker_label", "SPEAKER_01"));
+        List<Map<String, Object>> speakerSegments = new java.util.ArrayList<>();
+        for (int i = 0; i < segments.size(); i++) {
+            Map<String, Object> segment = segments.get(i);
+            Map<String, Object> speaker = new HashMap<>(segment);
+            String speakerLabel = (i % 3 == 2) ? "SPEAKER_02" : instructorSpeaker;
+            speaker.put("speaker_label", speakerLabel);
+            speaker.put("speaker_role", instructorSpeaker.equals(speakerLabel) ? "instructor" : "participant");
+            speakerSegments.add(speaker);
+        }
+        return speakerSegments;
+    }
+
+    private Map<String, Object> getSpeakerReview(String lectureId) {
+        if (lectureId == null || lectureId.isBlank()) {
+            return Map.of("status", "PENDING");
+        }
+        Map<String, Object> found = repository.getKv(SPEAKER_REVIEW_SCOPE, lectureId);
+        if (found == null) {
+            return Map.of("status", "PENDING");
+        }
+        return found;
     }
 
     private void applyExtractionStatusUpdate(Map<String, Object> extraction, ExtractionStatusUpdate update) {
@@ -418,10 +502,12 @@ public class MediaTranscriptionService {
             String model,
             String fullText,
             List<Map<String, Object>> segments,
+            List<Map<String, Object>> speakerSegments,
             int durationMs,
             int wordCount,
             Map<String, Object> quality,
-            String audioUrl
+            String audioUrl,
+            Map<String, Object> instructorGuess
     ) {
     }
 
@@ -457,12 +543,15 @@ public class MediaTranscriptionService {
             String language,
             String fullText,
             List<Map<String, Object>> segments,
+            List<Map<String, Object>> speakerSegments,
             int wordCount,
             int durationMs,
             String provider,
             String model,
             Map<String, Object> quality,
-            String createdAt
+            String createdAt,
+            Map<String, Object> instructorGuess,
+            Map<String, Object> speakerReview
     ) {
         Map<String, Object> toMap() {
             Map<String, Object> map = new HashMap<>();
@@ -471,11 +560,14 @@ public class MediaTranscriptionService {
             map.put("language", language);
             map.put("full_text", fullText);
             map.put("segments", segments);
+            map.put("speaker_segments", speakerSegments);
             map.put("word_count", wordCount);
             map.put("duration_ms", durationMs);
             map.put("stt_provider", provider);
             map.put("stt_model", model);
             map.put("quality", quality);
+            map.put("instructor_guess", instructorGuess);
+            map.put("speaker_review", speakerReview);
             map.put("created_at", createdAt);
             return map;
         }

@@ -20,6 +20,23 @@ export function resolvePlayableVideoUrl(videoUrl: string | undefined): string | 
   return resolveMediaUrl(videoUrl);
 }
 
+export function buildMediaAssetPathFromKey(assetKey: string | undefined): string | undefined {
+  if (!assetKey) {
+    return undefined;
+  }
+
+  const normalized = assetKey.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  return `/api/v1/media/assets/${encodeURIComponent(normalized)}`;
+}
+
+export function resolveLectureVideoUrl(input: { video_url?: string; video_asset_key?: string }): string | undefined {
+  return resolvePlayableVideoUrl(input.video_url) ?? resolvePlayableVideoUrl(buildMediaAssetPathFromKey(input.video_asset_key));
+}
+
 export function buildProtectedVideoUrl(videoUrl: string | undefined, sessionToken?: string | null): string | undefined {
   if (!videoUrl) {
     return undefined;

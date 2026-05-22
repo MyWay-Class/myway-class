@@ -101,6 +101,13 @@ public class MediaController {
             String stt_model
     ) {}
 
+    public record SpeakerReviewRequest(
+            String speaker_label,
+            String instructor_name,
+            Double confidence,
+            String note
+    ) {}
+
     private String trimRequired(String value) {
         return value.trim();
     }
@@ -202,6 +209,49 @@ public class MediaController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcript(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String lectureId) {
         if (!requireAuthenticated(auth)) return unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.transcript(lectureId)));
+    }
+
+    @GetMapping("/transcript/{lectureId}/speaker-review")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> transcriptSpeakerReview(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String lectureId
+    ) {
+        if (!requireAuthenticated(auth)) return unauthenticated();
+        return ResponseEntity.ok(ApiResponse.success(mediaPipelineService.speakerReview(lectureId)));
+    }
+
+    @PostMapping("/transcript/{lectureId}/speaker-review")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> upsertTranscriptSpeakerReview(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String lectureId,
+            @RequestBody SpeakerReviewRequest body
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
+        if (!canManageMedia(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.failure("FORBIDDEN", "화자 검수는 강사와 운영자만 사용할 수 있습니다."));
+        }
+        if (learningService.getLecture(lectureId) == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
+        }
+        String instructorName = optionalOrNull(body == null ? null : body.instructor_name());
+        if (instructorName == null || instructorName.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.failure("INSTRUCTOR_NAME_REQUIRED", "instructor_name이 필요합니다."));
+        }
+        String speakerLabel = optionalOrDefault(body == null ? null : body.speaker_label(), "SPEAKER_01");
+        String note = optionalOrNull(body == null ? null : body.note());
+        Map<String, Object> payload = mediaPipelineService.upsertSpeakerReview(
+                lectureId,
+                speakerLabel,
+                instructorName,
+                body == null ? null : body.confidence(),
+                note,
+                session.user().id()
+        );
+        return ResponseEntity.ok(ApiResponse.success(payload, "화자/강사 검수가 저장되었습니다."));
     }
 
     @GetMapping("/notes/{lectureId}")

@@ -33,7 +33,8 @@ public class KeywordRagRetriever implements RagRetriever {
 
     @Override
     public List<Map<String, Object>> retrieve(String query, List<String> lectureIds, double minScore) {
-        List<Map<String, Object>> corpus = indexedRagCorpus(lectureIds);
+        boolean forceFreshCorpus = normalizeText(query).isBlank() && minScore <= 0.0;
+        List<Map<String, Object>> corpus = forceFreshCorpus ? buildRagCorpus(lectureIds) : indexedRagCorpus(lectureIds);
         List<Map<String, Object>> scored = new ArrayList<>();
         for (Map<String, Object> chunk : corpus) {
             Map<String, Object> mutable = new HashMap<>(chunk);
@@ -50,7 +51,10 @@ public class KeywordRagRetriever implements RagRetriever {
             return List.of();
         }
         List<Map<String, Object>> indexed = ragIndexRepository.loadChunksByLectureIds(lectureIds);
-        return indexed.isEmpty() ? buildRagCorpus(lectureIds) : indexed;
+        if (indexed.isEmpty()) {
+            return buildRagCorpus(lectureIds);
+        }
+        return enrichSpeakerMetadata(lectureIds, indexed);
     }
 
     private List<Map<String, Object>> buildRagCorpus(List<String> lectureIds) {
@@ -62,6 +66,8 @@ public class KeywordRagRetriever implements RagRetriever {
             }
             Map<String, Object> transcript = repository.getKv(FeatureStoreRepository.MEDIA_TRANSCRIPT_SCOPE, lectureId);
             Object rawSegments = transcript == null ? null : transcript.get("segments");
+            Object rawSpeakerSegments = transcript == null ? null : transcript.get("speaker_segments");
+            Map<String, String> speakerByRange = buildSpeakerRangeMap(rawSpeakerSegments);
             if (rawSegments instanceof List<?> list && !list.isEmpty()) {
                 int index = 0;
                 for (Object item : list) {
@@ -72,8 +78,16 @@ public class KeywordRagRetriever implements RagRetriever {
                             Map<String, Object> chunk = buildChunk("transcript_" + lectureId + "_" + (index + 1), lectureId, "transcript",
                                     String.valueOf(transcript.getOrDefault("id", lectureId)),
                                     lecture.title() + " · 트랜스크립트", text, index);
-                            chunk.put("start_ms", asInt(map.get("start_ms")));
-                            chunk.put("end_ms", asInt(map.get("end_ms")));
+                            int startMs = asInt(map.get("start_ms"));
+                            int endMs = asInt(map.get("end_ms"));
+                            chunk.put("start_ms", startMs);
+                            chunk.put("end_ms", endMs);
+                            String speaker = speakerByRange.getOrDefault(startMs + ":" + endMs, "");
+                            if (!speaker.isBlank()) {
+                                chunk.put("speaker_label", speaker);
+                                chunk.put("content", "[" + speaker + "] " + chunk.get("content"));
+                                chunk.put("excerpt", "[" + speaker + "] " + chunk.get("excerpt"));
+                            }
                             chunks.add(chunk);
                             index++;
                         }
@@ -236,5 +250,60 @@ public class KeywordRagRetriever implements RagRetriever {
         } catch (Exception ignored) {
             return 0;
         }
+    }
+
+    private Map<String, String> buildSpeakerRangeMap(Object rawSpeakerSegments) {
+        Map<String, String> speakerByRange = new HashMap<>();
+        if (!(rawSpeakerSegments instanceof List<?> list)) {
+            return speakerByRange;
+        }
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> map)) {
+                continue;
+            }
+            int startMs = asInt(map.get("start_ms"));
+            int endMs = asInt(map.get("end_ms"));
+            Object rawSpeaker = map.containsKey("speaker_label") ? map.get("speaker_label") : "";
+            String speaker = String.valueOf(rawSpeaker).trim();
+            if (speaker.isBlank()) {
+                continue;
+            }
+            speakerByRange.put(startMs + ":" + endMs, speaker);
+        }
+        return speakerByRange;
+    }
+
+    private List<Map<String, Object>> enrichSpeakerMetadata(List<String> lectureIds, List<Map<String, Object>> chunks) {
+        Map<String, Map<String, String>> speakerRangesByLecture = new HashMap<>();
+        for (String lectureId : lectureIds) {
+            Map<String, Object> transcript = repository.getKv(FeatureStoreRepository.MEDIA_TRANSCRIPT_SCOPE, lectureId);
+            Object rawSpeakerSegments = transcript == null ? null : transcript.get("speaker_segments");
+            speakerRangesByLecture.put(lectureId, buildSpeakerRangeMap(rawSpeakerSegments));
+        }
+        List<Map<String, Object>> enriched = new ArrayList<>(chunks.size());
+        for (Map<String, Object> chunk : chunks) {
+            Map<String, Object> mutable = new HashMap<>(chunk);
+            String lectureId = String.valueOf(mutable.getOrDefault("lecture_id", ""));
+            String scope = String.valueOf(mutable.getOrDefault("source_scope", ""));
+            if (!lectureId.isBlank() && "transcript".equals(scope)) {
+                int startMs = asInt(mutable.get("start_ms"));
+                int endMs = asInt(mutable.get("end_ms"));
+                Map<String, String> speakerByRange = speakerRangesByLecture.getOrDefault(lectureId, Map.of());
+                String speaker = speakerByRange.getOrDefault(startMs + ":" + endMs, "");
+                if (!speaker.isBlank()) {
+                    mutable.put("speaker_label", speaker);
+                    String content = String.valueOf(mutable.getOrDefault("content", ""));
+                    String excerpt = String.valueOf(mutable.getOrDefault("excerpt", ""));
+                    if (!content.startsWith("[" + speaker + "] ")) {
+                        mutable.put("content", "[" + speaker + "] " + content);
+                    }
+                    if (!excerpt.startsWith("[" + speaker + "] ")) {
+                        mutable.put("excerpt", "[" + speaker + "] " + excerpt);
+                    }
+                }
+            }
+            enriched.add(mutable);
+        }
+        return enriched;
     }
 }
