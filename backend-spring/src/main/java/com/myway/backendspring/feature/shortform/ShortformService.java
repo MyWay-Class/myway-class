@@ -230,6 +230,7 @@ public class ShortformService {
         video.put("export_status", "PROCESSING");
         video.put("error_message", null);
         video.put("updated_at", Instant.now().toString());
+        dispatchShortformExportJob(video);
         repository.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
         return video;
     }
