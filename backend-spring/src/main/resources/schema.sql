@@ -50,3 +50,30 @@ CREATE TABLE IF NOT EXISTS activity_event (
 
 CREATE INDEX IF NOT EXISTS idx_activity_event_user_time ON activity_event(user_id, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_event_user_type_time ON activity_event(user_id, type, occurred_at DESC);
+
+CREATE TABLE IF NOT EXISTS auth_users (
+  id VARCHAR(128) NOT NULL,
+  name VARCHAR(128) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  role VARCHAR(64) NOT NULL,
+  department VARCHAR(128) NULL,
+  bio TEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_users_email ON auth_users(email);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  token_id VARCHAR(128) NOT NULL,
+  user_id VARCHAR(128) NOT NULL,
+  issued_at TIMESTAMP NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  revoked BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (token_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, created_at DESC);
