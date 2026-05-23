@@ -1,7 +1,6 @@
 package com.myway.backendspring.api;
 
 import com.myway.backendspring.auth.DemoUser;
-import com.myway.backendspring.auth.DemoUsers;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
@@ -25,7 +24,7 @@ public class AuthController {
 
     @GetMapping("/users")
     public ApiResponse<List<DemoUser>> users() {
-        return ApiResponse.success(DemoUsers.USERS);
+        return ApiResponse.success(sessionService.listUsers());
     }
 
     public record LoginBody(@NotBlank String userId) {}
