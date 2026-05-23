@@ -290,23 +290,25 @@ public class MediaController {
         if ((resolvedAuth == null || resolvedAuth.isBlank()) && resolvedQueryToken != null && !resolvedQueryToken.isBlank()) {
             resolvedAuth = "Bearer " + resolvedQueryToken;
         }
-        String rawQuery = trimOptional(request.getQueryString());
-        boolean queryHasSessToken = rawQuery.contains("token=sess_");
-        boolean playbackMode = isPlaybackRequest(request, resolvedQueryToken) || queryHasSessToken;
+        boolean playbackMode = isPlaybackRequest(request, resolvedQueryToken);
         boolean processorBypass = processorToken != null && processorToken.equals(callbackToken);
-        if (!processorBypass && !playbackMode) {
-            if (!requireAuthenticated(resolvedAuth)) return unauthenticated();
+        SessionView session = null;
+        if (!processorBypass) {
+            session = require(resolvedAuth);
+            if (session == null) {
+                if (playbackMode) {
+                    return playbackFailure(HttpStatus.UNAUTHORIZED, "MEDIA_PLAYBACK_TOKEN_INVALID", "유효한 재생 토큰이 필요합니다.");
+                }
+                return unauthenticated();
+            }
         }
         ResponseEntity<?> proxied = proxyRemoteAsset(assetKey);
         if (playbackMode && proxied != null) return proxied;
-        if (playbackMode) {
-            String redirectUrl = buildDirectAssetRedirect(assetKey);
-            if (redirectUrl != null) {
-                return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
-            }
-        }
         Map<String, Object> asset = mediaPipelineService.mediaAsset(assetKey);
         if (asset != null) return ResponseEntity.ok(ApiResponse.success(asset));
+        if (playbackMode) {
+            return playbackFailure(HttpStatus.BAD_GATEWAY, "MEDIA_ASSET_PROXY_UNAVAILABLE", "영상 원본 서버에 연결할 수 없습니다.");
+        }
         if (proxied != null) return proxied;
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
     }
@@ -552,6 +554,13 @@ public class MediaController {
         return !range.isBlank() || accept.contains("video/") || !trimOptional(queryToken).isBlank();
     }
 
+    private ResponseEntity<Void> playbackFailure(HttpStatus status, String code, String message) {
+        return ResponseEntity.status(status)
+                .header("X-Error-Code", code)
+                .header("X-Error-Message", message)
+                .build();
+    }
+
     private String[] buildRemoteCandidates(String assetKey) {
         String trimmed = trimOptional(assetKey);
         if (trimmed.isBlank()) return new String[0];
@@ -571,17 +580,6 @@ public class MediaController {
             return "http://127.0.0.1:8788/assets";
         }
         return trimmed;
-    }
-
-    private String buildDirectAssetRedirect(String assetKey) {
-        if (remoteAssetBaseUrl.isBlank()) return null;
-        String[] candidates = buildRemoteCandidates(assetKey);
-        if (candidates.length == 0) return null;
-        String directCandidate = candidates[candidates.length - 1];
-        String encoded = java.net.URLEncoder.encode(directCandidate, StandardCharsets.UTF_8);
-        return remoteAssetBaseUrl.endsWith("/")
-                ? remoteAssetBaseUrl + encoded
-                : remoteAssetBaseUrl + "/" + encoded;
     }
 
 }

@@ -247,6 +247,34 @@ class MediaContractTest {
         assertThat(response.path("items").isArray()).isTrue();
     }
 
+    @Test
+    void mediaAssetPlayback_shouldReturnTokenError_whenPlaybackTokenInvalid() throws Exception {
+        String assetKey = "media%2Fcrs_ai_seed_001%2Flec_ai_seed_001.mp4";
+
+        mockMvc.perform(get("/api/v1/media/assets/" + assetKey)
+                        .queryParam("token", "invalid-token")
+                        .header("Accept", "video/mp4"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("X-Error-Code", "MEDIA_PLAYBACK_TOKEN_INVALID"));
+    }
+
+    @Test
+    void mediaAssetPlayback_shouldAllowJwtQueryToken_whenPlaybackRequest() throws Exception {
+        String token = loginAndGetToken("usr_std_001");
+        String assetKey = "media%2Fcrs_ai_seed_001%2Flec_ai_seed_001.mp4";
+
+        MvcResult result = mockMvc.perform(get("/api/v1/media/assets/" + assetKey)
+                        .queryParam("token", token)
+                        .header("Accept", "video/mp4"))
+                .andReturn();
+
+        int status = result.getResponse().getStatus();
+        assertThat(status == 200 || status == 502).isTrue();
+        if (status == 502) {
+            assertThat(result.getResponse().getHeader("X-Error-Code")).isEqualTo("MEDIA_ASSET_PROXY_UNAVAILABLE");
+        }
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
