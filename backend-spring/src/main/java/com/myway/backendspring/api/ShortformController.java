@@ -37,6 +37,7 @@ public class ShortformController {
     public record ShareRequest(@NotBlank String video_id, String course_id, String visibility, String message) {}
     public record SaveRequest(@NotBlank String video_id, String note, String folder) {}
     public record LikeRequest(@NotBlank String video_id) {}
+    public record RetryFailedExportsRequest(Boolean include_permanent, Integer limit) {}
 
     private final SessionService sessionService;
     private final ShortformService shortformService;
@@ -61,6 +62,9 @@ public class ShortformController {
     }
     private String trimRequired(String value) {
         return value.trim();
+    }
+    private boolean isAdmin(SessionView session) {
+        return session != null && "admin".equals(session.user().role());
     }
 
     @GetMapping("/library")
@@ -197,6 +201,34 @@ public class ShortformController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.success(updated, "최대 재시도 횟수를 초과했습니다."));
         }
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.success(updated, "숏폼 export job이 다시 시작되었습니다."));
+    }
+
+    @GetMapping("/admin/export-status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> exportStatus(
+            @RequestHeader(value = "Authorization", required = false) String auth
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
+        if (!isAdmin(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "운영자 권한이 필요합니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(shortformService.shortformExportStatus()));
+    }
+
+    @PostMapping("/admin/export/retry-failed")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> retryFailedExports(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody(required = false) RetryFailedExportsRequest body
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
+        if (!isAdmin(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "운영자 권한이 필요합니다."));
+        }
+        boolean includePermanent = body != null && Boolean.TRUE.equals(body.include_permanent());
+        int limit = body == null || body.limit() == null ? 20 : body.limit();
+        Map<String, Object> result = shortformService.retryFailedShortformExports(includePermanent, limit);
+        return ResponseEntity.ok(ApiResponse.success(result, "실패한 숏폼 export 재시도가 실행되었습니다."));
     }
 
     public record ExportCallbackRequest(
