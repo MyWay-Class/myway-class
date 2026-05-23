@@ -3,9 +3,7 @@ import { getLectureDisplayDurationMinutes, type CourseCard, type CourseDetail, t
 import { loadCourseDetail, loadLectureTranscriptDetailed } from '../../../lib/api';
 import {
   composeShortformDraft,
-  generateShortformExtractionDraft,
   loadShortformCommunity,
-  loadShortformExtractionDraft,
   loadShortformVideoDraft,
   shareShortformDraft,
 } from '../../../lib/api-shortforms';
@@ -243,15 +241,6 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   const totalDurationMs = selectedClips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
   const totalDurationLabel = formatDuration(totalDurationMs);
   const stepLabel = step === 1 ? '강좌 선택' : step === 2 ? '구간 선택' : '미리보기 / 저장';
-  const transcriptPayload = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(transcriptMap)
-          .filter(([, snapshot]) => Boolean(snapshot?.segments?.length))
-          .map(([lectureId, snapshot]) => [lectureId, snapshot?.segments ?? []]),
-      ),
-    [transcriptMap],
-  );
   const previewVideoUrl =
     resolvePlayableVideoUrl(createdVideo?.export_result_url ?? undefined) ??
     (createdVideo?.video_url && !createdVideo.video_url.startsWith('/static/shortforms/')
@@ -286,43 +275,17 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
       return;
     }
 
-    setStatus('숏폼 후보를 생성하는 중입니다.');
-
-    const extraction = await generateShortformExtractionDraft(
-      {
-        course_id: courseDetail.id,
-        mode: 'cross',
-        style: 'highlight',
-        language: 'ko',
-        transcript_segments_by_lecture: transcriptPayload,
-      },
-      sessionToken,
-    );
-
-    if (!extraction) {
-      setStatus('숏폼 후보를 생성하지 못했습니다.');
-      return;
-    }
-
-    const extractionDetail = await loadShortformExtractionDraft(extraction.id, sessionToken);
-    const selectedKeys = new Set(selectedClips.map((clip) => clipKey(clip)));
-    const candidateIds =
-      extractionDetail?.candidates
-        .filter((candidate) => selectedKeys.has(`${candidate.lecture_id}:${candidate.start_time_ms}:${candidate.end_time_ms}`))
-        .map((candidate) => candidate.id) ?? [];
-
-    if (candidateIds.length === 0) {
-      setStatus('선택한 구간과 일치하는 숏폼 후보를 찾지 못했습니다.');
-      return;
-    }
-
     setStatus('선택한 구간으로 숏폼을 생성하는 중입니다.');
     const video = await composeShortformDraft(
       {
-        extraction_id: extraction.id,
+        course_id: courseDetail.id,
         title: title.trim() || `${courseDetail.title} 숏폼`,
-        candidate_ids: candidateIds,
         description,
+        clips: selectedClips.map((clip) => ({
+          lecture_id: clip.lecture_id,
+          start_ms: clip.start_time_ms,
+          end_ms: clip.end_time_ms,
+        })),
       },
       sessionToken,
     );

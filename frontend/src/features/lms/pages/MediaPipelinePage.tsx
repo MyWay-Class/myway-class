@@ -13,7 +13,10 @@ import {
   loadMediaPipeline,
   loadMediaProcessorHealth,
   loadMediaProviders,
+  loadTranscriptSpeakerReview,
+  saveTranscriptSpeakerReviewDetailed,
   uploadLectureVideoDetailed,
+  type TranscriptSpeakerReview,
   type MediaUploadResult,
 } from '../../../lib/api-media';
 import { getAiErrorMessage, getQuotaStatusText, getPublicTestPolicyText } from '../../../lib/ai-access';
@@ -62,6 +65,11 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   );
   const [extractions, setExtractions] = useState<AudioExtraction[]>(demoMode ? [demoAudioExtraction] : []);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [speakerReview, setSpeakerReview] = useState<TranscriptSpeakerReview | null>(null);
+  const [speakerLabel, setSpeakerLabel] = useState('SPEAKER_01');
+  const [instructorName, setInstructorName] = useState('');
+  const [speakerConfidence, setSpeakerConfidence] = useState('0.95');
+  const [speakerNote, setSpeakerNote] = useState('');
 
   useEffect(() => {
     setLectureId(defaultLectureId);
@@ -103,23 +111,29 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       }
 
       try {
-        const [nextPipeline, nextExtractions, nextProcessorHealth, nextTranscript] = await Promise.all([
+        const [nextPipeline, nextExtractions, nextProcessorHealth, nextTranscript, nextSpeakerReview] = await Promise.all([
           loadMediaPipeline(targetLectureId, sessionToken),
           loadAudioExtractions(targetLectureId, sessionToken),
           loadMediaProcessorHealth(sessionToken),
           loadLectureTranscriptDetailed(targetLectureId, sessionToken),
+          viewerRole === 'ADMIN' || viewerRole === 'INSTRUCTOR' ? loadTranscriptSpeakerReview(targetLectureId, sessionToken) : Promise.resolve(null),
         ]);
         setPipeline(nextPipeline);
         setExtractions(nextExtractions);
         setProcessorHealth(nextProcessorHealth);
         setTranscript(nextTranscript);
+        setSpeakerReview(nextSpeakerReview);
+        setSpeakerLabel(nextSpeakerReview?.speaker_label ?? 'SPEAKER_01');
+        setInstructorName(nextSpeakerReview?.instructor_name ?? selectedCourse?.instructor_name ?? '');
+        setSpeakerConfidence(String(nextSpeakerReview?.confidence ?? 0.95));
+        setSpeakerNote(nextSpeakerReview?.note ?? '');
       } finally {
         if (!options?.silent) {
           setIsRefreshing(false);
         }
       }
     },
-    [demoMode, sessionToken],
+    [demoMode, selectedCourse?.instructor_name, sessionToken, viewerRole],
   );
 
   useEffect(() => {
@@ -129,6 +143,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       setExtractions([demoAudioExtraction]);
       setProcessorHealth(demoMediaProcessorHealth);
       setTranscript(demoLectureTranscript);
+      setSpeakerReview(null);
       setUploadResult({
         lecture_id: demoLectureDetail.id,
         asset_key: demoAudioExtraction.source_video_key ?? 'media/demo/ai-orchestration-intro.mp4',
@@ -155,7 +170,8 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       loadAudioExtractions(lectureId, sessionToken),
       loadMediaProcessorHealth(sessionToken),
       loadLectureTranscriptDetailed(lectureId, sessionToken),
-    ]).then(([nextProviders, nextPipeline, nextExtractions, nextProcessorHealth, nextTranscript]) => {
+      viewerRole === 'ADMIN' || viewerRole === 'INSTRUCTOR' ? loadTranscriptSpeakerReview(lectureId, sessionToken) : Promise.resolve(null),
+    ]).then(([nextProviders, nextPipeline, nextExtractions, nextProcessorHealth, nextTranscript, nextSpeakerReview]) => {
       if (!active) {
         return;
       }
@@ -165,12 +181,17 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       setExtractions(nextExtractions);
       setProcessorHealth(nextProcessorHealth);
       setTranscript(nextTranscript);
+      setSpeakerReview(nextSpeakerReview);
+      setSpeakerLabel(nextSpeakerReview?.speaker_label ?? 'SPEAKER_01');
+      setInstructorName(nextSpeakerReview?.instructor_name ?? selectedCourse?.instructor_name ?? '');
+      setSpeakerConfidence(String(nextSpeakerReview?.confidence ?? 0.95));
+      setSpeakerNote(nextSpeakerReview?.note ?? '');
     });
 
     return () => {
       active = false;
     };
-  }, [demoMode, lectureId, sessionToken]);
+  }, [demoMode, lectureId, selectedCourse?.instructor_name, sessionToken, viewerRole]);
 
   const selectedLecture = useMemo(
     () => lectureOptions.find((lecture) => lecture.id === lectureId) ?? highlightedLecture ?? demoLectureDetail,
@@ -344,6 +365,38 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleSaveSpeakerReview() {
+    if (demoMode) {
+      setNotice('데모 데이터 상태에서는 화자 검수를 저장하지 않습니다.');
+      return;
+    }
+    if (!lectureId) {
+      setNotice('강의를 먼저 선택해 주세요.');
+      return;
+    }
+    if (!instructorName.trim()) {
+      setNotice('강사명은 필수입니다.');
+      return;
+    }
+    const confidence = Number(speakerConfidence);
+    const response = await saveTranscriptSpeakerReviewDetailed(
+      lectureId,
+      {
+        speaker_label: speakerLabel.trim() || 'SPEAKER_01',
+        instructor_name: instructorName.trim(),
+        confidence: Number.isFinite(confidence) ? confidence : undefined,
+        note: speakerNote.trim() || undefined,
+      },
+      sessionToken,
+    );
+    if (!response?.success || !response.data) {
+      setNotice(getAiErrorMessage(response, '화자 검수 저장에 실패했습니다.'));
+      return;
+    }
+    setSpeakerReview(response.data);
+    setNotice('화자/강사 검수가 저장되었습니다.');
   }
 
   return (
@@ -538,6 +591,50 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
             <TranscriptTimelineWorkspace selectedLecture={selectedLecture} transcript={transcript} />
           </section>
         )}
+
+        {(viewerRole === 'ADMIN' || viewerRole === 'INSTRUCTOR') && !demoMode ? (
+          <section className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">화자/강사 검수</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  STT 화자 라벨을 실제 강사명으로 매핑해 RAG/요약 품질을 안정화합니다.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleSaveSpeakerReview()}
+                className="inline-flex items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
+              >
+                <i className="ri-save-line" />
+                검수 저장
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-xs font-semibold text-slate-600">화자 라벨</span>
+                <input value={speakerLabel} onChange={(event) => setSpeakerLabel(event.target.value)} className="w-full rounded-xl border border-[#cce0f2] px-3 py-2 text-sm" />
+              </label>
+              <label className="space-y-2">
+                <span className="text-xs font-semibold text-slate-600">강사명</span>
+                <input value={instructorName} onChange={(event) => setInstructorName(event.target.value)} className="w-full rounded-xl border border-[#cce0f2] px-3 py-2 text-sm" />
+              </label>
+              <label className="space-y-2">
+                <span className="text-xs font-semibold text-slate-600">신뢰도 (0~1)</span>
+                <input value={speakerConfidence} onChange={(event) => setSpeakerConfidence(event.target.value)} className="w-full rounded-xl border border-[#cce0f2] px-3 py-2 text-sm" />
+              </label>
+              <label className="space-y-2">
+                <span className="text-xs font-semibold text-slate-600">메모</span>
+                <input value={speakerNote} onChange={(event) => setSpeakerNote(event.target.value)} className="w-full rounded-xl border border-[#cce0f2] px-3 py-2 text-sm" />
+              </label>
+            </div>
+            {speakerReview ? (
+              <div className="mt-3 text-xs text-slate-500">
+                마지막 검수: {speakerReview.reviewed_at ?? '-'} · {speakerReview.reviewed_by ?? '-'}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </>
     </div>
   );

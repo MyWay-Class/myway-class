@@ -37,6 +37,16 @@ export type LectureVideoMappingResult = {
   video_url: string;
 };
 
+export type TranscriptSpeakerReview = {
+  status: string;
+  speaker_label?: string;
+  instructor_name?: string;
+  confidence?: number;
+  note?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+};
+
 export async function uploadLectureVideoDetailed(
   lectureId: string,
   file: File,
@@ -112,6 +122,40 @@ export async function loadLectureTranscriptDetailed(lectureId: string, sessionTo
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   const response = await request<LectureTranscript>(`/api/v1/media/transcript/${encodeURIComponent(lectureId)}`, undefined, token);
   return response?.success && response.data ? response.data : null;
+}
+
+export async function loadTranscriptSpeakerReview(
+  lectureId: string,
+  sessionToken?: string | null,
+): Promise<TranscriptSpeakerReview | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  const response = await request<TranscriptSpeakerReview>(
+    `/api/v1/media/transcript/${encodeURIComponent(lectureId)}/speaker-review`,
+    undefined,
+    token,
+  );
+  return response?.success && response.data ? response.data : null;
+}
+
+export async function saveTranscriptSpeakerReviewDetailed(
+  lectureId: string,
+  input: {
+    speaker_label?: string;
+    instructor_name: string;
+    confidence?: number;
+    note?: string;
+  },
+  sessionToken?: string | null,
+): Promise<ApiRequestResult<TranscriptSpeakerReview> | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  return await request<TranscriptSpeakerReview>(
+    `/api/v1/media/transcript/${encodeURIComponent(lectureId)}/speaker-review`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
 }
 
 export async function loadMediaProviders(sessionToken?: string | null): Promise<STTProviderCatalog | null> {

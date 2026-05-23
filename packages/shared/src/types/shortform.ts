@@ -116,9 +116,15 @@ export type ShortformSelectRequest = {
 };
 
 export type ShortformComposeRequest = {
-  extraction_id: string;
+  extraction_id?: string;
+  course_id?: string;
   title: string;
   candidate_ids?: string[];
+  clips?: Array<{
+    lecture_id: string;
+    start_ms: number;
+    end_ms: number;
+  }>;
   description?: string;
 };
 
