@@ -54,6 +54,7 @@ export function LectureWatchPage({
   const [remapAssetKey, setRemapAssetKey] = useState('');
   const [remapMessage, setRemapMessage] = useState<string | null>(null);
   const [remapBusy, setRemapBusy] = useState(false);
+  const [pendingSeek, setPendingSeek] = useState<{ lectureId: string; startMs: number } | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const isLocked = Boolean(selectedCourse && !selectedCourse.enrolled && !canManageCurrent);
   const currentLecture = useMemo(() => {
@@ -210,6 +211,33 @@ export function LectureWatchPage({
       });
     }
   }
+
+  function handleSeekFromChat(startMs: number, lectureId?: string | null) {
+    const targetLectureId = (lectureId ?? '').trim();
+    const activeLectureId = currentLecture?.id ?? '';
+    if (targetLectureId && activeLectureId && targetLectureId !== activeLectureId) {
+      const existsInCourse = Boolean(selectedCourse?.lectures.some((lecture) => lecture.id === targetLectureId));
+      if (existsInCourse) {
+        setPendingSeek({ lectureId: targetLectureId, startMs });
+        onSelectLecture(targetLectureId);
+        return;
+      }
+      onNavigate('courses');
+      return;
+    }
+    seekVideoTo(startMs);
+  }
+
+  useEffect(() => {
+    if (!pendingSeek || !currentLecture?.id) {
+      return;
+    }
+    if (pendingSeek.lectureId !== currentLecture.id) {
+      return;
+    }
+    seekVideoTo(pendingSeek.startMs);
+    setPendingSeek(null);
+  }, [currentLecture?.id, pendingSeek]);
 
   if (!selectedCourse) {
     return (
@@ -549,7 +577,7 @@ export function LectureWatchPage({
                   <LectureSideChatPanel
                     highlightedLecture={highlightedLecture}
                     sessionToken={sessionToken}
-                    onSeekTimestamp={seekVideoTo}
+                    onSeekTimestamp={handleSeekFromChat}
                   />
                 ) : null}
               </div>

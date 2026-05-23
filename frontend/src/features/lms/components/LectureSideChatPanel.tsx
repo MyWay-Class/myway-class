@@ -8,7 +8,7 @@ import { AIChatThread, type AIChatMessage } from './AIChatThread';
 type LectureSideChatPanelProps = {
   highlightedLecture: LectureDetail | null;
   sessionToken?: string | null;
-  onSeekTimestamp?: (startMs: number) => void;
+  onSeekTimestamp?: (startMs: number, lectureId?: string | null) => void;
 };
 
 function createWelcomeMessage(highlightedLecture: LectureDetail | null): AIChatMessage {
