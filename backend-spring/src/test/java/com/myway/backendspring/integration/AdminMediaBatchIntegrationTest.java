@@ -118,6 +118,32 @@ class AdminMediaBatchIntegrationTest {
         assertThat(missingAfter).isLessThanOrEqualTo(missingBefore);
     }
 
+    @Test
+    void lectureMetadataSync_shouldBeAdminOnly_andReturnSummary() throws Exception {
+        String instructorAuth = "Bearer " + loginAndGetToken("usr_ins_001");
+        String adminAuth = "Bearer " + loginAndGetToken("usr_admin_001");
+
+        mockMvc.perform(post("/api/v1/admin/media/lecture-metadata/sync")
+                        .header("Authorization", instructorAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"overwrite_existing\":false}"))
+                .andExpect(status().isForbidden());
+
+        String response = mockMvc.perform(post("/api/v1/admin/media/lecture-metadata/sync")
+                        .header("Authorization", adminAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"overwrite_existing\":false}"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode data = objectMapper.readTree(response).path("data");
+        assertThat(data.path("updated_count").asInt()).isGreaterThanOrEqualTo(0);
+        assertThat(data.path("skipped_count").asInt()).isGreaterThanOrEqualTo(0);
+        assertThat(data.path("items").isArray()).isTrue();
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

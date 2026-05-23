@@ -3,6 +3,7 @@ package com.myway.backendspring.api;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
+import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.feature.media.MediaBatchService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,13 +16,16 @@ import java.util.Map;
 public class AdminMediaController {
 
     public record BatchTriggerRequest(String mode) {}
+    public record LectureMetadataSyncRequest(Boolean overwrite_existing) {}
 
     private final SessionService sessionService;
     private final MediaBatchService mediaBatchService;
+    private final DemoLearningService learningService;
 
-    public AdminMediaController(SessionService sessionService, MediaBatchService mediaBatchService) {
+    public AdminMediaController(SessionService sessionService, MediaBatchService mediaBatchService, DemoLearningService learningService) {
         this.sessionService = sessionService;
         this.mediaBatchService = mediaBatchService;
+        this.learningService = learningService;
     }
 
     private SessionView require(String auth) {
@@ -74,5 +78,18 @@ public class AdminMediaController {
         if (session == null) return unauthenticated();
         if (!isAdmin(session)) return forbidden();
         return ResponseEntity.ok(ApiResponse.success(mediaBatchService.bulkMapMissingLectureVideoAssets(), "누락 매핑 일괄 반영이 완료되었습니다."));
+    }
+
+    @PostMapping("/lecture-metadata/sync")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> syncLectureMetadataFromTranscripts(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody(required = false) LectureMetadataSyncRequest request
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
+        if (!isAdmin(session)) return forbidden();
+        boolean overwriteExisting = request != null && Boolean.TRUE.equals(request.overwrite_existing());
+        Map<String, Object> result = learningService.syncLectureMetadataFromTranscripts(overwriteExisting);
+        return ResponseEntity.ok(ApiResponse.success(result, "STT 기반 강의 메타 동기화가 완료되었습니다."));
     }
 }
