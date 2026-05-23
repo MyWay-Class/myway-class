@@ -76,6 +76,14 @@ public class LearningApplicationService {
 
     private LectureItem toModel(com.myway.backendspring.domain.LectureItem item) {
         if (item == null) return null;
-        return new LectureItem(item.id(), item.course_id(), item.title(), item.duration_minutes());
+        return new LectureItem(
+                item.id(),
+                item.course_id(),
+                item.title(),
+                item.duration_minutes(),
+                item.content_text(),
+                item.transcript_excerpt(),
+                item.instructor_name()
+        );
     }
 }

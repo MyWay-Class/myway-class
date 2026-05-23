@@ -15,8 +15,10 @@ public class DemoLearningService {
     private static final String COURSE_SCOPE = "learning_course";
     private static final String MATERIAL_SCOPE = "learning_material";
     private static final String NOTICE_SCOPE = "learning_notice";
+    private static final String LECTURE_META_SCOPE = "learning_lecture_meta";
     private static final String TRANSCRIPT_SCOPE = "media_transcript";
     private static final String EXTRACTION_SCOPE = "media_extraction";
+    private static final String SPEAKER_REVIEW_SCOPE = "media_speaker_review";
     private static final String DEFAULT_DEMO_STUDENT_ID = "usr_std_001";
     private final Map<String, CourseDetail> courses = new LinkedHashMap<>();
     private final Map<String, List<MaterialItem>> materialsByCourse = new ConcurrentHashMap<>();
@@ -338,12 +340,21 @@ public class DemoLearningService {
         if (lecture == null || lecture.id() == null || lecture.id().isBlank()) {
             return lecture;
         }
+        LectureItem lectureWithMeta = attachLectureMeta(lecture);
         int fallbackMinutes = Math.max(1, lecture.duration_minutes());
         int resolvedMinutes = resolveDurationMinutesFromMedia(lecture.id(), fallbackMinutes);
         if (resolvedMinutes == lecture.duration_minutes()) {
-            return lecture;
+            return lectureWithMeta;
         }
-        return new LectureItem(lecture.id(), lecture.course_id(), lecture.title(), resolvedMinutes);
+        return new LectureItem(
+                lecture.id(),
+                lecture.course_id(),
+                lecture.title(),
+                resolvedMinutes,
+                lectureWithMeta.content_text(),
+                lectureWithMeta.transcript_excerpt(),
+                lectureWithMeta.instructor_name()
+        );
     }
 
     private int resolveDurationMinutesFromMedia(String lectureId, int fallbackMinutes) {
@@ -379,6 +390,47 @@ public class DemoLearningService {
             return 0;
         }
         return (int) Math.max(1L, Math.round(durationMs / 60000.0d));
+    }
+
+    public Map<String, Object> syncLectureMetadataFromTranscripts(boolean overwriteExisting) {
+        if (!useStore()) {
+            return Map.of(
+                    "updated_count", 0,
+                    "skipped_count", 0,
+                    "items", List.of()
+            );
+        }
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        int updated = 0;
+        int skipped = 0;
+        for (LectureItem lecture : listAllLectures()) {
+            String lectureId = lecture.id();
+            Map<String, Object> transcript = store.getKv(TRANSCRIPT_SCOPE, lectureId);
+            if (transcript == null) {
+                skipped += 1;
+                items.add(Map.of("lecture_id", lectureId, "status", "SKIPPED", "reason", "TRANSCRIPT_MISSING"));
+                continue;
+            }
+
+            Map<String, Object> current = store.getKv(LECTURE_META_SCOPE, lectureId);
+            Map<String, Object> suggested = buildLectureMetaFromTranscript(lecture, transcript);
+            if (suggested == null || suggested.isEmpty()) {
+                skipped += 1;
+                items.add(Map.of("lecture_id", lectureId, "status", "SKIPPED", "reason", "SUGGESTION_EMPTY"));
+                continue;
+            }
+
+            Map<String, Object> merged = mergeLectureMeta(current, suggested, overwriteExisting);
+            store.upsertKv(LECTURE_META_SCOPE, lectureId, merged);
+            updated += 1;
+            items.add(Map.of("lecture_id", lectureId, "status", "UPDATED"));
+        }
+        return Map.of(
+                "updated_count", updated,
+                "skipped_count", skipped,
+                "items", items
+        );
     }
 
     private void seedStoreDataIfMissing() {
@@ -434,6 +486,9 @@ public class DemoLearningService {
                     row.put("course_id", l.course_id());
                     row.put("title", l.title());
                     row.put("duration_minutes", l.duration_minutes());
+                    row.put("content_text", l.content_text());
+                    row.put("transcript_excerpt", l.transcript_excerpt());
+                    row.put("instructor_name", l.instructor_name());
                     return row;
                 })
                 .toList();
@@ -461,8 +516,11 @@ public class DemoLearningService {
                 String courseId = String.valueOf(map.containsKey("course_id") ? map.get("course_id") : id).trim();
                 String lectureTitle = String.valueOf(map.containsKey("title") ? map.get("title") : "").trim();
                 int duration = parseInt(map.get("duration_minutes"), 0);
+                String contentText = String.valueOf(map.containsKey("content_text") ? map.get("content_text") : "").trim();
+                String transcriptExcerpt = String.valueOf(map.containsKey("transcript_excerpt") ? map.get("transcript_excerpt") : "").trim();
+                String instructorName = String.valueOf(map.containsKey("instructor_name") ? map.get("instructor_name") : "").trim();
                 if (!lectureId.isBlank() && !lectureTitle.isBlank()) {
-                    lectures.add(new LectureItem(lectureId, courseId, lectureTitle, duration));
+                    lectures.add(new LectureItem(lectureId, courseId, lectureTitle, duration, contentText, transcriptExcerpt, instructorName));
                 }
             }
         }
@@ -530,5 +588,136 @@ public class DemoLearningService {
         if (activityEventService != null) {
             activityEventService.append(userId, type, resourceType, resourceId, metadata);
         }
+    }
+
+    private LectureItem attachLectureMeta(LectureItem lecture) {
+        if (!useStore()) {
+            return lecture;
+        }
+        String lectureId = lecture.id();
+        if (lectureId == null || lectureId.isBlank()) {
+            return lecture;
+        }
+        Map<String, Object> currentMeta = store.getKv(LECTURE_META_SCOPE, lectureId);
+        if (isLectureMetaMissing(currentMeta)) {
+            Map<String, Object> transcript = store.getKv(TRANSCRIPT_SCOPE, lectureId);
+            if (transcript != null) {
+                Map<String, Object> suggested = buildLectureMetaFromTranscript(lecture, transcript);
+                Map<String, Object> merged = mergeLectureMeta(currentMeta, suggested, false);
+                store.upsertKv(LECTURE_META_SCOPE, lectureId, merged);
+                currentMeta = merged;
+            }
+        }
+        String content = chooseText(
+                asText(currentMeta == null ? null : currentMeta.get("content_text")),
+                lecture.content_text(),
+                "강의 핵심 내용을 정리 중입니다."
+        );
+        String excerpt = chooseText(
+                asText(currentMeta == null ? null : currentMeta.get("transcript_excerpt")),
+                lecture.transcript_excerpt(),
+                ""
+        );
+        String instructorName = chooseText(
+                asText(currentMeta == null ? null : currentMeta.get("instructor_name")),
+                lecture.instructor_name(),
+                ""
+        );
+        return new LectureItem(
+                lecture.id(),
+                lecture.course_id(),
+                lecture.title(),
+                lecture.duration_minutes(),
+                content,
+                excerpt,
+                instructorName
+        );
+    }
+
+    private boolean isLectureMetaMissing(Map<String, Object> meta) {
+        if (meta == null) return true;
+        return asText(meta.get("content_text")).isBlank()
+                && asText(meta.get("transcript_excerpt")).isBlank()
+                && asText(meta.get("instructor_name")).isBlank();
+    }
+
+    private Map<String, Object> buildLectureMetaFromTranscript(LectureItem lecture, Map<String, Object> transcript) {
+        String lectureId = lecture == null ? "" : lecture.id();
+        String fullText = asText(transcript.get("full_text"));
+        if (fullText.isBlank()) {
+            Object segmentsRaw = transcript.get("segments");
+            if (segmentsRaw instanceof List<?> segments) {
+                StringBuilder builder = new StringBuilder();
+                for (Object segment : segments) {
+                    if (!(segment instanceof Map<?, ?> map)) continue;
+                    Object textRaw = map.containsKey("text") ? map.get("text") : "";
+                    String text = String.valueOf(textRaw).trim();
+                    if (!text.isBlank()) {
+                        if (!builder.isEmpty()) builder.append(' ');
+                        builder.append(text);
+                    }
+                }
+                fullText = builder.toString();
+            }
+        }
+
+        Map<String, Object> speakerReview = store.getKv(SPEAKER_REVIEW_SCOPE, lectureId);
+        String instructorName = asText(speakerReview == null ? null : speakerReview.get("instructor_name"));
+        if (instructorName.isBlank()) {
+            instructorName = asText(lecture == null ? null : lecture.instructor_name());
+        }
+        String excerpt = trimToLimit(fullText, 180);
+        String content = trimToLimit(fullText, 1200);
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("lecture_id", lectureId);
+        meta.put("content_text", content);
+        meta.put("transcript_excerpt", excerpt);
+        meta.put("instructor_name", instructorName);
+        meta.put("updated_at", Instant.now().toString());
+        return meta;
+    }
+
+    private Map<String, Object> mergeLectureMeta(Map<String, Object> current, Map<String, Object> suggested, boolean overwriteExisting) {
+        Map<String, Object> merged = new HashMap<>();
+        if (current != null) {
+            merged.putAll(current);
+        }
+        for (String field : List.of("lecture_id", "updated_at")) {
+            if (suggested.containsKey(field)) {
+                merged.put(field, suggested.get(field));
+            }
+        }
+        for (String field : List.of("content_text", "transcript_excerpt", "instructor_name")) {
+            String currentText = asText(merged.get(field));
+            String nextText = asText(suggested.get(field));
+            if (overwriteExisting || currentText.isBlank()) {
+                if (!nextText.isBlank()) {
+                    merged.put(field, nextText);
+                }
+            }
+        }
+        merged.put("updated_at", Instant.now().toString());
+        return merged;
+    }
+
+    private String trimToLimit(String value, int limit) {
+        String normalized = asText(value);
+        if (normalized.length() <= limit) {
+            return normalized;
+        }
+        return normalized.substring(0, limit).trim();
+    }
+
+    private String chooseText(String first, String second, String fallback) {
+        String a = asText(first);
+        if (!a.isBlank()) return a;
+        String b = asText(second);
+        if (!b.isBlank()) return b;
+        return fallback == null ? "" : fallback;
+    }
+
+    private String asText(Object value) {
+        if (value == null) return "";
+        return String.valueOf(value).trim();
     }
 }
