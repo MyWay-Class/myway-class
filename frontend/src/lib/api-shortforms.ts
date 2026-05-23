@@ -213,3 +213,47 @@ export async function loadShortformVideoDraft(
   const response = await request<ShortformVideoDetail>(`/api/v1/shortform/video/${encodeURIComponent(videoId)}`, undefined, token);
   return response?.success && response.data ? response.data : getShortformVideoDetail(videoId) ?? null;
 }
+
+export type ShortformExportStatusSummary = {
+  pending_count: number;
+  processing_count: number;
+  completed_count: number;
+  failed_count: number;
+  failed_permanent_count: number;
+  last_updated_at?: string | null;
+  failed_items: Array<{
+    id: string;
+    title: string;
+    user_id: string;
+    export_status: string;
+    retry_count: number;
+    error_message?: string;
+    updated_at?: string;
+  }>;
+};
+
+export async function loadShortformExportStatus(
+  sessionToken?: string | null,
+): Promise<ShortformExportStatusSummary | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  if (!token) return null;
+  const response = await request<ShortformExportStatusSummary>('/api/v1/shortform/admin/export-status', undefined, token);
+  return response?.success && response.data ? response.data : null;
+}
+
+export async function retryFailedShortformExports(
+  input?: { include_permanent?: boolean; limit?: number },
+  sessionToken?: string | null,
+): Promise<ShortformExportStatusSummary | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  if (!token) return null;
+  const response = await request<{ status: ShortformExportStatusSummary }>(
+    '/api/v1/shortform/admin/export/retry-failed',
+    {
+      method: 'POST',
+      body: JSON.stringify(input ?? {}),
+    },
+    token,
+  );
+  return response?.success && response.data ? response.data.status : null;
+}

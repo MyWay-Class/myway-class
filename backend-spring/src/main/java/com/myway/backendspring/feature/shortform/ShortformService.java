@@ -219,20 +219,88 @@ public class ShortformService {
         if (!userId.equals(String.valueOf(video.getOrDefault("user_id", "")))) {
             return Map.of("error", "FORBIDDEN");
         }
-        int retryCount = asInt(video.get("retry_count"));
-        if (retryCount >= shortformMaxRetry) {
-            video.put("export_status", "FAILED_PERMANENT");
-            video.put("updated_at", Instant.now().toString());
-            repository.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
-            return video;
-        }
-        video.put("retry_count", retryCount + 1);
-        video.put("export_status", "PROCESSING");
-        video.put("error_message", null);
-        video.put("updated_at", Instant.now().toString());
-        dispatchShortformExportJob(video);
+        retryShortformExportInternal(video);
         repository.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
         return video;
+    }
+
+    public Map<String, Object> shortformExportStatus() {
+        List<Map<String, Object>> videos = repository.listKvByScope(SHORTFORM_VIDEO_SCOPE);
+        long pending = 0L;
+        long processing = 0L;
+        long completed = 0L;
+        long failed = 0L;
+        long failedPermanent = 0L;
+        String lastUpdatedAt = null;
+        List<Map<String, Object>> failedItems = new ArrayList<>();
+
+        for (Map<String, Object> video : videos) {
+            String status = String.valueOf(video.getOrDefault("export_status", "PENDING")).toUpperCase();
+            String updatedAt = String.valueOf(video.getOrDefault("updated_at", ""));
+            if (!updatedAt.isBlank() && (lastUpdatedAt == null || updatedAt.compareTo(lastUpdatedAt) > 0)) {
+                lastUpdatedAt = updatedAt;
+            }
+            switch (status) {
+                case "PROCESSING" -> processing += 1L;
+                case "COMPLETED" -> completed += 1L;
+                case "FAILED" -> {
+                    failed += 1L;
+                    failedItems.add(buildFailedItem(video));
+                }
+                case "FAILED_PERMANENT" -> {
+                    failedPermanent += 1L;
+                    failedItems.add(buildFailedItem(video));
+                }
+                default -> pending += 1L;
+            }
+        }
+
+        failedItems.sort((left, right) -> String.valueOf(right.getOrDefault("updated_at", ""))
+                .compareTo(String.valueOf(left.getOrDefault("updated_at", ""))));
+        if (failedItems.size() > 20) {
+            failedItems = new ArrayList<>(failedItems.subList(0, 20));
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("pending_count", pending);
+        result.put("processing_count", processing);
+        result.put("completed_count", completed);
+        result.put("failed_count", failed);
+        result.put("failed_permanent_count", failedPermanent);
+        result.put("last_updated_at", lastUpdatedAt);
+        result.put("failed_items", failedItems);
+        return result;
+    }
+
+    public Map<String, Object> retryFailedShortformExports(boolean includePermanent, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        List<Map<String, Object>> videos = repository.listKvByScope(SHORTFORM_VIDEO_SCOPE);
+        List<Map<String, Object>> targets = videos.stream()
+                .filter(video -> {
+                    String status = String.valueOf(video.getOrDefault("export_status", "")).toUpperCase();
+                    return "FAILED".equals(status) || (includePermanent && "FAILED_PERMANENT".equals(status));
+                })
+                .sorted((left, right) -> String.valueOf(right.getOrDefault("updated_at", ""))
+                        .compareTo(String.valueOf(left.getOrDefault("updated_at", ""))))
+                .limit(safeLimit)
+                .toList();
+
+        int retried = 0;
+        List<String> retriedIds = new ArrayList<>();
+        for (Map<String, Object> video : targets) {
+            Map<String, Object> updated = retryShortformExportInternal(video);
+            repository.upsertKv(SHORTFORM_VIDEO_SCOPE, String.valueOf(updated.getOrDefault("id", "")), updated);
+            if ("PROCESSING".equals(String.valueOf(updated.getOrDefault("export_status", "")))) {
+                retried += 1;
+                retriedIds.add(String.valueOf(updated.getOrDefault("id", "")));
+            }
+        }
+        return Map.of(
+                "retried_count", retried,
+                "target_count", targets.size(),
+                "retried_ids", retriedIds,
+                "status", shortformExportStatus()
+        );
     }
 
     public Map<String, Object> applyShortformExportCallback(String shortformId, String status, long eventVersion, String videoUrl, String errorMessage) {
@@ -271,6 +339,33 @@ public class ShortformService {
         } catch (Exception ignored) {
             return 0;
         }
+    }
+
+    private Map<String, Object> buildFailedItem(Map<String, Object> video) {
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", String.valueOf(video.getOrDefault("id", "")));
+        item.put("title", String.valueOf(video.getOrDefault("title", "")));
+        item.put("user_id", String.valueOf(video.getOrDefault("user_id", "")));
+        item.put("export_status", String.valueOf(video.getOrDefault("export_status", "")));
+        item.put("retry_count", asInt(video.get("retry_count")));
+        item.put("error_message", String.valueOf(video.getOrDefault("error_message", "")));
+        item.put("updated_at", String.valueOf(video.getOrDefault("updated_at", "")));
+        return item;
+    }
+
+    private Map<String, Object> retryShortformExportInternal(Map<String, Object> video) {
+        int retryCount = asInt(video.get("retry_count"));
+        if (retryCount >= shortformMaxRetry) {
+            video.put("export_status", "FAILED_PERMANENT");
+            video.put("updated_at", Instant.now().toString());
+            return video;
+        }
+        video.put("retry_count", retryCount + 1);
+        video.put("export_status", "PROCESSING");
+        video.put("error_message", null);
+        video.put("updated_at", Instant.now().toString());
+        dispatchShortformExportJob(video);
+        return video;
     }
 
     private long asLong(Object value) {
