@@ -15,7 +15,7 @@ export type AIChatMessage = {
 type AIChatThreadProps = {
   messages: AIChatMessage[];
   loading: boolean;
-  onSeekTimestamp?: (startMs: number) => void;
+  onSeekTimestamp?: (startMs: number, lectureId?: string | null) => void;
 };
 
 function sanitizeDisplayText(value: string): string {
@@ -52,6 +52,7 @@ export function AIChatThread({ messages, loading, onSeekTimestamp }: AIChatThrea
                 <div className="mt-3 space-y-2">
                   {message.references.slice(0, 3).map((reference) => {
                     const startMs = extractReferenceStartMs(reference);
+                    const lectureId = typeof reference.lecture_id === 'string' ? reference.lecture_id : null;
                     return (
                       <div key={reference.id} className="rounded-xl border border-[#c9e0f2] bg-white/90 px-3 py-2 text-[11px] text-[#31516f]">
                         <div className="flex items-center justify-between gap-2">
@@ -62,7 +63,7 @@ export function AIChatThread({ messages, loading, onSeekTimestamp }: AIChatThrea
                         {startMs !== null && onSeekTimestamp ? (
                           <button
                             type="button"
-                            onClick={() => onSeekTimestamp(startMs)}
+                            onClick={() => onSeekTimestamp(startMs, lectureId)}
                             className="mt-2 inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-indigo-600"
                           >
                             <i className="ri-time-line" />
