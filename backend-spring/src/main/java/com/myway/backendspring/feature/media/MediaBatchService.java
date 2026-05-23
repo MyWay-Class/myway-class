@@ -45,7 +45,7 @@ public class MediaBatchService {
             return Map.of("running", true, "message", "이미 배치가 실행 중입니다.");
         }
 
-        String normalizedMode = "failed-only".equalsIgnoreCase(mode) ? "failed-only" : "all";
+        String normalizedMode = normalizeMode(mode);
         try {
             List<String> targets = resolveTargetLectures(normalizedMode);
             int success = 0;
@@ -203,5 +203,16 @@ public class MediaBatchService {
             }
         }
         return ids;
+    }
+
+    private String normalizeMode(String mode) {
+        if (mode == null) {
+            return "all";
+        }
+        String normalized = mode.trim().toLowerCase();
+        if ("failed-only".equals(normalized) || "failed".equals(normalized) || "retry-failed".equals(normalized)) {
+            return "failed-only";
+        }
+        return "all";
     }
 }

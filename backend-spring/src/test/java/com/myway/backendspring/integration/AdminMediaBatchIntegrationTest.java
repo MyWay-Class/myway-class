@@ -74,6 +74,17 @@ class AdminMediaBatchIntegrationTest {
             assertThat(firstFailed.has("failed_at")).isTrue();
             assertThat(firstFailed.path("course_title").asText()).isNotBlank();
         }
+
+        String failedOnlyRun = mockMvc.perform(post("/api/v1/admin/media/batch/run")
+                        .header("Authorization", adminAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mode\":\"failed\"}"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode failedOnlyData = objectMapper.readTree(failedOnlyRun).path("data");
+        assertThat(failedOnlyData.path("mode").asText()).isEqualTo("failed-only");
     }
 
     @Test
