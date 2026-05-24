@@ -180,12 +180,12 @@ export async function loadShortformExtractionDraft(
 export async function composeShortformDraft(
   input: ShortformComposeRequest,
   sessionToken?: string | null,
-): Promise<ShortformVideo | null> {
+): Promise<{ video: ShortformVideo | null; errorCode?: string; errorMessage?: string }> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   const userId = getFallbackUserId();
 
   if (!token) {
-    return composeShortformVideo(userId, input);
+    return { video: composeShortformVideo(userId, input) };
   }
 
   const response = await request<ShortformVideo>(
@@ -197,7 +197,15 @@ export async function composeShortformDraft(
     token,
   );
 
-  return response?.success && response.data ? response.data : composeShortformVideo(userId, input);
+  if (response?.success && response.data) {
+    return { video: response.data };
+  }
+
+  return {
+    video: null,
+    errorCode: response?.error?.code ?? 'SHORTFORM_COMPOSE_FAILED',
+    errorMessage: response?.error?.message ?? response?.message ?? '숏폼 생성에 실패했습니다.',
+  };
 }
 
 export async function loadShortformVideoDraft(
