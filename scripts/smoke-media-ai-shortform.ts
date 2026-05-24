@@ -9,6 +9,43 @@ type BatchStatusData = {
   success_count?: number;
 };
 
+type SessionData = {
+  user?: { id?: string; role?: string };
+  session_token?: string;
+};
+
+type EnrollmentData = {
+  id?: string;
+  course_id?: string;
+  user_id?: string;
+};
+
+type CourseLecture = {
+  id?: string;
+  course_id?: string;
+};
+
+type CourseDetailData = {
+  id?: string;
+  lectures?: CourseLecture[];
+};
+
+type LectureData = {
+  id?: string;
+  course_id?: string;
+};
+
+type LectureVideoData = {
+  lecture_id?: string;
+  asset_key?: string;
+  video_url?: string;
+};
+
+type TranscriptData = {
+  lecture_id?: string;
+  segments?: Array<{ start_ms?: number; end_ms?: number; text?: string }>;
+};
+
 type ShortformData = {
   id?: string;
   export_status?: string;
@@ -66,6 +103,62 @@ async function run(): Promise<void> {
 
   const studentToken = await login(studentUserId);
   const adminToken = await login(adminUserId);
+
+  const me = await api<SessionData>("/api/v1/auth/me", {
+    method: "GET",
+    headers: authHeader(studentToken),
+  });
+  assertOk(me.res.ok, `auth me failed (${me.res.status})`);
+  assertOk(me.body?.data?.user?.id === studentUserId, "auth me user mismatch");
+
+  const enrollments = await api<EnrollmentData[]>("/api/v1/enrollments", {
+    method: "GET",
+    headers: authHeader(studentToken),
+  });
+  assertOk(enrollments.res.ok, `enrollments failed (${enrollments.res.status})`);
+  assertOk(Array.isArray(enrollments.body?.data), "enrollments missing");
+  assertOk(
+    (enrollments.body?.data ?? []).some((enrollment) => enrollment?.course_id === smokeCourseId),
+    "student is not enrolled in smoke course",
+  );
+
+  const courseDetail = await api<CourseDetailData>(`/api/v1/courses/${encodeURIComponent(smokeCourseId)}`, {
+    method: "GET",
+    headers: authHeader(studentToken),
+  });
+  assertOk(courseDetail.res.ok, `course detail failed (${courseDetail.res.status})`);
+  const lectureIds = (courseDetail.body?.data?.lectures ?? [])
+    .map((lecture) => lecture?.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+  assertOk(lectureIds.length > 0, "course lectures missing");
+  assertOk(lectureIds.includes(smokeLectureId), "smoke lecture missing in course detail");
+
+  const lectureDetail = await api<LectureData>(`/api/v1/lectures/${encodeURIComponent(smokeLectureId)}`, {
+    method: "GET",
+    headers: authHeader(studentToken),
+  });
+  assertOk(lectureDetail.res.ok, `lecture detail failed (${lectureDetail.res.status})`);
+  assertOk(lectureDetail.body?.data?.id === smokeLectureId, "lecture detail id mismatch");
+  assertOk(lectureDetail.body?.data?.course_id === smokeCourseId, "lecture detail course mapping mismatch");
+
+  const lectureVideo = await api<LectureVideoData>(`/api/v1/media/lecture-video/${encodeURIComponent(smokeLectureId)}`, {
+    method: "GET",
+    headers: authHeader(studentToken),
+  });
+  assertOk(lectureVideo.res.ok, `lecture video mapping failed (${lectureVideo.res.status})`);
+  assertOk(lectureVideo.body?.data?.lecture_id === smokeLectureId, "lecture video lecture id mismatch");
+  assertOk(
+    typeof lectureVideo.body?.data?.asset_key === "string" && lectureVideo.body.data.asset_key.length > 0,
+    "lecture video asset key missing",
+  );
+
+  const transcript = await api<TranscriptData>(`/api/v1/media/transcript/${encodeURIComponent(smokeLectureId)}`, {
+    method: "GET",
+    headers: authHeader(studentToken),
+  });
+  assertOk(transcript.res.ok, `transcript failed (${transcript.res.status})`);
+  assertOk(transcript.body?.data?.lecture_id === smokeLectureId, "transcript lecture mismatch");
+  assertOk(Array.isArray(transcript.body?.data?.segments), "transcript segments missing");
 
   const rag = await api<{ chunks?: unknown[] }>("/api/v1/ai/rag", {
     method: "POST",
