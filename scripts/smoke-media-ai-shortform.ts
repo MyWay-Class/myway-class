@@ -79,6 +79,15 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<{ res: R
   return { res, body };
 }
 
+async function authedApi<T>(
+  token: string,
+  path: string,
+  options: RequestInit = {},
+): Promise<{ res: Response; body: ApiEnvelope<T> | null }> {
+  const headers = { ...(options.headers ?? {}), ...authHeader(token) };
+  return api<T>(path, { ...options, headers });
+}
+
 async function login(userId: string): Promise<string> {
   const { res, body } = await api<{ session_token?: string }>("/api/v1/auth/login", {
     method: "POST",
@@ -104,17 +113,11 @@ async function run(): Promise<void> {
   const studentToken = await login(studentUserId);
   const adminToken = await login(adminUserId);
 
-  const me = await api<SessionData>("/api/v1/auth/me", {
-    method: "GET",
-    headers: authHeader(studentToken),
-  });
+  const me = await authedApi<SessionData>(studentToken, "/api/v1/auth/me", { method: "GET" });
   assertOk(me.res.ok, `auth me failed (${me.res.status})`);
   assertOk(me.body?.data?.user?.id === studentUserId, "auth me user mismatch");
 
-  const enrollments = await api<EnrollmentData[]>("/api/v1/enrollments", {
-    method: "GET",
-    headers: authHeader(studentToken),
-  });
+  const enrollments = await authedApi<EnrollmentData[]>(studentToken, "/api/v1/enrollments", { method: "GET" });
   assertOk(enrollments.res.ok, `enrollments failed (${enrollments.res.status})`);
   assertOk(Array.isArray(enrollments.body?.data), "enrollments missing");
   assertOk(
@@ -122,10 +125,7 @@ async function run(): Promise<void> {
     "student is not enrolled in smoke course",
   );
 
-  const courseDetail = await api<CourseDetailData>(`/api/v1/courses/${encodeURIComponent(smokeCourseId)}`, {
-    method: "GET",
-    headers: authHeader(studentToken),
-  });
+  const courseDetail = await authedApi<CourseDetailData>(studentToken, `/api/v1/courses/${encodeURIComponent(smokeCourseId)}`, { method: "GET" });
   assertOk(courseDetail.res.ok, `course detail failed (${courseDetail.res.status})`);
   const lectureIds = (courseDetail.body?.data?.lectures ?? [])
     .map((lecture) => lecture?.id)
@@ -133,18 +133,12 @@ async function run(): Promise<void> {
   assertOk(lectureIds.length > 0, "course lectures missing");
   assertOk(lectureIds.includes(smokeLectureId), "smoke lecture missing in course detail");
 
-  const lectureDetail = await api<LectureData>(`/api/v1/lectures/${encodeURIComponent(smokeLectureId)}`, {
-    method: "GET",
-    headers: authHeader(studentToken),
-  });
+  const lectureDetail = await authedApi<LectureData>(studentToken, `/api/v1/lectures/${encodeURIComponent(smokeLectureId)}`, { method: "GET" });
   assertOk(lectureDetail.res.ok, `lecture detail failed (${lectureDetail.res.status})`);
   assertOk(lectureDetail.body?.data?.id === smokeLectureId, "lecture detail id mismatch");
   assertOk(lectureDetail.body?.data?.course_id === smokeCourseId, "lecture detail course mapping mismatch");
 
-  const lectureVideo = await api<LectureVideoData>(`/api/v1/media/lecture-video/${encodeURIComponent(smokeLectureId)}`, {
-    method: "GET",
-    headers: authHeader(studentToken),
-  });
+  const lectureVideo = await authedApi<LectureVideoData>(studentToken, `/api/v1/media/lecture-video/${encodeURIComponent(smokeLectureId)}`, { method: "GET" });
   assertOk(lectureVideo.res.ok, `lecture video mapping failed (${lectureVideo.res.status})`);
   assertOk(lectureVideo.body?.data?.lecture_id === smokeLectureId, "lecture video lecture id mismatch");
   assertOk(
@@ -152,10 +146,7 @@ async function run(): Promise<void> {
     "lecture video asset key missing",
   );
 
-  const transcript = await api<TranscriptData>(`/api/v1/media/transcript/${encodeURIComponent(smokeLectureId)}`, {
-    method: "GET",
-    headers: authHeader(studentToken),
-  });
+  const transcript = await authedApi<TranscriptData>(studentToken, `/api/v1/media/transcript/${encodeURIComponent(smokeLectureId)}`, { method: "GET" });
   assertOk(transcript.res.ok, `transcript failed (${transcript.res.status})`);
   assertOk(transcript.body?.data?.lecture_id === smokeLectureId, "transcript lecture mismatch");
   assertOk(Array.isArray(transcript.body?.data?.segments), "transcript segments missing");
@@ -233,9 +224,8 @@ async function run(): Promise<void> {
   assertOk(callback.res.ok, `shortform callback failed (${callback.res.status})`);
   assertOk(callback.body?.data?.export_status === "COMPLETED", "shortform callback state mismatch");
 
-  const video = await api<ShortformData>(`/api/v1/shortform/video/${encodeURIComponent(shortformId)}`, {
+  const video = await authedApi<ShortformData>(studentToken, `/api/v1/shortform/video/${encodeURIComponent(shortformId)}`, {
     method: "GET",
-    headers: authHeader(studentToken),
   });
   assertOk(video.res.ok, `shortform video query failed (${video.res.status})`);
   assertOk(video.body?.data?.export_status === "COMPLETED", "shortform export not completed");
@@ -261,10 +251,7 @@ async function run(): Promise<void> {
   assertOk(multiPayloadClips[0]?.lecture_id === "lec_java_01", "multi lecture clip #1 mismatch");
   assertOk(multiPayloadClips[1]?.lecture_id === "lec_java_02", "multi lecture clip #2 mismatch");
 
-  const batchStatus = await api<BatchStatusData>("/api/v1/admin/media/batch/status", {
-    method: "GET",
-    headers: authHeader(adminToken),
-  });
+  const batchStatus = await authedApi<BatchStatusData>(adminToken, "/api/v1/admin/media/batch/status", { method: "GET" });
   assertOk(batchStatus.res.ok, `admin batch status failed (${batchStatus.res.status})`);
   assertOk(typeof batchStatus.body?.data?.success_count === "number", "batch status malformed");
 
