@@ -3,6 +3,10 @@ package com.myway.backendspring.api;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
+import com.myway.backendspring.domain.CourseDetail;
+import com.myway.backendspring.domain.DemoLearningService;
+import com.myway.backendspring.domain.EnrollmentItem;
+import com.myway.backendspring.domain.LectureItem;
 import com.myway.backendspring.feature.shortform.ShortformService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -40,17 +44,23 @@ public class ShortformController {
     public record RetryFailedExportsRequest(Boolean include_permanent, Integer limit) {}
 
     private final SessionService sessionService;
+    private final DemoLearningService learningService;
     private final ShortformService shortformService;
     private final String callbackToken;
+    private final long maxClipDurationMs;
 
     public ShortformController(
             SessionService sessionService,
+            DemoLearningService learningService,
             ShortformService shortformService,
-            @Value("${myway.shortform.callback.token:dev-shortform-callback-token}") String callbackToken
+            @Value("${myway.shortform.callback.token:dev-shortform-callback-token}") String callbackToken,
+            @Value("${myway.shortform.compose.max-clip-duration-ms:300000}") long maxClipDurationMs
     ) {
         this.sessionService = sessionService;
+        this.learningService = learningService;
         this.shortformService = shortformService;
         this.callbackToken = callbackToken;
+        this.maxClipDurationMs = Math.max(1000L, maxClipDurationMs);
     }
 
     private SessionView require(String auth) { return sessionService.me(auth); }
@@ -65,6 +75,15 @@ public class ShortformController {
     }
     private boolean isAdmin(SessionView session) {
         return session != null && "admin".equals(session.user().role());
+    }
+    private boolean isInstructor(SessionView session) {
+        return session != null && "instructor".equals(session.user().role());
+    }
+    private ResponseEntity<ApiResponse<Map<String, Object>>> badRequest(String code, String message) {
+        return ResponseEntity.badRequest().body(ApiResponse.failure(code, message));
+    }
+    private ResponseEntity<ApiResponse<Map<String, Object>>> forbidden(String message) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", message));
     }
 
     @GetMapping("/library")
@@ -110,16 +129,43 @@ public class ShortformController {
     }
 
     @PostMapping("/compose")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> compose(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody ComposeRequest body) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> compose(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody ComposeRequest body) {
         SessionView s = require(auth);
         if (s == null) return unauthenticated();
-        List<Map<String, Object>> clips = body.clips() == null ? List.of() : body.clips().stream()
-                .map(clip -> Map.<String, Object>of(
-                        "lecture_id", clip.lecture_id().trim(),
-                        "start_ms", clip.start_ms(),
-                        "end_ms", clip.end_ms()
-                ))
-                .toList();
+        if (body.clips() == null || body.clips().isEmpty()) {
+            return badRequest("CLIPS_REQUIRED", "clips가 필요합니다.");
+        }
+        List<Map<String, Object>> clips = new java.util.ArrayList<>();
+        for (ComposeClipRequest clip : body.clips()) {
+            String lectureId = clip.lecture_id().trim();
+            long startMs = clip.start_ms();
+            long endMs = clip.end_ms();
+            if (endMs <= startMs) {
+                return badRequest("INVALID_CLIP_RANGE", "clip end_ms는 start_ms보다 커야 합니다.");
+            }
+            if ((endMs - startMs) > maxClipDurationMs) {
+                return badRequest("CLIP_DURATION_EXCEEDED", "clip 길이가 허용 최대치를 초과했습니다.");
+            }
+            LectureItem lecture = learningService.getLecture(lectureId);
+            if (lecture == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다: " + lectureId));
+            }
+            if (!canComposeFromLecture(s, lecture)) {
+                return forbidden("해당 강의 클립을 조합할 권한이 없습니다.");
+            }
+            if (body.course_id() != null && !body.course_id().isBlank()) {
+                String requestedCourseId = body.course_id().trim();
+                if (!requestedCourseId.equals(lecture.course_id())) {
+                    return badRequest("COURSE_LECTURE_MISMATCH", "course_id와 clip lecture_id가 일치하지 않습니다.");
+                }
+            }
+            clips.add(Map.of(
+                    "lecture_id", lectureId,
+                    "start_ms", startMs,
+                    "end_ms", endMs
+            ));
+        }
         Map<String, Object> payload = Map.of(
                 "title", orEmpty(body.title()),
                 "description", orEmpty(body.description()),
@@ -127,6 +173,18 @@ public class ShortformController {
                 "clips", clips
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.composeShortform(s.user().id(), payload), "숏폼이 생성되었습니다."));
+    }
+
+    private boolean canComposeFromLecture(SessionView session, LectureItem lecture) {
+        if (isAdmin(session)) {
+            return true;
+        }
+        if (isInstructor(session)) {
+            CourseDetail course = learningService.getCourseDetail(lecture.course_id(), session.user().id());
+            return course != null && session.user().id().equals(course.instructor_id());
+        }
+        List<EnrollmentItem> enrollments = learningService.listEnrollments(session.user().id());
+        return enrollments.stream().anyMatch(item -> lecture.course_id().equals(item.course_id()));
     }
 
     @GetMapping("/video/{id}")
