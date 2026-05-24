@@ -36,6 +36,16 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
     let active = true;
 
     async function load() {
+      if (session.user.role === 'STUDENT') {
+        if (!active) {
+          return;
+        }
+        setManagedCourses([]);
+        setLoading(false);
+        setNotice('수강 중인 강의 목록을 확인하고 상세/시청으로 이동할 수 있습니다.');
+        return;
+      }
+
       setLoading(true);
       const result = await loadManagedCourses(session.session_token);
       if (!active) {
@@ -52,7 +62,7 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
     return () => {
       active = false;
     };
-  }, [session.session_token]);
+  }, [session.session_token, session.user.role]);
 
   const enrolledCourses = courses.filter((course) => course.enrolled);
   const instructorCourses = managedCourses.length > 0
