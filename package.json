@@ -34,9 +34,11 @@
     "lint": "npm --workspace @myway/backend run build && npm --workspace @myway/frontend run build",
     "perf:smoke": "npm run build:frontend",
     "smoke:media-ai-shortform": "tsx scripts/smoke-media-ai-shortform.ts",
+    "test:e2e:demo-student": "playwright test e2e/demo-student-journey.spec.ts --reporter=line",
     "verify": "npm run check:deps && npm run build:frontend && npm run test:backend"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "ffmpeg-static": "^5.3.0",

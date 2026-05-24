@@ -433,6 +433,59 @@ public class DemoLearningService {
         );
     }
 
+    public Map<String, Object> syncLectureMetadataForLectureFromTranscript(String lectureId, boolean overwriteExisting) {
+        if (!useStore()) {
+            return Map.of(
+                    "lecture_id", lectureId == null ? "" : lectureId,
+                    "status", "SKIPPED",
+                    "reason", "STORE_DISABLED"
+            );
+        }
+        String normalizedLectureId = lectureId == null ? "" : lectureId.trim();
+        if (normalizedLectureId.isBlank()) {
+            return Map.of(
+                    "lecture_id", "",
+                    "status", "SKIPPED",
+                    "reason", "LECTURE_ID_REQUIRED"
+            );
+        }
+
+        LectureItem lecture = getLecture(normalizedLectureId);
+        if (lecture == null) {
+            return Map.of(
+                    "lecture_id", normalizedLectureId,
+                    "status", "SKIPPED",
+                    "reason", "LECTURE_NOT_FOUND"
+            );
+        }
+
+        Map<String, Object> transcript = store.getKv(TRANSCRIPT_SCOPE, normalizedLectureId);
+        if (transcript == null) {
+            return Map.of(
+                    "lecture_id", normalizedLectureId,
+                    "status", "SKIPPED",
+                    "reason", "TRANSCRIPT_MISSING"
+            );
+        }
+
+        Map<String, Object> current = store.getKv(LECTURE_META_SCOPE, normalizedLectureId);
+        Map<String, Object> suggested = buildLectureMetaFromTranscript(lecture, transcript);
+        if (suggested == null || suggested.isEmpty()) {
+            return Map.of(
+                    "lecture_id", normalizedLectureId,
+                    "status", "SKIPPED",
+                    "reason", "SUGGESTION_EMPTY"
+            );
+        }
+
+        Map<String, Object> merged = mergeLectureMeta(current, suggested, overwriteExisting);
+        store.upsertKv(LECTURE_META_SCOPE, normalizedLectureId, merged);
+        return Map.of(
+                "lecture_id", normalizedLectureId,
+                "status", "UPDATED"
+        );
+    }
+
     private void seedStoreDataIfMissing() {
         if (!store.listKvByScope(COURSE_SCOPE).isEmpty()) {
             return;
