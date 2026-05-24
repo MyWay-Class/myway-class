@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   canEnroll,
   canManageCourses,
-  demoUsers,
+  demoUsers as defaultDemoUsers,
+  type AuthUser,
   type AILogOverview,
   type AIInsights,
   type AIProviderCatalog,
@@ -22,6 +23,7 @@ import {
   loadBackendHealth,
   loadCourseDetail,
   loadCurrentSession,
+  loadLoginUsers,
   loadLectureDetail,
   loginWithUser,
   logoutCurrentSession,
@@ -53,6 +55,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [notice, setNotice] = useState('로그인 후 내 정보와 진도가 활성화됩니다.');
+  const [loginUsers, setLoginUsers] = useState<AuthUser[]>(defaultDemoUsers);
 
   const enrolledCourses = useMemo(() => {
     if (!session) {
@@ -87,6 +90,7 @@ export default function App() {
       setLoading(true);
 
       const [storedSession, backendOnline] = await Promise.all([loadCurrentSession(), loadBackendHealth()]);
+      const resolvedUsers = await loadLoginUsers();
 
       if (!active) {
         return;
@@ -94,6 +98,7 @@ export default function App() {
 
       setSession(storedSession);
       setApiStatus(backendOnline ? 'online' : 'offline');
+      setLoginUsers(resolvedUsers);
       await refreshLearningState(learningDeps, storedSession);
       setLoading(false);
     }
@@ -322,7 +327,7 @@ export default function App() {
       courseCards={courseCards}
       dashboard={dashboard}
       aiLogs={aiLogs}
-      demoUsers={demoUsers}
+      demoUsers={loginUsers}
       enrolledCourses={enrolledCourses}
       getCurrentRoleLabel={getCurrentRoleLabel}
       highlightedLecture={highlightedLecture}

@@ -40,6 +40,26 @@ type EnrollmentItem = {
   course_id: string;
 };
 
+const COURSE_ID_ALIASES: Record<string, string> = {
+  crs_demo_ai: 'crs_react_01',
+  crs_demo_data: 'crs_java_01',
+};
+
+const LECTURE_ID_ALIASES: Record<string, string> = {
+  lec_ai_001: 'lec_react_01',
+  lec_ai_seed_001: 'lec_react_01',
+  lec_demo_ai_1: 'lec_react_01',
+  lec_demo_ai_2: 'lec_react_02',
+};
+
+function normalizeCourseId(courseId: string): string {
+  return COURSE_ID_ALIASES[courseId] ?? courseId;
+}
+
+function normalizeLectureId(lectureId: string): string {
+  return LECTURE_ID_ALIASES[lectureId] ?? lectureId;
+}
+
 function normalizeLectureVideoFields(lecture: Lecture, fallbackLecture?: Lecture): Lecture {
   return {
     ...fallbackLecture,
@@ -195,12 +215,13 @@ export async function createCourse(
 export async function loadCourseDetail(courseId: string, sessionToken?: string | null): Promise<CourseDetail | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   const userId = getFallbackUserId();
+  const normalizedCourseId = normalizeCourseId(courseId);
   const response = await request<CourseDetail>(
-    `/api/v1/courses/${encodeURIComponent(courseId)}?userId=${encodeURIComponent(userId)}`,
+    `/api/v1/courses/${encodeURIComponent(normalizedCourseId)}?userId=${encodeURIComponent(userId)}`,
     undefined,
     token,
   );
-  const fallback = getCourseDetail(courseId, userId);
+  const fallback = getCourseDetail(courseId, userId) ?? getCourseDetail(normalizedCourseId, userId);
   if (response?.success && response.data) {
     const merged = mergeCourseDetailWithFallback(response.data, fallback);
     return await hydrateMissingLectureVideos(merged, token);
@@ -211,8 +232,9 @@ export async function loadCourseDetail(courseId: string, sessionToken?: string |
 export async function loadLectureDetail(lectureId: string, sessionToken?: string | null): Promise<LectureDetail | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   const userId = getFallbackUserId();
-  const response = await request<LectureDetail>(`/api/v1/lectures/${encodeURIComponent(lectureId)}`, undefined, token);
-  const fallback = getLectureDetail(lectureId, userId);
+  const normalizedLectureId = normalizeLectureId(lectureId);
+  const response = await request<LectureDetail>(`/api/v1/lectures/${encodeURIComponent(normalizedLectureId)}`, undefined, token);
+  const fallback = getLectureDetail(lectureId, userId) ?? getLectureDetail(normalizedLectureId, userId);
   return response?.success && response.data ? response.data : fallback ?? null;
 }
 

@@ -10,7 +10,7 @@ export const demoUsers: AuthUser[] = [
     bio: '강의 숏폼과 커스텀 강의를 활용해 복습 효율을 높이고 싶은 수강생입니다.',
   },
   {
-    id: 'usr_inst_001',
+    id: 'usr_ins_001',
     name: '김민준',
     email: 'instructor1@mywayclass.local',
     role: 'INSTRUCTOR',
@@ -32,6 +32,6 @@ export function getDemoUser(userId: string): AuthUser | undefined {
 }
 
 export const instructorNames: Record<string, string> = {
-  usr_inst_001: '김민준',
-  usr_inst_002: '이서연',
+  usr_ins_001: '김민준',
+  usr_ins_002: '이서연',
 };

@@ -1,4 +1,4 @@
-import { getDemoUser, getPermissions, type LoginResponse } from '@myway/shared';
+import { demoUsers, type AuthUser, type LoginResponse } from '@myway/shared';
 import { clearStoredAuth, getFallbackUserId, getStoredAuth, request, storeAuth } from './api-core';
 
 type BackendHealth = {
@@ -21,7 +21,8 @@ export async function loadCurrentSession(): Promise<LoginResponse | null> {
     return response.data;
   }
 
-  return storedAuth;
+  clearStoredAuth();
+  return null;
 }
 
 export async function loginWithUser(userId: string): Promise<LoginResponse | null> {
@@ -34,20 +35,7 @@ export async function loginWithUser(userId: string): Promise<LoginResponse | nul
     storeAuth(response.data);
     return response.data;
   }
-
-  const fallbackUser = getDemoUser(userId);
-  if (!fallbackUser) {
-    return null;
-  }
-
-  const fallbackAuth: LoginResponse = {
-    session_token: `local-${fallbackUser.id}`,
-    user: fallbackUser,
-    permissions: getPermissions(fallbackUser.role),
-  };
-
-  storeAuth(fallbackAuth);
-  return fallbackAuth;
+  return null;
 }
 
 export async function logoutCurrentSession(sessionToken?: string | null): Promise<void> {
@@ -63,6 +51,14 @@ export async function logoutCurrentSession(sessionToken?: string | null): Promis
 export async function loadBackendHealth(): Promise<boolean> {
   const response = await request<BackendHealth>('/api/v1/health');
   return Boolean(response?.success && response.data?.status === 'ok');
+}
+
+export async function loadLoginUsers(): Promise<AuthUser[]> {
+  const response = await request<AuthUser[]>('/api/v1/auth/users');
+  if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
+    return response.data;
+  }
+  return demoUsers;
 }
 
 export { getStoredAuth, getFallbackUserId };
