@@ -80,6 +80,22 @@ public class AdminMediaController {
         return ResponseEntity.ok(ApiResponse.success(mediaBatchService.bulkMapMissingLectureVideoAssets(), "누락 매핑 일괄 반영이 완료되었습니다."));
     }
 
+    @GetMapping("/r2-mappings/media-assets/audit")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> auditMappedMediaAssets(@RequestHeader(value = "Authorization", required = false) String auth) {
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
+        if (!isAdmin(session)) return forbidden();
+        return ResponseEntity.ok(ApiResponse.success(mediaBatchService.auditMappedLecturesMissingMediaAssets()));
+    }
+
+    @PostMapping("/r2-mappings/media-assets/backfill")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> backfillMappedMediaAssets(@RequestHeader(value = "Authorization", required = false) String auth) {
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
+        if (!isAdmin(session)) return forbidden();
+        return ResponseEntity.ok(ApiResponse.success(mediaBatchService.backfillMissingMediaAssetsForMappedLectures(), "누락 media_asset 백필이 완료되었습니다."));
+    }
+
     @PostMapping("/lecture-metadata/sync")
     public ResponseEntity<ApiResponse<Map<String, Object>>> syncLectureMetadataFromTranscripts(
             @RequestHeader(value = "Authorization", required = false) String auth,

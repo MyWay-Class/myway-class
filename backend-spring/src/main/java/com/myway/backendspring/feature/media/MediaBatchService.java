@@ -116,6 +116,32 @@ public class MediaBatchService {
         );
     }
 
+    public Map<String, Object> auditMappedLecturesMissingMediaAssets() {
+        Map<String, String> mappings = mediaPipelineService.lectureVideoAssetMap();
+        List<Map<String, Object>> missing = new ArrayList<>();
+        for (Map.Entry<String, String> entry : mappings.entrySet()) {
+            String lectureId = entry.getKey();
+            String assetKey = entry.getValue();
+            if (assetKey == null || assetKey.isBlank()) {
+                continue;
+            }
+            if (mediaPipelineService.mediaAsset(assetKey) != null) {
+                continue;
+            }
+            missing.add(Map.of(
+                    "lecture_id", lectureId,
+                    "asset_key", assetKey
+            ));
+        }
+
+        return Map.of(
+                "mapped_count", mappings.size(),
+                "media_asset_present_count", mappings.size() - missing.size(),
+                "missing_media_asset_count", missing.size(),
+                "missing_media_assets", missing
+        );
+    }
+
     public Map<String, Object> bulkMapMissingLectureVideoAssets() {
         Map<String, Object> audit = auditLectureVideoAssetMappings();
         @SuppressWarnings("unchecked")
@@ -131,6 +157,27 @@ public class MediaBatchService {
                 "mapped_count", mapped.size(),
                 "mapped", mapped,
                 "audit", auditLectureVideoAssetMappings()
+        );
+    }
+
+    public Map<String, Object> backfillMissingMediaAssetsForMappedLectures() {
+        Map<String, Object> audit = auditMappedLecturesMissingMediaAssets();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> missing = (List<Map<String, Object>>) audit.getOrDefault("missing_media_assets", List.of());
+        List<Map<String, Object>> backfilled = new ArrayList<>();
+        for (Map<String, Object> row : missing) {
+            String lectureId = String.valueOf(row.getOrDefault("lecture_id", "")).trim();
+            String assetKey = String.valueOf(row.getOrDefault("asset_key", "")).trim();
+            if (lectureId.isBlank() || assetKey.isBlank()) {
+                continue;
+            }
+            mediaPipelineService.upsertMediaAsset(assetKey, lectureId);
+            backfilled.add(Map.of("lecture_id", lectureId, "asset_key", assetKey));
+        }
+        return Map.of(
+                "backfilled_count", backfilled.size(),
+                "backfilled", backfilled,
+                "audit", auditMappedLecturesMissingMediaAssets()
         );
     }
 
