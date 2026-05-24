@@ -101,7 +101,7 @@ export function getCourseTotalDurationMinutes(courseId: string): number {
 
 export function getLectureKeywords(lecture: Lecture): string[] {
   const keywordMap: Record<string, string[]> = {
-    lec_ai_001: ['AI', '개념', '머신러닝', '딥러닝'],
+    lec_react_01: ['AI', '개념', '머신러닝', '딥러닝'],
     lec_ai_002: ['학습 데이터', '라벨링', '검증', '모델'],
     lec_ai_003: ['서비스 흐름', '데이터', '배포', '운영'],
     lec_econ_seed_001: ['경제', '희소성', '선택', '기회비용'],
@@ -142,3 +142,4 @@ export function createCourseCard(course: Course, userId: string): CourseCard {
     total_duration_minutes: getCourseTotalDurationMinutes(course.id),
   };
 }
+

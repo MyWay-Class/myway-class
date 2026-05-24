@@ -91,7 +91,7 @@ export const demoAIIntentLogs: AIIntentLog[] = [
     feature: 'summary',
     success: true,
     action_taken: 'summarized',
-    lecture_id: 'lec_ai_001',
+    lecture_id: 'lec_react_01',
     course_id: 'crs_ai_001',
     created_at: '2026-04-08T08:05:00.000Z',
   },
@@ -153,7 +153,7 @@ export const demoAIQuestionLogs: AIQuestionLog[] = [
   {
     id: 'aiq_001',
     user_id: 'usr_std_001',
-    lecture_id: 'lec_ai_001',
+    lecture_id: 'lec_react_01',
     course_id: 'crs_ai_001',
     question: 'RAG는 왜 청킹이 필요한가요?',
     answer: '청킹은 검색 단위를 잘게 나눠 관련 근거를 찾기 쉽게 해 줍니다.',
@@ -175,7 +175,7 @@ export const demoAIQuestionLogs: AIQuestionLog[] = [
   {
     id: 'aiq_003',
     user_id: 'usr_inst_001',
-    lecture_id: 'lec_ai_001',
+    lecture_id: 'lec_react_01',
     course_id: 'crs_ai_001',
     question: 'RAG 파이프라인에서 가장 중요한 지점은?',
     answer: '근거를 잃지 않는 검색과 재조합입니다.',
@@ -242,3 +242,4 @@ export function appendAIQuestionLog(
   demoAIQuestionLogs.push(log);
   return log;
 }
+

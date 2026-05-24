@@ -124,7 +124,7 @@ export const demoNotices: Notice[] = [
 export const demoLectureTranscripts: LectureTranscript[] = [
   {
     id: 'trs_ai_seed_001',
-    lecture_id: 'lec_ai_001',
+    lecture_id: 'lec_react_01',
     user_id: 'usr_inst_001',
     language: 'ko',
     full_text:
@@ -319,7 +319,7 @@ export const demoLectureTranscripts: LectureTranscript[] = [
 export const demoLectureNotes: LectureNote[] = [
   {
     id: 'note_ai_seed_001',
-    lecture_id: 'lec_ai_001',
+    lecture_id: 'lec_react_01',
     user_id: 'usr_inst_001',
     note_type: 'ai_timeline',
     title: 'AI란 무엇인가 - 타임라인 요약',
@@ -468,12 +468,12 @@ export const demoLectureNotes: LectureNote[] = [
 export const demoAudioExtractions: AudioExtraction[] = [
   {
     id: 'aud_ai_seed_001',
-    lecture_id: 'lec_ai_001',
+    lecture_id: 'lec_react_01',
     user_id: 'usr_inst_001',
     source_type: 'video',
     source_url: '/api/v1/media/assets/media%2Fcrs_ai_seed_001%2Flec_ai_seed_001.mp4',
     source_video_key: 'media/crs_ai_seed_001/lec_ai_seed_001.mp4',
-    source_video_name: 'lec_ai_001.mp4',
+    source_video_name: 'lec_react_01.mp4',
     source_content_type: 'video/mp4',
     source_size_bytes: 0,
     language: 'ko',
@@ -659,7 +659,7 @@ export const demoAudioExtractions: AudioExtraction[] = [
 
 export const demoLecturePipelines: LecturePipeline[] = [
   {
-    lecture_id: 'lec_ai_001',
+    lecture_id: 'lec_react_01',
     transcript_status: 'COMPLETED',
     summary_status: 'COMPLETED',
     audio_status: 'COMPLETED',
@@ -729,3 +729,4 @@ export const demoLecturePipelines: LecturePipeline[] = [
     updated_at: '2026-04-13T09:36:00.000Z',
   },
 ];
+
