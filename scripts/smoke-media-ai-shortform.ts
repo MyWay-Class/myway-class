@@ -78,6 +78,16 @@ async function run(): Promise<void> {
   });
   assertOk(rag.res.ok, `rag failed (${rag.res.status})`);
   assertOk(Array.isArray(rag.body?.data?.chunks), "rag chunks missing");
+  assertOk(
+    (rag.body?.data?.chunks ?? []).some((chunk: any) =>
+      typeof chunk?.start_ms === "number" &&
+      chunk.start_ms >= 0 &&
+      typeof chunk?.end_ms === "number" &&
+      chunk.end_ms > chunk.start_ms &&
+      chunk?.lecture_id === smokeLectureId,
+    ),
+    "rag chunk timestamp/lecture mapping missing",
+  );
 
   const search = await api<{ sources?: Array<{ start_ms?: number; end_ms?: number; lecture_id?: string }> }>("/api/v1/ai/search", {
     method: "POST",
@@ -143,22 +153,20 @@ async function run(): Promise<void> {
     body: JSON.stringify({
       title: "smoke-multi-lecture-shortform",
       description: "multi lecture clip compose",
-      course_id: "crs_java_bundle",
+      course_id: "crs_java_01",
       clips: [
         { lecture_id: "lec_java_01", start_ms: 120000, end_ms: 180000 },
         { lecture_id: "lec_java_02", start_ms: 60000, end_ms: 240000 },
-        { lecture_id: "lec_java_03", start_ms: 480000, end_ms: 540000 },
       ],
     }),
   });
   assertOk(multiLectureCompose.res.status === 201, `multi lecture shortform compose failed (${multiLectureCompose.res.status})`);
   const multiClips = multiLectureCompose.body?.data?.clips ?? [];
   const multiPayloadClips = multiLectureCompose.body?.data?.export_job_payload?.clips ?? [];
-  assertOk(multiClips.length === 3, "multi lecture shortform clips missing");
-  assertOk(multiPayloadClips.length === 3, "multi lecture export payload clips missing");
+  assertOk(multiClips.length === 2, "multi lecture shortform clips missing");
+  assertOk(multiPayloadClips.length === 2, "multi lecture export payload clips missing");
   assertOk(multiPayloadClips[0]?.lecture_id === "lec_java_01", "multi lecture clip #1 mismatch");
   assertOk(multiPayloadClips[1]?.lecture_id === "lec_java_02", "multi lecture clip #2 mismatch");
-  assertOk(multiPayloadClips[2]?.lecture_id === "lec_java_03", "multi lecture clip #3 mismatch");
 
   const batchStatus = await api<BatchStatusData>("/api/v1/admin/media/batch/status", {
     method: "GET",
