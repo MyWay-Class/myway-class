@@ -58,7 +58,7 @@ export const demoUsers: AuthUser[] = [
 
 export const demoCourses: CourseCard[] = [
   {
-    id: 'crs_demo_ai',
+    id: 'crs_react_01',
     instructor_id: 'usr_demo_instructor_2',
     title: 'AI 서비스 설계 입문',
     description: '전사, 요약, 숏폼, 챗봇을 한 흐름으로 묶는 제품 구조를 실습합니다.',
@@ -77,7 +77,7 @@ export const demoCourses: CourseCard[] = [
     total_duration_minutes: 480,
   },
   {
-    id: 'crs_demo_data',
+    id: 'crs_java_01',
     instructor_id: 'usr_demo_instructor_1',
     title: '데이터 기반 의사결정',
     description: '지표 설계, 대시보드 읽기, 실무 리포트 해석을 다룹니다.',
@@ -120,8 +120,8 @@ export const demoCourseDetail: CourseDetail = {
   ...demoCourses[0],
   lectures: [
     {
-      id: 'lec_demo_ai_1',
-      course_id: 'crs_demo_ai',
+      id: 'lec_react_01',
+      course_id: 'crs_react_01',
       title: 'AI 오케스트레이션 개요',
       order_index: 0,
       week_number: 1,
@@ -135,8 +135,8 @@ export const demoCourseDetail: CourseDetail = {
       video_asset_key: 'media/demo/ai-orchestration-intro.mp4',
     },
     {
-      id: 'lec_demo_ai_2',
-      course_id: 'crs_demo_ai',
+      id: 'lec_react_02',
+      course_id: 'crs_react_01',
       title: '전사와 타임스탬프',
       order_index: 1,
       week_number: 1,
@@ -149,8 +149,8 @@ export const demoCourseDetail: CourseDetail = {
       video_asset_key: 'media/demo/transcript-timeline.mp4',
     },
     {
-      id: 'lec_demo_ai_3',
-      course_id: 'crs_demo_ai',
+      id: 'lec_java_01',
+      course_id: 'crs_react_01',
       title: '숏폼 생성과 배포',
       order_index: 2,
       week_number: 2,
@@ -166,7 +166,7 @@ export const demoCourseDetail: CourseDetail = {
   materials: [
     {
       id: 'mat_demo_ai_1',
-      course_id: 'crs_demo_ai',
+      course_id: 'crs_react_01',
       title: 'AI 서비스 설계 체크리스트',
       summary: '전사, 요약, 챗봇, 숏폼 연결 시 확인해야 할 항목',
       file_name: 'ai-service-checklist.pdf',
@@ -175,7 +175,7 @@ export const demoCourseDetail: CourseDetail = {
     },
     {
       id: 'mat_demo_ai_2',
-      course_id: 'crs_demo_ai',
+      course_id: 'crs_react_01',
       title: '오케스트레이션 설계 노트',
       summary: '프론트, 백엔드, shared 모듈의 책임 분리 예시',
       file_name: 'orchestration-notes.md',
@@ -186,7 +186,7 @@ export const demoCourseDetail: CourseDetail = {
   notices: [
     {
       id: 'ntc_demo_ai_1',
-      course_id: 'crs_demo_ai',
+      course_id: 'crs_react_01',
       title: '첫 주차 수업 안내',
       content: '이번 주는 전사, 타임스탬프, 숏폼 생성의 전체 흐름을 실습합니다.',
       pinned: true,
@@ -392,3 +392,4 @@ export const demoMediaProcessorHealth: MediaProcessorHealth = {
   ],
   updated_at: now,
 };
+

@@ -70,7 +70,7 @@ export const demoCourses: Course[] = [
 
 export const demoLectures: Lecture[] = [
   {
-    id: 'lec_ai_001',
+    id: 'lec_react_01',
     course_id: 'crs_ai_001',
     title: 'AI란 무엇인가',
     order_index: 0,
@@ -298,7 +298,7 @@ export const demoLectureProgress: LectureProgress[] = [
   {
     id: 'prg_101',
     user_id: 'usr_std_001',
-    lecture_id: 'lec_ai_001',
+    lecture_id: 'lec_react_01',
     is_completed: true,
     completed_at: '2026-04-08T07:40:00.000Z',
     updated_at: '2026-04-08T07:40:00.000Z',
@@ -319,3 +319,4 @@ export const demoLectureProgress: LectureProgress[] = [
     updated_at: '2026-04-10T09:15:00.000Z',
   },
 ];
+
