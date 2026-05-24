@@ -243,6 +243,34 @@ class AiContractTest {
         assertThat(answerData.path("source_ids").isArray()).isTrue();
     }
 
+    @Test
+    void aiRag_shouldKeepTimestampedChunks_whenTranscriptIsNotPrepared() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+        setDailyLimit(authHeader, 999999);
+
+        JsonNode ragData = readData(mockMvc.perform(post("/api/v1/ai/rag")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"핵심 개념\",\"lecture_id\":\"lec_react_02\"}"))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        assertThat(ragData.path("chunks").isArray()).isTrue();
+        assertThat(ragData.path("chunks").size()).isGreaterThan(0);
+        JsonNode firstChunk = ragData.path("chunks").get(0);
+        assertThat(firstChunk.path("start_ms").isNumber()).isTrue();
+        assertThat(firstChunk.path("end_ms").isNumber()).isTrue();
+        String chunkText = firstChunk.path("text").asText();
+        if (chunkText.isBlank()) {
+            chunkText = firstChunk.path("excerpt").asText();
+        }
+        if (chunkText.isBlank()) {
+            chunkText = firstChunk.path("content").asText();
+        }
+        assertThat(chunkText).isNotBlank();
+        assertThat(ragData.path("answer").asText()).isNotBlank();
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
