@@ -1,5 +1,5 @@
 export { getStoredAuth, storeAuth, clearStoredAuth, request, unwrap, getFallbackUserId } from './api-core';
-export { loadCurrentSession, loginWithUser, logoutCurrentSession, loadBackendHealth } from './api-session';
+export { loadCurrentSession, loginWithUser, logoutCurrentSession, loadBackendHealth, loadLoginUsers } from './api-session';
 export {
   loadDashboard,
   loadAIInsights,
