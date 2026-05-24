@@ -61,6 +61,7 @@ const studentUserId = process.env.SMOKE_STUDENT_USER_ID || "usr_std_001";
 const adminUserId = process.env.SMOKE_ADMIN_USER_ID || "usr_admin_001";
 const smokeLectureId = process.env.SMOKE_LECTURE_ID || "lec_java_01";
 const smokeCourseId = process.env.SMOKE_COURSE_ID || "crs_java_01";
+const requirePlayback = (process.env.SMOKE_REQUIRE_PLAYBACK || "").toLowerCase() === "true";
 
 function assertOk(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -145,6 +146,29 @@ async function run(): Promise<void> {
     typeof lectureVideo.body?.data?.asset_key === "string" && lectureVideo.body.data.asset_key.length > 0,
     "lecture video asset key missing",
   );
+  assertOk(
+    typeof lectureVideo.body?.data?.video_url === "string" && lectureVideo.body.data.video_url.length > 0,
+    "lecture video url missing",
+  );
+  const lectureAssetKey = lectureVideo.body?.data?.asset_key as string;
+
+  const assetMeta = await api<{ asset_key?: string }>(`/api/v1/media/assets/${lectureAssetKey}`, {
+    method: "GET",
+    headers: authHeader(studentToken),
+  });
+  if (assetMeta.res.ok) {
+    assertOk(assetMeta.body?.data?.asset_key === lectureAssetKey, "asset metadata key mismatch");
+  } else {
+    assertOk(assetMeta.res.status === 404, `asset metadata failed (${assetMeta.res.status})`);
+  }
+
+  if (requirePlayback) {
+    const playback = await fetch(`${baseUrl}/api/v1/media/assets/${lectureAssetKey}?token=${encodeURIComponent(studentToken)}`, {
+      method: "GET",
+      headers: { accept: "video/mp4", range: "bytes=0-1023" },
+    });
+    assertOk(playback.status === 200 || playback.status === 206, `playback probe failed (${playback.status})`);
+  }
 
   const transcript = await authedApi<TranscriptData>(studentToken, `/api/v1/media/transcript/${encodeURIComponent(smokeLectureId)}`, { method: "GET" });
   assertOk(transcript.res.ok, `transcript failed (${transcript.res.status})`);
