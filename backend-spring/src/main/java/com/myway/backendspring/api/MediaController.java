@@ -176,7 +176,10 @@ public class MediaController {
         String sttModel = optionalOrNull(body.stt_model());
         String audioUrl = optionalOrNull(body.audio_url());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                mediaPipelineService.transcribe(lectureId, language, durationMs, sttProvider, sttModel, audioUrl),
+                triggerLectureMetadataAutoSync(
+                        lectureId,
+                        mediaPipelineService.transcribe(lectureId, language, durationMs, sttProvider, sttModel, audioUrl)
+                ),
                 "트랜스크립트가 생성되었습니다."
         ));
     }
@@ -442,14 +445,24 @@ public class MediaController {
             return ResponseEntity.ok(ApiResponse.success(Map.of("extraction", result, "pipeline", mediaPipelineService.pipeline(lectureId)), "오디오 추출 callback이 반영되었습니다."));
         }
 
+        Map<String, Object> transcribeWithMeta = triggerLectureMetadataAutoSync(lectureId, transcribeResult);
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of(
                         "extraction", result,
                         "pipeline", mediaPipelineService.pipeline(lectureId),
-                        "transcript", transcribeResult
+                        "transcript", transcribeWithMeta
                 ),
                 "오디오 추출 callback이 반영되어 STT가 자동 시작되었습니다."
         ));
+    }
+
+    private Map<String, Object> triggerLectureMetadataAutoSync(String lectureId, Map<String, Object> transcribeResult) {
+        if (lectureId == null || lectureId.isBlank() || transcribeResult == null) {
+            return transcribeResult;
+        }
+        Map<String, Object> merged = new java.util.LinkedHashMap<>(transcribeResult);
+        merged.put("lecture_meta_sync", learningService.syncLectureMetadataForLectureFromTranscript(lectureId, false));
+        return merged;
     }
 
     private record CallbackPolicyDecision(boolean valid, String status, long eventVersion, String errorMessage) {
