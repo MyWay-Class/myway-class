@@ -49,7 +49,7 @@ public class RagService {
         double threshold = minScore == null ? 0.0 : Math.max(0.0, Math.min(1.0, minScore));
 
         List<Map<String, Object>> retrieved = retriever.retrieve(normalizedQuery, targetLectureIds, threshold);
-        List<Map<String, Object>> rankedChunks = reranker.rerank(retrieved, resolvedLimit);
+        List<Map<String, Object>> rankedChunks = ensureChunkTimestamps(reranker.rerank(retrieved, resolvedLimit));
 
         List<Map<String, Object>> entities = new ArrayList<>();
         if (lectureId != null && !lectureId.isBlank()) {
@@ -272,5 +272,31 @@ public class RagService {
         } catch (Exception ignored) {
             return 0.0;
         }
+    }
+
+    private List<Map<String, Object>> ensureChunkTimestamps(List<Map<String, Object>> chunks) {
+        if (chunks == null || chunks.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> normalized = new ArrayList<>(chunks.size());
+        for (Map<String, Object> chunk : chunks) {
+            Map<String, Object> row = new HashMap<>(chunk);
+            long start = row.get("start_ms") instanceof Number number ? number.longValue() : 0L;
+            long end;
+            if (row.get("end_ms") instanceof Number number) {
+                end = number.longValue();
+            } else {
+                String lectureId = normalizeText(String.valueOf(row.getOrDefault("lecture_id", "")));
+                LectureItem lecture = lectureId.isBlank() ? null : learningService.getLecture(lectureId);
+                end = lecture == null ? 60_000L : Math.max(60_000L, lecture.duration_minutes() * 60_000L);
+            }
+            if (end < start) {
+                end = start + 1_000L;
+            }
+            row.put("start_ms", start);
+            row.put("end_ms", end);
+            normalized.add(row);
+        }
+        return normalized;
     }
 }
