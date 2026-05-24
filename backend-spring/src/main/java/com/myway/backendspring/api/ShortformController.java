@@ -33,9 +33,9 @@ public class ShortformController {
             @NotNull @PositiveOrZero Long start_ms,
             @NotNull @PositiveOrZero Long end_ms
     ) {}
-    public record ComposeRequest(String title, String description, String course_id, List<@Valid ComposeClipRequest> clips) {
+    public record ComposeRequest(String title, String description, String course_id, String extraction_id, List<@Valid ComposeClipRequest> clips) {
         public ComposeRequest(String title, String description, String course_id) {
-            this(title, description, course_id, List.of());
+            this(title, description, course_id, null, List.of());
         }
     }
     public record ShareRequest(@NotBlank String video_id, String course_id, String visibility, String message) {}
@@ -132,11 +132,9 @@ public class ShortformController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> compose(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody ComposeRequest body) {
         SessionView s = require(auth);
         if (s == null) return unauthenticated();
-        if (body.clips() == null || body.clips().isEmpty()) {
-            return badRequest("CLIPS_REQUIRED", "clips가 필요합니다.");
-        }
         List<Map<String, Object>> clips = new java.util.ArrayList<>();
-        for (ComposeClipRequest clip : body.clips()) {
+        List<ComposeClipRequest> sourceClips = body.clips() == null ? List.of() : body.clips();
+        for (ComposeClipRequest clip : sourceClips) {
             String lectureId = clip.lecture_id().trim();
             long startMs = clip.start_ms();
             long endMs = clip.end_ms();
@@ -170,7 +168,8 @@ public class ShortformController {
                 "title", orEmpty(body.title()),
                 "description", orEmpty(body.description()),
                 "course_id", orEmpty(body.course_id()),
-                "clips", clips
+                "clips", clips,
+                "extraction_id", orEmpty(body.extraction_id())
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.composeShortform(s.user().id(), payload), "숏폼이 생성되었습니다."));
     }
