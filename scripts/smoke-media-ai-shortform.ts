@@ -107,6 +107,7 @@ function authHeader(token: string): Record<string, string> {
 
 async function run(): Promise<void> {
   console.log(`[smoke] baseUrl=${baseUrl}`);
+  console.log(`[smoke] requirePlayback=${requirePlayback}`);
 
   const health = await api<unknown>("/api/v1/health");
   assertOk(health.res.ok, `health check failed (${health.res.status})`);
