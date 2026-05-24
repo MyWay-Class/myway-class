@@ -1,14 +1,45 @@
 import { resolveApiBaseUrl } from './api-base';
 
-function resolveMediaUrl(videoUrl: string): string {
-  if (/^https?:\/\//i.test(videoUrl)) {
+function canonicalizeMediaAssetPath(videoUrl: string): string {
+  const marker = '/api/v1/media/assets/';
+  const markerIndex = videoUrl.indexOf(marker);
+  if (markerIndex < 0) {
     return videoUrl;
   }
 
+  const before = videoUrl.slice(0, markerIndex + marker.length);
+  const after = videoUrl.slice(markerIndex + marker.length);
+  const [rawAssetKey, queryString = ''] = after.split('?', 2);
+  if (!rawAssetKey) {
+    return videoUrl;
+  }
+
+  let decodedKey = rawAssetKey;
   try {
-    return new URL(videoUrl, `${resolveApiBaseUrl()}/`).toString();
+    decodedKey = decodeURIComponent(rawAssetKey);
   } catch {
-    return `${resolveApiBaseUrl()}${videoUrl.startsWith('/') ? videoUrl : `/${videoUrl}`}`;
+    decodedKey = rawAssetKey;
+  }
+
+  const encodedKey = decodedKey
+    .split('/')
+    .filter((segment) => segment.trim().length > 0)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  const querySuffix = queryString ? `?${queryString}` : '';
+  return `${before}${encodedKey}${querySuffix}`;
+}
+
+function resolveMediaUrl(videoUrl: string): string {
+  const normalizedInput = canonicalizeMediaAssetPath(videoUrl);
+  if (/^https?:\/\//i.test(videoUrl)) {
+    return normalizedInput;
+  }
+
+  try {
+    return new URL(normalizedInput, `${resolveApiBaseUrl()}/`).toString();
+  } catch {
+    return `${resolveApiBaseUrl()}${normalizedInput.startsWith('/') ? normalizedInput : `/${normalizedInput}`}`;
   }
 }
 
@@ -30,7 +61,12 @@ export function buildMediaAssetPathFromKey(assetKey: string | undefined): string
     return undefined;
   }
 
-  return `/api/v1/media/assets/${encodeURIComponent(normalized)}`;
+  const encodedKey = normalized
+    .split('/')
+    .filter((segment) => segment.trim().length > 0)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  return `/api/v1/media/assets/${encodedKey}`;
 }
 
 export function resolveLectureVideoUrl(input: { video_url?: string; video_asset_key?: string }): string | undefined {

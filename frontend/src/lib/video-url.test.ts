@@ -13,6 +13,12 @@ describe("video URL utilities", () => {
     expect(output).toBe("https://app.example.com/api/v1/media/assets/asset/demo/video.mp4?token=session-token-1");
   });
 
+  it("normalizes encoded slash asset URLs to canonical asset paths", () => {
+    const input = "http://127.0.0.1:8787/api/v1/media/assets/media%2Fcrs_ai_seed_001%2Flec_ai_seed_001.mp4";
+    const output = resolvePlayableVideoUrl(input);
+    expect(output).toBe("http://127.0.0.1:8787/api/v1/media/assets/media/crs_ai_seed_001/lec_ai_seed_001.mp4");
+  });
+
   it("keeps non-API absolute URLs unchanged even with session token", () => {
     const input = "https://cdn.example.com/video.mp4";
     const output = buildProtectedVideoUrl(input, "session-token-1");
