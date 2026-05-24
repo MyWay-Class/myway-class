@@ -21,12 +21,31 @@ type ShortformWizardProps = {
   courses: CourseCard[];
   sessionToken: string | null;
 };
+const MIN_CLIP_MS = 1_000;
+const MAX_CLIP_MS = 300_000;
 
 function formatDuration(ms: number): string {
   const totalSeconds = Math.max(1, Math.round(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function mapComposeError(code?: string, message?: string): string {
+  switch (code) {
+    case 'INVALID_CLIP_RANGE':
+      return '클립 종료 시간이 시작 시간보다 커야 합니다.';
+    case 'CLIP_DURATION_EXCEEDED':
+      return '클립 길이는 최대 5분까지 가능합니다.';
+    case 'COURSE_LECTURE_MISMATCH':
+      return '선택한 강의와 클립의 코스가 일치하지 않습니다.';
+    case 'LECTURE_NOT_FOUND':
+      return '선택한 강의를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.';
+    case 'FORBIDDEN':
+      return '해당 강의 클립을 조합할 권한이 없습니다.';
+    default:
+      return message ?? '숏폼 생성에 실패했습니다.';
+  }
 }
 
 function clipKey(clip: ClipSuggestion): string {
@@ -276,7 +295,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
     }
 
     setStatus('선택한 구간으로 숏폼을 생성하는 중입니다.');
-    const video = await composeShortformDraft(
+    const result = await composeShortformDraft(
       {
         course_id: courseDetail.id,
         title: title.trim() || `${courseDetail.title} 숏폼`,
@@ -290,10 +309,11 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
       sessionToken,
     );
 
-    if (!video) {
-      setStatus('숏폼을 생성하지 못했습니다.');
+    if (!result.video) {
+      setStatus(mapComposeError(result.errorCode, result.errorMessage));
       return;
     }
+    const video = result.video;
 
     setCreatedVideo(video);
     setStatus(video.export_status === 'COMPLETED' || video.export_result_url ? '숏폼이 생성되어 재생 가능합니다.' : '숏폼이 생성되었고 export를 처리 중입니다.');
@@ -330,8 +350,10 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
           return clip;
         }
 
-        const safeStart = Math.max(0, Math.min(startTimeMs, endTimeMs - 1_000));
-        const safeEnd = Math.max(safeStart + 1_000, endTimeMs);
+        const requestedDuration = Math.max(MIN_CLIP_MS, endTimeMs - startTimeMs);
+        const boundedDuration = Math.min(MAX_CLIP_MS, requestedDuration);
+        const safeStart = Math.max(0, Math.min(startTimeMs, endTimeMs - MIN_CLIP_MS));
+        const safeEnd = safeStart + boundedDuration;
 
         return {
           ...clip,
