@@ -54,6 +54,9 @@ class ShortformAdminExportOpsIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         JsonNode statusRoot = objectMapper.readTree(adminStatus);
         assertThat(statusRoot.path("data").path("failed_count").asInt()).isGreaterThanOrEqualTo(1);
+        assertThat(statusRoot.path("data").has("stale_processing_count")).isTrue();
+        assertThat(statusRoot.path("data").has("failure_ratio")).isTrue();
+        assertThat(statusRoot.path("data").path("failure_ratio").asDouble()).isGreaterThanOrEqualTo(0.0d);
 
         String retry = mockMvc.perform(post("/api/v1/shortform/admin/export/retry-failed")
                         .header("Authorization", adminAuth)

@@ -34,6 +34,7 @@ public class ShortformService {
     private final String mediaProcessorToken;
     private final String mediaPublicBaseUrl;
     private final String shortformCallbackToken;
+    private final long staleProcessingThresholdMs;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ShortformService(
@@ -43,7 +44,8 @@ public class ShortformService {
             @Value("${myway.media.processor.url:}") String mediaProcessorUrl,
             @Value("${myway.media.processor.token:}") String mediaProcessorToken,
             @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl,
-            @Value("${myway.shortform.callback.token:dev-shortform-callback-token}") String shortformCallbackToken
+            @Value("${myway.shortform.callback.token:dev-shortform-callback-token}") String shortformCallbackToken,
+            @Value("${myway.shortform.monitoring.stale-processing-ms:1800000}") long staleProcessingThresholdMs
     ) {
         this.repository = repository;
         this.activityEventService = activityEventService;
@@ -52,6 +54,7 @@ public class ShortformService {
         this.mediaProcessorToken = mediaProcessorToken == null ? "" : mediaProcessorToken.trim();
         this.mediaPublicBaseUrl = mediaPublicBaseUrl == null ? "http://127.0.0.1:8787" : mediaPublicBaseUrl.trim();
         this.shortformCallbackToken = shortformCallbackToken == null ? "dev-shortform-callback-token" : shortformCallbackToken.trim();
+        this.staleProcessingThresholdMs = Math.max(60000L, staleProcessingThresholdMs);
     }
 
     public List<Map<String, Object>> shortformLibrary(String userId) {
@@ -231,8 +234,10 @@ public class ShortformService {
         long completed = 0L;
         long failed = 0L;
         long failedPermanent = 0L;
+        long staleProcessing = 0L;
         String lastUpdatedAt = null;
         List<Map<String, Object>> failedItems = new ArrayList<>();
+        Instant now = Instant.now();
 
         for (Map<String, Object> video : videos) {
             String status = String.valueOf(video.getOrDefault("export_status", "PENDING")).toUpperCase();
@@ -241,7 +246,12 @@ public class ShortformService {
                 lastUpdatedAt = updatedAt;
             }
             switch (status) {
-                case "PROCESSING" -> processing += 1L;
+                case "PROCESSING" -> {
+                    processing += 1L;
+                    if (isStaleProcessing(updatedAt, now)) {
+                        staleProcessing += 1L;
+                    }
+                }
                 case "COMPLETED" -> completed += 1L;
                 case "FAILED" -> {
                     failed += 1L;
@@ -267,9 +277,31 @@ public class ShortformService {
         result.put("completed_count", completed);
         result.put("failed_count", failed);
         result.put("failed_permanent_count", failedPermanent);
+        result.put("stale_processing_count", staleProcessing);
+        result.put("failure_ratio", toRatio(failed + failedPermanent, videos.size()));
         result.put("last_updated_at", lastUpdatedAt);
         result.put("failed_items", failedItems);
         return result;
+    }
+
+    private boolean isStaleProcessing(String updatedAt, Instant now) {
+        if (updatedAt == null || updatedAt.isBlank()) {
+            return false;
+        }
+        try {
+            Instant updated = Instant.parse(updatedAt);
+            return now.toEpochMilli() - updated.toEpochMilli() > staleProcessingThresholdMs;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private double toRatio(long numerator, int denominator) {
+        if (denominator <= 0) {
+            return 0.0d;
+        }
+        double ratio = ((double) numerator) / ((double) denominator);
+        return Math.round(ratio * 10000.0d) / 10000.0d;
     }
 
     public Map<String, Object> retryFailedShortformExports(boolean includePermanent, int limit) {
