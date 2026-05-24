@@ -82,6 +82,10 @@ class StudentLearningFlowContractTest {
         );
         assertThat(transcript.path("segments").isArray()).isTrue();
         assertThat(transcript.path("segments").size()).isGreaterThan(0);
+        JsonNode firstSegment = transcript.path("segments").get(0);
+        assertThat(firstSegment.path("start_ms").isNumber()).isTrue();
+        assertThat(firstSegment.path("end_ms").isNumber()).isTrue();
+        assertThat(firstSegment.path("end_ms").asLong()).isGreaterThan(firstSegment.path("start_ms").asLong());
 
         JsonNode rag = readData(mockMvc.perform(post("/api/v1/ai/rag")
                         .header("Authorization", authHeader)
@@ -92,6 +96,12 @@ class StudentLearningFlowContractTest {
         );
         assertThat(rag.path("chunks").isArray()).isTrue();
         assertThat(rag.path("chunks").size()).isGreaterThan(0);
+        JsonNode firstChunk = rag.path("chunks").get(0);
+        assertThat(firstChunk.path("lecture_id").asText()).isEqualTo(lectureId);
+        assertThat(firstChunk.path("start_ms").isNumber()).isTrue();
+        assertThat(firstChunk.path("end_ms").isNumber()).isTrue();
+        assertThat(firstChunk.path("end_ms").asLong()).isGreaterThan(firstChunk.path("start_ms").asLong());
+        assertThat(firstChunk.path("end_ms").asLong()).isLessThanOrEqualTo(transcript.path("duration_ms").asLong() + 1000L);
     }
 
     private String loginAndGetToken(String userId) throws Exception {
