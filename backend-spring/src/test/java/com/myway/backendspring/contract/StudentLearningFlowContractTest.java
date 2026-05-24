@@ -41,6 +41,15 @@ class StudentLearningFlowContractTest {
         String courseId = coursesData.get(0).path("id").asText();
         assertThat(courseId).isNotBlank();
 
+        JsonNode enrollments = readData(mockMvc.perform(get("/api/v1/enrollments")
+                        .header("Authorization", authHeader))
+                .andExpect(status().isOk())
+                .andReturn()
+        );
+        assertThat(enrollments.isArray()).isTrue();
+        assertThat(enrollments).isNotEmpty();
+        assertThat(enrollments.findValuesAsText("course_id")).contains(courseId);
+
         JsonNode courseDetail = readData(mockMvc.perform(get("/api/v1/courses/{courseId}", courseId)
                         .header("Authorization", authHeader))
                 .andExpect(status().isOk())
