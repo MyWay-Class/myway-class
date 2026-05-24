@@ -69,6 +69,14 @@ function assertOk(condition: unknown, message: string): asserts condition {
   }
 }
 
+function playbackDebugSummary(res: Response): string {
+  const errorCode = res.headers.get("x-error-code") || "";
+  const errorMessage = res.headers.get("x-error-message") || "";
+  const contentType = res.headers.get("content-type") || "";
+  const contentRange = res.headers.get("content-range") || "";
+  return `status=${res.status}, content-type=${contentType}, content-range=${contentRange}, x-error-code=${errorCode}, x-error-message=${errorMessage}`;
+}
+
 async function api<T>(path: string, options: RequestInit = {}): Promise<{ res: Response; body: ApiEnvelope<T> | null }> {
   const res = await fetch(`${baseUrl}${path}`, options);
   let body: ApiEnvelope<T> | null = null;
@@ -168,7 +176,10 @@ async function run(): Promise<void> {
       method: "GET",
       headers: { accept: "video/mp4", range: "bytes=0-1023" },
     });
-    assertOk(playback.status === 200 || playback.status === 206, `playback probe failed (${playback.status})`);
+    assertOk(
+      playback.status === 200 || playback.status === 206,
+      `playback probe failed (${playbackDebugSummary(playback)})`,
+    );
   }
 
   const transcript = await authedApi<TranscriptData>(studentToken, `/api/v1/media/transcript/${encodeURIComponent(smokeLectureId)}`, { method: "GET" });

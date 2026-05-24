@@ -72,5 +72,5 @@ jobs:
           SMOKE_COURSE_ID: ${{ inputs.course_id || vars.SMOKE_COURSE_ID || 'crs_java_01' }}
           SMOKE_STUDENT_USER_ID: ${{ inputs.student_user_id || vars.SMOKE_STUDENT_USER_ID || 'usr_std_001' }}
           SMOKE_ADMIN_USER_ID: ${{ inputs.admin_user_id || vars.SMOKE_ADMIN_USER_ID || 'usr_admin_001' }}
-          SMOKE_REQUIRE_PLAYBACK: ${{ inputs.require_playback || vars.SMOKE_REQUIRE_PLAYBACK || 'false' }}
+          SMOKE_REQUIRE_PLAYBACK: ${{ inputs.require_playback || vars.SMOKE_REQUIRE_PLAYBACK || (github.event_name == 'schedule' && 'true') || 'false' }}
         run: npm run smoke:media-ai-shortform
