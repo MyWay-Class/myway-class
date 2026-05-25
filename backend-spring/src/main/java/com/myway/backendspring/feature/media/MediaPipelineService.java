@@ -295,7 +295,11 @@ public class MediaPipelineService {
             String processingStep,
             String audioFormat,
             Integer sampleRate,
-            Integer channels
+            Integer channels,
+            String syncMode,
+            String overwritePolicy,
+            String approvalState,
+            String notificationChannel
     ) {
         return featureStoreService.completeExtractionCallback(
                 extractionId,
@@ -308,7 +312,11 @@ public class MediaPipelineService {
                 processingStep,
                 audioFormat,
                 sampleRate,
-                channels
+                channels,
+                syncMode,
+                overwritePolicy,
+                approvalState,
+                notificationChannel
         );
     }
 

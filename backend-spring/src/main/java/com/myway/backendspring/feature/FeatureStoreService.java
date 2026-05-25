@@ -274,6 +274,10 @@ public class FeatureStoreService {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
+                null,
                 null
         ));
     }
@@ -289,7 +293,11 @@ public class FeatureStoreService {
             String processingStep,
             String audioFormat,
             Integer sampleRate,
-            Integer channels
+            Integer channels,
+            String syncMode,
+            String overwritePolicy,
+            String approvalState,
+            String notificationChannel
     ) {
         return completeExtractionCallback(new ExtractionCallbackCommand(
                 extractionId,
@@ -302,7 +310,11 @@ public class FeatureStoreService {
                 processingStep,
                 audioFormat,
                 sampleRate,
-                channels
+                channels,
+                syncMode,
+                overwritePolicy,
+                approvalState,
+                notificationChannel
         ));
     }
 
@@ -319,7 +331,11 @@ public class FeatureStoreService {
                 command.processingStep(),
                 command.audioFormat(),
                 command.sampleRate(),
-                command.channels()
+                command.channels(),
+                command.syncMode(),
+                command.overwritePolicy(),
+                command.approvalState(),
+                command.notificationChannel()
         );
     }
 
@@ -599,7 +615,11 @@ public class FeatureStoreService {
             String processingStep,
             String audioFormat,
             Integer sampleRate,
-            Integer channels
+            Integer channels,
+            String syncMode,
+            String overwritePolicy,
+            String approvalState,
+            String notificationChannel
     ) {
     }
 

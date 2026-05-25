@@ -165,6 +165,28 @@ class MediaContractTest {
     }
 
     @Test
+    void mediaCallback_shouldDeferStt_whenApprovalModePending() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
+        JsonNode extraction = readData(mockMvc.perform(post("/api/v1/media/extract-audio")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+        String extractionId = extraction.path("id").asText();
+
+        JsonNode callbackData = readData(mockMvc.perform(post("/api/v1/media/extract-audio/callback")
+                        .header("X-Callback-Token", "dev-media-callback-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"extraction_id\":\"" + extractionId + "\",\"status\":\"COMPLETED\",\"event_version\":1,\"sync_mode\":\"approval\",\"approval_state\":\"pending\"}"))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        assertThat(callbackData.has("transcript")).isFalse();
+        assertThat(callbackData.path("stt_sync_policy").path("decision").asText()).isEqualTo("awaiting_approval");
+    }
+
+    @Test
     void mediaWriteEndpoints_shouldKeepLectureIdRequiredErrorCode_whenLectureIdBlank() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_ins_001");
 
