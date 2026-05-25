@@ -108,6 +108,14 @@ public class MediaController {
             String stt_model
     ) {}
 
+    public record ApproveSttRequest(
+            @NotBlank String lecture_id,
+            String language,
+            Integer duration_ms,
+            String stt_provider,
+            String stt_model
+    ) {}
+
     public record SpeakerReviewRequest(
             String speaker_label,
             String instructor_name,
@@ -500,6 +508,70 @@ public class MediaController {
                         "stt_sync_metrics", syncMetricsPayload
                 ),
                 "오디오 추출 callback이 반영되어 STT가 자동 시작되었습니다."
+        ));
+    }
+
+    @PostMapping("/extract-audio/{extractionId}/approve-stt")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> approveStt(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String extractionId,
+            @Valid @RequestBody ApproveSttRequest body
+    ) {
+        SessionView session = require(auth);
+        if (session == null) return unauthenticated();
+        if (!canManageMedia(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.failure("FORBIDDEN", "STT 승인 실행은 강사와 운영자만 사용할 수 있습니다."));
+        }
+        String lectureId = trimRequired(body.lecture_id());
+        Map<String, Object> extraction = mediaPipelineService.extractions(lectureId).stream()
+                .filter(item -> extractionId.equals(String.valueOf(item.getOrDefault("id", ""))))
+                .findFirst()
+                .orElse(null);
+        if (extraction == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "오디오 추출 기록을 찾을 수 없습니다."));
+        }
+        String approvalState = String.valueOf(extraction.getOrDefault("stt_approval_state", "pending"));
+        if (!"pending".equalsIgnoreCase(approvalState)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.failure("STT_APPROVAL_NOT_PENDING", "승인 대기 상태가 아닌 STT입니다."));
+        }
+
+        String language = optionalOrDefault(body.language(), "ko");
+        Integer durationMs = body.duration_ms();
+        String sttProvider = optionalOrNull(body.stt_provider());
+        String sttModel = optionalOrNull(body.stt_model());
+        String audioUrl = optionalOrNull(String.valueOf(extraction.getOrDefault("audio_url", "")));
+
+        Map<String, Object> transcript = triggerLectureMetadataAutoSync(
+                lectureId,
+                mediaPipelineService.transcribe(
+                        lectureId,
+                        language,
+                        durationMs,
+                        sttProvider,
+                        sttModel,
+                        audioUrl,
+                        extractionId
+                )
+        );
+        Map<String, Object> syncPolicy = Map.of(
+                "mode", "approval",
+                "approval_state", "approved",
+                "overwrite_policy", String.valueOf(extraction.getOrDefault("stt_overwrite_policy", "overwrite")),
+                "notification_channel", String.valueOf(extraction.getOrDefault("stt_sync_notification_channel", "dashboard")),
+                "decision", "started_by_approval"
+        );
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of(
+                        "extraction_id", extractionId,
+                        "lecture_id", lectureId,
+                        "transcript", transcript,
+                        "pipeline", mediaPipelineService.pipeline(lectureId),
+                        "stt_sync_policy", syncPolicy
+                ),
+                "STT 승인 실행이 완료되었습니다."
         ));
     }
 
