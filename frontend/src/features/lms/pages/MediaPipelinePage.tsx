@@ -274,6 +274,27 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       String(latestExtraction.stt_approval_state ?? '').toLowerCase() === 'pending',
     [latestExtraction],
   );
+  const sttPolicySummary = useMemo(() => {
+    if (!latestExtraction) {
+      return null;
+    }
+    const mode = String(latestExtraction.stt_sync_mode ?? '-');
+    const overwritePolicy = String(latestExtraction.stt_overwrite_policy ?? '-');
+    const approvalState = String(latestExtraction.stt_approval_state ?? '-');
+    const notificationChannel = latestExtraction.stt_sync_notification_channel ?? '-';
+    const notifiedAt = latestExtraction.stt_sync_notified_at ?? '-';
+    const callbackEvents = latestExtraction.stt_sync_metrics?.callback_events ?? 0;
+    const notifications = latestExtraction.stt_sync_metrics?.notifications ?? 0;
+    return {
+      mode,
+      overwritePolicy,
+      approvalState,
+      notificationChannel,
+      notifiedAt,
+      callbackEvents,
+      notifications,
+    };
+  }, [latestExtraction]);
 
   async function submitExtraction(input: {
     lecture_id: string;
@@ -623,6 +644,32 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
             </div>
             <div className="mt-3 text-xs text-slate-500">
               extraction: {latestExtraction.id} · mode: {latestExtraction.stt_sync_mode ?? '-'} · approval: {latestExtraction.stt_approval_state ?? '-'}
+            </div>
+          </section>
+        ) : null}
+
+        {sttPolicySummary ? (
+          <section className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_10px_24px_rgba(6,31,57,0.07)]">
+            <div className="text-sm font-semibold text-slate-900">STT 메타 동기화 정책/지표</div>
+            <div className="mt-1 text-xs text-slate-500">자동/승인 모드, overwrite 정책, 알림 채널과 callback/알림 카운트를 함께 확인합니다.</div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl bg-[#f4faff] p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">동기화 모드</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">{sttPolicySummary.mode}</div>
+                <div className="mt-2 text-xs text-slate-500">approval: {sttPolicySummary.approvalState}</div>
+              </div>
+              <div className="rounded-2xl bg-[#f4faff] p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Overwrite 정책</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">{sttPolicySummary.overwritePolicy}</div>
+                <div className="mt-2 text-xs text-slate-500">channel: {sttPolicySummary.notificationChannel}</div>
+              </div>
+              <div className="rounded-2xl bg-[#f4faff] p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">알림/콜백 지표</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">
+                  callback {sttPolicySummary.callbackEvents} · notify {sttPolicySummary.notifications}
+                </div>
+                <div className="mt-2 text-xs text-slate-500">notified_at: {sttPolicySummary.notifiedAt}</div>
+              </div>
             </div>
           </section>
         ) : null}
