@@ -7,6 +7,7 @@ import { MediaPipelineStatusBoard } from '../components/MediaPipelineStatusBoard
 import { TranscriptTimelineWorkspace } from '../components/TranscriptTimelineWorkspace';
 import { MediaPipelineSummaryPanel } from '../components/MediaPipelineSummaryPanel';
 import {
+  approveSttExtractionDetailed,
   createAudioExtractionDetailed,
   loadAudioExtractions,
   loadLectureTranscriptDetailed,
@@ -266,6 +267,14 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     };
   }, [demoMode, sessionToken, viewerRole]);
 
+  const requiresManualApproval = useMemo(
+    () =>
+      !!latestExtraction &&
+      String(latestExtraction.stt_sync_mode ?? '').toLowerCase() === 'approval' &&
+      String(latestExtraction.stt_approval_state ?? '').toLowerCase() === 'pending',
+    [latestExtraction],
+  );
+
   async function submitExtraction(input: {
     lecture_id: string;
     video_url?: string;
@@ -434,6 +443,34 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     }
   }
 
+  async function handleApproveStt() {
+    if (demoMode) {
+      setNotice('데모 데이터 상태에서는 승인 실행을 하지 않습니다.');
+      return;
+    }
+    if (!lectureId || !latestExtraction?.id) {
+      setNotice('승인할 추출 항목을 먼저 선택해 주세요.');
+      return;
+    }
+    setBusy(true);
+    setNotice('승인된 STT를 실행하고 있습니다.');
+    try {
+      const approved = await approveSttExtractionDetailed(
+        latestExtraction.id,
+        { lecture_id: lectureId },
+        sessionToken,
+      );
+      if (!approved?.success || !approved.data) {
+        setNotice(getAiErrorMessage(approved, 'STT 승인 실행에 실패했습니다.'));
+        return;
+      }
+      setNotice('승인된 STT 실행이 완료되었습니다.');
+      await refreshMediaState(lectureId);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <section className="rounded-3xl border border-cyan-100 bg-[linear-gradient(135deg,#03162a_0%,#005d93_48%,#0bc5ea_100%)] px-6 py-6 text-white shadow-[0_22px_50px_rgba(4,49,84,0.24)]">
@@ -563,6 +600,31 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
             title="오디오 추출이 실패했습니다."
             description={latestExtraction.processing_error ?? '외부 처리 서비스 또는 callback 반영 과정에서 실패했습니다. 입력 경로를 확인한 뒤 다시 요청해 주세요.'}
           />
+        ) : null}
+
+        {requiresManualApproval ? (
+          <section className="rounded-3xl border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">승인 대기 중인 STT</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  현재 추출 건은 자동 시작이 보류되었습니다. 검토 후 승인 실행 버튼으로 전사를 시작할 수 있습니다.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleApproveStt()}
+                disabled={busy || viewerRole === 'STUDENT'}
+                className="inline-flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <i className={`${busy ? 'ri-loader-4-line animate-spin' : 'ri-check-double-line'}`} />
+                STT 승인 실행
+              </button>
+            </div>
+            <div className="mt-3 text-xs text-slate-500">
+              extraction: {latestExtraction.id} · mode: {latestExtraction.stt_sync_mode ?? '-'} · approval: {latestExtraction.stt_approval_state ?? '-'}
+            </div>
+          </section>
         ) : null}
 
         {latestExtraction?.status === 'FAILED' ? (
