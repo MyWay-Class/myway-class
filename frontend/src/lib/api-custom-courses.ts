@@ -1,9 +1,4 @@
 import {
-  composeCustomCourse,
-  copyCustomCourse,
-  listCommunityCustomCourses,
-  listMyCustomCourses,
-  shareCustomCourse,
   type CustomCourseComposeRequest,
   type CustomCourseCopyRequest,
   type CustomCourseCommunityItem,
@@ -11,18 +6,14 @@ import {
   type CustomCourseLibraryItem,
   type CustomCourseShareRequest,
 } from '@myway/shared';
-import { getFallbackUserId, getStoredAuth, request } from './api-core';
+import { getStoredAuth, request } from './api-core';
 
 export async function loadCustomCourseLibrary(sessionToken?: string | null): Promise<CustomCourseLibraryItem[]> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const userId = getFallbackUserId();
-
-  if (!token) {
-    return listMyCustomCourses(userId);
-  }
+  if (!token) return [];
 
   const response = await request<CustomCourseLibraryItem[]>('/api/v1/custom-courses/my', undefined, token);
-  return response?.success && response.data ? response.data : listMyCustomCourses(userId);
+  return response?.success && response.data ? response.data : [];
 }
 
 export async function loadCustomCourseCommunity(
@@ -30,15 +21,11 @@ export async function loadCustomCourseCommunity(
   sessionToken?: string | null,
 ): Promise<CustomCourseCommunityItem[]> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const userId = getFallbackUserId();
   const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
-
-  if (!token) {
-    return listCommunityCustomCourses(userId, courseId ?? undefined);
-  }
+  if (!token) return [];
 
   const response = await request<CustomCourseCommunityItem[]>(`/api/v1/custom-courses/community${query}`, undefined, token);
-  return response?.success && response.data ? response.data : listCommunityCustomCourses(userId, courseId ?? undefined);
+  return response?.success && response.data ? response.data : [];
 }
 
 export async function composeCustomCourseDraft(
@@ -46,11 +33,7 @@ export async function composeCustomCourseDraft(
   sessionToken?: string | null,
 ): Promise<CustomCourseDetail | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const userId = getFallbackUserId();
-
-  if (!token) {
-    return composeCustomCourse(userId, input);
-  }
+  if (!token) return null;
 
   const response = await request<CustomCourseDetail>(
     '/api/v1/custom-courses/compose',
@@ -61,7 +44,7 @@ export async function composeCustomCourseDraft(
     token,
   );
 
-  return response?.success && response.data ? response.data : composeCustomCourse(userId, input);
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function copyCustomCourseDraft(
@@ -70,11 +53,7 @@ export async function copyCustomCourseDraft(
   sessionToken?: string | null,
 ): Promise<CustomCourseDetail | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const userId = getFallbackUserId();
-
-  if (!token) {
-    return copyCustomCourse(userId, { ...input, custom_course_id: customCourseId });
-  }
+  if (!token) return null;
 
   const response = await request<CustomCourseDetail>(
     `/api/v1/custom-courses/${encodeURIComponent(customCourseId)}/copy`,
@@ -85,7 +64,7 @@ export async function copyCustomCourseDraft(
     token,
   );
 
-  return response?.success && response.data ? response.data : copyCustomCourse(userId, { ...input, custom_course_id: customCourseId });
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function shareCustomCourseDraft(
@@ -94,11 +73,7 @@ export async function shareCustomCourseDraft(
   sessionToken?: string | null,
 ): Promise<boolean> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const userId = getFallbackUserId();
-
-  if (!token) {
-    return Boolean(shareCustomCourse(userId, customCourseId, input));
-  }
+  if (!token) return false;
 
   const response = await request(
     `/api/v1/custom-courses/${encodeURIComponent(customCourseId)}/share`,
@@ -109,5 +84,5 @@ export async function shareCustomCourseDraft(
     token,
   );
 
-  return Boolean(response?.success) || Boolean(shareCustomCourse(userId, customCourseId, input));
+  return Boolean(response?.success);
 }

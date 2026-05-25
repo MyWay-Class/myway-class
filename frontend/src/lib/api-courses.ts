@@ -1,9 +1,5 @@
 import {
-  createCourseRecord,
   canEnroll,
-  canManageCourses,
-  completeLectureProgress,
-  enrollUser,
   getCourseDetail,
   getDashboard,
   getLectureDetail,
@@ -12,13 +8,13 @@ import {
   type CourseCard,
   type CourseDetail,
   type LectureDetail,
-  type Lecture,
   type Material,
   type MaterialCreateRequest,
   type Notice,
   type NoticeCreateRequest,
 } from '@myway/shared';
 import { getFallbackUserId, getStoredAuth, request, unwrap } from './api-core';
+import { mergeCourseDetailWithFallback, normalizeCourseId, normalizeLectureId } from './courses/course-mappers';
 
 type CompleteLectureResponse = {
   lecture_id: string;
@@ -39,52 +35,6 @@ type EnrollmentItem = {
   user_id: string;
   course_id: string;
 };
-
-const COURSE_ID_ALIASES: Record<string, string> = {
-  crs_demo_ai: 'crs_react_01',
-  crs_demo_data: 'crs_java_01',
-};
-
-const LECTURE_ID_ALIASES: Record<string, string> = {
-  lec_ai_001: 'lec_react_01',
-  lec_ai_seed_001: 'lec_react_01',
-  lec_demo_ai_1: 'lec_react_01',
-  lec_demo_ai_2: 'lec_react_02',
-};
-
-function normalizeCourseId(courseId: string): string {
-  return COURSE_ID_ALIASES[courseId] ?? courseId;
-}
-
-function normalizeLectureId(lectureId: string): string {
-  return LECTURE_ID_ALIASES[lectureId] ?? lectureId;
-}
-
-function normalizeLectureVideoFields(lecture: Lecture, fallbackLecture?: Lecture): Lecture {
-  return {
-    ...fallbackLecture,
-    ...lecture,
-    video_url: lecture.video_url ?? fallbackLecture?.video_url,
-    video_asset_key: lecture.video_asset_key ?? fallbackLecture?.video_asset_key,
-  };
-}
-
-function mergeCourseDetailWithFallback(primary: CourseDetail, fallback: CourseDetail | null | undefined): CourseDetail {
-  if (!fallback) {
-    return primary;
-  }
-
-  const fallbackLectureMap = new Map(fallback.lectures.map((lecture) => [lecture.id, lecture]));
-  const mergedLectures = primary.lectures.map((lecture) => normalizeLectureVideoFields(lecture, fallbackLectureMap.get(lecture.id)));
-
-  return {
-    ...fallback,
-    ...primary,
-    lectures: mergedLectures,
-    materials: Array.isArray(primary.materials) ? primary.materials : fallback.materials,
-    notices: Array.isArray(primary.notices) ? primary.notices : fallback.notices,
-  };
-}
 
 async function hydrateMissingLectureVideos(detail: CourseDetail, token: string | null): Promise<CourseDetail> {
   const missingLectureIds = detail.lectures
@@ -133,7 +83,7 @@ async function hydrateMissingLectureVideos(detail: CourseDetail, token: string |
 export async function loadCourses(sessionToken?: string | null): Promise<CourseCard[]> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   const userId = getFallbackUserId();
-  const response = await request<CourseCard[]>(`/api/v1/courses?userId=${encodeURIComponent(userId)}`, undefined, token);
+  const response = await request<CourseCard[]>('/api/v1/courses', undefined, token);
   const fallbackCourses = getDashboard(userId).courses;
   const sourceCourses = unwrap(response, () => fallbackCourses);
 
@@ -170,23 +120,11 @@ export async function loadCourses(sessionToken?: string | null): Promise<CourseC
 
 export async function loadManagedCourses(sessionToken?: string | null): Promise<CourseCard[]> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const storedAuth = getStoredAuth();
-
-  if (!storedAuth) {
+  if (!token) {
     return [];
   }
-
-  if (!canManageCourses(storedAuth.user.role)) {
-    return [];
-  }
-
   const response = await request<CourseCard[]>('/api/v1/courses/manage', undefined, token);
-  if (response?.success && response.data) {
-    return response.data;
-  }
-
-  const fallbackCourses = await loadCourses(token);
-  return fallbackCourses.filter((course) => storedAuth.user.role === 'ADMIN' || course.instructor_id === storedAuth.user.id);
+  return response?.success && response.data ? response.data : [];
 }
 
 export async function createCourse(
@@ -194,11 +132,7 @@ export async function createCourse(
   sessionToken?: string | null,
 ): Promise<CourseDetail | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const userId = getStoredAuth()?.user.id ?? getFallbackUserId();
-
-  if (!token) {
-    return createCourseRecord(userId, input);
-  }
+  if (!token) return null;
 
   const response = await request<CourseDetail>(
     '/api/v1/courses',
@@ -209,7 +143,7 @@ export async function createCourse(
     token,
   );
 
-  return response?.success && response.data ? response.data : createCourseRecord(userId, input);
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function loadCourseDetail(courseId: string, sessionToken?: string | null): Promise<CourseDetail | null> {
@@ -320,29 +254,7 @@ export async function completeLecture(
     token,
   );
 
-  if (response?.success && response.data) {
-    return response.data;
-  }
-
-  const storedAuth = getStoredAuth();
-  const userId = storedAuth?.user.id;
-
-  if (!userId) {
-    return null;
-  }
-
-  const fallback = completeLectureProgress(userId, lectureId);
-  if (!fallback.ok) {
-    return null;
-  }
-
-  return {
-    lecture_id: fallback.lecture_id,
-    course_id: fallback.course_id,
-    progress_percent: fallback.progress_percent,
-    completed_lectures: fallback.completed_lectures,
-    total_lectures: fallback.total_lectures,
-  };
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function enrollCourse(
@@ -350,8 +262,6 @@ export async function enrollCourse(
   sessionToken?: string | null,
 ): Promise<{ enrollmentId: string; course: CourseDetail | null } | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const storedAuth = getStoredAuth();
-  const userId = storedAuth?.user.id ?? 'usr_std_001';
 
   if (!token) {
     return null;
@@ -366,16 +276,7 @@ export async function enrollCourse(
     token,
   );
 
-  if (response?.success && response.data) {
-    return response.data;
-  }
-
-  const enrollment = enrollUser(userId, courseId);
-
-  return {
-    enrollmentId: enrollment.id,
-    course: getCourseDetail(courseId, userId) ?? null,
-  };
+  return response?.success && response.data ? response.data : null;
 }
 
 export function canCurrentUserEnroll(): boolean {
