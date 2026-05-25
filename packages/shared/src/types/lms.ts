@@ -194,6 +194,15 @@ export type AudioExtraction = {
     | 'failed'
     | null;
   processing_step?: string | null;
+  stt_sync_mode?: 'auto' | 'approval' | string;
+  stt_overwrite_policy?: 'overwrite' | 'skip_if_exists' | string;
+  stt_approval_state?: 'approved' | 'pending' | string;
+  stt_sync_notification_channel?: string;
+  stt_sync_notified_at?: string;
+  stt_sync_metrics?: {
+    callback_events?: number;
+    notifications?: number;
+  };
   audio_url?: string | null;
   audio_format: string;
   audio_duration_ms: number;

@@ -47,6 +47,20 @@ export type TranscriptSpeakerReview = {
   reviewed_at?: string;
 };
 
+export type ApproveSttResult = {
+  extraction_id: string;
+  lecture_id: string;
+  transcript: LectureTranscript;
+  pipeline: LecturePipeline;
+  stt_sync_policy: {
+    mode: string;
+    approval_state: string;
+    overwrite_policy: string;
+    notification_channel: string;
+    decision: string;
+  };
+};
+
 export async function uploadLectureVideoDetailed(
   lectureId: string,
   file: File,
@@ -179,4 +193,26 @@ export async function saveLectureVideoMappingDetailed(
     method: 'POST',
     body: JSON.stringify(input),
   }, token);
+}
+
+export async function approveSttExtractionDetailed(
+  extractionId: string,
+  input: {
+    lecture_id: string;
+    language?: string;
+    duration_ms?: number;
+    stt_provider?: string;
+    stt_model?: string;
+  },
+  sessionToken?: string | null,
+): Promise<ApiRequestResult<ApproveSttResult> | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  return await request<ApproveSttResult>(
+    `/api/v1/media/extract-audio/${encodeURIComponent(extractionId)}/approve-stt`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
 }
