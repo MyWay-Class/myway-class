@@ -28,6 +28,9 @@ import java.util.Set;
 @RequestMapping("/api/v1/media")
 public class MediaController {
     private static final Set<String> ALLOWED_CALLBACK_STATUSES = Set.of("COMPLETED", "FAILED", "PROCESSING");
+    private static final Set<String> ALLOWED_SYNC_MODES = Set.of("AUTO", "APPROVAL");
+    private static final Set<String> ALLOWED_OVERWRITE_POLICIES = Set.of("OVERWRITE", "SKIP_IF_EXISTS");
+    private static final Set<String> ALLOWED_APPROVAL_STATES = Set.of("APPROVED", "PENDING");
     private final SessionService sessionService;
     private final MediaPipelineService mediaPipelineService;
     private final DemoLearningService learningService;
@@ -63,7 +66,11 @@ public class MediaController {
             String processing_step,
             String audio_format,
             Integer sample_rate,
-            Integer channels
+            Integer channels,
+            String sync_mode,
+            String overwrite_policy,
+            String approval_state,
+            String notification_channel
     ) {}
 
     public record ExtractAudioRequest(
@@ -401,6 +408,10 @@ public class MediaController {
         if (!decision.valid()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", decision.errorMessage()));
         }
+        SttSyncPolicyDecision sttPolicy = SttSyncPolicy.decide(body);
+        if (!sttPolicy.valid()) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", sttPolicy.errorMessage()));
+        }
         String errorMessage = body.error_message();
         String audioUrl = optionalOrNull(body.audio_url());
         Map<String, Object> result = mediaPipelineService.completeExtractionCallback(
@@ -414,7 +425,11 @@ public class MediaController {
                 body.processing_step(),
                 body.audio_format(),
                 body.sample_rate(),
-                body.channels()
+                body.channels(),
+                sttPolicy.syncMode(),
+                sttPolicy.overwritePolicy(),
+                sttPolicy.approvalState(),
+                sttPolicy.notificationChannel()
         );
         if (result == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("CALLBACK_EXTRACTION_NOT_FOUND", "오디오 추출 기록을 찾을 수 없습니다."));
@@ -427,9 +442,17 @@ public class MediaController {
         }
         String lectureId = String.valueOf(result.getOrDefault("lecture_id", "")).trim();
         Map<String, Object> transcribeResult = null;
-        boolean shouldStartStt = "COMPLETED".equalsIgnoreCase(decision.status())
+        boolean callbackWantsStt = "COMPLETED".equalsIgnoreCase(decision.status())
                 || "transcribing".equalsIgnoreCase(String.valueOf(result.getOrDefault("processing_stage", "")));
-        if (shouldStartStt && !lectureId.isBlank()) {
+        boolean hasTranscript = !lectureId.isBlank() && mediaPipelineService.transcript(lectureId) != null;
+        String syncDecision = "started";
+        if ("APPROVAL".equals(sttPolicy.syncMode()) && !"APPROVED".equals(sttPolicy.approvalState())) {
+            syncDecision = "awaiting_approval";
+        } else if ("SKIP_IF_EXISTS".equals(sttPolicy.overwritePolicy()) && hasTranscript) {
+            syncDecision = "skipped_existing_transcript";
+        }
+        boolean shouldStartStt = callbackWantsStt && "started".equals(syncDecision) && !lectureId.isBlank();
+        if (shouldStartStt) {
             transcribeResult = mediaPipelineService.transcribe(
                     lectureId,
                     "ko",
@@ -440,9 +463,31 @@ public class MediaController {
                     extractionId
             );
         }
+        Map<String, Object> syncPolicyPayload = Map.of(
+                "mode", sttPolicy.syncMode().toLowerCase(),
+                "approval_state", sttPolicy.approvalState().toLowerCase(),
+                "overwrite_policy", sttPolicy.overwritePolicy().toLowerCase(),
+                "notification_channel", sttPolicy.notificationChannel(),
+                "decision", syncDecision
+        );
+        Map<String, Object> syncMetricsPayload = Map.of(
+                "callback_events", 1,
+                "auto_started", shouldStartStt ? 1 : 0,
+                "approval_pending", "awaiting_approval".equals(syncDecision) ? 1 : 0,
+                "overwrite_skipped", "skipped_existing_transcript".equals(syncDecision) ? 1 : 0,
+                "notifications", 1
+        );
 
         if (transcribeResult == null) {
-            return ResponseEntity.ok(ApiResponse.success(Map.of("extraction", result, "pipeline", mediaPipelineService.pipeline(lectureId)), "오디오 추출 callback이 반영되었습니다."));
+            return ResponseEntity.ok(ApiResponse.success(
+                    Map.of(
+                            "extraction", result,
+                            "pipeline", mediaPipelineService.pipeline(lectureId),
+                            "stt_sync_policy", syncPolicyPayload,
+                            "stt_sync_metrics", syncMetricsPayload
+                    ),
+                    "오디오 추출 callback이 반영되었습니다."
+            ));
         }
 
         Map<String, Object> transcribeWithMeta = triggerLectureMetadataAutoSync(lectureId, transcribeResult);
@@ -450,7 +495,9 @@ public class MediaController {
                 Map.of(
                         "extraction", result,
                         "pipeline", mediaPipelineService.pipeline(lectureId),
-                        "transcript", transcribeWithMeta
+                        "transcript", transcribeWithMeta,
+                        "stt_sync_policy", syncPolicyPayload,
+                        "stt_sync_metrics", syncMetricsPayload
                 ),
                 "오디오 추출 callback이 반영되어 STT가 자동 시작되었습니다."
         ));
@@ -475,6 +522,23 @@ public class MediaController {
         }
     }
 
+    private record SttSyncPolicyDecision(
+            boolean valid,
+            String syncMode,
+            String overwritePolicy,
+            String approvalState,
+            String notificationChannel,
+            String errorMessage
+    ) {
+        static SttSyncPolicyDecision valid(String syncMode, String overwritePolicy, String approvalState, String notificationChannel) {
+            return new SttSyncPolicyDecision(true, syncMode, overwritePolicy, approvalState, notificationChannel, null);
+        }
+
+        static SttSyncPolicyDecision invalid(String errorMessage) {
+            return new SttSyncPolicyDecision(false, null, null, null, null, errorMessage);
+        }
+    }
+
     private static final class CallbackStateTransitionPolicy {
         private static CallbackPolicyDecision decide(ExtractionCallbackRequest body) {
             long eventVersion = body.event_version() != null ? body.event_version() : 1L;
@@ -486,6 +550,25 @@ public class MediaController {
                 return CallbackPolicyDecision.invalid("status는 COMPLETED, FAILED, PROCESSING 중 하나여야 합니다.");
             }
             return CallbackPolicyDecision.valid(status, eventVersion);
+        }
+    }
+
+    private static final class SttSyncPolicy {
+        private static SttSyncPolicyDecision decide(ExtractionCallbackRequest body) {
+            String syncMode = body.sync_mode() == null ? "AUTO" : body.sync_mode().trim().toUpperCase();
+            String overwritePolicy = body.overwrite_policy() == null ? "OVERWRITE" : body.overwrite_policy().trim().toUpperCase();
+            String approvalState = body.approval_state() == null ? "PENDING" : body.approval_state().trim().toUpperCase();
+            String channel = body.notification_channel() == null ? "dashboard" : body.notification_channel().trim();
+            if (!ALLOWED_SYNC_MODES.contains(syncMode)) {
+                return SttSyncPolicyDecision.invalid("sync_mode는 auto 또는 approval 이어야 합니다.");
+            }
+            if (!ALLOWED_OVERWRITE_POLICIES.contains(overwritePolicy)) {
+                return SttSyncPolicyDecision.invalid("overwrite_policy는 overwrite 또는 skip_if_exists 이어야 합니다.");
+            }
+            if (!ALLOWED_APPROVAL_STATES.contains(approvalState)) {
+                return SttSyncPolicyDecision.invalid("approval_state는 approved 또는 pending 이어야 합니다.");
+            }
+            return SttSyncPolicyDecision.valid(syncMode, overwritePolicy, approvalState, channel.isBlank() ? "dashboard" : channel);
         }
     }
 

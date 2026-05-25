@@ -75,7 +75,11 @@ public class MediaTranscriptionService {
             String processingStep,
             String audioFormat,
             Integer sampleRate,
-            Integer channels
+            Integer channels,
+            String syncMode,
+            String overwritePolicy,
+            String approvalState,
+            String notificationChannel
     ) {
         ExtractionSnapshot extraction = findExtraction(extractionId);
         if (extraction == null) return null;
@@ -85,7 +89,24 @@ public class MediaTranscriptionService {
         MediaStatus callbackStatus = MediaStatus.fromNullable(status, MediaStatus.COMPLETED);
         String resolvedError = resolveErrorMessage(callbackStatus, errorMessage);
         Map<String, Object> mutable = extraction.toMap();
-        applyCallbackMetadata(mutable, eventVersion, callbackStatus, resolvedError, audioUrl, processingJobId, processingStage, processingStep, audioFormat, sampleRate, channels, now);
+        applyCallbackMetadata(
+                mutable,
+                eventVersion,
+                callbackStatus,
+                resolvedError,
+                audioUrl,
+                processingJobId,
+                processingStage,
+                processingStep,
+                audioFormat,
+                sampleRate,
+                channels,
+                syncMode,
+                overwritePolicy,
+                approvalState,
+                notificationChannel,
+                now
+        );
         repository.upsertKv(EXTRACTION_SCOPE, extractionId, mutable);
         ExtractionSnapshot applied = ExtractionSnapshot.from(mutable);
 
@@ -330,6 +351,10 @@ public class MediaTranscriptionService {
             String audioFormat,
             Integer sampleRate,
             Integer channels,
+            String syncMode,
+            String overwritePolicy,
+            String approvalState,
+            String notificationChannel,
             String now
     ) {
         extraction.put("last_event_version", eventVersion);
@@ -342,6 +367,15 @@ public class MediaTranscriptionService {
         putIfText(extraction, "audio_format", audioFormat);
         if (sampleRate != null && sampleRate > 0) extraction.put("sample_rate", sampleRate);
         if (channels != null && channels > 0) extraction.put("channels", channels);
+        extraction.put("stt_sync_mode", normalizeOrDefault(syncMode, "AUTO").toLowerCase());
+        extraction.put("stt_overwrite_policy", normalizeOrDefault(overwritePolicy, "OVERWRITE").toLowerCase());
+        extraction.put("stt_approval_state", normalizeOrDefault(approvalState, "PENDING").toLowerCase());
+        extraction.put("stt_sync_notification_channel", normalizeOrDefault(notificationChannel, "dashboard"));
+        extraction.put("stt_sync_notified_at", now);
+        extraction.put("stt_sync_metrics", Map.of(
+                "callback_events", 1,
+                "notifications", 1
+        ));
 
         if (callbackStatus == MediaStatus.COMPLETED) {
             extraction.put("status", MediaStatus.PROCESSING.name());

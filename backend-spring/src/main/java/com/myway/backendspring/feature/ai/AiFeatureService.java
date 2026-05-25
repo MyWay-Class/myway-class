@@ -113,7 +113,7 @@ public class AiFeatureService {
 
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
         if (aiUsageQuotaService != null) {
-            aiUsageQuotaService.recordAiUsage(userId, feature, success, inputText);
+            aiUsageQuotaService.recordAiUsage(userId, feature, success, inputText, aiSettings(userId));
         }
     }
 

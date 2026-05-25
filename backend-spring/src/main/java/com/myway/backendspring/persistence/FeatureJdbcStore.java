@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Connection;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -184,27 +185,27 @@ public class FeatureJdbcStore {
         OffsetDateTime occurredFrom = parseIsoDateTimeOrNull(occurredFromIso);
         OffsetDateTime occurredTo = parseIsoDateTimeOrNull(occurredToIso);
         String safeType = (type == null || type.isBlank()) ? null : type.trim();
+        List<Object> args = new ArrayList<>();
         StringBuilder sql = new StringBuilder("""
                 SELECT id, user_id, type, resource_type, resource_id, metadata, occurred_at
                 FROM activity_event
                 WHERE user_id = ?
                 """);
-        List<Object> params = new ArrayList<>();
-        params.add(userId);
+        args.add(userId);
         if (safeType != null) {
             sql.append(" AND type = ?");
-            params.add(safeType);
+            args.add(safeType);
         }
         if (occurredFrom != null) {
             sql.append(" AND occurred_at >= ?");
-            params.add(occurredFrom);
+            args.add(Timestamp.from(occurredFrom.toInstant()));
         }
         if (occurredTo != null) {
             sql.append(" AND occurred_at <= ?");
-            params.add(occurredTo);
+            args.add(Timestamp.from(occurredTo.toInstant()));
         }
         sql.append(" ORDER BY occurred_at DESC LIMIT ?");
-        params.add(safeLimit);
+        args.add(safeLimit);
         return jdbcTemplate.query(
                 sql.toString(),
                 (rs, rowNum) -> {
@@ -219,7 +220,7 @@ public class FeatureJdbcStore {
                     row.put("occurred_at", rs.getTimestamp("occurred_at").toInstant().toString());
                     return row;
                 },
-                params.toArray()
+                args.toArray()
         );
     }
 
