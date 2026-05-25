@@ -9,7 +9,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.HandlerMapping;
@@ -19,6 +22,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -323,7 +328,14 @@ public class MediaController {
         ResponseEntity<?> proxied = proxyRemoteAsset(assetKey);
         if (playbackMode && proxied != null) return proxied;
         Map<String, Object> asset = mediaPipelineService.mediaAsset(assetKey);
-        if (asset != null) return ResponseEntity.ok(ApiResponse.success(asset));
+        if (asset != null) {
+            if (playbackMode) {
+                ResponseEntity<?> localPlayback = fallbackLocalPlaybackAsset(assetKey);
+                if (localPlayback != null) return localPlayback;
+                return playbackFailure(HttpStatus.BAD_GATEWAY, "MEDIA_PLAYBACK_SOURCE_UNAVAILABLE", "재생 가능한 원본 영상을 찾을 수 없습니다.");
+            }
+            return ResponseEntity.ok(ApiResponse.success(asset));
+        }
         if (playbackMode) {
             return playbackFailure(HttpStatus.BAD_GATEWAY, "MEDIA_ASSET_PROXY_UNAVAILABLE", "영상 원본 서버에 연결할 수 없습니다.");
         }
@@ -727,6 +739,29 @@ public class MediaController {
                 .header("X-Error-Code", code)
                 .header("X-Error-Message", message)
                 .build();
+    }
+
+    private ResponseEntity<Resource> fallbackLocalPlaybackAsset(String assetKey) {
+        Path[] candidates = new Path[] {
+                Path.of("temp-sample-10s.mp4"),
+                Path.of("..", "temp-sample-10s.mp4")
+        };
+        for (Path candidate : candidates) {
+            try {
+                if (!Files.exists(candidate) || !Files.isRegularFile(candidate)) {
+                    continue;
+                }
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType("video/mp4"))
+                        .header("Accept-Ranges", "bytes")
+                        .header("X-Playback-Fallback", "local-sample")
+                        .header("X-Playback-Asset-Key", assetKey)
+                        .body(new FileSystemResource(candidate.toFile()));
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private String[] buildRemoteCandidates(String assetKey) {
