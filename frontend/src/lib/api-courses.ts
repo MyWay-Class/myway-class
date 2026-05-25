@@ -1,6 +1,5 @@
 import {
   canEnroll,
-  canManageCourses,
   getCourseDetail,
   getDashboard,
   getLectureDetail,
@@ -9,13 +8,13 @@ import {
   type CourseCard,
   type CourseDetail,
   type LectureDetail,
-  type Lecture,
   type Material,
   type MaterialCreateRequest,
   type Notice,
   type NoticeCreateRequest,
 } from '@myway/shared';
 import { getFallbackUserId, getStoredAuth, request, unwrap } from './api-core';
+import { mergeCourseDetailWithFallback, normalizeCourseId, normalizeLectureId } from './courses/course-mappers';
 
 type CompleteLectureResponse = {
   lecture_id: string;
@@ -36,52 +35,6 @@ type EnrollmentItem = {
   user_id: string;
   course_id: string;
 };
-
-const COURSE_ID_ALIASES: Record<string, string> = {
-  crs_demo_ai: 'crs_react_01',
-  crs_demo_data: 'crs_java_01',
-};
-
-const LECTURE_ID_ALIASES: Record<string, string> = {
-  lec_ai_001: 'lec_react_01',
-  lec_ai_seed_001: 'lec_react_01',
-  lec_demo_ai_1: 'lec_react_01',
-  lec_demo_ai_2: 'lec_react_02',
-};
-
-function normalizeCourseId(courseId: string): string {
-  return COURSE_ID_ALIASES[courseId] ?? courseId;
-}
-
-function normalizeLectureId(lectureId: string): string {
-  return LECTURE_ID_ALIASES[lectureId] ?? lectureId;
-}
-
-function normalizeLectureVideoFields(lecture: Lecture, fallbackLecture?: Lecture): Lecture {
-  return {
-    ...fallbackLecture,
-    ...lecture,
-    video_url: lecture.video_url ?? fallbackLecture?.video_url,
-    video_asset_key: lecture.video_asset_key ?? fallbackLecture?.video_asset_key,
-  };
-}
-
-function mergeCourseDetailWithFallback(primary: CourseDetail, fallback: CourseDetail | null | undefined): CourseDetail {
-  if (!fallback) {
-    return primary;
-  }
-
-  const fallbackLectureMap = new Map(fallback.lectures.map((lecture) => [lecture.id, lecture]));
-  const mergedLectures = primary.lectures.map((lecture) => normalizeLectureVideoFields(lecture, fallbackLectureMap.get(lecture.id)));
-
-  return {
-    ...fallback,
-    ...primary,
-    lectures: mergedLectures,
-    materials: Array.isArray(primary.materials) ? primary.materials : fallback.materials,
-    notices: Array.isArray(primary.notices) ? primary.notices : fallback.notices,
-  };
-}
 
 async function hydrateMissingLectureVideos(detail: CourseDetail, token: string | null): Promise<CourseDetail> {
   const missingLectureIds = detail.lectures
@@ -130,7 +83,7 @@ async function hydrateMissingLectureVideos(detail: CourseDetail, token: string |
 export async function loadCourses(sessionToken?: string | null): Promise<CourseCard[]> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   const userId = getFallbackUserId();
-  const response = await request<CourseCard[]>(`/api/v1/courses?userId=${encodeURIComponent(userId)}`, undefined, token);
+  const response = await request<CourseCard[]>('/api/v1/courses', undefined, token);
   const fallbackCourses = getDashboard(userId).courses;
   const sourceCourses = unwrap(response, () => fallbackCourses);
 

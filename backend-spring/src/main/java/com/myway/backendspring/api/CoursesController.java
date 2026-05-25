@@ -2,6 +2,8 @@ package com.myway.backendspring.api;
 
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
+import com.myway.backendspring.auth.RolePolicy;
+import com.myway.backendspring.api.support.ApiAuthGuards;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.MaterialItem;
 import com.myway.backendspring.domain.NoticeItem;
@@ -45,9 +47,9 @@ public class CoursesController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<CourseDetail>> create(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody CourseCreateInput body) {
-        SessionView session = require(auth);
-        if (session == null) return unauthenticated();
-        if (!canManageCourses(session.user().role())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의를 개설할 권한이 없습니다."));
+        SessionView session = ApiAuthGuards.requireSession(sessionService, auth);
+        if (session == null) return ApiAuthGuards.unauthenticated();
+        if (!RolePolicy.canManageCourses(session.user().role())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의를 개설할 권한이 없습니다."));
 
         List<String> lectureTitles = new ArrayList<>();
         if (body.lecture_titles() != null) {
@@ -69,9 +71,9 @@ public class CoursesController {
 
     @GetMapping("/manage")
     public ResponseEntity<ApiResponse<List<CourseCard>>> manage(@RequestHeader(value = "Authorization", required = false) String auth) {
-        SessionView session = require(auth);
-        if (session == null) return unauthenticated();
-        if (!canManageCourses(session.user().role())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의 관리 페이지를 사용할 권한이 없습니다."));
+        SessionView session = ApiAuthGuards.requireSession(sessionService, auth);
+        if (session == null) return ApiAuthGuards.unauthenticated();
+        if (!RolePolicy.canManageCourses(session.user().role())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의 관리 페이지를 사용할 권한이 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(learningService.listManagedCourseCards(session.user().id(), session.user().role()), "내 강의 목록을 조회했습니다."));
     }
 
@@ -97,8 +99,8 @@ public class CoursesController {
 
     @PostMapping("/{courseId}/materials")
     public ResponseEntity<ApiResponse<MaterialItem>> addMaterial(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody MaterialInput body) {
-        SessionView session = require(auth);
-        if (session == null) return unauthenticated();
+        SessionView session = ApiAuthGuards.requireSession(sessionService, auth);
+        if (session == null) return ApiAuthGuards.unauthenticated();
         MaterialItem item = learningService.addMaterial(session.user().id(), courseId, body.title().trim(), body.summary().trim(), body.file_name().trim());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(item, "자료가 등록되었습니다."));
     }
@@ -110,26 +112,14 @@ public class CoursesController {
 
     @PostMapping("/{courseId}/notices")
     public ResponseEntity<ApiResponse<NoticeItem>> addNotice(@PathVariable String courseId, @RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody NoticeInput body) {
-        SessionView session = require(auth);
-        if (session == null) return unauthenticated();
+        SessionView session = ApiAuthGuards.requireSession(sessionService, auth);
+        if (session == null) return ApiAuthGuards.unauthenticated();
         NoticeItem item = learningService.addNotice(session.user().id(), courseId, body.title().trim(), body.content().trim(), Boolean.TRUE.equals(body.pinned()));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(item, "공지가 등록되었습니다."));
     }
 
-    private SessionView require(String auth) {
-        return sessionService.me(auth);
-    }
-
     private String userIdOrGuest(String auth) {
-        SessionView session = require(auth);
+        SessionView session = ApiAuthGuards.requireSession(sessionService, auth);
         return session != null ? session.user().id() : "guest";
-    }
-
-    private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-    }
-
-    private boolean canManageCourses(String role) {
-        return "admin".equals(role) || "instructor".equals(role);
     }
 }

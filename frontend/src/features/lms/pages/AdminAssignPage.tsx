@@ -43,7 +43,7 @@ export function AdminAssignPage({ users, courses }: AdminAssignPageProps) {
       if (!mounted) {
         return;
       }
-      setAssignedStudentIds(Array.isArray(record.student_ids) ? record.student_ids : []);
+      setAssignedStudentIds(Array.isArray(record?.student_ids) ? record.student_ids : []);
     });
 
     return () => {
@@ -69,7 +69,9 @@ export function AdminAssignPage({ users, courses }: AdminAssignPageProps) {
     setSaving(true);
     try {
       const saved = await saveAdminAssignment(selectedCourse.id, assignedStudentIds);
-      setAssignedStudentIds(saved.student_ids ?? []);
+      if (saved) {
+        setAssignedStudentIds(saved.student_ids ?? []);
+      }
     } finally {
       setSaving(false);
     }
