@@ -1,9 +1,6 @@
 import {
-  createCourseRecord,
   canEnroll,
   canManageCourses,
-  completeLectureProgress,
-  enrollUser,
   getCourseDetail,
   getDashboard,
   getLectureDetail,
@@ -170,23 +167,11 @@ export async function loadCourses(sessionToken?: string | null): Promise<CourseC
 
 export async function loadManagedCourses(sessionToken?: string | null): Promise<CourseCard[]> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const storedAuth = getStoredAuth();
-
-  if (!storedAuth) {
+  if (!token) {
     return [];
   }
-
-  if (!canManageCourses(storedAuth.user.role)) {
-    return [];
-  }
-
   const response = await request<CourseCard[]>('/api/v1/courses/manage', undefined, token);
-  if (response?.success && response.data) {
-    return response.data;
-  }
-
-  const fallbackCourses = await loadCourses(token);
-  return fallbackCourses.filter((course) => storedAuth.user.role === 'ADMIN' || course.instructor_id === storedAuth.user.id);
+  return response?.success && response.data ? response.data : [];
 }
 
 export async function createCourse(
@@ -194,11 +179,7 @@ export async function createCourse(
   sessionToken?: string | null,
 ): Promise<CourseDetail | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const userId = getStoredAuth()?.user.id ?? getFallbackUserId();
-
-  if (!token) {
-    return createCourseRecord(userId, input);
-  }
+  if (!token) return null;
 
   const response = await request<CourseDetail>(
     '/api/v1/courses',
@@ -209,7 +190,7 @@ export async function createCourse(
     token,
   );
 
-  return response?.success && response.data ? response.data : createCourseRecord(userId, input);
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function loadCourseDetail(courseId: string, sessionToken?: string | null): Promise<CourseDetail | null> {
@@ -320,29 +301,7 @@ export async function completeLecture(
     token,
   );
 
-  if (response?.success && response.data) {
-    return response.data;
-  }
-
-  const storedAuth = getStoredAuth();
-  const userId = storedAuth?.user.id;
-
-  if (!userId) {
-    return null;
-  }
-
-  const fallback = completeLectureProgress(userId, lectureId);
-  if (!fallback.ok) {
-    return null;
-  }
-
-  return {
-    lecture_id: fallback.lecture_id,
-    course_id: fallback.course_id,
-    progress_percent: fallback.progress_percent,
-    completed_lectures: fallback.completed_lectures,
-    total_lectures: fallback.total_lectures,
-  };
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function enrollCourse(
@@ -350,8 +309,6 @@ export async function enrollCourse(
   sessionToken?: string | null,
 ): Promise<{ enrollmentId: string; course: CourseDetail | null } | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
-  const storedAuth = getStoredAuth();
-  const userId = storedAuth?.user.id ?? 'usr_std_001';
 
   if (!token) {
     return null;
@@ -366,16 +323,7 @@ export async function enrollCourse(
     token,
   );
 
-  if (response?.success && response.data) {
-    return response.data;
-  }
-
-  const enrollment = enrollUser(userId, courseId);
-
-  return {
-    enrollmentId: enrollment.id,
-    course: getCourseDetail(courseId, userId) ?? null,
-  };
+  return response?.success && response.data ? response.data : null;
 }
 
 export function canCurrentUserEnroll(): boolean {

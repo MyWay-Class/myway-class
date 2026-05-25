@@ -1,11 +1,4 @@
 import {
-  getDashboard,
-  getAIInsightsForUser,
-  getAILogOverviewForUser,
-  getAIRecommendationsForUser,
-  getAIUserSettings,
-  getAIProviderCatalog,
-  updateAIUserSettings,
   type AIInsights,
   type AILogOverview,
   type AIRecommendationOverview,
@@ -14,7 +7,7 @@ import {
   type AIProviderCatalog,
   type Dashboard,
 } from '@myway/shared';
-import { getFallbackUserId, getStoredAuth, request } from './api-core';
+import { getStoredAuth, request } from './api-core';
 
 const AI_PROVIDER_CATALOG_STORAGE_KEY = 'mywayclass.ai.providers';
 
@@ -43,9 +36,7 @@ export async function loadDashboard(sessionToken?: string | null): Promise<Dashb
   }
 
   const response = await request<Dashboard>(`/api/v1/dashboard`, undefined, token);
-  const userId = getFallbackUserId();
-
-  return response?.success && response.data ? response.data : getDashboard(userId);
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function loadAIInsights(sessionToken?: string | null): Promise<AIInsights | null> {
@@ -56,9 +47,7 @@ export async function loadAIInsights(sessionToken?: string | null): Promise<AIIn
   }
 
   const response = await request<AIInsights>('/api/v1/ai/insights', undefined, token);
-  const userId = getFallbackUserId();
-
-  return response?.success && response.data ? response.data : getAIInsightsForUser(userId);
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function loadAILogs(sessionToken?: string | null): Promise<AILogOverview | null> {
@@ -69,9 +58,7 @@ export async function loadAILogs(sessionToken?: string | null): Promise<AILogOve
   }
 
   const response = await request<AILogOverview>('/api/v1/ai/logs', undefined, token);
-  const userId = getFallbackUserId();
-
-  return response?.success && response.data ? response.data : getAILogOverviewForUser(userId);
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function loadAIRecommendations(sessionToken?: string | null): Promise<AIRecommendationOverview | null> {
@@ -82,9 +69,7 @@ export async function loadAIRecommendations(sessionToken?: string | null): Promi
   }
 
   const response = await request<AIRecommendationOverview>('/api/v1/ai/recommendations', undefined, token);
-  const userId = getFallbackUserId();
-
-  return response?.success && response.data ? response.data : getAIRecommendationsForUser(userId);
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function loadAISettings(sessionToken?: string | null): Promise<AIUserSettings | null> {
@@ -95,9 +80,7 @@ export async function loadAISettings(sessionToken?: string | null): Promise<AIUs
   }
 
   const response = await request<AIUserSettings>('/api/v1/ai/settings', undefined, token);
-  const userId = getFallbackUserId();
-
-  return response?.success && response.data ? response.data : getAIUserSettings(userId);
+  return response?.success && response.data ? response.data : null;
 }
 
 export async function loadAIProviders(sessionToken?: string | null): Promise<AIProviderCatalog | null> {
@@ -115,10 +98,10 @@ export async function loadAIProviders(sessionToken?: string | null): Promise<AIP
 
   const cachedCatalog = readCachedAIProviderCatalog();
   if (cachedCatalog) {
-    return getAIProviderCatalog(cachedCatalog.runtime_policy);
+    return cachedCatalog;
   }
 
-  return getAIProviderCatalog();
+  return null;
 }
 
 export async function saveAISettings(
@@ -140,6 +123,5 @@ export async function saveAISettings(
     token,
   );
 
-  const userId = getFallbackUserId();
-  return response?.success && response.data ? response.data : updateAIUserSettings(userId, input);
+  return response?.success && response.data ? response.data : null;
 }
