@@ -47,6 +47,7 @@ public class NotImplementedController {
 
     private final AiController aiController;
     private final MediaController mediaController;
+    private final MediaSttOrchestrationController mediaSttOrchestrationController;
     private final ShortformController shortformController;
     private final DemoLearningService learningService;
     private final SessionService sessionService;
@@ -55,6 +56,7 @@ public class NotImplementedController {
     public NotImplementedController(
             AiController aiController,
             MediaController mediaController,
+            MediaSttOrchestrationController mediaSttOrchestrationController,
             ShortformController shortformController,
             DemoLearningService learningService,
             SessionService sessionService,
@@ -62,6 +64,7 @@ public class NotImplementedController {
     ) {
         this.aiController = aiController;
         this.mediaController = mediaController;
+        this.mediaSttOrchestrationController = mediaSttOrchestrationController;
         this.shortformController = shortformController;
         this.learningService = learningService;
         this.sessionService = sessionService;
@@ -302,9 +305,9 @@ public class NotImplementedController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> legacyMediaExtractAudioCallback(
             @RequestHeader(value = "X-Callback-Token", required = false) String token,
             @RequestHeader(value = "x-myway-media-callback-secret", required = false) String callbackSecret,
-            @RequestBody MediaController.ExtractionCallbackRequest body
+            @RequestBody MediaSttOrchestrationController.ExtractionCallbackRequest body
     ) {
-        return mediaController.callback(token, callbackSecret, body);
+        return mediaSttOrchestrationController.callback(token, callbackSecret, body);
     }
 
     @PostMapping("/legacy/media/upload-video")
