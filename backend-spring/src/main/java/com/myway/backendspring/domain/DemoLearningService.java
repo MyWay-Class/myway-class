@@ -34,6 +34,7 @@ public class DemoLearningService {
     private final LectureDurationResolver lectureDurationResolver;
     private final CourseCatalogStoreSupport courseCatalogStoreSupport;
     private final LearningContentStoreSupport learningContentStoreSupport;
+    private final LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport;
 
     @Autowired
     public DemoLearningService(
@@ -45,7 +46,8 @@ public class DemoLearningService {
             LearningPayloadMapper learningPayloadMapper,
             LectureDurationResolver lectureDurationResolver,
             CourseCatalogStoreSupport courseCatalogStoreSupport,
-            LearningContentStoreSupport learningContentStoreSupport
+            LearningContentStoreSupport learningContentStoreSupport,
+            LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -56,6 +58,7 @@ public class DemoLearningService {
         this.lectureDurationResolver = lectureDurationResolver;
         this.courseCatalogStoreSupport = courseCatalogStoreSupport;
         this.learningContentStoreSupport = learningContentStoreSupport;
+        this.lectureMetadataSyncServiceSupport = lectureMetadataSyncServiceSupport;
         initSeedData();
     }
 
@@ -70,6 +73,7 @@ public class DemoLearningService {
         this.lectureDurationResolver = new LectureDurationResolver();
         this.courseCatalogStoreSupport = new CourseCatalogStoreSupport();
         this.learningContentStoreSupport = new LearningContentStoreSupport();
+        this.lectureMetadataSyncServiceSupport = new LectureMetadataSyncServiceSupport();
         initSeedData();
     }
 
@@ -344,7 +348,15 @@ public class DemoLearningService {
         if (lecture == null || lecture.id() == null || lecture.id().isBlank()) {
             return lecture;
         }
-        LectureItem lectureWithMeta = attachLectureMeta(lecture);
+        LectureItem lectureWithMeta = lectureMetadataSyncServiceSupport.attachLectureMeta(
+                store,
+                useStore(),
+                lecture,
+                LECTURE_META_SCOPE,
+                TRANSCRIPT_SCOPE,
+                lectureMetadataSyncSupport,
+                this::buildLectureMetaFromTranscript
+        );
         int fallbackMinutes = Math.max(1, lecture.duration_minutes());
         int resolvedMinutes = lectureDurationResolver.resolveDurationMinutesFromMedia(
                 store,
@@ -368,96 +380,31 @@ public class DemoLearningService {
     }
 
     public Map<String, Object> syncLectureMetadataFromTranscripts(boolean overwriteExisting) {
-        if (!useStore()) {
-            return Map.of(
-                    "updated_count", 0,
-                    "skipped_count", 0,
-                    "items", List.of()
-            );
-        }
-
-        List<Map<String, Object>> items = new ArrayList<>();
-        int updated = 0;
-        int skipped = 0;
-        for (LectureItem lecture : listAllLectures()) {
-            String lectureId = lecture.id();
-            Map<String, Object> transcript = store.getKv(TRANSCRIPT_SCOPE, lectureId);
-            if (transcript == null) {
-                skipped += 1;
-                items.add(Map.of("lecture_id", lectureId, "status", "SKIPPED", "reason", "TRANSCRIPT_MISSING"));
-                continue;
-            }
-
-            Map<String, Object> current = store.getKv(LECTURE_META_SCOPE, lectureId);
-            Map<String, Object> suggested = buildLectureMetaFromTranscript(lecture, transcript);
-            if (suggested == null || suggested.isEmpty()) {
-                skipped += 1;
-                items.add(Map.of("lecture_id", lectureId, "status", "SKIPPED", "reason", "SUGGESTION_EMPTY"));
-                continue;
-            }
-
-            Map<String, Object> merged = lectureMetadataSyncSupport.mergeLectureMeta(current, suggested, overwriteExisting);
-            store.upsertKv(LECTURE_META_SCOPE, lectureId, merged);
-            updated += 1;
-            items.add(Map.of("lecture_id", lectureId, "status", "UPDATED"));
-        }
-        return Map.of(
-                "updated_count", updated,
-                "skipped_count", skipped,
-                "items", items
+        return lectureMetadataSyncServiceSupport.syncAll(
+                store,
+                useStore(),
+                listAllLectures(),
+                LECTURE_META_SCOPE,
+                TRANSCRIPT_SCOPE,
+                lectureMetadataSyncSupport,
+                this::buildLectureMetaFromTranscript,
+                overwriteExisting
         );
     }
 
     public Map<String, Object> syncLectureMetadataForLectureFromTranscript(String lectureId, boolean overwriteExisting) {
-        if (!useStore()) {
-            return Map.of(
-                    "lecture_id", lectureId == null ? "" : lectureId,
-                    "status", "SKIPPED",
-                    "reason", "STORE_DISABLED"
-            );
-        }
         String normalizedLectureId = lectureId == null ? "" : lectureId.trim();
-        if (normalizedLectureId.isBlank()) {
-            return Map.of(
-                    "lecture_id", "",
-                    "status", "SKIPPED",
-                    "reason", "LECTURE_ID_REQUIRED"
-            );
-        }
-
-        LectureItem lecture = getLecture(normalizedLectureId);
-        if (lecture == null) {
-            return Map.of(
-                    "lecture_id", normalizedLectureId,
-                    "status", "SKIPPED",
-                    "reason", "LECTURE_NOT_FOUND"
-            );
-        }
-
-        Map<String, Object> transcript = store.getKv(TRANSCRIPT_SCOPE, normalizedLectureId);
-        if (transcript == null) {
-            return Map.of(
-                    "lecture_id", normalizedLectureId,
-                    "status", "SKIPPED",
-                    "reason", "TRANSCRIPT_MISSING"
-            );
-        }
-
-        Map<String, Object> current = store.getKv(LECTURE_META_SCOPE, normalizedLectureId);
-        Map<String, Object> suggested = buildLectureMetaFromTranscript(lecture, transcript);
-        if (suggested == null || suggested.isEmpty()) {
-            return Map.of(
-                    "lecture_id", normalizedLectureId,
-                    "status", "SKIPPED",
-                    "reason", "SUGGESTION_EMPTY"
-            );
-        }
-
-        Map<String, Object> merged = lectureMetadataSyncSupport.mergeLectureMeta(current, suggested, overwriteExisting);
-        store.upsertKv(LECTURE_META_SCOPE, normalizedLectureId, merged);
-        return Map.of(
-                "lecture_id", normalizedLectureId,
-                "status", "UPDATED"
+        LectureItem lecture = normalizedLectureId.isBlank() ? null : getLecture(normalizedLectureId);
+        return lectureMetadataSyncServiceSupport.syncOne(
+                store,
+                useStore(),
+                normalizedLectureId,
+                lecture,
+                LECTURE_META_SCOPE,
+                TRANSCRIPT_SCOPE,
+                lectureMetadataSyncSupport,
+                this::buildLectureMetaFromTranscript,
+                overwriteExisting
         );
     }
 
@@ -475,50 +422,6 @@ public class DemoLearningService {
         if (activityEventService != null) {
             activityEventService.append(userId, type, resourceType, resourceId, metadata);
         }
-    }
-
-    private LectureItem attachLectureMeta(LectureItem lecture) {
-        if (!useStore()) {
-            return lecture;
-        }
-        String lectureId = lecture.id();
-        if (lectureId == null || lectureId.isBlank()) {
-            return lecture;
-        }
-        Map<String, Object> currentMeta = store.getKv(LECTURE_META_SCOPE, lectureId);
-        if (lectureMetadataSyncSupport.isLectureMetaMissing(currentMeta)) {
-            Map<String, Object> transcript = store.getKv(TRANSCRIPT_SCOPE, lectureId);
-            if (transcript != null) {
-                Map<String, Object> suggested = buildLectureMetaFromTranscript(lecture, transcript);
-                Map<String, Object> merged = lectureMetadataSyncSupport.mergeLectureMeta(currentMeta, suggested, false);
-                store.upsertKv(LECTURE_META_SCOPE, lectureId, merged);
-                currentMeta = merged;
-            }
-        }
-        String content = lectureMetadataSyncSupport.chooseText(
-                lectureMetadataSyncSupport.asText(currentMeta == null ? null : currentMeta.get("content_text")),
-                lecture.content_text(),
-                "강의 핵심 내용을 정리 중입니다."
-        );
-        String excerpt = lectureMetadataSyncSupport.chooseText(
-                lectureMetadataSyncSupport.asText(currentMeta == null ? null : currentMeta.get("transcript_excerpt")),
-                lecture.transcript_excerpt(),
-                ""
-        );
-        String instructorName = lectureMetadataSyncSupport.chooseText(
-                lectureMetadataSyncSupport.asText(currentMeta == null ? null : currentMeta.get("instructor_name")),
-                lecture.instructor_name(),
-                ""
-        );
-        return new LectureItem(
-                lecture.id(),
-                lecture.course_id(),
-                lecture.title(),
-                lecture.duration_minutes(),
-                content,
-                excerpt,
-                instructorName
-        );
     }
 
     private Map<String, Object> buildLectureMetaFromTranscript(LectureItem lecture, Map<String, Object> transcript) {
