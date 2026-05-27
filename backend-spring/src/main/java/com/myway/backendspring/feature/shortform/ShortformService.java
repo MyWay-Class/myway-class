@@ -25,6 +25,7 @@ public class ShortformService {
     private final long staleProcessingThresholdMs;
     private final ShortformRetrySupport retrySupport;
     private final ShortformComposeSupport composeSupport;
+    private final ShortformStatusSupport statusSupport;
 
     public ShortformService(
             FeatureStoreRepository repository,
@@ -32,7 +33,8 @@ public class ShortformService {
             @Value("${myway.shortform.retry.max-attempts:3}") int shortformMaxRetry,
             @Value("${myway.shortform.monitoring.stale-processing-ms:1800000}") long staleProcessingThresholdMs,
             ShortformRetrySupport retrySupport,
-            ShortformComposeSupport composeSupport
+            ShortformComposeSupport composeSupport,
+            ShortformStatusSupport statusSupport
     ) {
         this.repository = repository;
         this.activityEventService = activityEventService;
@@ -40,6 +42,7 @@ public class ShortformService {
         this.staleProcessingThresholdMs = Math.max(60000L, staleProcessingThresholdMs);
         this.retrySupport = retrySupport;
         this.composeSupport = composeSupport;
+        this.statusSupport = statusSupport;
     }
 
     public List<Map<String, Object>> shortformLibrary(String userId) {
@@ -214,79 +217,7 @@ public class ShortformService {
 
     public Map<String, Object> shortformExportStatus() {
         List<Map<String, Object>> videos = repository.listKvByScope(SHORTFORM_VIDEO_SCOPE);
-        long pending = 0L;
-        long processing = 0L;
-        long completed = 0L;
-        long failed = 0L;
-        long failedPermanent = 0L;
-        long staleProcessing = 0L;
-        String lastUpdatedAt = null;
-        List<Map<String, Object>> failedItems = new ArrayList<>();
-        Instant now = Instant.now();
-
-        for (Map<String, Object> video : videos) {
-            String status = String.valueOf(video.getOrDefault("export_status", "PENDING")).toUpperCase();
-            String updatedAt = String.valueOf(video.getOrDefault("updated_at", ""));
-            if (!updatedAt.isBlank() && (lastUpdatedAt == null || updatedAt.compareTo(lastUpdatedAt) > 0)) {
-                lastUpdatedAt = updatedAt;
-            }
-            switch (status) {
-                case "PROCESSING" -> {
-                    processing += 1L;
-                    if (isStaleProcessing(updatedAt, now)) {
-                        staleProcessing += 1L;
-                    }
-                }
-                case "COMPLETED" -> completed += 1L;
-                case "FAILED" -> {
-                    failed += 1L;
-                    failedItems.add(buildFailedItem(video));
-                }
-                case "FAILED_PERMANENT" -> {
-                    failedPermanent += 1L;
-                    failedItems.add(buildFailedItem(video));
-                }
-                default -> pending += 1L;
-            }
-        }
-
-        failedItems.sort((left, right) -> String.valueOf(right.getOrDefault("updated_at", ""))
-                .compareTo(String.valueOf(left.getOrDefault("updated_at", ""))));
-        if (failedItems.size() > 20) {
-            failedItems = new ArrayList<>(failedItems.subList(0, 20));
-        }
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("pending_count", pending);
-        result.put("processing_count", processing);
-        result.put("completed_count", completed);
-        result.put("failed_count", failed);
-        result.put("failed_permanent_count", failedPermanent);
-        result.put("stale_processing_count", staleProcessing);
-        result.put("failure_ratio", toRatio(failed + failedPermanent, videos.size()));
-        result.put("last_updated_at", lastUpdatedAt);
-        result.put("failed_items", failedItems);
-        return result;
-    }
-
-    private boolean isStaleProcessing(String updatedAt, Instant now) {
-        if (updatedAt == null || updatedAt.isBlank()) {
-            return false;
-        }
-        try {
-            Instant updated = Instant.parse(updatedAt);
-            return now.toEpochMilli() - updated.toEpochMilli() > staleProcessingThresholdMs;
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
-    private double toRatio(long numerator, int denominator) {
-        if (denominator <= 0) {
-            return 0.0d;
-        }
-        double ratio = ((double) numerator) / ((double) denominator);
-        return Math.round(ratio * 10000.0d) / 10000.0d;
+        return statusSupport.shortformExportStatus(videos, staleProcessingThresholdMs, retrySupport);
     }
 
     public Map<String, Object> retryFailedShortformExports(boolean includePermanent, int limit) {
@@ -326,18 +257,6 @@ public class ShortformService {
         retrySupport.applyExportCallback(video, status, eventVersion, videoUrl, errorMessage, shortformMaxRetry);
         repository.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
         return video;
-    }
-
-    private Map<String, Object> buildFailedItem(Map<String, Object> video) {
-        Map<String, Object> item = new HashMap<>();
-        item.put("id", String.valueOf(video.getOrDefault("id", "")));
-        item.put("title", String.valueOf(video.getOrDefault("title", "")));
-        item.put("user_id", String.valueOf(video.getOrDefault("user_id", "")));
-        item.put("export_status", String.valueOf(video.getOrDefault("export_status", "")));
-        item.put("retry_count", retrySupport.asInt(video.get("retry_count")));
-        item.put("error_message", String.valueOf(video.getOrDefault("error_message", "")));
-        item.put("updated_at", String.valueOf(video.getOrDefault("updated_at", "")));
-        return item;
     }
 
     private Map<String, Object> retryShortformExportInternal(Map<String, Object> video) {
