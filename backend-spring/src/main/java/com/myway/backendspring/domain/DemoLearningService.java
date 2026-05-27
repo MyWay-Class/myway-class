@@ -33,6 +33,7 @@ public class DemoLearningService {
     private final LearningPayloadMapper learningPayloadMapper;
     private final LectureDurationResolver lectureDurationResolver;
     private final CourseCatalogStoreSupport courseCatalogStoreSupport;
+    private final LearningContentStoreSupport learningContentStoreSupport;
 
     @Autowired
     public DemoLearningService(
@@ -43,7 +44,8 @@ public class DemoLearningService {
             LearningEnrollmentStoreSupport learningEnrollmentStoreSupport,
             LearningPayloadMapper learningPayloadMapper,
             LectureDurationResolver lectureDurationResolver,
-            CourseCatalogStoreSupport courseCatalogStoreSupport
+            CourseCatalogStoreSupport courseCatalogStoreSupport,
+            LearningContentStoreSupport learningContentStoreSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -53,6 +55,7 @@ public class DemoLearningService {
         this.learningPayloadMapper = learningPayloadMapper;
         this.lectureDurationResolver = lectureDurationResolver;
         this.courseCatalogStoreSupport = courseCatalogStoreSupport;
+        this.learningContentStoreSupport = learningContentStoreSupport;
         initSeedData();
     }
 
@@ -66,6 +69,7 @@ public class DemoLearningService {
         this.learningPayloadMapper = new LearningPayloadMapper();
         this.lectureDurationResolver = new LectureDurationResolver();
         this.courseCatalogStoreSupport = new CourseCatalogStoreSupport();
+        this.learningContentStoreSupport = new LearningContentStoreSupport();
         initSeedData();
     }
 
@@ -157,45 +161,53 @@ public class DemoLearningService {
     }
 
     public List<MaterialItem> getMaterials(String courseId) {
-        if (useStore()) {
-            return store.listKvByScope(MATERIAL_SCOPE).stream()
-                    .map(learningPayloadMapper::fromMaterialPayload)
-                    .filter(Objects::nonNull)
-                    .filter(m -> courseId.equals(m.course_id()))
-                    .toList();
-        }
-        return materialsByCourse.getOrDefault(courseId, List.of());
+        return learningContentStoreSupport.getMaterials(
+                useStore(),
+                store,
+                MATERIAL_SCOPE,
+                learningPayloadMapper,
+                materialsByCourse,
+                courseId
+        );
     }
 
     public List<NoticeItem> getNotices(String courseId) {
-        if (useStore()) {
-            return store.listKvByScope(NOTICE_SCOPE).stream()
-                    .map(learningPayloadMapper::fromNoticePayload)
-                    .filter(Objects::nonNull)
-                    .filter(n -> courseId.equals(n.course_id()))
-                    .toList();
-        }
-        return noticesByCourse.getOrDefault(courseId, List.of());
+        return learningContentStoreSupport.getNotices(
+                useStore(),
+                store,
+                NOTICE_SCOPE,
+                learningPayloadMapper,
+                noticesByCourse,
+                courseId
+        );
     }
 
     public MaterialItem addMaterial(String userId, String courseId, String title, String summary, String fileName) {
-        MaterialItem created = new MaterialItem(UUID.randomUUID().toString(), courseId, title, summary, fileName);
-        if (useStore()) {
-            store.upsertKv(MATERIAL_SCOPE, created.id(), learningPayloadMapper.toMaterialPayload(created));
-        } else {
-            materialsByCourse.computeIfAbsent(courseId, k -> new ArrayList<>()).add(created);
-        }
-        return created;
+        return learningContentStoreSupport.addMaterial(
+                useStore(),
+                store,
+                MATERIAL_SCOPE,
+                learningPayloadMapper,
+                materialsByCourse,
+                courseId,
+                title,
+                summary,
+                fileName
+        );
     }
 
     public NoticeItem addNotice(String userId, String courseId, String title, String content, boolean pinned) {
-        NoticeItem created = new NoticeItem(UUID.randomUUID().toString(), courseId, title, content, pinned);
-        if (useStore()) {
-            store.upsertKv(NOTICE_SCOPE, created.id(), learningPayloadMapper.toNoticePayload(created));
-        } else {
-            noticesByCourse.computeIfAbsent(courseId, k -> new ArrayList<>()).add(created);
-        }
-        return created;
+        return learningContentStoreSupport.addNotice(
+                useStore(),
+                store,
+                NOTICE_SCOPE,
+                learningPayloadMapper,
+                noticesByCourse,
+                courseId,
+                title,
+                content,
+                pinned
+        );
     }
 
     public EnrollmentItem enroll(String userId, String courseId) {
