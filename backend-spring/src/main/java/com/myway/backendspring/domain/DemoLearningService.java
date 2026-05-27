@@ -30,6 +30,7 @@ public class DemoLearningService {
     private final LearningProgressCalculator progressCalculator;
     private final LectureMetadataSyncSupport lectureMetadataSyncSupport;
     private final LearningEnrollmentStoreSupport learningEnrollmentStoreSupport;
+    private final LearningPayloadMapper learningPayloadMapper;
 
     @Autowired
     public DemoLearningService(
@@ -37,13 +38,15 @@ public class DemoLearningService {
             ActivityEventService activityEventService,
             LearningProgressCalculator progressCalculator,
             LectureMetadataSyncSupport lectureMetadataSyncSupport,
-            LearningEnrollmentStoreSupport learningEnrollmentStoreSupport
+            LearningEnrollmentStoreSupport learningEnrollmentStoreSupport,
+            LearningPayloadMapper learningPayloadMapper
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
         this.progressCalculator = progressCalculator;
         this.lectureMetadataSyncSupport = lectureMetadataSyncSupport;
         this.learningEnrollmentStoreSupport = learningEnrollmentStoreSupport;
+        this.learningPayloadMapper = learningPayloadMapper;
         initSeedData();
     }
 
@@ -54,6 +57,7 @@ public class DemoLearningService {
         this.progressCalculator = new LearningProgressCalculator();
         this.lectureMetadataSyncSupport = new LectureMetadataSyncSupport();
         this.learningEnrollmentStoreSupport = new LearningEnrollmentStoreSupport();
+        this.learningPayloadMapper = new LearningPayloadMapper();
         initSeedData();
     }
 
@@ -104,7 +108,7 @@ public class DemoLearningService {
         }
         CourseDetail detail = new CourseDetail(courseId, title, instructorId, List.copyOf(lectures), 0);
         if (useStore()) {
-            store.upsertKv(COURSE_SCOPE, courseId, toCoursePayload(detail));
+            store.upsertKv(COURSE_SCOPE, courseId, learningPayloadMapper.toCoursePayload(detail));
         } else {
             courses.put(courseId, detail);
         }
@@ -147,7 +151,7 @@ public class DemoLearningService {
     public List<MaterialItem> getMaterials(String courseId) {
         if (useStore()) {
             return store.listKvByScope(MATERIAL_SCOPE).stream()
-                    .map(this::fromMaterialPayload)
+                    .map(learningPayloadMapper::fromMaterialPayload)
                     .filter(Objects::nonNull)
                     .filter(m -> courseId.equals(m.course_id()))
                     .toList();
@@ -158,7 +162,7 @@ public class DemoLearningService {
     public List<NoticeItem> getNotices(String courseId) {
         if (useStore()) {
             return store.listKvByScope(NOTICE_SCOPE).stream()
-                    .map(this::fromNoticePayload)
+                    .map(learningPayloadMapper::fromNoticePayload)
                     .filter(Objects::nonNull)
                     .filter(n -> courseId.equals(n.course_id()))
                     .toList();
@@ -169,7 +173,7 @@ public class DemoLearningService {
     public MaterialItem addMaterial(String userId, String courseId, String title, String summary, String fileName) {
         MaterialItem created = new MaterialItem(UUID.randomUUID().toString(), courseId, title, summary, fileName);
         if (useStore()) {
-            store.upsertKv(MATERIAL_SCOPE, created.id(), toMaterialPayload(created));
+            store.upsertKv(MATERIAL_SCOPE, created.id(), learningPayloadMapper.toMaterialPayload(created));
         } else {
             materialsByCourse.computeIfAbsent(courseId, k -> new ArrayList<>()).add(created);
         }
@@ -179,7 +183,7 @@ public class DemoLearningService {
     public NoticeItem addNotice(String userId, String courseId, String title, String content, boolean pinned) {
         NoticeItem created = new NoticeItem(UUID.randomUUID().toString(), courseId, title, content, pinned);
         if (useStore()) {
-            store.upsertKv(NOTICE_SCOPE, created.id(), toNoticePayload(created));
+            store.upsertKv(NOTICE_SCOPE, created.id(), learningPayloadMapper.toNoticePayload(created));
         } else {
             noticesByCourse.computeIfAbsent(courseId, k -> new ArrayList<>()).add(created);
         }
@@ -480,8 +484,8 @@ public class DemoLearningService {
         );
         CourseDetail java = new CourseDetail("crs_java_01", "Java Spring 백엔드", "usr_ins_001", javaLectures, 0);
         CourseDetail react = new CourseDetail("crs_react_01", "React 프론트엔드", "usr_ins_001", reactLectures, 0);
-        store.upsertKv(COURSE_SCOPE, java.id(), toCoursePayload(java));
-        store.upsertKv(COURSE_SCOPE, react.id(), toCoursePayload(react));
+        store.upsertKv(COURSE_SCOPE, java.id(), learningPayloadMapper.toCoursePayload(java));
+        store.upsertKv(COURSE_SCOPE, react.id(), learningPayloadMapper.toCoursePayload(react));
         store.upsertKv(MATERIAL_SCOPE, "mat_java_01", Map.of(
                 "id", "mat_java_01",
                 "course_id", "crs_java_01",
@@ -501,120 +505,14 @@ public class DemoLearningService {
     private List<CourseDetail> listAllCourses() {
         if (!useStore()) return new ArrayList<>(courses.values());
         return store.listKvByScope(COURSE_SCOPE).stream()
-                .map(this::fromCoursePayload)
+                .map(learningPayloadMapper::fromCoursePayload)
                 .filter(Objects::nonNull)
                 .toList();
     }
 
     private CourseDetail findCourse(String courseId) {
         if (!useStore()) return courses.get(courseId);
-        return fromCoursePayload(store.getKv(COURSE_SCOPE, courseId));
-    }
-
-    private Map<String, Object> toCoursePayload(CourseDetail detail) {
-        List<Map<String, Object>> lectures = detail.lectures().stream()
-                .map(l -> {
-                    Map<String, Object> row = new HashMap<>();
-                    row.put("id", l.id());
-                    row.put("course_id", l.course_id());
-                    row.put("title", l.title());
-                    row.put("duration_minutes", l.duration_minutes());
-                    row.put("content_text", l.content_text());
-                    row.put("transcript_excerpt", l.transcript_excerpt());
-                    row.put("instructor_name", l.instructor_name());
-                    return row;
-                })
-                .toList();
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("id", detail.id());
-        payload.put("title", detail.title());
-        payload.put("instructor_id", detail.instructor_id());
-        payload.put("lectures", lectures);
-        return payload;
-    }
-
-    @SuppressWarnings("unchecked")
-    private CourseDetail fromCoursePayload(Map<String, Object> payload) {
-        if (payload == null) return null;
-        String id = String.valueOf(payload.getOrDefault("id", "")).trim();
-        if (id.isBlank()) return null;
-        String title = String.valueOf(payload.getOrDefault("title", "")).trim();
-        String instructorId = String.valueOf(payload.getOrDefault("instructor_id", "")).trim();
-        List<LectureItem> lectures = new ArrayList<>();
-        Object rawLectures = payload.get("lectures");
-        if (rawLectures instanceof List<?> list) {
-            for (Object row : list) {
-                if (!(row instanceof Map<?, ?> map)) continue;
-                String lectureId = String.valueOf(map.containsKey("id") ? map.get("id") : "").trim();
-                String courseId = String.valueOf(map.containsKey("course_id") ? map.get("course_id") : id).trim();
-                String lectureTitle = String.valueOf(map.containsKey("title") ? map.get("title") : "").trim();
-                int duration = parseInt(map.get("duration_minutes"), 0);
-                String contentText = String.valueOf(map.containsKey("content_text") ? map.get("content_text") : "").trim();
-                String transcriptExcerpt = String.valueOf(map.containsKey("transcript_excerpt") ? map.get("transcript_excerpt") : "").trim();
-                String instructorName = String.valueOf(map.containsKey("instructor_name") ? map.get("instructor_name") : "").trim();
-                if (!lectureId.isBlank() && !lectureTitle.isBlank()) {
-                    lectures.add(new LectureItem(lectureId, courseId, lectureTitle, duration, contentText, transcriptExcerpt, instructorName));
-                }
-            }
-        }
-        return new CourseDetail(id, title, instructorId, lectures, 0);
-    }
-
-    private Map<String, Object> toMaterialPayload(MaterialItem item) {
-        return Map.of(
-                "id", item.id(),
-                "course_id", item.course_id(),
-                "title", item.title(),
-                "summary", item.summary(),
-                "file_name", item.file_name()
-        );
-    }
-
-    private MaterialItem fromMaterialPayload(Map<String, Object> payload) {
-        if (payload == null) return null;
-        String id = String.valueOf(payload.getOrDefault("id", "")).trim();
-        String courseId = String.valueOf(payload.getOrDefault("course_id", "")).trim();
-        if (id.isBlank() || courseId.isBlank()) return null;
-        return new MaterialItem(
-                id,
-                courseId,
-                String.valueOf(payload.getOrDefault("title", "")),
-                String.valueOf(payload.getOrDefault("summary", "")),
-                String.valueOf(payload.getOrDefault("file_name", ""))
-        );
-    }
-
-    private Map<String, Object> toNoticePayload(NoticeItem item) {
-        return Map.of(
-                "id", item.id(),
-                "course_id", item.course_id(),
-                "title", item.title(),
-                "content", item.content(),
-                "pinned", item.pinned()
-        );
-    }
-
-    private NoticeItem fromNoticePayload(Map<String, Object> payload) {
-        if (payload == null) return null;
-        String id = String.valueOf(payload.getOrDefault("id", "")).trim();
-        String courseId = String.valueOf(payload.getOrDefault("course_id", "")).trim();
-        if (id.isBlank() || courseId.isBlank()) return null;
-        return new NoticeItem(
-                id,
-                courseId,
-                String.valueOf(payload.getOrDefault("title", "")),
-                String.valueOf(payload.getOrDefault("content", "")),
-                Boolean.parseBoolean(String.valueOf(payload.getOrDefault("pinned", false)))
-        );
-    }
-
-    private int parseInt(Object value, int fallback) {
-        if (value instanceof Number n) return n.intValue();
-        try {
-            return Integer.parseInt(String.valueOf(value));
-        } catch (Exception ignored) {
-            return fallback;
-        }
+        return learningPayloadMapper.fromCoursePayload(store.getKv(COURSE_SCOPE, courseId));
     }
 
     private void appendActivity(String userId, String type, String resourceType, String resourceId, Map<String, Object> metadata) {
