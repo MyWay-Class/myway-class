@@ -1,5 +1,6 @@
 package com.myway.backendspring.api;
 
+import com.myway.backendspring.api.support.ShortformControllerSupport;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
@@ -20,12 +21,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/shortform")
 public class ShortformController {
-    private static final Set<String> ALLOWED_EXPORT_CALLBACK_STATUSES = Set.of("COMPLETED", "FAILED");
     public record GenerateRequest(String course_id, String mode) {}
     public record SelectCandidatesRequest(@NotBlank String extraction_id, @NotEmpty List<@NotBlank String> candidate_ids) {}
     public record ComposeClipRequest(
@@ -48,72 +47,54 @@ public class ShortformController {
     private final ShortformService shortformService;
     private final String callbackToken;
     private final long maxClipDurationMs;
+    private final ShortformControllerSupport support;
 
     public ShortformController(
             SessionService sessionService,
             DemoLearningService learningService,
             ShortformService shortformService,
             @Value("${myway.shortform.callback.token:dev-shortform-callback-token}") String callbackToken,
-            @Value("${myway.shortform.compose.max-clip-duration-ms:300000}") long maxClipDurationMs
+            @Value("${myway.shortform.compose.max-clip-duration-ms:300000}") long maxClipDurationMs,
+            ShortformControllerSupport support
     ) {
         this.sessionService = sessionService;
         this.learningService = learningService;
         this.shortformService = shortformService;
         this.callbackToken = callbackToken;
         this.maxClipDurationMs = Math.max(1000L, maxClipDurationMs);
+        this.support = support;
     }
 
     private SessionView require(String auth) { return sessionService.me(auth); }
-    private <T> ResponseEntity<ApiResponse<T>> unauthenticated() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("UNAUTHENTICATED", "로그인이 필요합니다."));
-    }
-    private String orEmpty(String value) {
-        return value == null ? "" : value;
-    }
-    private String trimRequired(String value) {
-        return value.trim();
-    }
-    private boolean isAdmin(SessionView session) {
-        return session != null && "admin".equals(session.user().role());
-    }
-    private boolean isInstructor(SessionView session) {
-        return session != null && "instructor".equals(session.user().role());
-    }
-    private ResponseEntity<ApiResponse<Map<String, Object>>> badRequest(String code, String message) {
-        return ResponseEntity.badRequest().body(ApiResponse.failure(code, message));
-    }
-    private ResponseEntity<ApiResponse<Map<String, Object>>> forbidden(String message) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", message));
-    }
 
     @GetMapping("/library")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> library(@RequestHeader(value = "Authorization", required = false) String auth) {
         SessionView s = require(auth);
-        if (s == null) return unauthenticated();
+        if (s == null) return support.unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(shortformService.shortformLibrary(s.user().id())));
     }
 
     @GetMapping("/community")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> community(@RequestHeader(value = "Authorization", required = false) String auth, @RequestParam(value = "course_id", required = false) String courseId) {
-        if (require(auth) == null) return unauthenticated();
+        if (require(auth) == null) return support.unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(shortformService.shortformCommunity(courseId)));
     }
 
     @PostMapping("/generate")
     public ResponseEntity<ApiResponse<Map<String, Object>>> generate(@RequestHeader(value = "Authorization", required = false) String auth, @RequestBody GenerateRequest body) {
         SessionView s = require(auth);
-        if (s == null) return unauthenticated();
+        if (s == null) return support.unauthenticated();
         Map<String, Object> payload = Map.of(
-                "course_id", orEmpty(body.course_id()),
-                "mode", orEmpty(body.mode())
+                "course_id", support.orEmpty(body.course_id()),
+                "mode", support.orEmpty(body.mode())
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.createShortformExtraction(s.user().id(), payload), "숏폼 후보가 생성되었습니다."));
     }
 
     @PutMapping("/candidates/select")
     public ResponseEntity<ApiResponse<Map<String, Object>>> select(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SelectCandidatesRequest body) {
-        if (require(auth) == null) return unauthenticated();
-        String extractionId = trimRequired(body.extraction_id());
+        if (require(auth) == null) return support.unauthenticated();
+        String extractionId = support.trimRequired(body.extraction_id());
         List<String> candidateIds = body.candidate_ids().stream().map(String::trim).toList();
         Map<String, Object> updated = shortformService.selectShortformCandidates(extractionId, candidateIds);
         if (updated == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "추출 결과를 찾을 수 없습니다."));
@@ -122,7 +103,7 @@ public class ShortformController {
 
     @GetMapping("/extraction/{id}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> extraction(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String id) {
-        if (require(auth) == null) return unauthenticated();
+        if (require(auth) == null) return support.unauthenticated();
         Map<String, Object> row = shortformService.getShortformExtraction(id);
         if (row == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("EXTRACTION_NOT_FOUND", "추출 결과를 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(row));
@@ -131,7 +112,7 @@ public class ShortformController {
     @PostMapping("/compose")
     public ResponseEntity<ApiResponse<Map<String, Object>>> compose(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody ComposeRequest body) {
         SessionView s = require(auth);
-        if (s == null) return unauthenticated();
+        if (s == null) return support.unauthenticated();
         List<Map<String, Object>> clips = new java.util.ArrayList<>();
         List<ComposeClipRequest> sourceClips = body.clips() == null ? List.of() : body.clips();
         for (ComposeClipRequest clip : sourceClips) {
@@ -139,10 +120,10 @@ public class ShortformController {
             long startMs = clip.start_ms();
             long endMs = clip.end_ms();
             if (endMs <= startMs) {
-                return badRequest("INVALID_CLIP_RANGE", "clip end_ms는 start_ms보다 커야 합니다.");
+                return support.badRequest("INVALID_CLIP_RANGE", "clip end_ms는 start_ms보다 커야 합니다.");
             }
             if ((endMs - startMs) > maxClipDurationMs) {
-                return badRequest("CLIP_DURATION_EXCEEDED", "clip 길이가 허용 최대치를 초과했습니다.");
+                return support.badRequest("CLIP_DURATION_EXCEEDED", "clip 길이가 허용 최대치를 초과했습니다.");
             }
             LectureItem lecture = learningService.getLecture(lectureId);
             if (lecture == null) {
@@ -150,12 +131,12 @@ public class ShortformController {
                         .body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다: " + lectureId));
             }
             if (!canComposeFromLecture(s, lecture)) {
-                return forbidden("해당 강의 클립을 조합할 권한이 없습니다.");
+                return support.forbidden("해당 강의 클립을 조합할 권한이 없습니다.");
             }
             if (body.course_id() != null && !body.course_id().isBlank()) {
                 String requestedCourseId = body.course_id().trim();
                 if (!requestedCourseId.equals(lecture.course_id())) {
-                    return badRequest("COURSE_LECTURE_MISMATCH", "course_id와 clip lecture_id가 일치하지 않습니다.");
+                    return support.badRequest("COURSE_LECTURE_MISMATCH", "course_id와 clip lecture_id가 일치하지 않습니다.");
                 }
             }
             clips.add(Map.of(
@@ -165,20 +146,20 @@ public class ShortformController {
             ));
         }
         Map<String, Object> payload = Map.of(
-                "title", orEmpty(body.title()),
-                "description", orEmpty(body.description()),
-                "course_id", orEmpty(body.course_id()),
+                "title", support.orEmpty(body.title()),
+                "description", support.orEmpty(body.description()),
+                "course_id", support.orEmpty(body.course_id()),
                 "clips", clips,
-                "extraction_id", orEmpty(body.extraction_id())
+                "extraction_id", support.orEmpty(body.extraction_id())
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.composeShortform(s.user().id(), payload), "숏폼이 생성되었습니다."));
     }
 
     private boolean canComposeFromLecture(SessionView session, LectureItem lecture) {
-        if (isAdmin(session)) {
+        if (support.isAdmin(session)) {
             return true;
         }
-        if (isInstructor(session)) {
+        if (support.isInstructor(session)) {
             CourseDetail course = learningService.getCourseDetail(lecture.course_id(), session.user().id());
             return course != null && session.user().id().equals(course.instructor_id());
         }
@@ -188,7 +169,7 @@ public class ShortformController {
 
     @GetMapping("/video/{id}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> video(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String id) {
-        if (require(auth) == null) return unauthenticated();
+        if (require(auth) == null) return support.unauthenticated();
         Map<String, Object> row = shortformService.shortformVideo(id);
         if (row == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("SHORTFORM_NOT_FOUND", "숏폼을 찾을 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(row));
@@ -197,19 +178,19 @@ public class ShortformController {
     @GetMapping("/videos/my")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> videos(@RequestHeader(value = "Authorization", required = false) String auth) {
         SessionView session = require(auth);
-        if (session == null) return unauthenticated();
+        if (session == null) return support.unauthenticated();
         return ResponseEntity.ok(ApiResponse.success(shortformService.shortformVideos(session.user().id())));
     }
 
     @PostMapping("/share")
     public ResponseEntity<ApiResponse<Map<String, Object>>> share(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody ShareRequest body) {
         SessionView session = require(auth);
-        if (session == null) return unauthenticated();
+        if (session == null) return support.unauthenticated();
         Map<String, Object> payload = Map.of(
                 "video_id", body.video_id(),
-                "course_id", orEmpty(body.course_id()),
-                "visibility", orEmpty(body.visibility()),
-                "message", orEmpty(body.message())
+                "course_id", support.orEmpty(body.course_id()),
+                "visibility", support.orEmpty(body.visibility()),
+                "message", support.orEmpty(body.message())
         );
         Map<String, Object> row = shortformService.shareShortform(session.user().id(), payload);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SHARE_FAILED", "숏폼을 공유할 수 없습니다."));
@@ -219,11 +200,11 @@ public class ShortformController {
     @PostMapping("/save")
     public ResponseEntity<ApiResponse<Map<String, Object>>> save(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SaveRequest body) {
         SessionView session = require(auth);
-        if (session == null) return unauthenticated();
+        if (session == null) return support.unauthenticated();
         Map<String, Object> payload = Map.of(
                 "video_id", body.video_id(),
-                "note", orEmpty(body.note()),
-                "folder", orEmpty(body.folder())
+                "note", support.orEmpty(body.note()),
+                "folder", support.orEmpty(body.folder())
         );
         Map<String, Object> row = shortformService.saveShortform(session.user().id(), payload);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_SAVE_FAILED", "숏폼을 담아갈 수 없습니다."));
@@ -233,8 +214,8 @@ public class ShortformController {
     @PostMapping("/like")
     public ResponseEntity<ApiResponse<Map<String, Object>>> like(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody LikeRequest body) {
         SessionView session = require(auth);
-        if (session == null) return unauthenticated();
-        String videoId = trimRequired(body.video_id());
+        if (session == null) return support.unauthenticated();
+        String videoId = support.trimRequired(body.video_id());
         Map<String, Object> row = shortformService.toggleShortformLike(session.user().id(), videoId);
         if (row == null) return ResponseEntity.badRequest().body(ApiResponse.failure("SHORTFORM_LIKE_FAILED", "좋아요를 처리할 수 없습니다."));
         return ResponseEntity.ok(ApiResponse.success(row, "좋아요 상태가 반영되었습니다."));
@@ -243,7 +224,7 @@ public class ShortformController {
     @PostMapping("/{shortformId}/export/retry")
     public ResponseEntity<ApiResponse<Map<String, Object>>> retry(@RequestHeader(value = "Authorization", required = false) String auth, @PathVariable String shortformId) {
         SessionView s = require(auth);
-        if (s == null) return unauthenticated();
+        if (s == null) return support.unauthenticated();
 
         Map<String, Object> updated = shortformService.retryShortformExport(s.user().id(), shortformId);
         if (updated == null) {
@@ -265,8 +246,8 @@ public class ShortformController {
             @RequestHeader(value = "Authorization", required = false) String auth
     ) {
         SessionView session = require(auth);
-        if (session == null) return unauthenticated();
-        if (!isAdmin(session)) {
+        if (session == null) return support.unauthenticated();
+        if (!support.isAdmin(session)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "운영자 권한이 필요합니다."));
         }
         return ResponseEntity.ok(ApiResponse.success(shortformService.shortformExportStatus()));
@@ -278,8 +259,8 @@ public class ShortformController {
             @RequestBody(required = false) RetryFailedExportsRequest body
     ) {
         SessionView session = require(auth);
-        if (session == null) return unauthenticated();
-        if (!isAdmin(session)) {
+        if (session == null) return support.unauthenticated();
+        if (!support.isAdmin(session)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "운영자 권한이 필요합니다."));
         }
         boolean includePermanent = body != null && Boolean.TRUE.equals(body.include_permanent());
@@ -307,9 +288,9 @@ public class ShortformController {
         if (resolvedToken == null || resolvedToken.isBlank() || !resolvedToken.equals(callbackToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "유효한 callback token이 필요합니다."));
         }
-        String shortformId = trimRequired(body.shortform_id());
+        String shortformId = support.trimRequired(body.shortform_id());
 
-        CallbackPolicyDecision decision = CallbackStateTransitionPolicy.decide(body);
+        ShortformControllerSupport.CallbackPolicyDecision decision = support.decideExportCallbackState(body.status(), body.event_version());
         if (!decision.valid()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", decision.errorMessage()));
         }
@@ -339,27 +320,4 @@ public class ShortformController {
         return ResponseEntity.ok(ApiResponse.success(updated, "숏폼 export가 완료되었습니다."));
     }
 
-    private record CallbackPolicyDecision(boolean valid, String status, long eventVersion, String errorMessage) {
-        static CallbackPolicyDecision valid(String status, long eventVersion) {
-            return new CallbackPolicyDecision(true, status, eventVersion, null);
-        }
-
-        static CallbackPolicyDecision invalid(String errorMessage) {
-            return new CallbackPolicyDecision(false, null, 0L, errorMessage);
-        }
-    }
-
-    private static final class CallbackStateTransitionPolicy {
-        private static CallbackPolicyDecision decide(ExportCallbackRequest body) {
-            long eventVersion = body.event_version();
-            if (eventVersion < 1L) {
-                return CallbackPolicyDecision.invalid("event_version은 1 이상이어야 합니다.");
-            }
-            String status = body.status() != null ? body.status().trim().toUpperCase() : "COMPLETED";
-            if (!ALLOWED_EXPORT_CALLBACK_STATUSES.contains(status)) {
-                return CallbackPolicyDecision.invalid("status는 COMPLETED 또는 FAILED만 허용됩니다.");
-            }
-            return CallbackPolicyDecision.valid(status, eventVersion);
-        }
-    }
 }
