@@ -30,6 +30,7 @@ public class MediaTranscriptionService {
     private final RagService ragService;
     private final TranscriptSegmenter segmenter;
     private final MediaTranscriptionMetrics metrics;
+    private final MediaExtractionCallbackSupport callbackSupport;
 
     public MediaTranscriptionService(
             FeatureStoreRepository repository,
@@ -37,7 +38,8 @@ public class MediaTranscriptionService {
             ActivityEventService activityEventService,
             RagService ragService,
             TranscriptSegmenter segmenter,
-            MediaTranscriptionMetrics metrics
+            MediaTranscriptionMetrics metrics,
+            MediaExtractionCallbackSupport callbackSupport
     ) {
         this.repository = repository;
         this.learningService = learningService;
@@ -45,6 +47,7 @@ public class MediaTranscriptionService {
         this.ragService = ragService;
         this.segmenter = segmenter;
         this.metrics = metrics;
+        this.callbackSupport = callbackSupport;
     }
 
     public Map<String, Object> transcribe(
@@ -85,13 +88,15 @@ public class MediaTranscriptionService {
     ) {
         ExtractionSnapshot extraction = findExtraction(extractionId);
         if (extraction == null) return null;
-        if (isStaleCallback(extraction.toMap(), eventVersion)) return staleCallbackResponse(extraction.toMap());
+        if (callbackSupport.isStaleCallback(extraction.toMap(), eventVersion)) {
+            return normalizeExtractionForResponse(callbackSupport.staleCallbackResponse(extraction.toMap()));
+        }
 
         String now = Instant.now().toString();
         MediaStatus callbackStatus = MediaStatus.fromNullable(status, MediaStatus.COMPLETED);
-        String resolvedError = resolveErrorMessage(callbackStatus, errorMessage);
+        String resolvedError = callbackSupport.resolveErrorMessage(callbackStatus, errorMessage);
         Map<String, Object> mutable = extraction.toMap();
-        applyCallbackMetadata(
+        callbackSupport.applyCallbackMetadata(
                 mutable,
                 eventVersion,
                 callbackStatus,
@@ -114,7 +119,11 @@ public class MediaTranscriptionService {
 
         String lectureId = applied.lectureId();
         if (!lectureId.isBlank()) {
-            repository.upsertKv(PIPELINE_SCOPE, lectureId, buildPipelineFromCallback(applied, callbackStatus, resolvedError, now));
+            repository.upsertKv(
+                    PIPELINE_SCOPE,
+                    lectureId,
+                    callbackSupport.buildPipelineFromCallback(lectureId, applied.transcriptId(), applied.id(), callbackStatus, resolvedError, now)
+            );
         }
         appendActivity(mutable, extractionId, lectureId, callbackStatus);
         return normalizeExtractionForResponse(mutable);
@@ -324,103 +333,6 @@ public class MediaTranscriptionService {
         return Math.min(requested, PUBLIC_STT_MAX_DURATION_MS);
     }
 
-    private boolean isStaleCallback(Map<String, Object> extraction, long eventVersion) {
-        return eventVersion <= asLong(extraction.get("last_event_version"));
-    }
-
-    private Map<String, Object> staleCallbackResponse(Map<String, Object> extraction) {
-        extraction.put("callback_ignored", true);
-        extraction.put("callback_status", "IGNORED_STALE");
-        return normalizeExtractionForResponse(extraction);
-    }
-
-    private String resolveErrorMessage(MediaStatus status, String errorMessage) {
-        if (status == MediaStatus.FAILED && (errorMessage == null || errorMessage.isBlank())) {
-            return "media processor callback failed";
-        }
-        return errorMessage;
-    }
-
-    private void applyCallbackMetadata(
-            Map<String, Object> extraction,
-            long eventVersion,
-            MediaStatus callbackStatus,
-            String errorMessage,
-            String audioUrl,
-            String processingJobId,
-            String processingStage,
-            String processingStep,
-            String audioFormat,
-            Integer sampleRate,
-            Integer channels,
-            String syncMode,
-            String overwritePolicy,
-            String approvalState,
-            String notificationChannel,
-            String now
-    ) {
-        extraction.put("last_event_version", eventVersion);
-        extraction.put("status", callbackStatus.name());
-        extraction.put("error_message", errorMessage);
-        putIfText(extraction, "audio_url", audioUrl);
-        putIfText(extraction, "processing_job_id", processingJobId);
-        putIfText(extraction, "processing_stage", processingStage);
-        putIfText(extraction, "processing_step", processingStep);
-        putIfText(extraction, "audio_format", audioFormat);
-        if (sampleRate != null && sampleRate > 0) extraction.put("sample_rate", sampleRate);
-        if (channels != null && channels > 0) extraction.put("channels", channels);
-        extraction.put("stt_sync_mode", normalizeOrDefault(syncMode, "AUTO").toLowerCase());
-        extraction.put("stt_overwrite_policy", normalizeOrDefault(overwritePolicy, "OVERWRITE").toLowerCase());
-        extraction.put("stt_approval_state", normalizeOrDefault(approvalState, "PENDING").toLowerCase());
-        extraction.put("stt_sync_notification_channel", normalizeOrDefault(notificationChannel, "dashboard"));
-        extraction.put("stt_sync_notified_at", now);
-        extraction.put("stt_sync_metrics", Map.of(
-                "callback_events", 1,
-                "notifications", 1
-        ));
-
-        if (callbackStatus == MediaStatus.COMPLETED) {
-            extraction.put("status", MediaStatus.PROCESSING.name());
-            extraction.put("processing_stage", PipelineStage.TRANSCRIBING.value());
-            extraction.put("processing_step", "stt_started");
-            extraction.put("stt_status", MediaStatus.PROCESSING.name());
-            extraction.put("processing_error_code", null);
-            extraction.put("processing_error", null);
-        } else if (callbackStatus == MediaStatus.FAILED) {
-            extraction.put("processing_stage", PipelineStage.FAILED.value());
-            extraction.put("processing_step", "callback_failed");
-            extraction.put("stt_status", MediaStatus.FAILED.name());
-            extraction.put("processing_error_code", "PROCESSOR_CALLBACK_FAILED");
-            extraction.put("processing_error", errorMessage);
-        } else {
-            extraction.put("processing_stage", PipelineStage.CALLBACK.value());
-            extraction.put("processing_step", "callback_received");
-        }
-        extraction.put("processed_at", now);
-        extraction.put("callback_ignored", false);
-        extraction.put("callback_status", "APPLIED");
-        extraction.put("updated_at", now);
-    }
-
-    private Map<String, Object> buildPipelineFromCallback(ExtractionSnapshot extraction, MediaStatus callbackStatus, String errorMessage, String now) {
-        boolean failed = callbackStatus == MediaStatus.FAILED;
-        PipelineSnapshot snapshot = new PipelineSnapshot(
-                extraction.lectureId(),
-                failed ? MediaStatus.FAILED.name() : MediaStatus.COMPLETED.name(),
-                failed ? MediaStatus.FAILED.name() : MediaStatus.PROCESSING.name(),
-                MediaStatus.PENDING.name(),
-                failed ? PipelineStage.FAILED.value() : PipelineStage.TRANSCRIBING.value(),
-                failed ? "callback_failed" : "stt_started",
-                failed ? "PROCESSOR_CALLBACK_FAILED" : null,
-                failed ? errorMessage : null,
-                extraction.transcriptId(),
-                null,
-                extraction.id(),
-                now
-        );
-        return snapshot.toMap();
-    }
-
     private ExtractionSnapshot findExtraction(String extractionId) {
         Map<String, Object> extraction = repository.getKv(EXTRACTION_SCOPE, extractionId);
         if (extraction != null) return ExtractionSnapshot.from(extraction);
@@ -622,35 +534,5 @@ public class MediaTranscriptionService {
         }
     }
 
-    private record PipelineSnapshot(
-            String lectureId,
-            String audioStatus,
-            String transcriptStatus,
-            String summaryStatus,
-            String processingStage,
-            String processingStep,
-            Object processingErrorCode,
-            Object processingError,
-            String transcriptId,
-            Object noteId,
-            String extractionId,
-            String updatedAt
-    ) {
-        Map<String, Object> toMap() {
-            Map<String, Object> map = new HashMap<>();
-            map.put("lecture_id", lectureId);
-            map.put("audio_status", audioStatus);
-            map.put("transcript_status", transcriptStatus);
-            map.put("summary_status", summaryStatus);
-            map.put("processing_stage", processingStage);
-            map.put("processing_step", processingStep);
-            map.put("processing_error_code", processingErrorCode);
-            map.put("processing_error", processingError);
-            map.put("transcript_id", transcriptId);
-            map.put("note_id", noteId);
-            map.put("extraction_id", extractionId);
-            map.put("updated_at", updatedAt);
-            return map;
-        }
-    }
+    
 }
