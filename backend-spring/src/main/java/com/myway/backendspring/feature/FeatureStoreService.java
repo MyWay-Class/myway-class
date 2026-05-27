@@ -4,8 +4,6 @@ import com.myway.backendspring.feature.admin.AdminAssignmentService;
 import com.myway.backendspring.feature.ai.AiFeatureService;
 import com.myway.backendspring.feature.course.CustomCourseService;
 import com.myway.backendspring.feature.media.MediaProcessingService;
-import com.myway.backendspring.feature.media.MediaStatus;
-import com.myway.backendspring.feature.media.PipelineStage;
 import com.myway.backendspring.feature.media.MediaTranscriptionService;
 import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import com.myway.backendspring.feature.rag.RagService;
@@ -16,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +34,7 @@ public class FeatureStoreService {
     private final CustomCourseService customCourseService;
     private final AdminAssignmentService adminAssignmentService;
     private final FeatureStorePipelineSupport pipelineSupport;
+    private final FeatureStorePayloadSupport payloadSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -48,7 +46,8 @@ public class FeatureStoreService {
             MediaTranscriptionService mediaTranscriptionService,
             CustomCourseService customCourseService,
             AdminAssignmentService adminAssignmentService,
-            FeatureStorePipelineSupport pipelineSupport
+            FeatureStorePipelineSupport pipelineSupport,
+            FeatureStorePayloadSupport payloadSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -59,6 +58,7 @@ public class FeatureStoreService {
         this.customCourseService = customCourseService;
         this.adminAssignmentService = adminAssignmentService;
         this.pipelineSupport = pipelineSupport;
+        this.payloadSupport = payloadSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -72,7 +72,8 @@ public class FeatureStoreService {
                 null,
                 null,
                 null,
-                new FeatureStorePipelineSupport()
+                new FeatureStorePipelineSupport(),
+                new FeatureStorePayloadSupport()
         );
     }
 
@@ -165,12 +166,9 @@ public class FeatureStoreService {
 
     public Map<String, Object> mediaUpload(String lectureId, String fileName) {
         String key = "asset/" + lectureId + "/" + UUID.randomUUID();
-        Map<String, Object> payload = new MediaUploadPayload(
-                lectureId,
-                key,
-                "/api/v1/media/assets/" + key,
-                fileName
-        ).toMap();
+        Map<String, Object> payload = payloadSupport.mediaUploadPayload(
+                lectureId, key, "/api/v1/media/assets/" + key, fileName
+        );
         store.upsertKv(MEDIA_ASSET_SCOPE, key, payload);
         return payload;
     }
@@ -182,11 +180,11 @@ public class FeatureStoreService {
     public Map<String, Object> createExtraction(String lectureId, String audioUrl) {
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
-        Map<String, Object> item = new ExtractionSeed(id, lectureId, audioUrl, now).toMap();
+        Map<String, Object> item = payloadSupport.extractionSeed(id, lectureId, audioUrl, now);
 
         store.insertEvent(EXTRACTION_SCOPE, lectureId, id, item);
         store.upsertKv(EXTRACTION_SCOPE, id, item);
-        Map<String, Object> pipeline = new PipelineSeed(lectureId, id, now).toMap();
+        Map<String, Object> pipeline = payloadSupport.pipelineSeed(lectureId, id, now);
         store.upsertKv(PIPELINE_SCOPE, lectureId, pipeline);
 
         return item;
@@ -350,13 +348,13 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> summarizeLecture(String lectureId, String style, String language) {
-        Map<String, Object> note = new LectureSummaryNotePayload(
+        Map<String, Object> note = payloadSupport.lectureSummaryNotePayload(
                 UUID.randomUUID().toString(),
                 lectureId,
-                normalizeOrDefault(style, "brief"),
-                normalizeOrDefault(language, "ko"),
+                payloadSupport.normalizeOrDefault(style, "brief"),
+                payloadSupport.normalizeOrDefault(language, "ko"),
                 Instant.now().toString()
-        ).toMap();
+        );
         store.insertEvent(MEDIA_NOTE_SCOPE, lectureId, String.valueOf(note.get("id")), note);
         return note;
     }
@@ -445,51 +443,6 @@ public class FeatureStoreService {
         return adminAssignmentService == null ? Map.of() : adminAssignmentService.saveAdminAssignment(actorUserId, courseId, studentIds);
     }
 
-    private record ExtractionSeed(String id, String lectureId, String audioUrl, String now) {
-        Map<String, Object> toMap() {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", id);
-            map.put("lecture_id", lectureId);
-            map.put("status", MediaStatus.PROCESSING.name());
-            map.put("audio_url", audioUrl);
-            map.put("processing_stage", PipelineStage.QUEUED.value());
-            map.put("processing_step", "job_requested");
-            map.put("processing_error_code", null);
-            map.put("processing_error", null);
-            map.put("stt_status", MediaStatus.PENDING.name());
-            map.put("transcript_id", null);
-            map.put("last_event_version", 0L);
-            map.put("created_at", now);
-            map.put("updated_at", now);
-            return map;
-        }
-    }
-
-    private record PipelineSeed(String lectureId, String extractionId, String now) {
-        Map<String, Object> toMap() {
-            Map<String, Object> map = new HashMap<>();
-            map.put("lecture_id", lectureId);
-            map.put("transcript_status", MediaStatus.PENDING.name());
-            map.put("summary_status", MediaStatus.PENDING.name());
-            map.put("audio_status", MediaStatus.PROCESSING.name());
-            map.put("processing_stage", PipelineStage.QUEUED.value());
-            map.put("processing_step", "job_requested");
-            map.put("processing_error_code", null);
-            map.put("processing_error", null);
-            map.put("transcript_id", null);
-            map.put("note_id", null);
-            map.put("extraction_id", extractionId);
-            map.put("updated_at", now);
-            return map;
-        }
-    }
-
-    private static String normalizeOrDefault(String value, String defaultValue) {
-        if (value == null) return defaultValue;
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? defaultValue : trimmed;
-    }
-
     private record TranscribeRequestContext(
             String lectureId,
             String language,
@@ -518,45 +471,6 @@ public class FeatureStoreService {
             String approvalState,
             String notificationChannel
     ) {
-    }
-
-    private record LectureSummaryNotePayload(
-            String id,
-            String lectureId,
-            String style,
-            String language,
-            String createdAt
-    ) {
-        Map<String, Object> toMap() {
-            Map<String, Object> note = new HashMap<>();
-            note.put("id", id);
-            note.put("lecture_id", lectureId);
-            note.put("title", "자동 요약 노트");
-            note.put("content", "Spring 백엔드에서 생성한 요약입니다.");
-            note.put("key_concepts", List.of("핵심 개념", "핵심 정리"));
-            note.put("keywords", List.of("spring", "summary"));
-            note.put("timestamps", List.of(Map.of("start_ms", 0, "end_ms", 30000, "label", "인트로")));
-            note.put("style", style);
-            note.put("language", language);
-            note.put("created_at", createdAt);
-            return note;
-        }
-    }
-
-    private record MediaUploadPayload(
-            String lectureId,
-            String assetKey,
-            String videoUrl,
-            String fileName
-    ) {
-        Map<String, Object> toMap() {
-            return Map.of(
-                    "lecture_id", lectureId,
-                    "asset_key", assetKey,
-                    "video_url", videoUrl,
-                    "file_name", fileName
-            );
-        }
     }
 
 }
