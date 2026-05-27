@@ -35,6 +35,7 @@ public class ShortformService {
     private final String mediaPublicBaseUrl;
     private final String shortformCallbackToken;
     private final long staleProcessingThresholdMs;
+    private final ShortformRetrySupport retrySupport;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ShortformService(
@@ -45,7 +46,8 @@ public class ShortformService {
             @Value("${myway.media.processor.token:}") String mediaProcessorToken,
             @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl,
             @Value("${myway.shortform.callback.token:dev-shortform-callback-token}") String shortformCallbackToken,
-            @Value("${myway.shortform.monitoring.stale-processing-ms:1800000}") long staleProcessingThresholdMs
+            @Value("${myway.shortform.monitoring.stale-processing-ms:1800000}") long staleProcessingThresholdMs,
+            ShortformRetrySupport retrySupport
     ) {
         this.repository = repository;
         this.activityEventService = activityEventService;
@@ -55,6 +57,7 @@ public class ShortformService {
         this.mediaPublicBaseUrl = mediaPublicBaseUrl == null ? "http://127.0.0.1:8787" : mediaPublicBaseUrl.trim();
         this.shortformCallbackToken = shortformCallbackToken == null ? "dev-shortform-callback-token" : shortformCallbackToken.trim();
         this.staleProcessingThresholdMs = Math.max(60000L, staleProcessingThresholdMs);
+        this.retrySupport = retrySupport;
     }
 
     public List<Map<String, Object>> shortformLibrary(String userId) {
@@ -338,39 +341,9 @@ public class ShortformService {
     public Map<String, Object> applyShortformExportCallback(String shortformId, String status, long eventVersion, String videoUrl, String errorMessage) {
         Map<String, Object> video = repository.getKv(SHORTFORM_VIDEO_SCOPE, shortformId);
         if (video == null) return null;
-
-        long currentVersion = asLong(video.get("last_event_version"));
-        if (eventVersion <= currentVersion) {
-            video.put("callback_ignored", true);
-            return video;
-        }
-
-        video.put("last_event_version", eventVersion);
-        video.put("updated_at", Instant.now().toString());
-        if ("FAILED".equalsIgnoreCase(status)) {
-            int retryCount = asInt(video.get("retry_count"));
-            video.put("export_status", retryCount >= shortformMaxRetry ? "FAILED_PERMANENT" : "FAILED");
-            video.put("error_message", errorMessage != null ? errorMessage : "export callback failure");
-        } else {
-            video.put("export_status", "COMPLETED");
-            if (videoUrl != null && !videoUrl.isBlank()) {
-                video.put("video_url", videoUrl);
-                video.put("export_result_url", videoUrl);
-            }
-            video.put("error_message", null);
-        }
+        retrySupport.applyExportCallback(video, status, eventVersion, videoUrl, errorMessage, shortformMaxRetry);
         repository.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
         return video;
-    }
-
-    private int asInt(Object value) {
-        if (value == null) return 0;
-        if (value instanceof Number n) return n.intValue();
-        try {
-            return Integer.parseInt(String.valueOf(value));
-        } catch (Exception ignored) {
-            return 0;
-        }
     }
 
     private Map<String, Object> buildFailedItem(Map<String, Object> video) {
@@ -379,35 +352,19 @@ public class ShortformService {
         item.put("title", String.valueOf(video.getOrDefault("title", "")));
         item.put("user_id", String.valueOf(video.getOrDefault("user_id", "")));
         item.put("export_status", String.valueOf(video.getOrDefault("export_status", "")));
-        item.put("retry_count", asInt(video.get("retry_count")));
+        item.put("retry_count", retrySupport.asInt(video.get("retry_count")));
         item.put("error_message", String.valueOf(video.getOrDefault("error_message", "")));
         item.put("updated_at", String.valueOf(video.getOrDefault("updated_at", "")));
         return item;
     }
 
     private Map<String, Object> retryShortformExportInternal(Map<String, Object> video) {
-        int retryCount = asInt(video.get("retry_count"));
-        if (retryCount >= shortformMaxRetry) {
-            video.put("export_status", "FAILED_PERMANENT");
-            video.put("updated_at", Instant.now().toString());
+        retrySupport.retryExport(video, shortformMaxRetry);
+        if (!"PROCESSING".equals(String.valueOf(video.getOrDefault("export_status", "")))) {
             return video;
         }
-        video.put("retry_count", retryCount + 1);
-        video.put("export_status", "PROCESSING");
-        video.put("error_message", null);
-        video.put("updated_at", Instant.now().toString());
         dispatchShortformExportJob(video);
         return video;
-    }
-
-    private long asLong(Object value) {
-        if (value == null) return 0L;
-        if (value instanceof Number number) return number.longValue();
-        try {
-            return Long.parseLong(String.valueOf(value));
-        } catch (Exception ignored) {
-            return 0L;
-        }
     }
 
     private List<Map<String, Object>> normalizeComposeClips(Object rawClips, String fallbackCourseId) {
@@ -421,8 +378,8 @@ public class ShortformService {
             }
             Object lectureIdValue = clipMap.containsKey("lecture_id") ? clipMap.get("lecture_id") : "";
             String lectureId = String.valueOf(lectureIdValue).trim();
-            long startMs = asLong(clipMap.get("start_ms"));
-            long endMs = asLong(clipMap.get("end_ms"));
+            long startMs = retrySupport.asLong(clipMap.get("start_ms"));
+            long endMs = retrySupport.asLong(clipMap.get("end_ms"));
             if (lectureId.isBlank() || startMs < 0 || endMs <= startMs) {
                 continue;
             }
@@ -434,7 +391,7 @@ public class ShortformService {
             normalized.add(clip);
         }
         normalized.sort(Comparator.comparing((Map<String, Object> c) -> String.valueOf(c.get("lecture_id")))
-                .thenComparingLong(c -> asLong(c.get("start_ms"))));
+                .thenComparingLong(c -> retrySupport.asLong(c.get("start_ms"))));
         return normalized;
     }
 
@@ -448,8 +405,8 @@ public class ShortformService {
         for (int index = 0; index < normalizedClips.size(); index += 1) {
             Map<String, Object> clip = normalizedClips.get(index);
             String lectureId = String.valueOf(clip.getOrDefault("lecture_id", "")).trim();
-            long startMs = asLong(clip.get("start_ms"));
-            long endMs = asLong(clip.get("end_ms"));
+            long startMs = retrySupport.asLong(clip.get("start_ms"));
+            long endMs = retrySupport.asLong(clip.get("end_ms"));
             exportClips.add(Map.of(
                     "lecture_id", lectureId,
                     "lecture_title", lectureId,
