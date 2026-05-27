@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class MediaPipelineService {
@@ -27,10 +26,16 @@ public class MediaPipelineService {
 
     private final FeatureStoreRepository repository;
     private final FeatureStoreService featureStoreService;
+    private final MediaPipelineQuerySupport querySupport;
 
-    public MediaPipelineService(FeatureStoreRepository repository, FeatureStoreService featureStoreService) {
+    public MediaPipelineService(
+            FeatureStoreRepository repository,
+            FeatureStoreService featureStoreService,
+            MediaPipelineQuerySupport querySupport
+    ) {
         this.repository = repository;
         this.featureStoreService = featureStoreService;
+        this.querySupport = querySupport;
     }
 
     public Map<String, Object> mediaUpload(String lectureId, String fileName) {
@@ -87,22 +92,7 @@ public class MediaPipelineService {
     }
 
     public Map<String, Object> pipeline(String lectureId) {
-        Map<String, Object> row = repository.getKv(PIPELINE_SCOPE, lectureId);
-        Map<String, Object> hydrated = row == null ? new HashMap<>() : new HashMap<>(row);
-        hydrated.putIfAbsent("lecture_id", lectureId);
-        hydrated.putIfAbsent("status", row == null ? "EMPTY" : "IN_PROGRESS");
-        hydrated.putIfAbsent("audio_status", MediaStatus.PENDING.name());
-        hydrated.putIfAbsent("transcript_status", MediaStatus.PENDING.name());
-        hydrated.putIfAbsent("summary_status", MediaStatus.PENDING.name());
-        hydrated.putIfAbsent("processing_stage", PipelineStage.IDLE.value());
-        hydrated.putIfAbsent("processing_step", "not_started");
-        hydrated.putIfAbsent("processing_error_code", null);
-        hydrated.putIfAbsent("processing_error", null);
-        hydrated.putIfAbsent("transcript_id", null);
-        hydrated.putIfAbsent("note_id", null);
-        hydrated.putIfAbsent("extraction_id", null);
-        hydrated.putIfAbsent("updated_at", Instant.now().toString());
-        return hydrated;
+        return querySupport.pipeline(repository, PIPELINE_SCOPE, lectureId);
     }
 
     public List<Map<String, Object>> extractions(String lectureId) {
@@ -110,21 +100,11 @@ public class MediaPipelineService {
     }
 
     public Map<String, Object> transcript(String lectureId) {
-        Map<String, Object> transcript = repository.getKv(TRANSCRIPT_SCOPE, lectureId);
-        if (transcript == null) {
-            return null;
-        }
-        Map<String, Object> merged = new HashMap<>(transcript);
-        merged.putIfAbsent("speaker_review", speakerReview(lectureId));
-        return merged;
+        return querySupport.transcript(repository, TRANSCRIPT_SCOPE, lectureId, speakerReview(lectureId));
     }
 
     public Map<String, Object> speakerReview(String lectureId) {
-        if (lectureId == null || lectureId.isBlank()) {
-            return Map.of("status", "PENDING");
-        }
-        Map<String, Object> review = repository.getKv(SPEAKER_REVIEW_SCOPE, lectureId.trim());
-        return review == null ? Map.of("status", "PENDING") : review;
+        return querySupport.speakerReview(repository, SPEAKER_REVIEW_SCOPE, lectureId);
     }
 
     public Map<String, Object> upsertSpeakerReview(String lectureId, String speakerLabel, String instructorName, Double confidence, String note, String reviewerId) {
@@ -267,13 +247,7 @@ public class MediaPipelineService {
     }
 
     public Map<String, String> lectureVideoAssetMap() {
-        return repository.listKvByScope(LECTURE_VIDEO_ASSET_SCOPE).stream()
-                .map(row -> Map.entry(
-                        String.valueOf(row.getOrDefault("lecture_id", "")),
-                        String.valueOf(row.getOrDefault("asset_key", ""))
-                ))
-                .filter(entry -> !entry.getKey().isBlank() && !entry.getValue().isBlank())
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> right));
+        return querySupport.lectureVideoAssetMap(repository, LECTURE_VIDEO_ASSET_SCOPE);
     }
 
     public void upsertBatchStatus(Map<String, Object> payload) {
