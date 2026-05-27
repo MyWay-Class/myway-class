@@ -32,6 +32,7 @@ public class DemoLearningService {
     private final LearningEnrollmentStoreSupport learningEnrollmentStoreSupport;
     private final LearningPayloadMapper learningPayloadMapper;
     private final LectureDurationResolver lectureDurationResolver;
+    private final CourseCatalogStoreSupport courseCatalogStoreSupport;
 
     @Autowired
     public DemoLearningService(
@@ -41,7 +42,8 @@ public class DemoLearningService {
             LectureMetadataSyncSupport lectureMetadataSyncSupport,
             LearningEnrollmentStoreSupport learningEnrollmentStoreSupport,
             LearningPayloadMapper learningPayloadMapper,
-            LectureDurationResolver lectureDurationResolver
+            LectureDurationResolver lectureDurationResolver,
+            CourseCatalogStoreSupport courseCatalogStoreSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -50,6 +52,7 @@ public class DemoLearningService {
         this.learningEnrollmentStoreSupport = learningEnrollmentStoreSupport;
         this.learningPayloadMapper = learningPayloadMapper;
         this.lectureDurationResolver = lectureDurationResolver;
+        this.courseCatalogStoreSupport = courseCatalogStoreSupport;
         initSeedData();
     }
 
@@ -62,12 +65,13 @@ public class DemoLearningService {
         this.learningEnrollmentStoreSupport = new LearningEnrollmentStoreSupport();
         this.learningPayloadMapper = new LearningPayloadMapper();
         this.lectureDurationResolver = new LectureDurationResolver();
+        this.courseCatalogStoreSupport = new CourseCatalogStoreSupport();
         initSeedData();
     }
 
     private void initSeedData() {
         if (useStore()) {
-            seedStoreDataIfMissing();
+            courseCatalogStoreSupport.seedStoreDataIfMissing(store, COURSE_SCOPE, MATERIAL_SCOPE, NOTICE_SCOPE, learningPayloadMapper);
             ensureDefaultDemoStudentEnrollmentsInStore();
             return;
         }
@@ -445,49 +449,14 @@ public class DemoLearningService {
         );
     }
 
-    private void seedStoreDataIfMissing() {
-        if (!store.listKvByScope(COURSE_SCOPE).isEmpty()) {
-            return;
-        }
-        List<LectureItem> javaLectures = List.of(
-                new LectureItem("lec_java_01", "crs_java_01", "Spring Boot 시작", 25),
-                new LectureItem("lec_java_02", "crs_java_01", "REST API 설계", 35)
-        );
-        List<LectureItem> reactLectures = List.of(
-                new LectureItem("lec_react_01", "crs_react_01", "React 상태관리", 30),
-                new LectureItem("lec_react_02", "crs_react_01", "API 연동", 28)
-        );
-        CourseDetail java = new CourseDetail("crs_java_01", "Java Spring 백엔드", "usr_ins_001", javaLectures, 0);
-        CourseDetail react = new CourseDetail("crs_react_01", "React 프론트엔드", "usr_ins_001", reactLectures, 0);
-        store.upsertKv(COURSE_SCOPE, java.id(), learningPayloadMapper.toCoursePayload(java));
-        store.upsertKv(COURSE_SCOPE, react.id(), learningPayloadMapper.toCoursePayload(react));
-        store.upsertKv(MATERIAL_SCOPE, "mat_java_01", Map.of(
-                "id", "mat_java_01",
-                "course_id", "crs_java_01",
-                "title", "강의 자료집",
-                "summary", "Spring 핵심 요약",
-                "file_name", "spring-handbook.pdf"
-        ));
-        store.upsertKv(NOTICE_SCOPE, "not_java_01", Map.of(
-                "id", "not_java_01",
-                "course_id", "crs_java_01",
-                "title", "과제 공지",
-                "content", "1주차 과제를 제출하세요.",
-                "pinned", true
-        ));
-    }
-
     private List<CourseDetail> listAllCourses() {
         if (!useStore()) return new ArrayList<>(courses.values());
-        return store.listKvByScope(COURSE_SCOPE).stream()
-                .map(learningPayloadMapper::fromCoursePayload)
-                .filter(Objects::nonNull)
-                .toList();
+        return courseCatalogStoreSupport.listAllCourses(store, COURSE_SCOPE, learningPayloadMapper);
     }
 
     private CourseDetail findCourse(String courseId) {
         if (!useStore()) return courses.get(courseId);
-        return learningPayloadMapper.fromCoursePayload(store.getKv(COURSE_SCOPE, courseId));
+        return courseCatalogStoreSupport.findCourse(store, COURSE_SCOPE, courseId, learningPayloadMapper);
     }
 
     private void appendActivity(String userId, String type, String resourceType, String resourceId, Map<String, Object> metadata) {

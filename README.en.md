@@ -5,13 +5,13 @@
   <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/Cloudflare_Workers-ready-F38020?logo=cloudflare&logoColor=white" alt="Cloudflare Workers" />
+  <img src="https://img.shields.io/badge/Spring_Boot-3.4-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot" />
 </p>
 
 [한국어 README](./README.md)
 
 MyWayClass is an LMS platform that restructures lectures into personalized short-form learning flows.  
-It was built for the 2026 KIT Vibecoding Competition to help learners focus on the exact part they need, while giving instructors and operators tools to repurpose and manage lecture content.
+It helps learners focus on the exact part they need while giving instructors and operators tools to repurpose and manage lecture content.
 
 ## Table of Contents
 
@@ -25,6 +25,7 @@ It was built for the 2026 KIT Vibecoding Competition to help learners focus on t
 - [Key Screens](#key-screens)
 - [Getting Started](#getting-started)
 - [Scripts](#scripts)
+- [CI Operations](#ci-operations)
 - [Docs](#docs)
 - [Design Principles](#design-principles)
 
@@ -42,18 +43,16 @@ MyWayClass is designed to solve that problem by:
 - helping users find only the relevant segment
 - restructuring lectures into purpose-driven learning materials
 - reducing repetitive review through short-form clips, summaries, quizzes, and Q&A
-- creating a content flow that instructors and learners can reuse
+- creating a reusable content flow for instructors and learners
 
 ## Core Features
 
-- lecture viewing and learning dashboard
-- lecture studio and course management
-- short-form generation from lecture content
-- AI summaries, AI chat, and quiz generation
-- RAG-based Q&A and context lookup
-- media upload, audio extraction, and processing pipeline
-- separate experiences for students, instructors, and admins
-- short-form community and sharing flows
+- Role-based learning experiences (student/instructor/admin)
+- Course/lecture/enrollment management and learning dashboard
+- STT transcript pipeline, timeline summary, and RAG-based Q&A
+- Short-form generation/retry/share/library flows
+- AI summary/chat and operational AI logs/insights
+- Media upload/processing pipeline and asset mapping
 
 ## Workflow
 
@@ -63,12 +62,12 @@ The system is built around lecture fragments rather than a single full-length vi
 2. Chunk the transcript into meaningful segments
 3. Use RAG to find evidence segments for a question or learning goal
 4. Generate summaries, quizzes, Q&A, and intent classification with AI
-5. Connect the selected segments into a learning-focused short-form clip
-6. Keep the generated result linked to the original lecture for context
+5. Connect selected segments into learning-focused short-form clips
+6. Keep generated results linked to original lectures for context
 
 ## Screenshots
 
-> The repository does not include real capture assets yet, so the section below uses placeholders that can be replaced later.
+> The repository does not include real capture assets yet, so placeholders are kept.
 
 | Screen | Recommended file name | Description |
 |------|------------------------|------|
@@ -84,9 +83,10 @@ The system is built around lecture fragments rather than a single full-length vi
 | Area | Technology |
 |------|------------|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS |
-| Backend | Hono, TypeScript, Cloudflare Workers tooling |
-| Shared | Common types, data, and AI/LMS logic under `packages/shared` |
-| Build | npm workspaces, esbuild, wrangler, TypeScript |
+| Backend (Primary) | Spring Boot (Java 21), Maven Wrapper |
+| Backend (Legacy) | Hono, TypeScript, Cloudflare Workers tooling |
+| Shared | Common types and domain logic under `packages/shared` |
+| Build/Test | npm workspaces, Vite, Maven, Playwright, Vitest |
 | Media | `ffmpeg-static` based media processing |
 
 ## Project Structure
@@ -94,12 +94,14 @@ The system is built around lecture fragments rather than a single full-length vi
 ```text
 myway-class/
 ├── frontend/           # User-facing UI
-├── backend/            # API, AI, media processing
+├── backend-spring/     # Primary backend (Spring Boot)
+├── backend/            # Legacy backend (Hono/Workers)
 ├── packages/shared/    # Shared logic across frontend and backend
 ├── docs/               # Common documentation hub
 ├── scripts/            # Developer helper scripts
+├── tools/              # Orchestrator/agent runtime tools
 ├── agent.md            # AI collaboration rules
-└── README.md           # This file
+└── README.en.md
 ```
 
 ## Key Screens
@@ -108,7 +110,7 @@ myway-class/
 - learner dashboard
 - course list and lecture viewing
 - lecture studio
-- short-form hub and my short-forms
+- short-form hub and personal short-form management
 - AI summary page
 - AI chat page
 - quiz generation page
@@ -129,14 +131,16 @@ npm install
 npm run dev
 ```
 
-This is the main entry point for running the full local environment.
+`npm run dev` currently runs the frontend dev server (`dev:frontend`).
 
-If you want to run the frontend and backend separately:
+If you want to run frontend and backend separately:
 
 ```bash
 npm run dev:frontend
 npm run dev:backend
 ```
+
+Use `npm run dev:backend:legacy` only when you need the legacy TypeScript backend.
 
 ### Verification and Build
 
@@ -144,37 +148,53 @@ npm run dev:backend
 npm run check:deps
 npm run verify
 npm run build
+npm run test:backend
+npm run test:frontend
 ```
 
-- `npm run check:deps` checks frontend/backend workspace dependency integrity.
-- `npm run verify` runs dependency checks, frontend build, and Spring backend packaging in sequence.
-- `npm run build` builds both the frontend and backend.
+- `npm run check:deps`: checks frontend/backend workspace dependency integrity
+- `npm run verify`: dependency checks + frontend build + Spring backend tests
+- `npm run build`: frontend build + Spring backend package (`-DskipTests`)
 
 ## Scripts
 
 | Command | Description |
 |------|------|
-| `npm run dev` | Run the full local development environment |
-| `npm run dev:frontend` | Run only the frontend |
-| `npm run dev:backend` | Run only the backend |
+| `npm run dev` | Run frontend dev server |
+| `npm run dev:frontend` | Run frontend only |
+| `npm run dev:backend` | Run Spring backend |
+| `npm run dev:backend:legacy` | Run legacy TypeScript backend |
 | `npm run check:frontend-deps` | Check frontend workspace dependencies |
 | `npm run check:backend-deps` | Check backend workspace dependencies |
 | `npm run check:deps` | Check frontend/backend dependencies |
-| `npm run build` | Build frontend and backend |
-| `npm run verify` | Run dependency checks and frontend/backend build verification |
+| `npm run verify` | Dependency checks + frontend build + Spring tests |
+| `npm run build` | Build frontend and Spring backend |
+| `npm run test:backend` | Run Spring backend tests |
+| `npm run test:frontend` | Run frontend unit tests (Vitest) |
+| `npm run test:e2e:demo-student` | Playwright demo student journey E2E |
+| `npm run smoke:media-ai-shortform` | Media/AI/shortform smoke test |
+| `npm run orch:run` | Run orchestrator |
+| `npm run orch:checks` | Validate orchestrator policy/results |
+
+## CI Operations
+
+- Manual run: `backend-spring-tests` workflow supports `workflow_dispatch`.
+- Concurrency: previous runs on the same branch/workflow are auto-canceled (`cancel-in-progress: true`).
+- Timeout: `backend-spring-tests` job is limited to 15 minutes (`timeout-minutes: 15`).
 
 ## Docs
 
-- [`docs/README.md`](./docs/README.md): full documentation hub
-- [`agent.md`](./agent.md): AI collaboration rules
-- [`backend/docs/README.md`](./backend/docs/README.md): backend documentation hub
-- [`README.md`](./README.md): Korean README
+- [docs/README.md](./docs/README.md): documentation hub
+- [docs/project/20-status-and-next-steps.md](./docs/project/20-status-and-next-steps.md): current status and next steps
+- [backend-spring/README.md](./backend-spring/README.md): Spring backend runtime/baseline
+- [backend/docs/README.md](./backend/docs/README.md): backend docs hub
+- [agent.md](./agent.md): AI collaboration rules
 
 ## Design Principles
 
 - AI is an assistant, not a replacement.
 - Keep outputs structured and provide fallback paths.
-- Keep the code and docs aligned, and make decisions traceable.
+- Keep code and docs aligned, and keep decisions traceable.
 - Treat lectures as reusable learning assets, not just playback content.
 
 ## License
