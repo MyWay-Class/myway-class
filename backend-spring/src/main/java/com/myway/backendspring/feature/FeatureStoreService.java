@@ -37,6 +37,7 @@ public class FeatureStoreService {
     private final FeatureStorePayloadSupport payloadSupport;
     private final FeatureStoreTranscribeSupport transcribeSupport;
     private final FeatureStoreRagSupport ragSupport;
+    private final FeatureStoreAiSupport aiSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -51,7 +52,8 @@ public class FeatureStoreService {
             FeatureStorePipelineSupport pipelineSupport,
             FeatureStorePayloadSupport payloadSupport,
             FeatureStoreTranscribeSupport transcribeSupport,
-            FeatureStoreRagSupport ragSupport
+            FeatureStoreRagSupport ragSupport,
+            FeatureStoreAiSupport aiSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -65,6 +67,7 @@ public class FeatureStoreService {
         this.payloadSupport = payloadSupport;
         this.transcribeSupport = transcribeSupport;
         this.ragSupport = ragSupport;
+        this.aiSupport = aiSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -81,32 +84,33 @@ public class FeatureStoreService {
                 new FeatureStorePipelineSupport(),
                 new FeatureStorePayloadSupport(),
                 new FeatureStoreTranscribeSupport(),
-                new FeatureStoreRagSupport()
+                new FeatureStoreRagSupport(),
+                new FeatureStoreAiSupport()
         );
     }
 
     public Map<String, Object> aiInsights(String userId) {
-        return aiFeatureService == null ? Map.of() : aiFeatureService.aiInsights(userId);
+        return aiSupport.aiInsights(aiFeatureService, userId);
     }
 
     public Map<String, Object> aiLogs(String userId) {
-        return aiFeatureService == null ? Map.of("user_id", userId, "items", List.of(), "count", 0) : aiFeatureService.aiLogs(userId);
+        return aiSupport.aiLogs(aiFeatureService, userId);
     }
 
     public Map<String, Object> aiRecommendations(String userId) {
-        return aiFeatureService == null ? Map.of("user_id", userId, "items", List.of(), "count", 0) : aiFeatureService.aiRecommendations(userId);
+        return aiSupport.aiRecommendations(aiFeatureService, userId);
     }
 
     public Map<String, Object> aiSettings(String userId) {
-        return aiFeatureService == null ? Map.of() : aiFeatureService.aiSettings(userId);
+        return aiSupport.aiSettings(aiFeatureService, userId);
     }
 
     public Map<String, Object> updateAiSettings(String userId, Map<String, Object> patch) {
-        return aiFeatureService == null ? Map.of() : aiFeatureService.updateAiSettings(userId, patch);
+        return aiSupport.updateAiSettings(aiFeatureService, userId, patch);
     }
 
     public Map<String, Object> aiProviders(String userId) {
-        return aiFeatureService == null ? Map.of("providers", List.of("demo", "ollama", "gemini"), "current", "demo") : aiFeatureService.aiProviders(userId);
+        return aiSupport.aiProviders(aiFeatureService, userId);
     }
 
     public Map<String, Object> sttProviders() {
@@ -118,12 +122,11 @@ public class FeatureStoreService {
     }
 
     public boolean canConsumeAi(String userId) {
-        if (aiFeatureService == null) return true;
-        return aiFeatureService.canConsumeAi(userId);
+        return aiSupport.canConsumeAi(aiFeatureService, userId);
     }
 
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
-        if (aiFeatureService != null) aiFeatureService.recordAiUsage(userId, feature, success, inputText);
+        aiSupport.recordAiUsage(aiFeatureService, userId, feature, success, inputText);
     }
 
     public Map<String, Object> ragOverview(String query, String lectureId, String courseId, Integer limit) {
