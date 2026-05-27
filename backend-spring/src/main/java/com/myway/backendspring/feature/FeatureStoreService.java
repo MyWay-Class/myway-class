@@ -38,6 +38,7 @@ public class FeatureStoreService {
     private final FeatureStoreTranscribeSupport transcribeSupport;
     private final FeatureStoreRagSupport ragSupport;
     private final FeatureStoreAiSupport aiSupport;
+    private final FeatureStoreMediaOpsSupport mediaOpsSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -53,7 +54,8 @@ public class FeatureStoreService {
             FeatureStorePayloadSupport payloadSupport,
             FeatureStoreTranscribeSupport transcribeSupport,
             FeatureStoreRagSupport ragSupport,
-            FeatureStoreAiSupport aiSupport
+            FeatureStoreAiSupport aiSupport,
+            FeatureStoreMediaOpsSupport mediaOpsSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -68,6 +70,7 @@ public class FeatureStoreService {
         this.transcribeSupport = transcribeSupport;
         this.ragSupport = ragSupport;
         this.aiSupport = aiSupport;
+        this.mediaOpsSupport = mediaOpsSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -85,7 +88,8 @@ public class FeatureStoreService {
                 new FeatureStorePayloadSupport(),
                 new FeatureStoreTranscribeSupport(),
                 new FeatureStoreRagSupport(),
-                new FeatureStoreAiSupport()
+                new FeatureStoreAiSupport(),
+                new FeatureStoreMediaOpsSupport()
         );
     }
 
@@ -114,11 +118,11 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> sttProviders() {
-        return mediaProcessingService == null ? Map.of("generated_at", Instant.now().toString(), "providers", List.of(), "plans", List.of()) : mediaProcessingService.sttProviders();
+        return mediaOpsSupport.sttProviders(mediaProcessingService);
     }
 
     public Map<String, Object> processorHealth() {
-        return mediaProcessingService == null ? Map.of("ok", false, "jobs", Map.of("total", 0, "processing", 0, "completed", 0, "failed", 0), "recent_jobs", List.of(), "updated_at", Instant.now().toString()) : mediaProcessingService.processorHealth();
+        return mediaOpsSupport.processorHealth(mediaProcessingService);
     }
 
     public boolean canConsumeAi(String userId) {
@@ -187,8 +191,7 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> dispatchExtractionJob(String extractionId, String sourceVideoUrl) {
-        if (mediaProcessingService == null) return null;
-        return mediaProcessingService.dispatchExtractionJob(extractionId, sourceVideoUrl);
+        return mediaOpsSupport.dispatchExtractionJob(mediaProcessingService, extractionId, sourceVideoUrl);
     }
 
     public Map<String, Object> transcript(String lectureId) {
