@@ -31,6 +31,7 @@ public class DemoLearningService {
     private final LectureMetadataSyncSupport lectureMetadataSyncSupport;
     private final LearningEnrollmentStoreSupport learningEnrollmentStoreSupport;
     private final LearningPayloadMapper learningPayloadMapper;
+    private final LectureDurationResolver lectureDurationResolver;
 
     @Autowired
     public DemoLearningService(
@@ -39,7 +40,8 @@ public class DemoLearningService {
             LearningProgressCalculator progressCalculator,
             LectureMetadataSyncSupport lectureMetadataSyncSupport,
             LearningEnrollmentStoreSupport learningEnrollmentStoreSupport,
-            LearningPayloadMapper learningPayloadMapper
+            LearningPayloadMapper learningPayloadMapper,
+            LectureDurationResolver lectureDurationResolver
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -47,6 +49,7 @@ public class DemoLearningService {
         this.lectureMetadataSyncSupport = lectureMetadataSyncSupport;
         this.learningEnrollmentStoreSupport = learningEnrollmentStoreSupport;
         this.learningPayloadMapper = learningPayloadMapper;
+        this.lectureDurationResolver = lectureDurationResolver;
         initSeedData();
     }
 
@@ -58,6 +61,7 @@ public class DemoLearningService {
         this.lectureMetadataSyncSupport = new LectureMetadataSyncSupport();
         this.learningEnrollmentStoreSupport = new LearningEnrollmentStoreSupport();
         this.learningPayloadMapper = new LearningPayloadMapper();
+        this.lectureDurationResolver = new LectureDurationResolver();
         initSeedData();
     }
 
@@ -326,7 +330,13 @@ public class DemoLearningService {
         }
         LectureItem lectureWithMeta = attachLectureMeta(lecture);
         int fallbackMinutes = Math.max(1, lecture.duration_minutes());
-        int resolvedMinutes = resolveDurationMinutesFromMedia(lecture.id(), fallbackMinutes);
+        int resolvedMinutes = lectureDurationResolver.resolveDurationMinutesFromMedia(
+                store,
+                TRANSCRIPT_SCOPE,
+                EXTRACTION_SCOPE,
+                lecture.id(),
+                fallbackMinutes
+        );
         if (resolvedMinutes == lecture.duration_minutes()) {
             return lectureWithMeta;
         }
@@ -339,41 +349,6 @@ public class DemoLearningService {
                 lectureWithMeta.transcript_excerpt(),
                 lectureWithMeta.instructor_name()
         );
-    }
-
-    private int resolveDurationMinutesFromMedia(String lectureId, int fallbackMinutes) {
-        Map<String, Object> transcript = store.getKv(TRANSCRIPT_SCOPE, lectureId);
-        int fromTranscript = toDurationMinutes(transcript == null ? null : transcript.get("duration_ms"));
-        if (fromTranscript > 0) {
-            return fromTranscript;
-        }
-
-        return store.listKvByScope(EXTRACTION_SCOPE).stream()
-                .filter(row -> lectureId.equals(String.valueOf(row.getOrDefault("lecture_id", "")).trim()))
-                .map(row -> toDurationMinutes(row.get("audio_duration_ms")))
-                .filter(duration -> duration > 0)
-                .findFirst()
-                .orElse(fallbackMinutes);
-    }
-
-    private int toDurationMinutes(Object rawDurationMs) {
-        if (rawDurationMs == null) {
-            return 0;
-        }
-        long durationMs;
-        if (rawDurationMs instanceof Number number) {
-            durationMs = number.longValue();
-        } else {
-            try {
-                durationMs = Long.parseLong(String.valueOf(rawDurationMs).trim());
-            } catch (Exception ignored) {
-                return 0;
-            }
-        }
-        if (durationMs <= 0) {
-            return 0;
-        }
-        return (int) Math.max(1L, Math.round(durationMs / 60000.0d));
     }
 
     public Map<String, Object> syncLectureMetadataFromTranscripts(boolean overwriteExisting) {
