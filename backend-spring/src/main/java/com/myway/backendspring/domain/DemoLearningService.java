@@ -27,11 +27,17 @@ public class DemoLearningService {
     private final Set<String> completedLectureKeys = Collections.synchronizedSet(new HashSet<>());
     private final FeatureJdbcStore store;
     private final ActivityEventService activityEventService;
+    private final LearningProgressCalculator progressCalculator;
 
     @Autowired
-    public DemoLearningService(FeatureJdbcStore store, ActivityEventService activityEventService) {
+    public DemoLearningService(
+            FeatureJdbcStore store,
+            ActivityEventService activityEventService,
+            LearningProgressCalculator progressCalculator
+    ) {
         this.store = store;
         this.activityEventService = activityEventService;
+        this.progressCalculator = progressCalculator;
         initSeedData();
     }
 
@@ -39,6 +45,7 @@ public class DemoLearningService {
     public DemoLearningService() {
         this.store = null;
         this.activityEventService = null;
+        this.progressCalculator = new LearningProgressCalculator();
         initSeedData();
     }
 
@@ -225,24 +232,23 @@ public class DemoLearningService {
 
         List<LectureItem> lectures = getCourseLectures(lecture.course_id());
         Set<String> completedLectureIds = listCompletedLectureIds(userId);
-        long completed = lectures.stream().filter(l -> completedLectureIds.contains(l.id())).count();
-        int total = lectures.size();
-        int progress = total == 0 ? 0 : (int) Math.round((completed * 100.0) / total);
+        Map<String, Object> summary = progressCalculator.completionSummary(
+                lectureId,
+                lecture.course_id(),
+                lectures,
+                completedLectureIds
+        );
         appendActivity(
                 userId,
                 "lecture_complete",
                 "lecture",
                 lectureId,
-                Map.of("course_id", lecture.course_id(), "progress_percent", progress)
+                Map.of(
+                        "course_id", lecture.course_id(),
+                        "progress_percent", summary.get("progress_percent")
+                )
         );
-
-        return Map.of(
-                "lecture_id", lectureId,
-                "course_id", lecture.course_id(),
-                "progress_percent", progress,
-                "completed_lectures", completed,
-                "total_lectures", total
-        );
+        return summary;
     }
 
     public SmartChatResult chat(String message) {
@@ -252,10 +258,8 @@ public class DemoLearningService {
 
     private int progressPercent(String userId, String courseId) {
         List<LectureItem> lectures = getCourseLectures(courseId);
-        if (lectures.isEmpty()) return 0;
         Set<String> completedLectureIds = listCompletedLectureIds(userId);
-        long completed = lectures.stream().filter(l -> completedLectureIds.contains(l.id())).count();
-        return (int) Math.round((completed * 100.0) / lectures.size());
+        return progressCalculator.progressPercent(lectures, completedLectureIds);
     }
 
     private EnrollmentItem findEnrollment(String userId, String courseId) {
