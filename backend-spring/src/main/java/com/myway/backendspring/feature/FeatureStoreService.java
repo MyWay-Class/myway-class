@@ -35,6 +35,7 @@ public class FeatureStoreService {
     private final AdminAssignmentService adminAssignmentService;
     private final FeatureStorePipelineSupport pipelineSupport;
     private final FeatureStorePayloadSupport payloadSupport;
+    private final FeatureStoreTranscribeSupport transcribeSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -47,7 +48,8 @@ public class FeatureStoreService {
             CustomCourseService customCourseService,
             AdminAssignmentService adminAssignmentService,
             FeatureStorePipelineSupport pipelineSupport,
-            FeatureStorePayloadSupport payloadSupport
+            FeatureStorePayloadSupport payloadSupport,
+            FeatureStoreTranscribeSupport transcribeSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -59,6 +61,7 @@ public class FeatureStoreService {
         this.adminAssignmentService = adminAssignmentService;
         this.pipelineSupport = pipelineSupport;
         this.payloadSupport = payloadSupport;
+        this.transcribeSupport = transcribeSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -73,7 +76,8 @@ public class FeatureStoreService {
                 null,
                 null,
                 new FeatureStorePipelineSupport(),
-                new FeatureStorePayloadSupport()
+                new FeatureStorePayloadSupport(),
+                new FeatureStoreTranscribeSupport()
         );
     }
 
@@ -209,37 +213,22 @@ public class FeatureStoreService {
 
     public Map<String, Object> transcribe(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl, String extractionId) {
         if (mediaTranscriptionService == null) return Map.of();
-        TranscribeRequestContext request = new TranscribeRequestContext(
+        Map<String, Object> extraction = transcribeSupport.resolveExtractionForTranscription(
+                store,
+                lectureId,
+                audioUrl,
+                extractionId,
+                this::createExtraction
+        );
+        return transcribeSupport.runTranscription(
+                mediaTranscriptionService,
+                extraction,
                 lectureId,
                 language,
                 durationMsInput,
                 sttProvider,
                 sttModel,
-                audioUrl,
-                extractionId
-        );
-        Map<String, Object> extraction = resolveExtractionForTranscription(request);
-        return runTranscription(extraction, request);
-    }
-
-    private Map<String, Object> resolveExtractionForTranscription(TranscribeRequestContext request) {
-        String extractionId = request.extractionId();
-        if (extractionId == null || extractionId.isBlank()) {
-            return createExtraction(request.lectureId(), request.audioUrl());
-        }
-        Map<String, Object> extraction = store.getKv(EXTRACTION_SCOPE, extractionId);
-        return extraction != null ? extraction : createExtraction(request.lectureId(), request.audioUrl());
-    }
-
-    private Map<String, Object> runTranscription(Map<String, Object> extraction, TranscribeRequestContext request) {
-        return mediaTranscriptionService.transcribe(
-                extraction,
-                request.lectureId(),
-                request.language(),
-                request.durationMsInput(),
-                request.sttProvider(),
-                request.sttModel(),
-                request.audioUrl()
+                audioUrl
         );
     }
 
@@ -263,23 +252,10 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion, String audioUrl) {
-        return completeExtractionCallback(new ExtractionCallbackCommand(
-                extractionId,
-                status,
-                errorMessage,
-                eventVersion,
-                audioUrl,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-        ));
+        return completeExtractionCallback(
+                extractionId, status, errorMessage, eventVersion, audioUrl,
+                null, null, null, null, null, null, null, null, null, null
+        );
     }
 
     public Map<String, Object> completeExtractionCallback(
@@ -299,7 +275,9 @@ public class FeatureStoreService {
             String approvalState,
             String notificationChannel
     ) {
-        return completeExtractionCallback(new ExtractionCallbackCommand(
+        if (mediaTranscriptionService == null) return null;
+        return transcribeSupport.completeExtractionCallback(
+                mediaTranscriptionService,
                 extractionId,
                 status,
                 errorMessage,
@@ -315,27 +293,6 @@ public class FeatureStoreService {
                 overwritePolicy,
                 approvalState,
                 notificationChannel
-        ));
-    }
-
-    private Map<String, Object> completeExtractionCallback(ExtractionCallbackCommand command) {
-        if (mediaTranscriptionService == null) return null;
-        return mediaTranscriptionService.completeExtractionCallback(
-                command.extractionId(),
-                command.status(),
-                command.errorMessage(),
-                command.eventVersion(),
-                command.audioUrl(),
-                command.processingJobId(),
-                command.processingStage(),
-                command.processingStep(),
-                command.audioFormat(),
-                command.sampleRate(),
-                command.channels(),
-                command.syncMode(),
-                command.overwritePolicy(),
-                command.approvalState(),
-                command.notificationChannel()
         );
     }
 
@@ -441,36 +398,6 @@ public class FeatureStoreService {
 
     public Map<String, Object> saveAdminAssignment(String actorUserId, String courseId, List<String> studentIds) {
         return adminAssignmentService == null ? Map.of() : adminAssignmentService.saveAdminAssignment(actorUserId, courseId, studentIds);
-    }
-
-    private record TranscribeRequestContext(
-            String lectureId,
-            String language,
-            Integer durationMsInput,
-            String sttProvider,
-            String sttModel,
-            String audioUrl,
-            String extractionId
-    ) {
-    }
-
-    private record ExtractionCallbackCommand(
-            String extractionId,
-            String status,
-            String errorMessage,
-            long eventVersion,
-            String audioUrl,
-            String processingJobId,
-            String processingStage,
-            String processingStep,
-            String audioFormat,
-            Integer sampleRate,
-            Integer channels,
-            String syncMode,
-            String overwritePolicy,
-            String approvalState,
-            String notificationChannel
-    ) {
     }
 
 }
