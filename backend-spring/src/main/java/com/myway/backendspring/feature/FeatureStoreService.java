@@ -36,6 +36,7 @@ public class FeatureStoreService {
     private final FeatureStorePipelineSupport pipelineSupport;
     private final FeatureStorePayloadSupport payloadSupport;
     private final FeatureStoreTranscribeSupport transcribeSupport;
+    private final FeatureStoreRagSupport ragSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -49,7 +50,8 @@ public class FeatureStoreService {
             AdminAssignmentService adminAssignmentService,
             FeatureStorePipelineSupport pipelineSupport,
             FeatureStorePayloadSupport payloadSupport,
-            FeatureStoreTranscribeSupport transcribeSupport
+            FeatureStoreTranscribeSupport transcribeSupport,
+            FeatureStoreRagSupport ragSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -62,6 +64,7 @@ public class FeatureStoreService {
         this.pipelineSupport = pipelineSupport;
         this.payloadSupport = payloadSupport;
         this.transcribeSupport = transcribeSupport;
+        this.ragSupport = ragSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -77,7 +80,8 @@ public class FeatureStoreService {
                 null,
                 new FeatureStorePipelineSupport(),
                 new FeatureStorePayloadSupport(),
-                new FeatureStoreTranscribeSupport()
+                new FeatureStoreTranscribeSupport(),
+                new FeatureStoreRagSupport()
         );
     }
 
@@ -134,38 +138,23 @@ public class FeatureStoreService {
             Double minScore,
             boolean includeDebug
     ) {
-        if (ragService == null) {
-            return Map.of();
-        }
-        return ragService.ragOverview(query, lectureId, courseId, limit, minScore, includeDebug);
+        return ragSupport.ragOverview(ragService, query, lectureId, courseId, limit, minScore, includeDebug);
     }
 
     public Map<String, Object> ragIndexOverview(String lectureId, String courseId) {
-        if (ragService == null) {
-            return Map.of();
-        }
-        return ragService.ragIndexOverview(lectureId, courseId);
+        return ragSupport.ragIndexOverview(ragService, lectureId, courseId);
     }
 
     public Map<String, Object> rebuildRagIndex(String lectureId, String courseId) {
-        if (ragService == null) {
-            return Map.of();
-        }
-        return ragService.rebuildRagIndex(lectureId, courseId);
+        return ragSupport.rebuildRagIndex(ragService, lectureId, courseId);
     }
 
     public Map<String, Object> clearRagIndex(String lectureId, String courseId) {
-        if (ragService == null) {
-            return Map.of();
-        }
-        return ragService.clearRagIndex(lectureId, courseId);
+        return ragSupport.clearRagIndex(ragService, lectureId, courseId);
     }
 
     public Map<String, Object> evaluateRagBatch(List<Map<String, Object>> cases, Integer topK) {
-        if (ragService == null) {
-            return Map.of();
-        }
-        return ragService.evaluateBatch(cases, topK);
+        return ragSupport.evaluateRagBatch(ragService, cases, topK);
     }
 
     public Map<String, Object> mediaUpload(String lectureId, String fileName) {
