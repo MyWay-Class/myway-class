@@ -2,7 +2,7 @@ package com.myway.backendspring.api;
 
 import com.myway.backendspring.api.support.ApiAuthGuards;
 import com.myway.backendspring.api.support.MediaAssetPlaybackSupport;
-import com.myway.backendspring.auth.RolePolicy;
+import com.myway.backendspring.api.support.MediaControllerSupport;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
@@ -29,19 +29,22 @@ public class MediaController {
     private final DemoLearningService learningService;
     private final String callbackToken;
     private final MediaAssetPlaybackSupport playbackSupport;
+    private final MediaControllerSupport support;
 
     public MediaController(
             SessionService sessionService,
             MediaPipelineService mediaPipelineService,
             DemoLearningService learningService,
             @Value("${myway.media.callback.token:dev-media-callback-token}") String callbackToken,
-            MediaAssetPlaybackSupport playbackSupport
+            MediaAssetPlaybackSupport playbackSupport,
+            MediaControllerSupport support
     ) {
         this.sessionService = sessionService;
         this.mediaPipelineService = mediaPipelineService;
         this.learningService = learningService;
         this.callbackToken = callbackToken;
         this.playbackSupport = playbackSupport;
+        this.support = support;
     }
 
     public record ExtractAudioRequest(
@@ -86,40 +89,15 @@ public class MediaController {
             String note
     ) {}
 
-    private String trimRequired(String value) {
-        return value.trim();
-    }
-
-    private String trimOptional(String value) {
-        return value == null ? "" : value.trim();
-    }
-
-    private String optionalOrNull(String value) {
-        String trimmed = trimOptional(value);
-        return trimmed.isBlank() ? null : trimmed;
-    }
-
-    private String optionalOrDefault(String value, String defaultValue) {
-        String trimmed = trimOptional(value);
-        return trimmed.isBlank() ? defaultValue : trimmed;
-    }
-
     private SessionView require(String auth) { return ApiAuthGuards.requireSession(sessionService, auth); }
     private <T> ResponseEntity<ApiResponse<T>> unauthenticated() { return ApiAuthGuards.unauthenticated(); }
     private boolean requireAuthenticated(String auth) { return require(auth) != null; }
-    private boolean canManageMedia(SessionView session) {
-        return session != null && RolePolicy.canManageCourses(session.user().role());
-    }
-
-    private boolean isAdmin(SessionView session) {
-        return session != null && RolePolicy.isAdmin(session.user().role());
-    }
 
     @PostMapping("/upload-video")
     public ResponseEntity<ApiResponse<Map<String, Object>>> upload(@RequestHeader(value = "Authorization", required = false) String auth, @RequestParam("lecture_id") String lectureId, @RequestParam(value = "video_file", required = false) org.springframework.web.multipart.MultipartFile file) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "영상 업로드는 강사와 운영자만 사용할 수 있습니다."));
+        if (!support.canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "영상 업로드는 강사와 운영자만 사용할 수 있습니다."));
         if (lectureId == null || lectureId.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.failure("LECTURE_ID_REQUIRED", "lecture_id가 필요합니다."));
         String fileName = file != null ? file.getOriginalFilename() : "uploaded.mp4";
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(mediaPipelineService.mediaUpload(lectureId.trim(), fileName), "강의 영상이 업로드되었습니다."));
@@ -129,9 +107,9 @@ public class MediaController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> extract(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody ExtractAudioRequest body) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
-        String lectureId = trimRequired(body.lecture_id());
-        String audioUrl = optionalOrNull(body.audio_url());
+        if (!support.canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "오디오 추출은 강사와 운영자만 사용할 수 있습니다."));
+        String lectureId = support.trimRequired(body.lecture_id());
+        String audioUrl = support.optionalOrNull(body.audio_url());
         Map<String, Object> extraction = mediaPipelineService.createExtraction(lectureId, audioUrl);
         Map<String, Object> dispatched = mediaPipelineService.dispatchExtractionJob(String.valueOf(extraction.get("id")), audioUrl);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(dispatched != null ? dispatched : extraction, "오디오 추출 job이 생성되었습니다."));
@@ -140,17 +118,18 @@ public class MediaController {
     @PostMapping("/transcribe")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcribe(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody TranscribeRequest body) {
         if (!requireAuthenticated(auth)) return unauthenticated();
-        String lectureId = trimRequired(body.lecture_id());
+        String lectureId = support.trimRequired(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        String language = optionalOrDefault(body.language(), "ko");
+        String language = support.optionalOrDefault(body.language(), "ko");
         Integer durationMs = body.duration_ms();
-        String sttProvider = optionalOrNull(body.stt_provider());
-        String sttModel = optionalOrNull(body.stt_model());
-        String audioUrl = optionalOrNull(body.audio_url());
+        String sttProvider = support.optionalOrNull(body.stt_provider());
+        String sttModel = support.optionalOrNull(body.stt_model());
+        String audioUrl = support.optionalOrNull(body.audio_url());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                triggerLectureMetadataAutoSync(
+                support.withLectureMetaSync(
                         lectureId,
-                        mediaPipelineService.transcribe(lectureId, language, durationMs, sttProvider, sttModel, audioUrl)
+                        mediaPipelineService.transcribe(lectureId, language, durationMs, sttProvider, sttModel, audioUrl),
+                        learningService.syncLectureMetadataForLectureFromTranscript(lectureId, false)
                 ),
                 "트랜스크립트가 생성되었습니다."
         ));
@@ -159,12 +138,12 @@ public class MediaController {
     @PostMapping("/summarize")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summarize(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SummarizeRequest body) {
         if (!requireAuthenticated(auth)) return unauthenticated();
-        String lectureId = trimRequired(body.lecture_id());
+        String lectureId = support.trimRequired(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        String style = optionalOrDefault(body.style(), "brief");
-        String language = optionalOrDefault(body.language(), "ko");
+        String style = support.optionalOrDefault(body.style(), "brief");
+        String language = support.optionalOrDefault(body.language(), "ko");
         Map<String, Object> note = mediaPipelineService.summarizeLecture(lectureId, style, language);
-        Map<String, Object> response = SummaryResponseAssembler.assemble(note, style, mediaPipelineService.pipeline(lectureId));
+        Map<String, Object> response = support.assembleSummaryResponse(note, style, mediaPipelineService.pipeline(lectureId));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "요약이 생성되었습니다."));
     }
 
@@ -203,7 +182,7 @@ public class MediaController {
     ) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        if (!canManageMedia(session)) {
+        if (!support.canManageMedia(session)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.failure("FORBIDDEN", "화자 검수는 강사와 운영자만 사용할 수 있습니다."));
         }
@@ -211,13 +190,13 @@ public class MediaController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         }
-        String instructorName = optionalOrNull(body == null ? null : body.instructor_name());
+        String instructorName = support.optionalOrNull(body == null ? null : body.instructor_name());
         if (instructorName == null || instructorName.isBlank()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.failure("INSTRUCTOR_NAME_REQUIRED", "instructor_name이 필요합니다."));
         }
-        String speakerLabel = optionalOrDefault(body == null ? null : body.speaker_label(), "SPEAKER_01");
-        String note = optionalOrNull(body == null ? null : body.note());
+        String speakerLabel = support.optionalOrDefault(body == null ? null : body.speaker_label(), "SPEAKER_01");
+        String note = support.optionalOrNull(body == null ? null : body.note());
         Map<String, Object> payload = mediaPipelineService.upsertSpeakerReview(
                 lectureId,
                 speakerLabel,
@@ -310,13 +289,13 @@ public class MediaController {
     ) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        if (!canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의 영상 연결은 강사와 운영자만 사용할 수 있습니다."));
-        String lectureId = trimRequired(body.lecture_id());
+        if (!support.canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의 영상 연결은 강사와 운영자만 사용할 수 있습니다."));
+        String lectureId = support.trimRequired(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         }
-        String assetKey = trimRequired(body.asset_key());
-        String videoUrl = optionalOrNull(body.video_url());
+        String assetKey = support.trimRequired(body.asset_key());
+        String videoUrl = support.optionalOrNull(body.video_url());
         Map<String, Object> payload = mediaPipelineService.bindLectureVideoAsset(lectureId, assetKey, videoUrl);
         if (payload == null) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_ASSET_BINDING", "lecture_id와 asset_key를 확인해 주세요."));
@@ -344,7 +323,7 @@ public class MediaController {
     ) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        if (!isAdmin(session)) {
+        if (!support.isAdmin(session)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.failure("FORBIDDEN", "배치 파이프라인 실행은 운영자만 사용할 수 있습니다."));
         }
@@ -364,31 +343,4 @@ public class MediaController {
         );
         return ResponseEntity.ok(ApiResponse.success(result, "STT/RAG 배치 파이프라인 실행이 완료되었습니다."));
     }
-
-
-    private static final class SummaryResponseAssembler {
-        private static Map<String, Object> assemble(Map<String, Object> note, String style, Map<String, Object> pipeline) {
-            return Map.of(
-                    "note_id", note.get("id"),
-                    "lecture_id", note.get("lecture_id"),
-                    "title", note.get("title"),
-                    "content", note.get("content"),
-                    "key_concepts", note.get("key_concepts"),
-                    "keywords", note.get("keywords"),
-                    "timestamps", note.get("timestamps"),
-                    "style", style,
-                    "pipeline", pipeline
-            );
-        }
-    }
-
-    private Map<String, Object> triggerLectureMetadataAutoSync(String lectureId, Map<String, Object> transcribeResult) {
-        if (lectureId == null || lectureId.isBlank() || transcribeResult == null) {
-            return transcribeResult;
-        }
-        Map<String, Object> merged = new java.util.LinkedHashMap<>(transcribeResult);
-        merged.put("lecture_meta_sync", learningService.syncLectureMetadataForLectureFromTranscript(lectureId, false));
-        return merged;
-    }
-
 }
