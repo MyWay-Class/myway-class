@@ -28,16 +28,19 @@ public class DemoLearningService {
     private final FeatureJdbcStore store;
     private final ActivityEventService activityEventService;
     private final LearningProgressCalculator progressCalculator;
+    private final LectureMetadataSyncSupport lectureMetadataSyncSupport;
 
     @Autowired
     public DemoLearningService(
             FeatureJdbcStore store,
             ActivityEventService activityEventService,
-            LearningProgressCalculator progressCalculator
+            LearningProgressCalculator progressCalculator,
+            LectureMetadataSyncSupport lectureMetadataSyncSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
         this.progressCalculator = progressCalculator;
+        this.lectureMetadataSyncSupport = lectureMetadataSyncSupport;
         initSeedData();
     }
 
@@ -46,6 +49,7 @@ public class DemoLearningService {
         this.store = null;
         this.activityEventService = null;
         this.progressCalculator = new LearningProgressCalculator();
+        this.lectureMetadataSyncSupport = new LectureMetadataSyncSupport();
         initSeedData();
     }
 
@@ -425,7 +429,7 @@ public class DemoLearningService {
                 continue;
             }
 
-            Map<String, Object> merged = mergeLectureMeta(current, suggested, overwriteExisting);
+            Map<String, Object> merged = lectureMetadataSyncSupport.mergeLectureMeta(current, suggested, overwriteExisting);
             store.upsertKv(LECTURE_META_SCOPE, lectureId, merged);
             updated += 1;
             items.add(Map.of("lecture_id", lectureId, "status", "UPDATED"));
@@ -482,7 +486,7 @@ public class DemoLearningService {
             );
         }
 
-        Map<String, Object> merged = mergeLectureMeta(current, suggested, overwriteExisting);
+        Map<String, Object> merged = lectureMetadataSyncSupport.mergeLectureMeta(current, suggested, overwriteExisting);
         store.upsertKv(LECTURE_META_SCOPE, normalizedLectureId, merged);
         return Map.of(
                 "lecture_id", normalizedLectureId,
@@ -656,27 +660,27 @@ public class DemoLearningService {
             return lecture;
         }
         Map<String, Object> currentMeta = store.getKv(LECTURE_META_SCOPE, lectureId);
-        if (isLectureMetaMissing(currentMeta)) {
+        if (lectureMetadataSyncSupport.isLectureMetaMissing(currentMeta)) {
             Map<String, Object> transcript = store.getKv(TRANSCRIPT_SCOPE, lectureId);
             if (transcript != null) {
                 Map<String, Object> suggested = buildLectureMetaFromTranscript(lecture, transcript);
-                Map<String, Object> merged = mergeLectureMeta(currentMeta, suggested, false);
+                Map<String, Object> merged = lectureMetadataSyncSupport.mergeLectureMeta(currentMeta, suggested, false);
                 store.upsertKv(LECTURE_META_SCOPE, lectureId, merged);
                 currentMeta = merged;
             }
         }
-        String content = chooseText(
-                asText(currentMeta == null ? null : currentMeta.get("content_text")),
+        String content = lectureMetadataSyncSupport.chooseText(
+                lectureMetadataSyncSupport.asText(currentMeta == null ? null : currentMeta.get("content_text")),
                 lecture.content_text(),
                 "강의 핵심 내용을 정리 중입니다."
         );
-        String excerpt = chooseText(
-                asText(currentMeta == null ? null : currentMeta.get("transcript_excerpt")),
+        String excerpt = lectureMetadataSyncSupport.chooseText(
+                lectureMetadataSyncSupport.asText(currentMeta == null ? null : currentMeta.get("transcript_excerpt")),
                 lecture.transcript_excerpt(),
                 ""
         );
-        String instructorName = chooseText(
-                asText(currentMeta == null ? null : currentMeta.get("instructor_name")),
+        String instructorName = lectureMetadataSyncSupport.chooseText(
+                lectureMetadataSyncSupport.asText(currentMeta == null ? null : currentMeta.get("instructor_name")),
                 lecture.instructor_name(),
                 ""
         );
@@ -691,90 +695,9 @@ public class DemoLearningService {
         );
     }
 
-    private boolean isLectureMetaMissing(Map<String, Object> meta) {
-        if (meta == null) return true;
-        return asText(meta.get("content_text")).isBlank()
-                && asText(meta.get("transcript_excerpt")).isBlank()
-                && asText(meta.get("instructor_name")).isBlank();
-    }
-
     private Map<String, Object> buildLectureMetaFromTranscript(LectureItem lecture, Map<String, Object> transcript) {
         String lectureId = lecture == null ? "" : lecture.id();
-        String fullText = asText(transcript.get("full_text"));
-        if (fullText.isBlank()) {
-            Object segmentsRaw = transcript.get("segments");
-            if (segmentsRaw instanceof List<?> segments) {
-                StringBuilder builder = new StringBuilder();
-                for (Object segment : segments) {
-                    if (!(segment instanceof Map<?, ?> map)) continue;
-                    Object textRaw = map.containsKey("text") ? map.get("text") : "";
-                    String text = String.valueOf(textRaw).trim();
-                    if (!text.isBlank()) {
-                        if (!builder.isEmpty()) builder.append(' ');
-                        builder.append(text);
-                    }
-                }
-                fullText = builder.toString();
-            }
-        }
-
         Map<String, Object> speakerReview = store.getKv(SPEAKER_REVIEW_SCOPE, lectureId);
-        String instructorName = asText(speakerReview == null ? null : speakerReview.get("instructor_name"));
-        if (instructorName.isBlank()) {
-            instructorName = asText(lecture == null ? null : lecture.instructor_name());
-        }
-        String excerpt = trimToLimit(fullText, 180);
-        String content = trimToLimit(fullText, 1200);
-        Map<String, Object> meta = new HashMap<>();
-        meta.put("lecture_id", lectureId);
-        meta.put("content_text", content);
-        meta.put("transcript_excerpt", excerpt);
-        meta.put("instructor_name", instructorName);
-        meta.put("updated_at", Instant.now().toString());
-        return meta;
-    }
-
-    private Map<String, Object> mergeLectureMeta(Map<String, Object> current, Map<String, Object> suggested, boolean overwriteExisting) {
-        Map<String, Object> merged = new HashMap<>();
-        if (current != null) {
-            merged.putAll(current);
-        }
-        for (String field : List.of("lecture_id", "updated_at")) {
-            if (suggested.containsKey(field)) {
-                merged.put(field, suggested.get(field));
-            }
-        }
-        for (String field : List.of("content_text", "transcript_excerpt", "instructor_name")) {
-            String currentText = asText(merged.get(field));
-            String nextText = asText(suggested.get(field));
-            if (overwriteExisting || currentText.isBlank()) {
-                if (!nextText.isBlank()) {
-                    merged.put(field, nextText);
-                }
-            }
-        }
-        merged.put("updated_at", Instant.now().toString());
-        return merged;
-    }
-
-    private String trimToLimit(String value, int limit) {
-        String normalized = asText(value);
-        if (normalized.length() <= limit) {
-            return normalized;
-        }
-        return normalized.substring(0, limit).trim();
-    }
-
-    private String chooseText(String first, String second, String fallback) {
-        String a = asText(first);
-        if (!a.isBlank()) return a;
-        String b = asText(second);
-        if (!b.isBlank()) return b;
-        return fallback == null ? "" : fallback;
-    }
-
-    private String asText(Object value) {
-        if (value == null) return "";
-        return String.valueOf(value).trim();
+        return lectureMetadataSyncSupport.buildLectureMetaFromTranscript(lecture, transcript, speakerReview);
     }
 }
