@@ -36,6 +36,7 @@ public class FeatureStoreService {
     private final MediaTranscriptionService mediaTranscriptionService;
     private final CustomCourseService customCourseService;
     private final AdminAssignmentService adminAssignmentService;
+    private final FeatureStorePipelineSupport pipelineSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -46,7 +47,8 @@ public class FeatureStoreService {
             MediaProcessingService mediaProcessingService,
             MediaTranscriptionService mediaTranscriptionService,
             CustomCourseService customCourseService,
-            AdminAssignmentService adminAssignmentService
+            AdminAssignmentService adminAssignmentService,
+            FeatureStorePipelineSupport pipelineSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -56,6 +58,7 @@ public class FeatureStoreService {
         this.mediaTranscriptionService = mediaTranscriptionService;
         this.customCourseService = customCourseService;
         this.adminAssignmentService = adminAssignmentService;
+        this.pipelineSupport = pipelineSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -68,7 +71,8 @@ public class FeatureStoreService {
                 null,
                 null,
                 null,
-                null
+                null,
+                new FeatureStorePipelineSupport()
         );
     }
 
@@ -253,9 +257,7 @@ public class FeatureStoreService {
     private Map<String, Object> hydrateExtractionRow(Map<String, Object> row) {
         String extractionId = String.valueOf(row.getOrDefault("id", "")).trim();
         Map<String, Object> latest = extractionId.isBlank() ? null : store.getKv(EXTRACTION_SCOPE, extractionId);
-        Map<String, Object> hydrated = latest == null ? new HashMap<>(row) : new HashMap<>(latest);
-        ExtractionDefaultProfile.defaults().applyIfMissing(hydrated);
-        return hydrated;
+        return pipelineSupport.hydrateExtractionRow(row, latest);
     }
 
     public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion) {
@@ -342,30 +344,9 @@ public class FeatureStoreService {
     public Map<String, Object> pipeline(String lectureId) {
         Map<String, Object> row = store.getKv(PIPELINE_SCOPE, lectureId);
         if (row == null) {
-            return buildEmptyPipeline(lectureId);
+            return pipelineSupport.buildEmptyPipeline(lectureId);
         }
-        return hydratePipelineRow(row);
-    }
-
-    private Map<String, Object> buildEmptyPipeline(String lectureId) {
-        Map<String, Object> empty = new HashMap<>();
-        empty.put("lecture_id", lectureId);
-        empty.put("status", "EMPTY");
-        return applyPipelineDefaults(empty, false);
-    }
-
-    private Map<String, Object> hydratePipelineRow(Map<String, Object> row) {
-        return applyPipelineDefaults(new HashMap<>(row), true);
-    }
-
-    private Map<String, Object> applyPipelineDefaults(Map<String, Object> target, boolean keepExistingValues) {
-        PipelineDefaultProfile defaults = PipelineDefaultProfile.withCurrentTimestamp();
-        if (keepExistingValues) {
-            defaults.applyIfMissing(target);
-        } else {
-            defaults.applyTo(target);
-        }
-        return target;
+        return pipelineSupport.hydratePipelineRow(row);
     }
 
     public Map<String, Object> summarizeLecture(String lectureId, String style, String language) {
@@ -500,90 +481,6 @@ public class FeatureStoreService {
             map.put("extraction_id", extractionId);
             map.put("updated_at", now);
             return map;
-        }
-    }
-
-    private record PipelineDefaultProfile(
-            String audioStatus,
-            String transcriptStatus,
-            String summaryStatus,
-            String processingStage,
-            String processingStep,
-            Object processingErrorCode,
-            Object processingError,
-            Object transcriptId,
-            Object noteId,
-            Object extractionId,
-            String updatedAt
-    ) {
-        static PipelineDefaultProfile withCurrentTimestamp() {
-            return new PipelineDefaultProfile(
-                    MediaStatus.PENDING.name(),
-                    MediaStatus.PENDING.name(),
-                    MediaStatus.PENDING.name(),
-                    PipelineStage.IDLE.value(),
-                    "not_started",
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    Instant.now().toString()
-            );
-        }
-
-        void applyTo(Map<String, Object> target) {
-            target.put("audio_status", audioStatus);
-            target.put("transcript_status", transcriptStatus);
-            target.put("summary_status", summaryStatus);
-            target.put("processing_stage", processingStage);
-            target.put("processing_step", processingStep);
-            target.put("processing_error_code", processingErrorCode);
-            target.put("processing_error", processingError);
-            target.put("transcript_id", transcriptId);
-            target.put("note_id", noteId);
-            target.put("extraction_id", extractionId);
-            target.put("updated_at", updatedAt);
-        }
-
-        void applyIfMissing(Map<String, Object> target) {
-            target.putIfAbsent("audio_status", audioStatus);
-            target.putIfAbsent("transcript_status", transcriptStatus);
-            target.putIfAbsent("summary_status", summaryStatus);
-            target.putIfAbsent("processing_stage", processingStage);
-            target.putIfAbsent("processing_step", processingStep);
-            target.putIfAbsent("processing_error_code", processingErrorCode);
-            target.putIfAbsent("processing_error", processingError);
-            target.putIfAbsent("transcript_id", transcriptId);
-            target.putIfAbsent("note_id", noteId);
-            target.putIfAbsent("extraction_id", extractionId);
-            target.putIfAbsent("updated_at", updatedAt);
-        }
-    }
-
-    private record ExtractionDefaultProfile(
-            String processingStage,
-            String processingStep,
-            Object processingErrorCode,
-            Object processingError,
-            String sttStatus
-    ) {
-        static ExtractionDefaultProfile defaults() {
-            return new ExtractionDefaultProfile(
-                    "queued",
-                    "job_requested",
-                    null,
-                    null,
-                    "PENDING"
-            );
-        }
-
-        void applyIfMissing(Map<String, Object> target) {
-            target.putIfAbsent("processing_stage", processingStage);
-            target.putIfAbsent("processing_step", processingStep);
-            target.putIfAbsent("processing_error_code", processingErrorCode);
-            target.putIfAbsent("processing_error", processingError);
-            target.putIfAbsent("stt_status", sttStatus);
         }
     }
 
