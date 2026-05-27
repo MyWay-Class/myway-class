@@ -123,10 +123,11 @@ public class MediaProcessingService {
 
     private HttpResponse<String> dispatchRequest(String extractionId, String sourceVideoUrl, Map<String, Object> extraction) throws Exception {
         URI callbackUri = URI.create(mediaPublicBaseUrl + "/api/v1/media/extract-audio/callback");
+        String normalizedSourceVideoUrl = normalizeSourceVideoUrl(sourceVideoUrl);
         Map<String, Object> body = new HashMap<>();
         body.put("extraction_id", extractionId);
         body.put("lecture_id", String.valueOf(extraction.getOrDefault("lecture_id", "")));
-        body.put("source_video_url", sourceVideoUrl);
+        body.put("source_video_url", normalizedSourceVideoUrl);
         body.put("callback", Map.of("url", callbackUri.toString(), "secret", mediaCallbackSecret.isBlank() ? null : mediaCallbackSecret));
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(mediaProcessorUrl + "/jobs/audio-extraction"))
@@ -136,6 +137,20 @@ public class MediaProcessingService {
             builder.header("Authorization", "Bearer " + mediaProcessorToken);
         }
         return HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private String normalizeSourceVideoUrl(String sourceVideoUrl) {
+        String trimmed = sourceVideoUrl == null ? "" : sourceVideoUrl.trim();
+        if (trimmed.isBlank()) {
+            return mediaPublicBaseUrl + "/api/v1/media/assets/unknown";
+        }
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("/")) {
+            return mediaPublicBaseUrl + trimmed;
+        }
+        return mediaPublicBaseUrl + "/" + trimmed;
     }
 
     private void applyDispatchSuccess(Map<String, Object> extraction, String responseBody) throws Exception {
