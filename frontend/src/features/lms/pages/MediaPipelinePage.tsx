@@ -2,13 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AudioExtraction, CourseDetail, LectureDetail, LecturePipeline, LectureTranscript, MediaProcessorHealth, STTProviderCatalog } from '@myway/shared';
 import { getSTTProviderCatalog } from '@myway/shared';
 import { AiNoticeBanner } from '../components/AiNoticeBanner';
-import { StatePanel } from '../components/StatePanel';
-import { MediaPipelineStatusBoard } from '../components/MediaPipelineStatusBoard';
-import { TranscriptTimelineWorkspace } from '../components/TranscriptTimelineWorkspace';
 import { MediaPipelineSummaryPanel } from '../components/MediaPipelineSummaryPanel';
 import { MediaUploadWorkspacePanel } from '../components/media-pipeline/MediaUploadWorkspacePanel';
 import { MediaAdminOperationsPanel } from '../components/media-pipeline/MediaAdminOperationsPanel';
 import { MediaPipelinePolicyPanels } from '../components/media-pipeline/MediaPipelinePolicyPanels';
+import { MediaPipelineHeroSection } from '../components/media-pipeline/MediaPipelineHeroSection';
+import { MediaPipelineMonitoringSection } from '../components/media-pipeline/MediaPipelineMonitoringSection';
 import {
   approveSttExtractionDetailed,
   createAudioExtractionDetailed,
@@ -491,15 +490,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-cyan-100 bg-[linear-gradient(135deg,#03162a_0%,#005d93_48%,#0bc5ea_100%)] px-6 py-6 text-white shadow-[0_22px_50px_rgba(4,49,84,0.24)]">
-        <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80">
-          Cloudflare R2 · Workers AI · media pipeline
-        </div>
-        <h1 className="mt-4 text-2xl font-extrabold tracking-[-0.04em]">실제 강의 업로드와 오디오 추출 파이프라인</h1>
-        <p className="mt-2 max-w-3xl text-sm text-white/75">
-          강의 영상을 R2에 업로드하고, 오디오 추출 job과 STT 전사를 같은 화면에서 이어서 확인할 수 있습니다.
-        </p>
-      </section>
+      <MediaPipelineHeroSection />
 
       <AiNoticeBanner title="공개 테스트 안내" description={bannerDescription} tone="amber" meta={bannerMeta} />
 
@@ -544,33 +535,21 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
           onRetryExtraction={() => void handleRetryExtraction()}
         />
 
-        {viewerRole === 'STUDENT' ? (
-          <StatePanel
-            compact
-            icon="ri-lock-line"
-            tone="slate"
-            title="세부 상태는 관리자 전용입니다."
-            description="일반 사용자는 업로드 결과와 전사 완료 여부만 볼 수 있습니다. 내부 FFmpeg, processor job, callback 상세는 운영자 화면에서 확인합니다."
-          />
-        ) : (
-          <section className="grid gap-5 xl:grid-cols-[0.86fr_1.14fr]">
-            <MediaPipelineStatusBoard
-              selectedLecture={selectedLecture}
-              pipeline={pipeline}
-              providers={providers}
-              processorHealth={processorHealth}
-              uploadResult={uploadResult}
-              extraction={latestExtraction}
-              recentExtractions={extractions}
-              isRefreshing={isRefreshing}
-              onRefresh={() => {
-                void refreshMediaState(lectureId);
-              }}
-            />
-
-            <TranscriptTimelineWorkspace selectedLecture={selectedLecture} transcript={transcript} />
-          </section>
-        )}
+        <MediaPipelineMonitoringSection
+          viewerRole={viewerRole}
+          selectedLecture={selectedLecture}
+          pipeline={pipeline}
+          providers={providers}
+          processorHealth={processorHealth}
+          uploadResult={uploadResult}
+          latestExtraction={latestExtraction}
+          extractions={extractions}
+          isRefreshing={isRefreshing}
+          transcript={transcript}
+          onRefresh={() => {
+            void refreshMediaState(lectureId);
+          }}
+        />
 
         <MediaAdminOperationsPanel
           viewerRole={viewerRole}
