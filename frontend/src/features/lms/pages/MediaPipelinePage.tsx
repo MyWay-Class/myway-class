@@ -6,6 +6,8 @@ import { StatePanel } from '../components/StatePanel';
 import { MediaPipelineStatusBoard } from '../components/MediaPipelineStatusBoard';
 import { TranscriptTimelineWorkspace } from '../components/TranscriptTimelineWorkspace';
 import { MediaPipelineSummaryPanel } from '../components/MediaPipelineSummaryPanel';
+import { MediaUploadWorkspacePanel } from '../components/media-pipeline/MediaUploadWorkspacePanel';
+import { MediaAdminOperationsPanel } from '../components/media-pipeline/MediaAdminOperationsPanel';
 import {
   approveSttExtractionDetailed,
   createAudioExtractionDetailed,
@@ -34,12 +36,6 @@ type MediaPipelinePageProps = {
   sessionToken: string;
   viewerRole: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
 };
-
-function formatBytes(value: number): string {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionToken, viewerRole }: MediaPipelinePageProps) {
   const demoMode = !selectedCourse;
@@ -515,103 +511,25 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
           notice={notice}
         />
 
-        <section className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">대상 강의</div>
-                <div className="mt-1 text-lg font-bold text-slate-900">{selectedLecture?.title ?? displayCourse.title}</div>
-                <div className="mt-1 text-sm text-slate-500">{displayCourse.title} · {displayCourse.instructor_name}</div>
-              </div>
-              <div className="rounded-2xl bg-[#f4faff] px-4 py-3 text-right">
-                <div className="text-xs text-slate-400">업로드 가능한 파일</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">3분 ~ 1시간 내외 영상</div>
-              </div>
-            </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">강의 선택</span>
-                <select
-                  value={lectureId}
-                  onChange={(event) => setLectureId(event.target.value)}
-                  className="w-full rounded-2xl border border-[#cce0f2] bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-400"
-                >
-                  {lectureOptions.map((lecture) => (
-                    <option key={lecture.id} value={lecture.id}>
-                      {lecture.title}
-                    </option>
-                  ))}
-                </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-semibold text-slate-700">오디오 URL</span>
-                <input
-                  value={audioUrl}
-                  onChange={(event) => setAudioUrl(event.target.value)}
-                  placeholder="이미 추출된 audio_url이 있으면 바로 입력"
-                  className="w-full rounded-2xl border border-[#cce0f2] bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-400"
-                />
-                </label>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <span className="text-sm font-semibold text-slate-700">영상 파일 업로드</span>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={(event) => setVideoFile(event.target.files?.[0] ?? null)}
-                  className="block w-full cursor-pointer rounded-2xl border border-dashed border-[#b9d7ef] bg-[#f4faff] px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
-                />
-                {videoFile ? (
-                  <div className="text-xs text-slate-500">
-                    선택됨: {videoFile.name} · {formatBytes(videoFile.size)}
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-500">mp4, webm, mov 등 영상 파일을 선택하세요.</div>
-                )}
-              </div>
-
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={busy || demoMode}
-                className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#00b8e6_0%,#0077b6_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(0,119,182,0.35)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                  <i className={`${busy ? 'ri-loader-4-line animate-spin' : 'ri-upload-2-line'}`} />
-                {busy ? '진행 중' : demoMode ? '데모 모드' : '업로드 및 추출 요청'}
-              </button>
-              <div className="text-sm text-slate-500">{notice}</div>
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
-            <div className="text-sm font-semibold text-slate-900">현재 선택 정보</div>
-            <div className="mt-3 space-y-3 text-sm text-slate-600">
-              <div className="rounded-2xl bg-[#f4faff] p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">강의</div>
-                <div className="mt-1 font-semibold text-slate-900">{selectedLecture?.title ?? '선택된 강의 없음'}</div>
-              </div>
-              <div className="rounded-2xl bg-[#f4faff] p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">영상 업로드 결과</div>
-                <div className="mt-1 break-all font-semibold text-slate-900">{uploadResult?.video_url ?? '아직 없음'}</div>
-              </div>
-              <div className="rounded-2xl bg-[#f4faff] p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">전사 결과</div>
-                <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.transcript_id ?? pipeline?.transcript_id ?? '아직 없음'}</div>
-              </div>
-              <div className="rounded-2xl bg-[#f4faff] p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 서비스 job</div>
-                <div className="mt-1 font-semibold text-slate-900">{latestExtraction?.processing_job_id ?? '아직 없음'}</div>
-                {latestExtraction?.processing_error ? (
-                  <div className="mt-2 text-xs text-rose-600">{latestExtraction.processing_error}</div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </section>
+        <MediaUploadWorkspacePanel
+          displayCourse={displayCourse}
+          lectureOptions={lectureOptions}
+          selectedLecture={selectedLecture}
+          lectureId={lectureId}
+          audioUrl={audioUrl}
+          videoFile={videoFile}
+          busy={busy}
+          demoMode={demoMode}
+          notice={notice}
+          uploadResult={uploadResult}
+          latestExtraction={latestExtraction}
+          pipeline={pipeline}
+          retrySource={retrySource}
+          onLectureChange={setLectureId}
+          onAudioUrlChange={setAudioUrl}
+          onVideoFileChange={setVideoFile}
+          onSubmit={() => void handleSubmit()}
+        />
 
         {latestExtraction?.status === 'FAILED' ? (
           <StatePanel
@@ -736,89 +654,22 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
           </section>
         )}
 
-        {(viewerRole === 'ADMIN' || viewerRole === 'INSTRUCTOR') && !demoMode ? (
-          <section className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">화자/강사 검수</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  STT 화자 라벨을 실제 강사명으로 매핑해 RAG/요약 품질을 안정화합니다.
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => void handleSaveSpeakerReview()}
-                className="inline-flex items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
-              >
-                <i className="ri-save-line" />
-                검수 저장
-              </button>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <label className="space-y-2">
-                <span className="text-xs font-semibold text-slate-600">화자 라벨</span>
-                <input value={speakerLabel} onChange={(event) => setSpeakerLabel(event.target.value)} className="w-full rounded-xl border border-[#cce0f2] px-3 py-2 text-sm" />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs font-semibold text-slate-600">강사명</span>
-                <input value={instructorName} onChange={(event) => setInstructorName(event.target.value)} className="w-full rounded-xl border border-[#cce0f2] px-3 py-2 text-sm" />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs font-semibold text-slate-600">신뢰도 (0~1)</span>
-                <input value={speakerConfidence} onChange={(event) => setSpeakerConfidence(event.target.value)} className="w-full rounded-xl border border-[#cce0f2] px-3 py-2 text-sm" />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs font-semibold text-slate-600">메모</span>
-                <input value={speakerNote} onChange={(event) => setSpeakerNote(event.target.value)} className="w-full rounded-xl border border-[#cce0f2] px-3 py-2 text-sm" />
-              </label>
-            </div>
-            {speakerReview ? (
-              <div className="mt-3 text-xs text-slate-500">
-                마지막 검수: {speakerReview.reviewed_at ?? '-'} · {speakerReview.reviewed_by ?? '-'}
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
-        {viewerRole === 'ADMIN' && !demoMode ? (
-          <section className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">숏폼 Export 운영 현황</div>
-                <div className="mt-1 text-xs text-slate-500">실패 건만 일괄 재시도하고 최신 상태를 확인합니다.</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => void handleRetryFailedShortforms()}
-                className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-900"
-              >
-                <i className="ri-refresh-line" />
-                실패 건 재시도
-              </button>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-5">
-              <div className="rounded-xl border border-slate-200 p-3 text-xs"><div className="text-slate-400">PENDING</div><div className="mt-1 text-base font-bold text-slate-900">{shortformExportStatus?.pending_count ?? '-'}</div></div>
-              <div className="rounded-xl border border-slate-200 p-3 text-xs"><div className="text-slate-400">PROCESSING</div><div className="mt-1 text-base font-bold text-slate-900">{shortformExportStatus?.processing_count ?? '-'}</div></div>
-              <div className="rounded-xl border border-slate-200 p-3 text-xs"><div className="text-slate-400">COMPLETED</div><div className="mt-1 text-base font-bold text-emerald-700">{shortformExportStatus?.completed_count ?? '-'}</div></div>
-              <div className="rounded-xl border border-slate-200 p-3 text-xs"><div className="text-slate-400">FAILED</div><div className="mt-1 text-base font-bold text-rose-700">{shortformExportStatus?.failed_count ?? '-'}</div></div>
-              <div className="rounded-xl border border-slate-200 p-3 text-xs"><div className="text-slate-400">FAILED_PERMANENT</div><div className="mt-1 text-base font-bold text-rose-900">{shortformExportStatus?.failed_permanent_count ?? '-'}</div></div>
-            </div>
-            <div className="mt-3 text-xs text-slate-500">마지막 갱신: {shortformExportStatus?.last_updated_at ?? '-'}</div>
-            <div className="mt-3 max-h-52 space-y-2 overflow-auto rounded-xl border border-slate-200 p-3">
-              {(shortformExportStatus?.failed_items ?? []).length === 0 ? (
-                <div className="text-xs text-slate-500">실패 항목이 없습니다.</div>
-              ) : (
-                (shortformExportStatus?.failed_items ?? []).map((item) => (
-                  <div key={item.id} className="rounded-lg bg-slate-50 p-2 text-xs">
-                    <div className="font-semibold text-slate-900">{item.title || item.id}</div>
-                    <div className="mt-1 text-slate-500">{item.export_status} · retry {item.retry_count} · {item.updated_at ?? '-'}</div>
-                    {item.error_message ? <div className="mt-1 text-rose-700">{item.error_message}</div> : null}
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        ) : null}
+        <MediaAdminOperationsPanel
+          viewerRole={viewerRole}
+          demoMode={demoMode}
+          speakerReview={speakerReview}
+          speakerLabel={speakerLabel}
+          instructorName={instructorName}
+          speakerConfidence={speakerConfidence}
+          speakerNote={speakerNote}
+          shortformExportStatus={shortformExportStatus}
+          onSpeakerLabelChange={setSpeakerLabel}
+          onInstructorNameChange={setInstructorName}
+          onSpeakerConfidenceChange={setSpeakerConfidence}
+          onSpeakerNoteChange={setSpeakerNote}
+          onSaveSpeakerReview={() => void handleSaveSpeakerReview()}
+          onRetryFailedShortforms={() => void handleRetryFailedShortforms()}
+        />
       </>
     </div>
   );
