@@ -29,18 +29,21 @@ public class DemoLearningService {
     private final ActivityEventService activityEventService;
     private final LearningProgressCalculator progressCalculator;
     private final LectureMetadataSyncSupport lectureMetadataSyncSupport;
+    private final LearningEnrollmentStoreSupport learningEnrollmentStoreSupport;
 
     @Autowired
     public DemoLearningService(
             FeatureJdbcStore store,
             ActivityEventService activityEventService,
             LearningProgressCalculator progressCalculator,
-            LectureMetadataSyncSupport lectureMetadataSyncSupport
+            LectureMetadataSyncSupport lectureMetadataSyncSupport,
+            LearningEnrollmentStoreSupport learningEnrollmentStoreSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
         this.progressCalculator = progressCalculator;
         this.lectureMetadataSyncSupport = lectureMetadataSyncSupport;
+        this.learningEnrollmentStoreSupport = learningEnrollmentStoreSupport;
         initSeedData();
     }
 
@@ -50,6 +53,7 @@ public class DemoLearningService {
         this.activityEventService = null;
         this.progressCalculator = new LearningProgressCalculator();
         this.lectureMetadataSyncSupport = new LectureMetadataSyncSupport();
+        this.learningEnrollmentStoreSupport = new LearningEnrollmentStoreSupport();
         initSeedData();
     }
 
@@ -187,12 +191,7 @@ public class DemoLearningService {
         if (existing != null) return existing;
         EnrollmentItem item = new EnrollmentItem(UUID.randomUUID().toString(), userId, courseId);
         if (useStore()) {
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("id", item.id());
-            payload.put("user_id", item.user_id());
-            payload.put("course_id", item.course_id());
-            payload.put("created_at", Instant.now().toString());
-            store.upsertKv(ENROLLMENT_SCOPE, enrollmentKey(userId, courseId), payload);
+            learningEnrollmentStoreSupport.upsertEnrollment(store, ENROLLMENT_SCOPE, item);
         } else {
             enrollments.add(item);
         }
@@ -204,15 +203,7 @@ public class DemoLearningService {
         if (!useStore()) {
             return enrollments.stream().filter(e -> e.user_id().equals(userId)).toList();
         }
-        return store.listKvByScope(ENROLLMENT_SCOPE).stream()
-                .filter(item -> userId.equals(String.valueOf(item.getOrDefault("user_id", ""))))
-                .map(item -> new EnrollmentItem(
-                        String.valueOf(item.getOrDefault("id", "")),
-                        String.valueOf(item.getOrDefault("user_id", "")),
-                        String.valueOf(item.getOrDefault("course_id", ""))
-                ))
-                .filter(item -> !item.id().isBlank() && !item.course_id().isBlank())
-                .toList();
+        return learningEnrollmentStoreSupport.listEnrollments(store, ENROLLMENT_SCOPE, userId);
     }
 
     public Map<String, Object> completeLecture(String userId, String lectureId) {
@@ -223,13 +214,13 @@ public class DemoLearningService {
         if (!enrolled) return Map.of("reason", "enrollment_required");
 
         if (useStore()) {
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("id", completionKey(userId, lectureId));
-            payload.put("user_id", userId);
-            payload.put("lecture_id", lectureId);
-            payload.put("course_id", lecture.course_id());
-            payload.put("completed_at", Instant.now().toString());
-            store.upsertKv(LECTURE_COMPLETION_SCOPE, completionKey(userId, lectureId), payload);
+            learningEnrollmentStoreSupport.upsertLectureCompletion(
+                    store,
+                    LECTURE_COMPLETION_SCOPE,
+                    userId,
+                    lectureId,
+                    lecture.course_id()
+            );
         } else {
             completedLectureKeys.add(completionKey(userId, lectureId));
         }
@@ -273,15 +264,7 @@ public class DemoLearningService {
                     .findFirst()
                     .orElse(null);
         }
-        Map<String, Object> found = store.getKv(ENROLLMENT_SCOPE, enrollmentKey(userId, courseId));
-        if (found == null) {
-            return null;
-        }
-        return new EnrollmentItem(
-                String.valueOf(found.getOrDefault("id", "")),
-                String.valueOf(found.getOrDefault("user_id", "")),
-                String.valueOf(found.getOrDefault("course_id", ""))
-        );
+        return learningEnrollmentStoreSupport.findEnrollment(store, ENROLLMENT_SCOPE, userId, courseId);
     }
 
     private Set<String> listCompletedLectureIds(String userId) {
@@ -291,19 +274,11 @@ public class DemoLearningService {
                     .map(key -> key.substring((userId + ":").length()))
                     .collect(java.util.stream.Collectors.toSet());
         }
-        return store.listKvByScope(LECTURE_COMPLETION_SCOPE).stream()
-                .filter(item -> userId.equals(String.valueOf(item.getOrDefault("user_id", ""))))
-                .map(item -> String.valueOf(item.getOrDefault("lecture_id", "")))
-                .filter(lectureId -> !lectureId.isBlank())
-                .collect(java.util.stream.Collectors.toSet());
-    }
-
-    private String enrollmentKey(String userId, String courseId) {
-        return userId + ":" + courseId;
+        return learningEnrollmentStoreSupport.listCompletedLectureIds(store, LECTURE_COMPLETION_SCOPE, userId);
     }
 
     private String completionKey(String userId, String lectureId) {
-        return userId + ":" + lectureId;
+        return learningEnrollmentStoreSupport.completionKey(userId, lectureId);
     }
 
     private boolean useStore() {
@@ -320,15 +295,12 @@ public class DemoLearningService {
 
     private void ensureDefaultDemoStudentEnrollmentsInStore() {
         for (CourseDetail course : listAllCourses()) {
-            if (findEnrollment(DEFAULT_DEMO_STUDENT_ID, course.id()) != null) {
-                continue;
-            }
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("id", UUID.randomUUID().toString());
-            payload.put("user_id", DEFAULT_DEMO_STUDENT_ID);
-            payload.put("course_id", course.id());
-            payload.put("created_at", Instant.now().toString());
-            store.upsertKv(ENROLLMENT_SCOPE, enrollmentKey(DEFAULT_DEMO_STUDENT_ID, course.id()), payload);
+            learningEnrollmentStoreSupport.ensureDefaultEnrollment(
+                    store,
+                    ENROLLMENT_SCOPE,
+                    DEFAULT_DEMO_STUDENT_ID,
+                    course.id()
+            );
         }
     }
 
