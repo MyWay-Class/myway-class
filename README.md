@@ -11,7 +11,7 @@
 [English README](./README.en.md)
 
 강의를 개인화된 숏폼과 학습 흐름으로 다시 구성하는 LMS 플랫폼입니다.  
-2026 KIT 바이브코딩 공모전 제출용 프로젝트로, 학습자에게는 필요한 구간만 빠르게 학습할 수 있는 경험을, 운영자와 강사에게는 강의 콘텐츠를 재가공하고 관리할 수 있는 도구를 제공합니다.
+학습자에게는 필요한 구간만 빠르게 학습할 수 있는 경험을, 운영자와 강사에게는 강의 콘텐츠를 재가공하고 관리할 수 있는 도구를 제공합니다.
 
 ## 목차
 
@@ -36,7 +36,7 @@
 ## 문제 정의
 
 온라인 강의는 짧게 쪼개져 보여도, 실제로 다시 확인해야 하는 핵심은 보통 2~3분 정도에 불과한 경우가 많습니다.  
-하지만 기존 LMS에서는 여전히 전체 영상을 다시 재생하며 원하는 구간을 직접 찾아야 하고, 강의가 쌓일수록 탐색 비용이 커집니다.
+기존 LMS에서는 전체 영상을 다시 재생하며 원하는 구간을 직접 찾아야 해 탐색 비용이 커집니다.
 
 `내맘대로클래스`는 이 문제를 해결하기 위해 다음을 목표로 합니다.
 
@@ -58,8 +58,6 @@
 
 ## 동작 흐름
 
-이 프로젝트는 “강의 하나를 통째로 소비하는 방식”이 아니라, “강의 안의 유용한 조각들”을 다시 묶는 방식으로 설계했습니다.
-
 기본 흐름은 아래와 같습니다.
 
 1. 강의 오디오를 STT로 텍스트화한다
@@ -71,7 +69,7 @@
 
 ## 스크린샷
 
-> 현재 저장소에는 실제 캡처 이미지가 없어서, 나중에 이미지만 교체하면 되는 자리표시자 형태로 정리했습니다.
+> 현재 저장소에는 실제 캡처 이미지가 없어 자리표시자 기준으로 유지합니다.
 
 | 화면 | 권장 파일명 | 설명 |
 |------|------------|------|
@@ -87,9 +85,10 @@
 | 구분 | 기술 |
 |------|------|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS |
-| Backend | Spring Boot (Java 21), Maven |
-| Shared | `packages/shared` 기반 공용 타입, 데이터, AI/LMS 로직 |
-| Build | npm workspaces, Vite, Maven, TypeScript |
+| Backend (Primary) | Spring Boot (Java 21), Maven Wrapper |
+| Backend (Legacy) | Hono, TypeScript, Cloudflare Workers tooling |
+| Shared | `packages/shared` 기반 공용 타입/도메인 로직 |
+| Build/Test | npm workspaces, Vite, Maven, Playwright, Vitest |
 | Media | `ffmpeg-static` 기반 미디어 처리 |
 
 ## 프로젝트 구조
@@ -97,10 +96,12 @@
 ```text
 myway-class/
 ├── frontend/           # 사용자 화면
-├── backend/            # API, AI, 미디어 처리
+├── backend-spring/     # 기본 백엔드(Spring Boot)
+├── backend/            # 레거시 백엔드(Hono/Workers)
 ├── packages/shared/    # 프론트/백엔드 공용 로직
 ├── docs/               # 공통 문서 허브
 ├── scripts/            # 개발 보조 스크립트
+├── tools/              # 오케스트레이터/에이전트 런타임 도구
 ├── agent.md            # AI 협업 규칙
 └── README.md           # 이 문서
 ```
@@ -132,14 +133,16 @@ npm install
 npm run dev
 ```
 
-전체 개발 환경을 함께 띄우는 진입점입니다.
+현재 `npm run dev`는 프론트엔드 개발 서버(`dev:frontend`)를 실행합니다.
 
-프론트엔드와 백엔드를 분리해서 실행하고 싶다면 아래 명령을 사용합니다.
+프론트엔드와 백엔드를 분리해 실행하려면:
 
 ```bash
 npm run dev:frontend
 npm run dev:backend
 ```
+
+레거시 백엔드가 필요하면 `npm run dev:backend:legacy`를 사용합니다.
 
 ### 검증 및 빌드
 
@@ -148,27 +151,32 @@ npm run check:deps
 npm run verify
 npm run build
 npm run test:backend
+npm run test:frontend
 ```
 
-- `npm run check:deps`는 frontend/backend(workspace) 의존성 누락을 점검합니다.
-- `npm run verify`는 의존성 점검 후 프론트엔드 빌드와 Spring 백엔드 패키징을 연속 실행합니다.
-- `npm run build`는 프론트엔드 빌드 + Spring 백엔드 패키징을 수행합니다.
-- `npm run test:backend`는 Spring 백엔드 테스트를 실행합니다.
+- `npm run check:deps`: frontend/backend(workspace) 의존성 점검
+- `npm run verify`: 의존성 점검 후 프론트 빌드 + Spring 백엔드 테스트 실행
+- `npm run build`: 프론트엔드 빌드 + Spring 백엔드 패키징(`-DskipTests`)
 
 ## 스크립트
 
 | 명령어 | 설명 |
 |------|------|
 | `npm run dev` | 프론트엔드 개발 서버 실행 |
-| `npm run dev:frontend` | 프론트엔드만 실행 |
+| `npm run dev:frontend` | frontend만 실행 |
 | `npm run dev:backend` | Spring 백엔드 실행 |
 | `npm run dev:backend:legacy` | 레거시(TypeScript) 백엔드 실행 |
 | `npm run check:frontend-deps` | frontend workspace 의존성 점검 |
 | `npm run check:backend-deps` | backend workspace 의존성 점검 |
 | `npm run check:deps` | frontend/backend 의존성 점검 |
-| `npm run verify` | 의존성 점검 + 프론트/백엔드 빌드 |
-| `npm run build` | 프론트엔드 + 백엔드 빌드 |
+| `npm run verify` | 의존성 점검 + 프론트 빌드 + Spring 테스트 |
+| `npm run build` | 프론트엔드 + Spring 백엔드 빌드 |
 | `npm run test:backend` | Spring 백엔드 테스트 |
+| `npm run test:frontend` | 프론트엔드 단위 테스트(Vitest) |
+| `npm run test:e2e:demo-student` | Playwright 데모 학습자 여정 E2E |
+| `npm run smoke:media-ai-shortform` | 미디어/AI/숏폼 스모크 실행 |
+| `npm run orch:run` | 오케스트레이터 실행 |
+| `npm run orch:checks` | 오케스트레이터 정책/결과 검증 |
 
 ## CI 운영
 
@@ -179,7 +187,8 @@ npm run test:backend
 ## 문서
 
 - [`docs/README.md`](./docs/README.md): 전체 문서 허브
-- [`agent.md`](./agent.md): AI 협업 규칙
+- [`docs/project/20-status-and-next-steps.md`](./docs/project/20-status-and-next-steps.md): 최신 상태/다음 단계
+- [`backend-spring/README.md`](./backend-spring/README.md): Spring 백엔드 기준 문서
 - [`backend/docs/README.md`](./backend/docs/README.md): 백엔드 문서 허브
 - [`README.en.md`](./README.en.md): 영문 README
 
