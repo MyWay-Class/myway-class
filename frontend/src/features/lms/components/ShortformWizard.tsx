@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getLectureDisplayDurationMinutes, type CourseCard, type CourseDetail, type LectureDetail, type ShortformCommunityItem, type ShortformVideo } from '@myway/shared';
+import { type CourseCard, type CourseDetail, type LectureDetail, type ShortformCommunityItem, type ShortformVideo } from '@myway/shared';
 import { loadCourseDetail, loadLectureTranscriptDetailed } from '../../../lib/api';
 import {
   composeShortformDraft,
@@ -11,9 +11,9 @@ import { ShortformWizardSidebar } from './ShortformWizardSidebar';
 import { ShortformWizardStep1 } from './ShortformWizardStep1';
 import { ShortformWizardStep2 } from './ShortformWizardStep2';
 import { ShortformWizardStep3 } from './ShortformWizardStep3';
-import { normalizeShortformDescription } from '@myway/shared';
 import { resolvePlayableVideoUrl } from '../../../lib/video-url';
 import type { ClipSuggestion, WizardStep } from './ShortformWizardTypes';
+import { buildClipSuggestions, clipKey, formatDuration, mapComposeError, MAX_CLIP_MS, MIN_CLIP_MS, type TranscriptSnapshot } from './shortformWizardUtils';
 
 type ShortformWizardProps = {
   highlightedLecture: LectureDetail | null;
@@ -21,113 +21,6 @@ type ShortformWizardProps = {
   courses: CourseCard[];
   sessionToken: string | null;
 };
-const MIN_CLIP_MS = 1_000;
-const MAX_CLIP_MS = 300_000;
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.max(1, Math.round(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-function mapComposeError(code?: string, message?: string): string {
-  switch (code) {
-    case 'INVALID_CLIP_RANGE':
-      return '클립 종료 시간이 시작 시간보다 커야 합니다.';
-    case 'CLIP_DURATION_EXCEEDED':
-      return '클립 길이는 최대 5분까지 가능합니다.';
-    case 'COURSE_LECTURE_MISMATCH':
-      return '선택한 강의와 클립의 코스가 일치하지 않습니다.';
-    case 'LECTURE_NOT_FOUND':
-      return '선택한 강의를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.';
-    case 'FORBIDDEN':
-      return '해당 강의 클립을 조합할 권한이 없습니다.';
-    default:
-      return message ?? '숏폼 생성에 실패했습니다.';
-  }
-}
-
-function clipKey(clip: ClipSuggestion): string {
-  return `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
-}
-
-type TranscriptSnapshot = {
-  segments: Array<{ start_ms: number; end_ms: number; text: string }>;
-  duration_ms: number;
-} | null;
-
-function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, transcript: TranscriptSnapshot): ClipSuggestion[] {
-  const lectures = Array.isArray(course.lectures) ? course.lectures : [];
-  const lecture = lectures.find((item) => item.id === lectureId);
-  const segments = transcript?.segments ?? [];
-  if (!lecture || segments.length === 0) {
-    return [];
-  }
-
-  const validSegments = segments.filter((segment) => segment.text.trim().length > 0);
-  if (validSegments.length === 0) {
-    return [];
-  }
-
-  const clipCount = Math.min(3, validSegments.length);
-  const chunkSize = Math.ceil(validSegments.length / clipCount);
-
-  return Array.from({ length: clipCount }, (_, clipIndex) => {
-    const startIndex = clipIndex * chunkSize;
-    const chunk = validSegments.slice(startIndex, startIndex + chunkSize);
-    const start = chunk[0]?.start_ms ?? 0;
-    const end = chunk[chunk.length - 1]?.end_ms ?? start + 30_000;
-    const description = normalizeShortformDescription(
-      chunk.map((segment) => segment.text).join(' ').slice(0, 120),
-      `${lecture.title} 전사 구간`,
-    );
-
-    return {
-      lecture_id: lecture.id,
-      lecture_title: lecture.title,
-      start_time_ms: start,
-      end_time_ms: Math.max(end, start + 1_000),
-      label: `${lecture.title} 전사 ${clipIndex + 1}`,
-      description,
-    };
-  });
-}
-
-function buildClipSuggestions(course: CourseDetail | null, transcriptMap: Record<string, TranscriptSnapshot>): ClipSuggestion[] {
-  if (!course) {
-    return [];
-  }
-
-  const lectures = Array.isArray(course.lectures) ? course.lectures : [];
-  return lectures.flatMap((lecture, lectureIndex) => {
-    const transcriptSnapshot = transcriptMap[lecture.id] ?? null;
-    if (transcriptSnapshot?.segments && transcriptSnapshot.segments.length > 0) {
-      return buildTranscriptSuggestions(course, lecture.id, transcriptSnapshot);
-    }
-
-    const totalMs = Math.max(transcriptSnapshot?.duration_ms ?? getLectureDisplayDurationMinutes(lecture) * 60_000, 1);
-    const segment = Math.max(Math.round(totalMs / 3), 30_000);
-
-    return Array.from({ length: 3 }, (_, clipIndex) => {
-      const start_time_ms = Math.min(clipIndex * segment, Math.max(totalMs - segment, 0));
-      const end_time_ms = Math.min(start_time_ms + segment, totalMs);
-      const description = normalizeShortformDescription(
-        (lecture.content_text ?? '').slice(0, 120),
-        `${lecture.title} 요약 구간`,
-      );
-
-      return {
-        lecture_id: lecture.id,
-        lecture_title: lecture.title,
-        start_time_ms,
-        end_time_ms,
-        label: `${lecture.title} 핵심 ${clipIndex + 1} · ${lectureIndex + 1}차시`,
-        description,
-      };
-    });
-  });
-}
 
 export function ShortformWizard({ highlightedLecture, selectedCourse, courses, sessionToken }: ShortformWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
@@ -164,23 +57,17 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
 
   useEffect(() => {
     let alive = true;
-
     if (!activeCourseId) {
       setCourseDetail(null);
       return undefined;
     }
-
     if (selectedCourse?.id === activeCourseId) {
       setCourseDetail(selectedCourse);
       return undefined;
     }
-
     loadCourseDetail(activeCourseId, sessionToken).then((detail) => {
-      if (alive) {
-        setCourseDetail(detail);
-      }
+      if (alive) setCourseDetail(detail);
     });
-
     return () => {
       alive = false;
     };
@@ -188,33 +75,18 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
 
   useEffect(() => {
     let alive = true;
-
     if (courseLectures.length === 0) {
       setTranscriptMap({});
       return undefined;
     }
-
     Promise.all(
       courseLectures.map(async (lecture) => {
         const transcript = await loadLectureTranscriptDetailed(lecture.id, sessionToken);
-        return [
-          lecture.id,
-          transcript
-            ? {
-                segments: transcript.segments ?? [],
-                duration_ms: transcript.duration_ms,
-              }
-            : null,
-        ] as const;
+        return [lecture.id, transcript ? { segments: transcript.segments ?? [], duration_ms: transcript.duration_ms } : null] as const;
       }),
     ).then((entries) => {
-      if (!alive) {
-        return;
-      }
-
-      setTranscriptMap(Object.fromEntries(entries));
+      if (alive) setTranscriptMap(Object.fromEntries(entries));
     });
-
     return () => {
       alive = false;
     };
@@ -222,13 +94,9 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
 
   useEffect(() => {
     let alive = true;
-
     loadShortformCommunity(activeCourseId, sessionToken).then((items) => {
-      if (alive) {
-        setCommunityItems((Array.isArray(items) ? items : []).slice(0, 4));
-      }
+      if (alive) setCommunityItems((Array.isArray(items) ? items : []).slice(0, 4));
     });
-
     return () => {
       alive = false;
     };
@@ -236,10 +104,7 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
 
   const clipSuggestions = useMemo(() => buildClipSuggestions(courseDetail, transcriptMap), [courseDetail, transcriptMap]);
   const lectureTabs = useMemo(() => {
-    if (!courseDetail) {
-      return [];
-    }
-
+    if (!courseDetail) return [];
     return courseLectures.map((lecture, index) => ({
       id: lecture.id,
       title: lecture.title,
@@ -247,41 +112,22 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
     }));
   }, [courseLectures, courseDetail]);
 
-  const filteredSuggestions = useMemo(() => {
-    if (lectureFilter === 'all') {
-      return clipSuggestions;
-    }
-
-    return clipSuggestions.filter((clip) => clip.lecture_id === lectureFilter);
-  }, [clipSuggestions, lectureFilter]);
-
+  const filteredSuggestions = useMemo(() => lectureFilter === 'all' ? clipSuggestions : clipSuggestions.filter((clip) => clip.lecture_id === lectureFilter), [clipSuggestions, lectureFilter]);
   const selectedClipKeys = useMemo(() => selectedClips.map((clip) => clipKey(clip)), [selectedClips]);
-
   const totalDurationMs = selectedClips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
   const totalDurationLabel = formatDuration(totalDurationMs);
   const stepLabel = step === 1 ? '강좌 선택' : step === 2 ? '구간 선택' : '미리보기 / 저장';
   const previewVideoUrl =
     resolvePlayableVideoUrl(createdVideo?.export_result_url ?? undefined) ??
-    (createdVideo?.video_url && !createdVideo.video_url.startsWith('/static/shortforms/')
-      ? resolvePlayableVideoUrl(createdVideo.video_url)
-      : null);
+    (createdVideo?.video_url && !createdVideo.video_url.startsWith('/static/shortforms/') ? resolvePlayableVideoUrl(createdVideo.video_url) : null);
 
   useEffect(() => {
     let active = true;
-
-    if (!createdVideo?.id || createdVideo.export_status === 'COMPLETED' || createdVideo.export_status === 'FAILED') {
-      return undefined;
-    }
-
+    if (!createdVideo?.id || createdVideo.export_status === 'COMPLETED' || createdVideo.export_status === 'FAILED') return undefined;
     const timer = window.setInterval(async () => {
       const updated = await loadShortformVideoDraft(createdVideo.id, sessionToken);
-      if (!active || !updated) {
-        return;
-      }
-
-      setCreatedVideo(updated as ShortformVideo);
+      if (active && updated) setCreatedVideo(updated as ShortformVideo);
     }, 3000);
-
     return () => {
       active = false;
       window.clearInterval(timer);
@@ -293,28 +139,19 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
       setStatus('조립할 강의와 클립이 필요합니다.');
       return;
     }
-
     setStatus('선택한 구간으로 숏폼을 생성하는 중입니다.');
-    const result = await composeShortformDraft(
-      {
-        course_id: courseDetail.id,
-        title: title.trim() || `${courseDetail.title} 숏폼`,
-        description,
-        clips: selectedClips.map((clip) => ({
-          lecture_id: clip.lecture_id,
-          start_ms: clip.start_time_ms,
-          end_ms: clip.end_time_ms,
-        })),
-      },
-      sessionToken,
-    );
+    const result = await composeShortformDraft({
+      course_id: courseDetail.id,
+      title: title.trim() || `${courseDetail.title} 숏폼`,
+      description,
+      clips: selectedClips.map((clip) => ({ lecture_id: clip.lecture_id, start_ms: clip.start_time_ms, end_ms: clip.end_time_ms })),
+    }, sessionToken);
 
     if (!result.video) {
       setStatus(mapComposeError(result.errorCode, result.errorMessage));
       return;
     }
     const video = result.video;
-
     setCreatedVideo(video);
     setStatus(video.export_status === 'COMPLETED' || video.export_result_url ? '숏폼이 생성되어 재생 가능합니다.' : '숏폼이 생성되었고 export를 처리 중입니다.');
     const refreshed = await loadShortformCommunity(courseDetail.id, sessionToken);
@@ -327,7 +164,6 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
       setStatus('먼저 숏폼을 만들어야 공유할 수 있습니다.');
       return;
     }
-
     const shared = await shareShortformDraft({ video_id: createdVideo.id, course_id: createdVideo.course_id, message: '학습용 숏폼을 공유합니다.' }, sessionToken);
     setStatus(shared ? '숏폼을 공유했습니다.' : '공유에 실패했습니다.');
     const refreshed = await loadShortformCommunity(courseDetail.id, sessionToken);
@@ -344,24 +180,14 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
   }
 
   function updateClipTimes(key: string, startTimeMs: number, endTimeMs: number) {
-    setSelectedClips((current) =>
-      current.map((clip) => {
-        if (clipKey(clip) !== key) {
-          return clip;
-        }
-
-        const requestedDuration = Math.max(MIN_CLIP_MS, endTimeMs - startTimeMs);
-        const boundedDuration = Math.min(MAX_CLIP_MS, requestedDuration);
-        const safeStart = Math.max(0, Math.min(startTimeMs, endTimeMs - MIN_CLIP_MS));
-        const safeEnd = safeStart + boundedDuration;
-
-        return {
-          ...clip,
-          start_time_ms: safeStart,
-          end_time_ms: safeEnd,
-        };
-      }),
-    );
+    setSelectedClips((current) => current.map((clip) => {
+      if (clipKey(clip) !== key) return clip;
+      const requestedDuration = Math.max(MIN_CLIP_MS, endTimeMs - startTimeMs);
+      const boundedDuration = Math.min(MAX_CLIP_MS, requestedDuration);
+      const safeStart = Math.max(0, Math.min(startTimeMs, endTimeMs - MIN_CLIP_MS));
+      const safeEnd = safeStart + boundedDuration;
+      return { ...clip, start_time_ms: safeStart, end_time_ms: safeEnd };
+    }));
   }
 
   return (
@@ -374,39 +200,19 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
               숏폼 제작 허브
             </div>
             <h1 className="mt-3 text-[24px] font-bold lg:text-[28px]">숏폼 제작 워크플로우</h1>
-            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-white/75">
-              강좌 선택, 추천 구간 선택, 미리보기 저장을 하나의 흐름으로 정리해 중간에 길을 잃지 않도록 바꿨습니다.
-            </p>
+            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-white/75">강좌 선택, 추천 구간 선택, 미리보기 저장을 하나의 흐름으로 정리해 중간에 길을 잃지 않도록 바꿨습니다.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
-              <div className="font-semibold text-white">현재 강좌</div>
-              <div className="mt-1">{courseDetail?.title ?? '강좌 선택 필요'}</div>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
-              <div className="font-semibold text-white">선택 클립</div>
-              <div className="mt-1">{selectedClips.length}개 · {totalDurationLabel}</div>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200">
-              <div className="font-semibold text-white">현재 단계</div>
-              <div className="mt-1">{stepLabel}</div>
-            </div>
+            <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200"><div className="font-semibold text-white">현재 강좌</div><div className="mt-1">{courseDetail?.title ?? '강좌 선택 필요'}</div></div>
+            <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200"><div className="font-semibold text-white">선택 클립</div><div className="mt-1">{selectedClips.length}개 · {totalDurationLabel}</div></div>
+            <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-[12px] text-slate-200"><div className="font-semibold text-white">현재 단계</div><div className="mt-1">{stepLabel}</div></div>
           </div>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-white/10 px-4 py-3 text-[12px] text-slate-200 backdrop-blur">
-            <div className="font-semibold text-white">차시 바로 시작</div>
-            <div className="mt-1">현재 보고 있는 강의에서 곧바로 구간을 좁힐 수 있습니다.</div>
-          </div>
-          <div className="rounded-xl bg-white/10 px-4 py-3 text-[12px] text-slate-200 backdrop-blur">
-            <div className="font-semibold text-white">추천 구간 확인</div>
-            <div className="mt-1">차시별 추천 후보를 탭으로 빠르게 좁힙니다.</div>
-          </div>
-          <div className="rounded-xl bg-white/10 px-4 py-3 text-[12px] text-slate-200 backdrop-blur">
-            <div className="font-semibold text-white">저장 전 확인</div>
-            <div className="mt-1">미리보기와 제목을 마지막에 정리할 수 있습니다.</div>
-          </div>
+          <div className="rounded-xl bg-white/10 px-4 py-3 text-[12px] text-slate-200 backdrop-blur"><div className="font-semibold text-white">차시 바로 시작</div><div className="mt-1">현재 보고 있는 강의에서 곧바로 구간을 좁힐 수 있습니다.</div></div>
+          <div className="rounded-xl bg-white/10 px-4 py-3 text-[12px] text-slate-200 backdrop-blur"><div className="font-semibold text-white">추천 구간 확인</div><div className="mt-1">차시별 추천 후보를 탭으로 빠르게 좁힙니다.</div></div>
+          <div className="rounded-xl bg-white/10 px-4 py-3 text-[12px] text-slate-200 backdrop-blur"><div className="font-semibold text-white">저장 전 확인</div><div className="mt-1">미리보기와 제목을 마지막에 정리할 수 있습니다.</div></div>
         </div>
       </section>
 
@@ -414,13 +220,9 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-[18px] font-bold text-slate-900">제작 단계</h2>
-            <p className="mt-2 text-[13px] leading-6 text-slate-500">
-              강좌 선택 → 차시별 구간 선택 → 제목/미리보기/저장의 3단계로 정리했습니다.
-            </p>
+            <p className="mt-2 text-[13px] leading-6 text-slate-500">강좌 선택 → 차시별 구간 선택 → 제목/미리보기/저장의 3단계로 정리했습니다.</p>
           </div>
-          <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
-            {selectedClips.length}개 클립
-          </span>
+          <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">{selectedClips.length}개 클립</span>
         </div>
 
         <div className="mt-5 flex items-center gap-0 overflow-x-auto pb-1">
@@ -428,18 +230,11 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
             const current = (index + 1) as WizardStep;
             const active = step === current;
             const completed = step > current;
-
             return (
               <div key={label} className={`flex items-center ${index > 0 ? 'flex-1' : ''}`}>
-                {index > 0 ? (
-                  <div className={`mx-2 h-0.5 flex-1 rounded ${completed || active ? 'bg-cyan-500' : 'bg-slate-200'}`} />
-                ) : null}
+                {index > 0 ? <div className={`mx-2 h-0.5 flex-1 rounded ${completed || active ? 'bg-cyan-500' : 'bg-slate-200'}`} /> : null}
                 <div className="flex items-center gap-2">
-                  <div
-                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                      completed ? 'bg-emerald-500 text-white' : active ? 'bg-cyan-600 text-white ring-4 ring-cyan-100' : 'bg-slate-200 text-slate-500'
-                    }`}
-                  >
+                  <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold ${completed ? 'bg-emerald-500 text-white' : active ? 'bg-cyan-600 text-white ring-4 ring-cyan-100' : 'bg-slate-200 text-slate-500'}`}>
                     {completed ? <i className="ri-check-line" /> : index + 1}
                   </div>
                   <span className={`hidden text-xs font-medium sm:inline ${active ? 'text-cyan-700' : 'text-slate-400'}`}>{label}</span>
@@ -452,66 +247,12 @@ export function ShortformWizard({ highlightedLecture, selectedCourse, courses, s
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="space-y-5">
-          {step === 1 ? (
-            <ShortformWizardStep1
-              courses={courses}
-              activeCourseId={activeCourseId}
-              courseTitle={courseDetail?.title ?? null}
-              highlightedLecture={highlightedLecture}
-              onSelectCourse={(courseId) => setActiveCourseId(courseId)}
-              onUseHighlightedLecture={() => {
-                if (highlightedLecture?.id) {
-                  setLectureFilter(highlightedLecture.id);
-                }
-                setStep(2);
-              }}
-              onNext={() => setStep(2)}
-              canContinue={courseLectures.length > 0}
-            />
-          ) : null}
-
-          {step === 2 ? (
-            <ShortformWizardStep2
-              lectureFilter={lectureFilter}
-              lectureTabs={lectureTabs}
-              filteredSuggestions={filteredSuggestions}
-              selectedClipKeys={selectedClipKeys}
-              onBack={() => setStep(1)}
-              onNext={() => setStep(3)}
-              onToggleClip={toggleClip}
-              onFilterChange={setLectureFilter}
-            />
-          ) : null}
-
-          {step === 3 ? (
-            <ShortformWizardStep3
-              courseTitle={courseDetail?.title ?? null}
-              selectedClips={selectedClips}
-              title={title}
-              description={description}
-              createdVideoId={createdVideo?.id ?? null}
-              previewVideoUrl={previewVideoUrl}
-              exportStatus={createdVideo?.export_status ?? null}
-              status={status}
-              onBack={() => setStep(2)}
-              onSave={() => void handleCompose()}
-              onShare={() => void handleShare()}
-              onRemoveClip={removeClip}
-              onUpdateClipTimes={updateClipTimes}
-              onTitleChange={setTitle}
-              onDescriptionChange={setDescription}
-              formatDuration={formatDuration}
-            />
-          ) : null}
+          {step === 1 ? <ShortformWizardStep1 courses={courses} activeCourseId={activeCourseId} courseTitle={courseDetail?.title ?? null} highlightedLecture={highlightedLecture} onSelectCourse={(courseId) => setActiveCourseId(courseId)} onUseHighlightedLecture={() => { if (highlightedLecture?.id) setLectureFilter(highlightedLecture.id); setStep(2); }} onNext={() => setStep(2)} canContinue={courseLectures.length > 0} /> : null}
+          {step === 2 ? <ShortformWizardStep2 lectureFilter={lectureFilter} lectureTabs={lectureTabs} filteredSuggestions={filteredSuggestions} selectedClipKeys={selectedClipKeys} onBack={() => setStep(1)} onNext={() => setStep(3)} onToggleClip={toggleClip} onFilterChange={setLectureFilter} /> : null}
+          {step === 3 ? <ShortformWizardStep3 courseTitle={courseDetail?.title ?? null} selectedClips={selectedClips} title={title} description={description} createdVideoId={createdVideo?.id ?? null} previewVideoUrl={previewVideoUrl} exportStatus={createdVideo?.export_status ?? null} status={status} onBack={() => setStep(2)} onSave={() => void handleCompose()} onShare={() => void handleShare()} onRemoveClip={removeClip} onUpdateClipTimes={updateClipTimes} onTitleChange={setTitle} onDescriptionChange={setDescription} formatDuration={formatDuration} /> : null}
         </section>
 
-        <ShortformWizardSidebar
-          courseTitle={courseDetail?.title ?? null}
-          selectedClipsCount={selectedClips.length}
-          selectedDurationLabel={totalDurationLabel}
-          highlightedLectureTitle={highlightedLecture?.title ?? null}
-          communityItems={communityItems}
-        />
+        <ShortformWizardSidebar courseTitle={courseDetail?.title ?? null} selectedClipsCount={selectedClips.length} selectedDurationLabel={totalDurationLabel} highlightedLectureTitle={highlightedLecture?.title ?? null} communityItems={communityItems} />
       </div>
     </div>
   );
