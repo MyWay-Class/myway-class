@@ -9,27 +9,23 @@ import { MediaPipelinePolicyPanels } from '../components/media-pipeline/MediaPip
 import { MediaPipelineHeroSection } from '../components/media-pipeline/MediaPipelineHeroSection';
 import { MediaPipelineMonitoringSection } from '../components/media-pipeline/MediaPipelineMonitoringSection';
 import {
-  approveSttExtractionDetailed,
-  createAudioExtractionDetailed,
   loadAudioExtractions,
   loadLectureTranscriptDetailed,
   loadMediaPipeline,
   loadMediaProcessorHealth,
   loadMediaProviders,
   loadTranscriptSpeakerReview,
-  saveTranscriptSpeakerReviewDetailed,
-  uploadLectureVideoDetailed,
   type TranscriptSpeakerReview,
   type MediaUploadResult,
 } from '../../../lib/api-media';
 import {
   loadShortformExportStatus,
-  retryFailedShortformExports,
   type ShortformExportStatusSummary,
 } from '../../../lib/api-shortforms';
 import { getAiErrorMessage, getQuotaStatusText, getPublicTestPolicyText } from '../../../lib/ai-access';
 import { demoAudioExtraction, demoCourseDetail, demoLectureDetail, demoLecturePipeline, demoLectureTranscript, demoMediaProcessorHealth } from '../data/demo';
 import { buildDefaultDemoUploadResult, isManualApprovalRequired, toSttPolicySummary } from './mediaPipelinePageUtils';
+import { useMediaPipelineActions } from './useMediaPipelineActions';
 
 type MediaPipelinePageProps = {
   selectedCourse: CourseDetail | null;
@@ -250,201 +246,33 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     return toSttPolicySummary(latestExtraction);
   }, [latestExtraction]);
 
-  async function submitExtraction(input: {
-    lecture_id: string;
-    video_url?: string;
-    video_asset_key?: string;
-    source_file_name?: string;
-    source_content_type?: string;
-    source_size_bytes?: number;
-    audio_url?: string;
-    language?: string;
-  }): Promise<boolean> {
-    const extractionResult = await createAudioExtractionDetailed(input, sessionToken);
-
-    if (!extractionResult?.success || !extractionResult.data) {
-      setBannerDescription(getAiErrorMessage(extractionResult, '오디오 추출 job 생성에 실패했습니다.'));
-      setBannerMeta(getQuotaStatusText(extractionResult));
-      setNotice(getAiErrorMessage(extractionResult, '오디오 추출 job 생성에 실패했습니다.'));
-      return false;
-    }
-
-    const extraction = extractionResult.data;
-    setBannerDescription('미디어 처리가 시작되었습니다. 공개 테스트에서는 3분 이하 입력과 로그인 상태만 허용됩니다.');
-    setBannerMeta(getQuotaStatusText(extractionResult));
-    await refreshMediaState(input.lecture_id);
-    setNotice(
-      extraction.transcript_id
-        ? '업로드, 추출, 전사, 자동 요약까지 완료되었습니다.'
-        : '업로드와 추출 job이 등록되었습니다. 외부 처리 서비스 callback 이후 전사가 자동으로 이어집니다.',
-    );
-
-    return true;
-  }
-
-  async function handleSubmit() {
-    if (demoMode) {
-      setNotice('데모 데이터 상태에서는 업로드를 실행하지 않습니다. 실제 강의를 선택하면 업로드와 추출이 연결됩니다.');
-      return;
-    }
-
-    if (!lectureId) {
-      setNotice('먼저 강의를 선택해 주세요.');
-      return;
-    }
-
-    if (!videoFile) {
-      setNotice('업로드할 영상 파일을 선택해 주세요.');
-      return;
-    }
-
-    setBusy(true);
-    setNotice('영상 업로드와 외부 오디오 추출 job을 생성하는 중입니다.');
-
-    try {
-      const uploadResult = await uploadLectureVideoDetailed(lectureId, videoFile, sessionToken);
-      if (!uploadResult?.success || !uploadResult.data) {
-        const fallbackMessage = uploadResult
-          ? '영상 업로드에 실패했습니다. R2 binding, 권한, 또는 저장소 상태를 확인해 주세요.'
-          : '백엔드에 연결할 수 없습니다. `npm run dev`로 backend와 media processor가 실행 중인지 확인해 주세요.';
-        setBannerDescription(getAiErrorMessage(uploadResult, fallbackMessage));
-        setBannerMeta(getQuotaStatusText(uploadResult));
-        setNotice(getAiErrorMessage(uploadResult, fallbackMessage));
-        return;
-      }
-
-      const upload = uploadResult.data;
-      setUploadResult(upload);
-      setBannerDescription('공개 테스트에서는 관리자 전용 업로드만 허용됩니다. 짧은 STT만 체험해 주세요.');
-      setBannerMeta(getQuotaStatusText(uploadResult));
-      await submitExtraction({
-        lecture_id: lectureId,
-        video_url: upload.video_url,
-        video_asset_key: upload.asset_key,
-        source_file_name: upload.file_name,
-        source_content_type: upload.content_type,
-        source_size_bytes: upload.size_bytes,
-        audio_url: audioUrl.trim() || undefined,
-        language: 'ko',
-      });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleRetryExtraction() {
-    if (demoMode) {
-      setNotice('데모 데이터 상태에서는 재추출을 실행하지 않습니다.');
-      return;
-    }
-
-    if (!lectureId || !retrySource.video_url) {
-      setNotice('재시도를 위해 다시 업로드하거나 사용할 video URL이 필요합니다.');
-      return;
-    }
-
-    setBusy(true);
-    setNotice('직전 추출 입력값으로 다시 요청하는 중입니다.');
-
-    try {
-      const retryResult = await createAudioExtractionDetailed({
-        lecture_id: lectureId,
-        video_url: retrySource.video_url,
-        video_asset_key: retrySource.video_asset_key,
-        source_file_name: retrySource.source_file_name,
-        source_content_type: retrySource.source_content_type,
-        source_size_bytes: retrySource.source_size_bytes,
-        audio_url: audioUrl.trim() || undefined,
-        language: latestExtraction?.language ?? 'ko',
-      }, sessionToken);
-
-      if (!retryResult?.success || !retryResult.data) {
-        setBannerDescription(getAiErrorMessage(retryResult, '재추출 요청에 실패했습니다.'));
-        setBannerMeta(getQuotaStatusText(retryResult));
-        setNotice(getAiErrorMessage(retryResult, '재추출 요청에 실패했습니다.'));
-        return;
-      }
-
-      setBannerDescription('재추출 요청이 접수되었습니다. quota와 STT 길이 제한이 함께 적용됩니다.');
-      setBannerMeta(getQuotaStatusText(retryResult));
-      await refreshMediaState(lectureId);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleSaveSpeakerReview() {
-    if (demoMode) {
-      setNotice('데모 데이터 상태에서는 화자 검수를 저장하지 않습니다.');
-      return;
-    }
-    if (!lectureId) {
-      setNotice('강의를 먼저 선택해 주세요.');
-      return;
-    }
-    if (!instructorName.trim()) {
-      setNotice('강사명은 필수입니다.');
-      return;
-    }
-    const confidence = Number(speakerConfidence);
-    const response = await saveTranscriptSpeakerReviewDetailed(
-      lectureId,
-      {
-        speaker_label: speakerLabel.trim() || 'SPEAKER_01',
-        instructor_name: instructorName.trim(),
-        confidence: Number.isFinite(confidence) ? confidence : undefined,
-        note: speakerNote.trim() || undefined,
-      },
-      sessionToken,
-    );
-    if (!response?.success || !response.data) {
-      setNotice(getAiErrorMessage(response, '화자 검수 저장에 실패했습니다.'));
-      return;
-    }
-    setSpeakerReview(response.data);
-    setNotice('화자/강사 검수가 저장되었습니다.');
-  }
-
-  async function handleRetryFailedShortforms() {
-    if (viewerRole !== 'ADMIN' || demoMode) {
-      return;
-    }
-    const status = await retryFailedShortformExports({ include_permanent: false, limit: 20 }, sessionToken);
-    if (status) {
-      setShortformExportStatus(status);
-      setNotice('실패한 숏폼 export 재시도를 실행했습니다.');
-    } else {
-      setNotice('숏폼 export 재시도 실행에 실패했습니다.');
-    }
-  }
-
-  async function handleApproveStt() {
-    if (demoMode) {
-      setNotice('데모 데이터 상태에서는 승인 실행을 하지 않습니다.');
-      return;
-    }
-    if (!lectureId || !latestExtraction?.id) {
-      setNotice('승인할 추출 항목을 먼저 선택해 주세요.');
-      return;
-    }
-    setBusy(true);
-    setNotice('승인된 STT를 실행하고 있습니다.');
-    try {
-      const approved = await approveSttExtractionDetailed(
-        latestExtraction.id,
-        { lecture_id: lectureId },
-        sessionToken,
-      );
-      if (!approved?.success || !approved.data) {
-        setNotice(getAiErrorMessage(approved, 'STT 승인 실행에 실패했습니다.'));
-        return;
-      }
-      setNotice('승인된 STT 실행이 완료되었습니다.');
-      await refreshMediaState(lectureId);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const {
+    handleSubmit,
+    handleRetryExtraction,
+    handleApproveStt,
+    handleSaveSpeakerReview,
+    handleRetryFailedShortforms,
+  } = useMediaPipelineActions({
+    demoMode,
+    lectureId,
+    sessionToken,
+    audioUrl,
+    latestExtraction,
+    retrySource,
+    viewerRole,
+    setBusy,
+    setNotice,
+    setBannerDescription,
+    setBannerMeta,
+    setUploadResult,
+    refreshMediaState,
+    setSpeakerReview,
+    speakerLabel,
+    instructorName,
+    speakerConfidence,
+    speakerNote,
+    setShortformExportStatus,
+  });
 
   return (
     <div className="space-y-5">
@@ -478,7 +306,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
           onLectureChange={setLectureId}
           onAudioUrlChange={setAudioUrl}
           onVideoFileChange={setVideoFile}
-          onSubmit={() => void handleSubmit()}
+          onSubmit={() => void handleSubmit(videoFile)}
         />
 
         <MediaPipelinePolicyPanels
