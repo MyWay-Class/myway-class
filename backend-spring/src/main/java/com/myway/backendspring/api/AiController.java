@@ -1,6 +1,7 @@
 package com.myway.backendspring.api;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.myway.backendspring.api.support.AiControllerAuthSupport;
 import com.myway.backendspring.api.support.AiControllerRagSupport;
 import com.myway.backendspring.api.support.AiControllerSupport;
 import com.myway.backendspring.api.support.AiRequestSupport;
@@ -82,6 +83,7 @@ public class AiController {
     private final AiRuntimeService aiRuntimeService;
     private final AiRequestSupport aiRequestSupport;
     private final AiControllerSupport aiControllerSupport;
+    private final AiControllerAuthSupport aiControllerAuthSupport;
     private final AiControllerRagSupport aiControllerRagSupport;
 
     public AiController(
@@ -91,6 +93,7 @@ public class AiController {
             AiRuntimeService aiRuntimeService,
             AiRequestSupport aiRequestSupport,
             AiControllerSupport aiControllerSupport,
+            AiControllerAuthSupport aiControllerAuthSupport,
             AiControllerRagSupport aiControllerRagSupport
     ) {
         this.sessionService = sessionService;
@@ -99,10 +102,11 @@ public class AiController {
         this.aiRuntimeService = aiRuntimeService;
         this.aiRequestSupport = aiRequestSupport;
         this.aiControllerSupport = aiControllerSupport;
+        this.aiControllerAuthSupport = aiControllerAuthSupport;
         this.aiControllerRagSupport = aiControllerRagSupport;
     }
 
-    private SessionView require(String auth) { return sessionService.me(auth); }
+    private SessionView require(String auth) { return aiControllerAuthSupport.requireSession(sessionService, auth); }
 
     @GetMapping("/insights")
     public ResponseEntity<ApiResponse<Map<String, Object>>> insights(@RequestHeader(value = "Authorization", required = false) String auth) {
@@ -155,8 +159,8 @@ public class AiController {
     @PostMapping("/rag")
     public ResponseEntity<ApiResponse<Map<String, Object>>> rag(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody RagRequest body) {
         SessionView session = require(auth);
-        if (session == null) return aiControllerSupport.unauthenticated();
-        if (!featureStore.canConsumeAi(session.user().id())) return aiControllerSupport.dailyLimitExceeded();
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        if (guard != null) return guard;
 
         String query = aiRequestSupport.normalize(body.query());
 
@@ -244,8 +248,8 @@ public class AiController {
     @PostMapping("/intent")
     public ResponseEntity<ApiResponse<Map<String, Object>>> intent(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody IntentRequest body) {
         SessionView session = require(auth);
-        if (session == null) return aiControllerSupport.unauthenticated();
-        if (!featureStore.canConsumeAi(session.user().id())) return aiControllerSupport.dailyLimitExceeded();
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        if (guard != null) return guard;
         String message = aiRequestSupport.normalize(body.message());
         Map<String, Object> runtime = aiRuntimeService.generate(
                 "intent",
@@ -260,8 +264,8 @@ public class AiController {
     @PostMapping("/search")
     public ResponseEntity<ApiResponse<Map<String, Object>>> search(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SearchRequest body) {
         SessionView session = require(auth);
-        if (session == null) return aiControllerSupport.unauthenticated();
-        if (!featureStore.canConsumeAi(session.user().id())) return aiControllerSupport.dailyLimitExceeded();
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        if (guard != null) return guard;
         String query = aiRequestSupport.normalize(body.query());
         String lectureId = aiRequestSupport.optionalNormalized(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = aiRequestSupport.validateLecture(body.lecture_id());
@@ -283,8 +287,8 @@ public class AiController {
     @PostMapping("/answer")
     public ResponseEntity<ApiResponse<Map<String, Object>>> answer(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody AnswerRequest body) {
         SessionView session = require(auth);
-        if (session == null) return aiControllerSupport.unauthenticated();
-        if (!featureStore.canConsumeAi(session.user().id())) return aiControllerSupport.dailyLimitExceeded();
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        if (guard != null) return guard;
         String question = aiRequestSupport.normalize(body.question());
         String lectureId = aiRequestSupport.optionalNormalized(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = aiRequestSupport.validateLecture(body.lecture_id());
@@ -299,8 +303,8 @@ public class AiController {
     @PostMapping("/summary")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summary(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SummaryRequest body) {
         SessionView session = require(auth);
-        if (session == null) return aiControllerSupport.unauthenticated();
-        if (!featureStore.canConsumeAi(session.user().id())) return aiControllerSupport.dailyLimitExceeded();
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        if (guard != null) return guard;
         String lectureId = aiRequestSupport.requireLectureId(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         String style = aiRequestSupport.defaultIfBlank(body.style(), "brief");
@@ -318,8 +322,8 @@ public class AiController {
     @PostMapping("/quiz")
     public ResponseEntity<ApiResponse<Map<String, Object>>> quiz(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody QuizRequest body) {
         SessionView session = require(auth);
-        if (session == null) return aiControllerSupport.unauthenticated();
-        if (!featureStore.canConsumeAi(session.user().id())) return aiControllerSupport.dailyLimitExceeded();
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        if (guard != null) return guard;
         String lectureId = aiRequestSupport.requireLectureId(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         Map<String, Object> runtime = aiRuntimeService.generate(
