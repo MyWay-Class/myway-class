@@ -2,6 +2,7 @@ package com.myway.backendspring.api;
 
 import com.myway.backendspring.api.support.ApiAuthGuards;
 import com.myway.backendspring.api.support.MediaAssetPlaybackSupport;
+import com.myway.backendspring.api.support.MediaControllerAdminSupport;
 import com.myway.backendspring.api.support.MediaControllerSupport;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
@@ -30,6 +31,7 @@ public class MediaController {
     private final String callbackToken;
     private final MediaAssetPlaybackSupport playbackSupport;
     private final MediaControllerSupport support;
+    private final MediaControllerAdminSupport adminSupport;
 
     public MediaController(
             SessionService sessionService,
@@ -37,7 +39,8 @@ public class MediaController {
             DemoLearningService learningService,
             @Value("${myway.media.callback.token:dev-media-callback-token}") String callbackToken,
             MediaAssetPlaybackSupport playbackSupport,
-            MediaControllerSupport support
+            MediaControllerSupport support,
+            MediaControllerAdminSupport adminSupport
     ) {
         this.sessionService = sessionService;
         this.mediaPipelineService = mediaPipelineService;
@@ -45,6 +48,7 @@ public class MediaController {
         this.callbackToken = callbackToken;
         this.playbackSupport = playbackSupport;
         this.support = support;
+        this.adminSupport = adminSupport;
     }
 
     public record ExtractAudioRequest(
@@ -182,30 +186,17 @@ public class MediaController {
     ) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        if (!support.canManageMedia(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.failure("FORBIDDEN", "화자 검수는 강사와 운영자만 사용할 수 있습니다."));
-        }
-        if (learningService.getLecture(lectureId) == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        }
         String instructorName = support.optionalOrNull(body == null ? null : body.instructor_name());
-        if (instructorName == null || instructorName.isBlank()) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.failure("INSTRUCTOR_NAME_REQUIRED", "instructor_name이 필요합니다."));
-        }
         String speakerLabel = support.optionalOrDefault(body == null ? null : body.speaker_label(), "SPEAKER_01");
         String note = support.optionalOrNull(body == null ? null : body.note());
-        Map<String, Object> payload = mediaPipelineService.upsertSpeakerReview(
+        return adminSupport.upsertTranscriptSpeakerReview(
+                session,
                 lectureId,
                 speakerLabel,
                 instructorName,
                 body == null ? null : body.confidence(),
-                note,
-                session.user().id()
+                note
         );
-        return ResponseEntity.ok(ApiResponse.success(payload, "화자/강사 검수가 저장되었습니다."));
     }
 
     @GetMapping("/notes/{lectureId}")
@@ -289,18 +280,10 @@ public class MediaController {
     ) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        if (!support.canManageMedia(session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure("FORBIDDEN", "강의 영상 연결은 강사와 운영자만 사용할 수 있습니다."));
         String lectureId = support.trimRequired(body.lecture_id());
-        if (learningService.getLecture(lectureId) == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        }
         String assetKey = support.trimRequired(body.asset_key());
         String videoUrl = support.optionalOrNull(body.video_url());
-        Map<String, Object> payload = mediaPipelineService.bindLectureVideoAsset(lectureId, assetKey, videoUrl);
-        if (payload == null) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_ASSET_BINDING", "lecture_id와 asset_key를 확인해 주세요."));
-        }
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(payload, "강의와 영상 에셋이 연결되었습니다."));
+        return adminSupport.bindLectureVideo(session, lectureId, assetKey, videoUrl);
     }
 
     @GetMapping("/lecture-video/{lectureId}")
@@ -323,17 +306,14 @@ public class MediaController {
     ) {
         SessionView session = require(auth);
         if (session == null) return unauthenticated();
-        if (!support.isAdmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.failure("FORBIDDEN", "배치 파이프라인 실행은 운영자만 사용할 수 있습니다."));
-        }
         List<String> lectureIds = body == null ? null : body.lecture_ids();
         Integer retryCount = body == null ? 0 : body.retry_count();
         boolean forceRun = body != null && Boolean.TRUE.equals(body.force_run());
         String language = body == null ? null : body.language();
         String sttProvider = body == null ? null : body.stt_provider();
         String sttModel = body == null ? null : body.stt_model();
-        Map<String, Object> result = mediaPipelineService.runBatchPipeline(
+        return adminSupport.runBatchPipeline(
+                session,
                 lectureIds,
                 retryCount,
                 forceRun,
@@ -341,6 +321,5 @@ public class MediaController {
                 sttProvider,
                 sttModel
         );
-        return ResponseEntity.ok(ApiResponse.success(result, "STT/RAG 배치 파이프라인 실행이 완료되었습니다."));
     }
 }
