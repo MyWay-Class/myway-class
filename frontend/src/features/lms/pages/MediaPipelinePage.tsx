@@ -29,7 +29,8 @@ import {
 } from '../../../lib/api-shortforms';
 import { getAiErrorMessage, getQuotaStatusText, getPublicTestPolicyText } from '../../../lib/ai-access';
 import { demoAudioExtraction, demoCourseDetail, demoLectureDetail, demoLecturePipeline, demoLectureTranscript, demoMediaProcessorHealth } from '../data/demo';
-import { buildDefaultDemoUploadResult, isManualApprovalRequired, toSttPolicySummary } from './mediaPipelinePageUtils';
+import { buildDefaultDemoUploadResult } from './mediaPipelinePageUtils';
+import { useMediaPipelineDerived } from './useMediaPipelineDerived';
 
 type MediaPipelinePageProps = {
   selectedCourse: CourseDetail | null;
@@ -178,34 +179,13 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     };
   }, [demoMode, lectureId, selectedCourse?.instructor_name, sessionToken, viewerRole]);
 
-  const selectedLecture = useMemo(
-    () => lectureOptions.find((lecture) => lecture.id === lectureId) ?? highlightedLecture ?? demoLectureDetail,
-    [highlightedLecture, lectureId, lectureOptions],
-  );
-
-  const latestExtraction = useMemo(
-    () =>
-      [...extractions].sort((left, right) => {
-        const leftKey = left.updated_at ?? left.created_at;
-        const rightKey = right.updated_at ?? right.created_at;
-        return rightKey.localeCompare(leftKey);
-      })[0] ?? null,
-    [extractions],
-  );
-
-  const retrySource = useMemo(
-    () => ({
-      video_url:
-        uploadResult?.video_url ??
-        latestExtraction?.source_url ??
-        (highlightedLecture?.id === lectureId ? highlightedLecture.video_url : undefined),
-      video_asset_key: uploadResult?.asset_key ?? latestExtraction?.source_video_key,
-      source_file_name: uploadResult?.file_name ?? latestExtraction?.source_video_name,
-      source_content_type: uploadResult?.content_type ?? latestExtraction?.source_content_type,
-      source_size_bytes: uploadResult?.size_bytes ?? latestExtraction?.source_size_bytes,
-    }),
-    [highlightedLecture, latestExtraction, lectureId, uploadResult],
-  );
+  const { selectedLecture, latestExtraction, retrySource, requiresManualApproval, sttPolicySummary } = useMediaPipelineDerived({
+    lectureOptions,
+    lectureId,
+    highlightedLecture,
+    extractions,
+    uploadResult,
+  });
 
   useEffect(() => {
     if (!lectureId) {
@@ -244,11 +224,6 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       active = false;
     };
   }, [demoMode, sessionToken, viewerRole]);
-
-  const requiresManualApproval = useMemo(() => isManualApprovalRequired(latestExtraction), [latestExtraction]);
-  const sttPolicySummary = useMemo(() => {
-    return toSttPolicySummary(latestExtraction);
-  }, [latestExtraction]);
 
   async function submitExtraction(input: {
     lecture_id: string;
