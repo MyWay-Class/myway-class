@@ -38,6 +38,7 @@ public class DemoLearningService {
     private final DemoLearningProgressSupport demoLearningProgressSupport;
     private final DemoLearningMetadataSupport demoLearningMetadataSupport;
     private final DemoLearningBootstrapSupport demoLearningBootstrapSupport;
+    private final DemoLearningCourseAccessSupport demoLearningCourseAccessSupport;
 
     @Autowired
     public DemoLearningService(
@@ -53,7 +54,8 @@ public class DemoLearningService {
             LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport,
             DemoLearningProgressSupport demoLearningProgressSupport,
             DemoLearningMetadataSupport demoLearningMetadataSupport,
-            DemoLearningBootstrapSupport demoLearningBootstrapSupport
+            DemoLearningBootstrapSupport demoLearningBootstrapSupport,
+            DemoLearningCourseAccessSupport demoLearningCourseAccessSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -68,6 +70,7 @@ public class DemoLearningService {
         this.demoLearningProgressSupport = demoLearningProgressSupport;
         this.demoLearningMetadataSupport = demoLearningMetadataSupport;
         this.demoLearningBootstrapSupport = demoLearningBootstrapSupport;
+        this.demoLearningCourseAccessSupport = demoLearningCourseAccessSupport;
         initSeedData();
     }
 
@@ -86,6 +89,7 @@ public class DemoLearningService {
         this.demoLearningProgressSupport = new DemoLearningProgressSupport();
         this.demoLearningMetadataSupport = new DemoLearningMetadataSupport();
         this.demoLearningBootstrapSupport = new DemoLearningBootstrapSupport();
+        this.demoLearningCourseAccessSupport = new DemoLearningCourseAccessSupport();
         initSeedData();
     }
 
@@ -407,13 +411,26 @@ public class DemoLearningService {
     }
 
     private List<CourseDetail> listAllCourses() {
-        if (!useStore()) return new ArrayList<>(courses.values());
-        return courseCatalogStoreSupport.listAllCourses(store, COURSE_SCOPE, learningPayloadMapper);
+        return demoLearningCourseAccessSupport.listAllCourses(
+                useStore(),
+                courses,
+                store,
+                COURSE_SCOPE,
+                courseCatalogStoreSupport,
+                learningPayloadMapper
+        );
     }
 
     private CourseDetail findCourse(String courseId) {
-        if (!useStore()) return courses.get(courseId);
-        return courseCatalogStoreSupport.findCourse(store, COURSE_SCOPE, courseId, learningPayloadMapper);
+        return demoLearningCourseAccessSupport.findCourse(
+                useStore(),
+                courses,
+                store,
+                COURSE_SCOPE,
+                courseId,
+                courseCatalogStoreSupport,
+                learningPayloadMapper
+        );
     }
 
     private void appendActivity(String userId, String type, String resourceType, String resourceId, Map<String, Object> metadata) {
