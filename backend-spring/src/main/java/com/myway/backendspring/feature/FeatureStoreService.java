@@ -41,6 +41,7 @@ public class FeatureStoreService {
     private final FeatureStoreMediaOpsSupport mediaOpsSupport;
     private final FeatureStoreDomainOpsSupport domainOpsSupport;
     private final FeatureStoreAssetSupport assetSupport;
+    private final FeatureStoreReadSupport readSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -59,7 +60,8 @@ public class FeatureStoreService {
             FeatureStoreAiSupport aiSupport,
             FeatureStoreMediaOpsSupport mediaOpsSupport,
             FeatureStoreDomainOpsSupport domainOpsSupport,
-            FeatureStoreAssetSupport assetSupport
+            FeatureStoreAssetSupport assetSupport,
+            FeatureStoreReadSupport readSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -77,6 +79,7 @@ public class FeatureStoreService {
         this.mediaOpsSupport = mediaOpsSupport;
         this.domainOpsSupport = domainOpsSupport;
         this.assetSupport = assetSupport;
+        this.readSupport = readSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -97,7 +100,8 @@ public class FeatureStoreService {
                 new FeatureStoreAiSupport(),
                 new FeatureStoreMediaOpsSupport(),
                 new FeatureStoreDomainOpsSupport(),
-                new FeatureStoreAssetSupport()
+                new FeatureStoreAssetSupport(),
+                new FeatureStoreReadSupport()
         );
     }
 
@@ -196,7 +200,7 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> transcript(String lectureId) {
-        return store.getKv(TRANSCRIPT_SCOPE, lectureId);
+        return readSupport.transcript(store, TRANSCRIPT_SCOPE, lectureId);
     }
 
     public Map<String, Object> transcribe(String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel) {
@@ -293,11 +297,7 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> pipeline(String lectureId) {
-        Map<String, Object> row = store.getKv(PIPELINE_SCOPE, lectureId);
-        if (row == null) {
-            return pipelineSupport.buildEmptyPipeline(lectureId);
-        }
-        return pipelineSupport.hydratePipelineRow(row);
+        return readSupport.pipeline(store, PIPELINE_SCOPE, lectureId, pipelineSupport);
     }
 
     public Map<String, Object> summarizeLecture(String lectureId, String style, String language) {
