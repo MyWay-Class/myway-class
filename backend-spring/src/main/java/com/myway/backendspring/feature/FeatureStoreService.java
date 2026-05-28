@@ -12,10 +12,8 @@ import com.myway.backendspring.persistence.FeatureJdbcStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 public class FeatureStoreService {
@@ -43,6 +41,7 @@ public class FeatureStoreService {
     private final FeatureStoreReadSupport readSupport;
     private final FeatureStoreExtractionReadSupport extractionReadSupport;
     private final FeatureStoreExtractionCallbackSupport extractionCallbackSupport;
+    private final FeatureStoreNoteSupport noteSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -64,7 +63,8 @@ public class FeatureStoreService {
             FeatureStoreAssetSupport assetSupport,
             FeatureStoreReadSupport readSupport,
             FeatureStoreExtractionReadSupport extractionReadSupport,
-            FeatureStoreExtractionCallbackSupport extractionCallbackSupport
+            FeatureStoreExtractionCallbackSupport extractionCallbackSupport,
+            FeatureStoreNoteSupport noteSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -85,6 +85,7 @@ public class FeatureStoreService {
         this.readSupport = readSupport;
         this.extractionReadSupport = extractionReadSupport;
         this.extractionCallbackSupport = extractionCallbackSupport;
+        this.noteSupport = noteSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -108,7 +109,8 @@ public class FeatureStoreService {
                 new FeatureStoreAssetSupport(),
                 new FeatureStoreReadSupport(),
                 new FeatureStoreExtractionReadSupport(),
-                new FeatureStoreExtractionCallbackSupport()
+                new FeatureStoreExtractionCallbackSupport(),
+                new FeatureStoreNoteSupport()
         );
     }
 
@@ -297,19 +299,11 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> summarizeLecture(String lectureId, String style, String language) {
-        Map<String, Object> note = payloadSupport.lectureSummaryNotePayload(
-                UUID.randomUUID().toString(),
-                lectureId,
-                payloadSupport.normalizeOrDefault(style, "brief"),
-                payloadSupport.normalizeOrDefault(language, "ko"),
-                Instant.now().toString()
-        );
-        store.insertEvent(MEDIA_NOTE_SCOPE, lectureId, String.valueOf(note.get("id")), note);
-        return note;
+        return noteSupport.summarizeLecture(store, MEDIA_NOTE_SCOPE, payloadSupport, lectureId, style, language);
     }
 
     public List<Map<String, Object>> notes(String lectureId) {
-        return store.listEventsByOwner(MEDIA_NOTE_SCOPE, lectureId);
+        return noteSupport.notes(store, MEDIA_NOTE_SCOPE, lectureId);
     }
 
     public Map<String, Object> mediaAsset(String assetKey) {
