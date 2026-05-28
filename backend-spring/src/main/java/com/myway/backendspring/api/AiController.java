@@ -3,6 +3,7 @@ package com.myway.backendspring.api;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.myway.backendspring.api.support.AiControllerAuthSupport;
 import com.myway.backendspring.api.support.AiControllerRagSupport;
+import com.myway.backendspring.api.support.AiControllerRuntimeSupport;
 import com.myway.backendspring.api.support.AiControllerSupport;
 import com.myway.backendspring.api.support.AiRequestSupport;
 import com.myway.backendspring.auth.SessionService;
@@ -85,6 +86,7 @@ public class AiController {
     private final AiControllerSupport aiControllerSupport;
     private final AiControllerAuthSupport aiControllerAuthSupport;
     private final AiControllerRagSupport aiControllerRagSupport;
+    private final AiControllerRuntimeSupport aiControllerRuntimeSupport;
 
     public AiController(
             SessionService sessionService,
@@ -94,7 +96,8 @@ public class AiController {
             AiRequestSupport aiRequestSupport,
             AiControllerSupport aiControllerSupport,
             AiControllerAuthSupport aiControllerAuthSupport,
-            AiControllerRagSupport aiControllerRagSupport
+            AiControllerRagSupport aiControllerRagSupport,
+            AiControllerRuntimeSupport aiControllerRuntimeSupport
     ) {
         this.sessionService = sessionService;
         this.featureStore = featureStore;
@@ -104,6 +107,7 @@ public class AiController {
         this.aiControllerSupport = aiControllerSupport;
         this.aiControllerAuthSupport = aiControllerAuthSupport;
         this.aiControllerRagSupport = aiControllerRagSupport;
+        this.aiControllerRuntimeSupport = aiControllerRuntimeSupport;
     }
 
     private SessionView require(String auth) { return aiControllerAuthSupport.requireSession(sessionService, auth); }
@@ -159,7 +163,7 @@ public class AiController {
     @PostMapping("/rag")
     public ResponseEntity<ApiResponse<Map<String, Object>>> rag(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody RagRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerRuntimeSupport.requireAiEligible(featureStore, session, aiControllerSupport, aiControllerAuthSupport);
         if (guard != null) return guard;
 
         String query = aiRequestSupport.normalize(body.query());
@@ -179,7 +183,7 @@ public class AiController {
                 minScore,
                 includeDebug
         );
-        featureStore.recordAiUsage(session.user().id(), "rag", true, query);
+        aiControllerRuntimeSupport.recordUsage(featureStore, session.user().id(), "rag", query);
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 응답을 생성했습니다."));
     }
 
@@ -248,91 +252,105 @@ public class AiController {
     @PostMapping("/intent")
     public ResponseEntity<ApiResponse<Map<String, Object>>> intent(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody IntentRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerRuntimeSupport.requireAiEligible(featureStore, session, aiControllerSupport, aiControllerAuthSupport);
         if (guard != null) return guard;
         String message = aiRequestSupport.normalize(body.message());
-        Map<String, Object> runtime = aiRuntimeService.generate(
+        Map<String, Object> runtime = aiControllerRuntimeSupport.generate(
+                aiRuntimeService,
+                featureStore,
+                session.user().id(),
                 "intent",
-                "메시지 의도를 한 단어로 분류하고 이유를 한 줄로 설명하세요: " + message,
-                featureStore.aiSettings(session.user().id())
+                "메시지 의도를 한 단어로 분류하고 이유를 한 줄로 설명하세요: " + message
         );
         Map<String, Object> data = aiControllerSupport.intentResponse(runtime, aiRequestSupport.optionalNormalized(body.lecture_id()));
-        featureStore.recordAiUsage(session.user().id(), "intent", true, message);
+        aiControllerRuntimeSupport.recordUsage(featureStore, session.user().id(), "intent", message);
         return ResponseEntity.ok(ApiResponse.success(data, "인텐트가 분류되었습니다."));
     }
 
     @PostMapping("/search")
     public ResponseEntity<ApiResponse<Map<String, Object>>> search(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SearchRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerRuntimeSupport.requireAiEligible(featureStore, session, aiControllerSupport, aiControllerAuthSupport);
         if (guard != null) return guard;
         String query = aiRequestSupport.normalize(body.query());
         String lectureId = aiRequestSupport.optionalNormalized(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = aiRequestSupport.validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
-        Map<String, Object> runtime = aiRuntimeService.generate(
+        Map<String, Object> runtime = aiControllerRuntimeSupport.generate(
+                aiRuntimeService,
+                featureStore,
+                session.user().id(),
                 "search",
-                "다음 질의와 관련된 강의 검색 결과를 요약하세요: " + query,
-                featureStore.aiSettings(session.user().id())
+                "다음 질의와 관련된 강의 검색 결과를 요약하세요: " + query
         );
         Map<String, Object> data = aiControllerSupport.searchResponse(
                 query,
                 aiRequestSupport.resolveRagSources(query, lectureId, null, 4),
                 runtime
         );
-        featureStore.recordAiUsage(session.user().id(), "search", true, query);
+        aiControllerRuntimeSupport.recordUsage(featureStore, session.user().id(), "search", query);
         return ResponseEntity.ok(ApiResponse.success(data, "검색 결과를 조회했습니다."));
     }
 
     @PostMapping("/answer")
     public ResponseEntity<ApiResponse<Map<String, Object>>> answer(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody AnswerRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerRuntimeSupport.requireAiEligible(featureStore, session, aiControllerSupport, aiControllerAuthSupport);
         if (guard != null) return guard;
         String question = aiRequestSupport.normalize(body.question());
         String lectureId = aiRequestSupport.optionalNormalized(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = aiRequestSupport.validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
-        Map<String, Object> runtime = aiRuntimeService.generate("answer", question, featureStore.aiSettings(session.user().id()));
+        Map<String, Object> runtime = aiControllerRuntimeSupport.generate(
+                aiRuntimeService,
+                featureStore,
+                session.user().id(),
+                "answer",
+                question
+        );
         List<Map<String, Object>> sources = aiRequestSupport.resolveRagSources(question, lectureId, null, 4);
         Map<String, Object> data = aiControllerSupport.answerResponse(question, lectureId, sources, runtime);
-        featureStore.recordAiUsage(session.user().id(), "answer", true, question);
+        aiControllerRuntimeSupport.recordUsage(featureStore, session.user().id(), "answer", question);
         return ResponseEntity.ok(ApiResponse.success(data, "답변을 생성했습니다."));
     }
 
     @PostMapping("/summary")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summary(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody SummaryRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerRuntimeSupport.requireAiEligible(featureStore, session, aiControllerSupport, aiControllerAuthSupport);
         if (guard != null) return guard;
         String lectureId = aiRequestSupport.requireLectureId(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
         String style = aiRequestSupport.defaultIfBlank(body.style(), "brief");
         String language = aiRequestSupport.defaultIfBlank(body.language(), "ko");
-        Map<String, Object> runtime = aiRuntimeService.generate(
+        Map<String, Object> runtime = aiControllerRuntimeSupport.generate(
+                aiRuntimeService,
+                featureStore,
+                session.user().id(),
                 "summary",
-                lectureId + " 강의 내용을 " + style + " 스타일로 " + language + " 요약",
-                featureStore.aiSettings(session.user().id())
+                lectureId + " 강의 내용을 " + style + " 스타일로 " + language + " 요약"
         );
         Map<String, Object> data = aiControllerSupport.summaryResponse(lectureId, style, language, runtime);
-        featureStore.recordAiUsage(session.user().id(), "summary", true, lectureId);
+        aiControllerRuntimeSupport.recordUsage(featureStore, session.user().id(), "summary", lectureId);
         return ResponseEntity.ok(ApiResponse.success(data, "요약이 생성되었습니다."));
     }
 
     @PostMapping("/quiz")
     public ResponseEntity<ApiResponse<Map<String, Object>>> quiz(@RequestHeader(value = "Authorization", required = false) String auth, @Valid @RequestBody QuizRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = aiControllerRuntimeSupport.requireAiEligible(featureStore, session, aiControllerSupport, aiControllerAuthSupport);
         if (guard != null) return guard;
         String lectureId = aiRequestSupport.requireLectureId(body.lecture_id());
         if (learningService.getLecture(lectureId) == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("LECTURE_NOT_FOUND", "강의를 찾을 수 없습니다."));
-        Map<String, Object> runtime = aiRuntimeService.generate(
+        Map<String, Object> runtime = aiControllerRuntimeSupport.generate(
+                aiRuntimeService,
+                featureStore,
+                session.user().id(),
                 "quiz",
-                lectureId + " 강의 기반 객관식 퀴즈 1문항 생성",
-                featureStore.aiSettings(session.user().id())
+                lectureId + " 강의 기반 객관식 퀴즈 1문항 생성"
         );
         Map<String, Object> data = aiControllerSupport.quizResponse(lectureId, runtime);
-        featureStore.recordAiUsage(session.user().id(), "quiz", true, lectureId);
+        aiControllerRuntimeSupport.recordUsage(featureStore, session.user().id(), "quiz", lectureId);
         return ResponseEntity.ok(ApiResponse.success(data, "퀴즈가 생성되었습니다."));
     }
 
