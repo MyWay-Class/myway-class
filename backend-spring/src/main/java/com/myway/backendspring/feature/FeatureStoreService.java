@@ -40,6 +40,7 @@ public class FeatureStoreService {
     private final FeatureStoreAiSupport aiSupport;
     private final FeatureStoreMediaOpsSupport mediaOpsSupport;
     private final FeatureStoreDomainOpsSupport domainOpsSupport;
+    private final FeatureStoreAssetSupport assetSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -57,7 +58,8 @@ public class FeatureStoreService {
             FeatureStoreRagSupport ragSupport,
             FeatureStoreAiSupport aiSupport,
             FeatureStoreMediaOpsSupport mediaOpsSupport,
-            FeatureStoreDomainOpsSupport domainOpsSupport
+            FeatureStoreDomainOpsSupport domainOpsSupport,
+            FeatureStoreAssetSupport assetSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -74,6 +76,7 @@ public class FeatureStoreService {
         this.aiSupport = aiSupport;
         this.mediaOpsSupport = mediaOpsSupport;
         this.domainOpsSupport = domainOpsSupport;
+        this.assetSupport = assetSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -93,7 +96,8 @@ public class FeatureStoreService {
                 new FeatureStoreRagSupport(),
                 new FeatureStoreAiSupport(),
                 new FeatureStoreMediaOpsSupport(),
-                new FeatureStoreDomainOpsSupport()
+                new FeatureStoreDomainOpsSupport(),
+                new FeatureStoreAssetSupport()
         );
     }
 
@@ -169,12 +173,7 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> mediaUpload(String lectureId, String fileName) {
-        String key = "asset/" + lectureId + "/" + UUID.randomUUID();
-        Map<String, Object> payload = payloadSupport.mediaUploadPayload(
-                lectureId, key, "/api/v1/media/assets/" + key, fileName
-        );
-        store.upsertKv(MEDIA_ASSET_SCOPE, key, payload);
-        return payload;
+        return assetSupport.mediaUpload(store, MEDIA_ASSET_SCOPE, payloadSupport, lectureId, fileName);
     }
 
     public Map<String, Object> createExtraction(String lectureId) {
@@ -182,16 +181,14 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> createExtraction(String lectureId, String audioUrl) {
-        String id = UUID.randomUUID().toString();
-        String now = Instant.now().toString();
-        Map<String, Object> item = payloadSupport.extractionSeed(id, lectureId, audioUrl, now);
-
-        store.insertEvent(EXTRACTION_SCOPE, lectureId, id, item);
-        store.upsertKv(EXTRACTION_SCOPE, id, item);
-        Map<String, Object> pipeline = payloadSupport.pipelineSeed(lectureId, id, now);
-        store.upsertKv(PIPELINE_SCOPE, lectureId, pipeline);
-
-        return item;
+        return assetSupport.createExtraction(
+                store,
+                EXTRACTION_SCOPE,
+                PIPELINE_SCOPE,
+                payloadSupport,
+                lectureId,
+                audioUrl
+        );
     }
 
     public Map<String, Object> dispatchExtractionJob(String extractionId, String sourceVideoUrl) {
