@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { getLectureDisplayDurationMinutes, type CourseDetail, type LectureDetail } from '@myway/shared';
 import { CourseSessionTimeline } from './CourseSessionTimeline';
 import { StatePanel } from './StatePanel';
 import { buildProtectedVideoUrl, resolveLectureVideoUrl } from '../../../lib/video-url';
-import { saveLectureVideoMappingDetailed } from '../../../lib/api-media';
+import { useLectureAssetRemap } from './useLectureAssetRemap';
 
 type CourseExploreDetailPanelProps = {
   course: CourseDetail | null;
@@ -175,9 +174,7 @@ export function CourseExploreDetailPanel({
   onTabChange,
   onNavigate,
 }: CourseExploreDetailPanelProps) {
-  const [remapAssetKey, setRemapAssetKey] = useState('');
-  const [remapBusy, setRemapBusy] = useState(false);
-  const [remapMessage, setRemapMessage] = useState<string | null>(null);
+  const { remapAssetKey, setRemapAssetKey, remapBusy, remapMessage, handleRemapAssetKey } = useLectureAssetRemap(sessionToken);
   const detailLecture = highlightedLecture;
   const isLocked = Boolean(course && !course.enrolled && !canManageCurrent);
   const resolvedLectureVideoUrl = detailLecture ? resolveLectureVideoUrl(detailLecture) : undefined;
@@ -188,22 +185,6 @@ export function CourseExploreDetailPanel({
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       void navigator.clipboard.writeText(fileName);
     }
-  };
-
-  const handleRemapAssetKey = async () => {
-    if (!detailLecture?.id || !remapAssetKey.trim()) {
-      setRemapMessage('asset key를 입력해 주세요.');
-      return;
-    }
-
-    setRemapBusy(true);
-    setRemapMessage(null);
-    const response = await saveLectureVideoMappingDetailed({
-      lecture_id: detailLecture.id,
-      asset_key: remapAssetKey.trim(),
-    }, sessionToken);
-    setRemapBusy(false);
-    setRemapMessage(response?.success ? '재매핑 저장 완료' : (response?.error?.message ?? '재매핑 실패'));
   };
 
   return (
@@ -392,7 +373,7 @@ export function CourseExploreDetailPanel({
                                 <button
                                   type="button"
                                   disabled={remapBusy}
-                                  onClick={() => void handleRemapAssetKey()}
+                            onClick={() => void handleRemapAssetKey(detailLecture?.id)}
                                   className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-60"
                                 >
                                   R2 재매핑
