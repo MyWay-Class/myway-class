@@ -39,6 +39,7 @@ public class DemoLearningService {
     private final DemoLearningMetadataSupport demoLearningMetadataSupport;
     private final DemoLearningBootstrapSupport demoLearningBootstrapSupport;
     private final DemoLearningCourseAccessSupport demoLearningCourseAccessSupport;
+    private final DemoLearningDashboardSupport demoLearningDashboardSupport;
 
     @Autowired
     public DemoLearningService(
@@ -55,7 +56,8 @@ public class DemoLearningService {
             DemoLearningProgressSupport demoLearningProgressSupport,
             DemoLearningMetadataSupport demoLearningMetadataSupport,
             DemoLearningBootstrapSupport demoLearningBootstrapSupport,
-            DemoLearningCourseAccessSupport demoLearningCourseAccessSupport
+            DemoLearningCourseAccessSupport demoLearningCourseAccessSupport,
+            DemoLearningDashboardSupport demoLearningDashboardSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -71,6 +73,7 @@ public class DemoLearningService {
         this.demoLearningMetadataSupport = demoLearningMetadataSupport;
         this.demoLearningBootstrapSupport = demoLearningBootstrapSupport;
         this.demoLearningCourseAccessSupport = demoLearningCourseAccessSupport;
+        this.demoLearningDashboardSupport = demoLearningDashboardSupport;
         initSeedData();
     }
 
@@ -90,6 +93,7 @@ public class DemoLearningService {
         this.demoLearningMetadataSupport = new DemoLearningMetadataSupport();
         this.demoLearningBootstrapSupport = new DemoLearningBootstrapSupport();
         this.demoLearningCourseAccessSupport = new DemoLearningCourseAccessSupport();
+        this.demoLearningDashboardSupport = new DemoLearningDashboardSupport();
         initSeedData();
     }
 
@@ -121,14 +125,20 @@ public class DemoLearningService {
     }
 
     public List<CourseCard> listCourseCards(String userId) {
-        return listAllCourses().stream().map(c -> new CourseCard(c.id(), c.title(), c.instructor_id(), progressPercent(userId, c.id()))).toList();
+        return demoLearningDashboardSupport.listCourseCards(
+                userId,
+                listAllCourses(),
+                this::progressPercent
+        );
     }
 
     public List<CourseCard> listManagedCourseCards(String userId, String role) {
-        return listAllCourses().stream()
-                .filter(c -> "admin".equals(role) || c.instructor_id().equals(userId))
-                .map(c -> new CourseCard(c.id(), c.title(), c.instructor_id(), progressPercent(userId, c.id())))
-                .toList();
+        return demoLearningDashboardSupport.listManagedCourseCards(
+                userId,
+                role,
+                listAllCourses(),
+                this::progressPercent
+        );
     }
 
     public CourseDetail createCourse(String instructorId, String title, List<String> lectureTitles) {
@@ -175,9 +185,12 @@ public class DemoLearningService {
 
     public DashboardView getDashboard(String userId) {
         List<CourseCard> cards = listCourseCards(userId);
-        int enrolled = listEnrollments(userId).size();
-        int completed = listCompletedLectureIds(userId).size();
-        return new DashboardView(cards, enrolled, completed);
+        return demoLearningDashboardSupport.buildDashboard(
+                userId,
+                cards,
+                listEnrollments(userId),
+                listCompletedLectureIds(userId)
+        );
     }
 
     public List<MaterialItem> getMaterials(String courseId) {
