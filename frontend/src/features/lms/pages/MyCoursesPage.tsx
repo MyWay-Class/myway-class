@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CourseCard, CourseDetail, LoginResponse } from '@myway/shared';
 import { CourseExploreCard } from '../components/CourseExploreCard';
 import { StatePanel } from '../components/StatePanel';
 import { loadManagedCourses } from '../../../lib/api';
-import { demoCourses } from '../data/demo';
+import { useMyCoursesDerived, type SortMode, type StatusFilter, type ViewMode } from './useMyCoursesDerived';
 
 type MyCoursesPageProps = {
   session: LoginResponse;
@@ -12,10 +12,6 @@ type MyCoursesPageProps = {
   onSelectCourse: (courseId: string) => void;
   onNavigate: (page: 'my-courses' | 'course-create' | 'lecture-studio' | 'courses' | 'lecture-watch' | 'dashboard') => void;
 };
-
-type ViewMode = 'grid' | 'list';
-type StatusFilter = 'all' | 'progress' | 'completed';
-type SortMode = 'progress' | 'title' | 'duration';
 
 const primaryButtonClass =
   'inline-flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-[12px] font-semibold text-white transition hover:bg-indigo-500';
@@ -64,54 +60,15 @@ export function MyCoursesPage({ session, courses, selectedCourse, onSelectCourse
     };
   }, [session.session_token, session.user.role]);
 
-  const enrolledCourses = courses.filter((course) => course.enrolled);
-  const instructorCourses = managedCourses.length > 0
-    ? managedCourses
-    : courses.filter((course) => session.user.role === 'ADMIN' || course.instructor_id === session.user.id);
-  const currentCourses = session.user.role === 'STUDENT' ? enrolledCourses : instructorCourses;
-  const visibleCourses = currentCourses.length > 0 ? currentCourses : demoCourses;
-  const primaryCourse = selectedCourse ?? visibleCourses[0] ?? null;
-  const categories = ['all', ...new Set(visibleCourses.map((course) => course.category))];
-  const primaryCourseTags = Array.isArray(primaryCourse?.tags) ? primaryCourse.tags : [];
-
-  const filteredCourses = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    return visibleCourses
-      .filter((course) => {
-        const queryMatch = query
-          ? [course.title, course.category, course.description, course.instructor_name, ...course.tags].join(' ').toLowerCase().includes(query)
-          : true;
-        const categoryMatch = activeCategory === 'all' ? true : course.category === activeCategory;
-        const statusMatch =
-          statusFilter === 'all'
-            ? true
-            : statusFilter === 'progress'
-              ? course.progress_percent > 0 && course.progress_percent < 100
-              : course.progress_percent >= 100;
-
-        return queryMatch && categoryMatch && statusMatch;
-      })
-      .sort((left, right) => {
-        if (sortMode === 'title') {
-          return left.title.localeCompare(right.title);
-        }
-        if (sortMode === 'duration') {
-          return right.total_duration_minutes - left.total_duration_minutes;
-        }
-
-        return right.progress_percent - left.progress_percent;
-      });
-  }, [activeCategory, searchQuery, sortMode, statusFilter, visibleCourses]);
-
-  const stats = useMemo(
-    () => ({
-      total: visibleCourses.length,
-      published: visibleCourses.filter((course) => course.is_published).length,
-      totalLectures: visibleCourses.reduce((sum, course) => sum + course.lecture_count, 0),
-      inProgress: visibleCourses.filter((course) => course.progress_percent > 0 && course.progress_percent < 100).length,
-    }),
-    [visibleCourses],
+  const { primaryCourse, categories, primaryCourseTags, filteredCourses, stats } = useMyCoursesDerived(
+    session,
+    courses,
+    managedCourses,
+    selectedCourse,
+    searchQuery,
+    statusFilter,
+    sortMode,
+    activeCategory,
   );
   const totalLabel = session.user.role === 'STUDENT' ? '수강 중 강의 수' : '관리 강의 수';
   const publishedLabel = session.user.role === 'STUDENT' ? '완료 강의' : '공개 강의';
