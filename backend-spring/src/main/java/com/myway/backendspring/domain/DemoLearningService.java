@@ -36,6 +36,7 @@ public class DemoLearningService {
     private final LearningContentStoreSupport learningContentStoreSupport;
     private final LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport;
     private final DemoLearningProgressSupport demoLearningProgressSupport;
+    private final DemoLearningMetadataSupport demoLearningMetadataSupport;
 
     @Autowired
     public DemoLearningService(
@@ -49,7 +50,8 @@ public class DemoLearningService {
             CourseCatalogStoreSupport courseCatalogStoreSupport,
             LearningContentStoreSupport learningContentStoreSupport,
             LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport,
-            DemoLearningProgressSupport demoLearningProgressSupport
+            DemoLearningProgressSupport demoLearningProgressSupport,
+            DemoLearningMetadataSupport demoLearningMetadataSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -62,6 +64,7 @@ public class DemoLearningService {
         this.learningContentStoreSupport = learningContentStoreSupport;
         this.lectureMetadataSyncServiceSupport = lectureMetadataSyncServiceSupport;
         this.demoLearningProgressSupport = demoLearningProgressSupport;
+        this.demoLearningMetadataSupport = demoLearningMetadataSupport;
         initSeedData();
     }
 
@@ -78,6 +81,7 @@ public class DemoLearningService {
         this.learningContentStoreSupport = new LearningContentStoreSupport();
         this.lectureMetadataSyncServiceSupport = new LectureMetadataSyncServiceSupport();
         this.demoLearningProgressSupport = new DemoLearningProgressSupport();
+        this.demoLearningMetadataSupport = new DemoLearningMetadataSupport();
         initSeedData();
     }
 
@@ -349,59 +353,32 @@ public class DemoLearningService {
     }
 
     private List<LectureItem> alignLectureDurations(List<LectureItem> lectures) {
-        if (lectures == null || lectures.isEmpty()) {
-            return List.of();
-        }
-        if (!useStore()) {
-            return lectures;
-        }
-        return lectures.stream()
-                .map(this::alignLectureDuration)
-                .toList();
+        return demoLearningMetadataSupport.alignLectureDurations(lectures, useStore(), this::alignLectureDuration);
     }
 
     private LectureItem alignLectureDuration(LectureItem lecture) {
-        if (lecture == null || lecture.id() == null || lecture.id().isBlank()) {
-            return lecture;
-        }
-        LectureItem lectureWithMeta = lectureMetadataSyncServiceSupport.attachLectureMeta(
+        return demoLearningMetadataSupport.alignLectureDuration(
                 store,
                 useStore(),
                 lecture,
                 LECTURE_META_SCOPE,
                 TRANSCRIPT_SCOPE,
-                lectureMetadataSyncSupport,
-                this::buildLectureMetaFromTranscript
-        );
-        int fallbackMinutes = Math.max(1, lecture.duration_minutes());
-        int resolvedMinutes = lectureDurationResolver.resolveDurationMinutesFromMedia(
-                store,
-                TRANSCRIPT_SCOPE,
                 EXTRACTION_SCOPE,
-                lecture.id(),
-                fallbackMinutes
-        );
-        if (resolvedMinutes == lecture.duration_minutes()) {
-            return lectureWithMeta;
-        }
-        return new LectureItem(
-                lecture.id(),
-                lecture.course_id(),
-                lecture.title(),
-                resolvedMinutes,
-                lectureWithMeta.content_text(),
-                lectureWithMeta.transcript_excerpt(),
-                lectureWithMeta.instructor_name()
+                lectureMetadataSyncServiceSupport,
+                lectureMetadataSyncSupport,
+                lectureDurationResolver,
+                this::buildLectureMetaFromTranscript
         );
     }
 
     public Map<String, Object> syncLectureMetadataFromTranscripts(boolean overwriteExisting) {
-        return lectureMetadataSyncServiceSupport.syncAll(
+        return demoLearningMetadataSupport.syncAll(
                 store,
                 useStore(),
                 listAllLectures(),
                 LECTURE_META_SCOPE,
                 TRANSCRIPT_SCOPE,
+                lectureMetadataSyncServiceSupport,
                 lectureMetadataSyncSupport,
                 this::buildLectureMetaFromTranscript,
                 overwriteExisting
@@ -411,13 +388,14 @@ public class DemoLearningService {
     public Map<String, Object> syncLectureMetadataForLectureFromTranscript(String lectureId, boolean overwriteExisting) {
         String normalizedLectureId = lectureId == null ? "" : lectureId.trim();
         LectureItem lecture = normalizedLectureId.isBlank() ? null : getLecture(normalizedLectureId);
-        return lectureMetadataSyncServiceSupport.syncOne(
+        return demoLearningMetadataSupport.syncOne(
                 store,
                 useStore(),
                 normalizedLectureId,
                 lecture,
                 LECTURE_META_SCOPE,
                 TRANSCRIPT_SCOPE,
+                lectureMetadataSyncServiceSupport,
                 lectureMetadataSyncSupport,
                 this::buildLectureMetaFromTranscript,
                 overwriteExisting
