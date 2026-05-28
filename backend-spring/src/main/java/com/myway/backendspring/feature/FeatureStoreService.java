@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -42,6 +41,7 @@ public class FeatureStoreService {
     private final FeatureStoreDomainOpsSupport domainOpsSupport;
     private final FeatureStoreAssetSupport assetSupport;
     private final FeatureStoreReadSupport readSupport;
+    private final FeatureStoreExtractionReadSupport extractionReadSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -61,7 +61,8 @@ public class FeatureStoreService {
             FeatureStoreMediaOpsSupport mediaOpsSupport,
             FeatureStoreDomainOpsSupport domainOpsSupport,
             FeatureStoreAssetSupport assetSupport,
-            FeatureStoreReadSupport readSupport
+            FeatureStoreReadSupport readSupport,
+            FeatureStoreExtractionReadSupport extractionReadSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -80,6 +81,7 @@ public class FeatureStoreService {
         this.domainOpsSupport = domainOpsSupport;
         this.assetSupport = assetSupport;
         this.readSupport = readSupport;
+        this.extractionReadSupport = extractionReadSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -101,7 +103,8 @@ public class FeatureStoreService {
                 new FeatureStoreMediaOpsSupport(),
                 new FeatureStoreDomainOpsSupport(),
                 new FeatureStoreAssetSupport(),
-                new FeatureStoreReadSupport()
+                new FeatureStoreReadSupport(),
+                new FeatureStoreExtractionReadSupport()
         );
     }
 
@@ -233,18 +236,7 @@ public class FeatureStoreService {
     }
 
     public List<Map<String, Object>> extractions(String lectureId) {
-        List<Map<String, Object>> rows = store.listEventsByOwner(EXTRACTION_SCOPE, lectureId);
-        List<Map<String, Object>> merged = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            merged.add(hydrateExtractionRow(row));
-        }
-        return merged;
-    }
-
-    private Map<String, Object> hydrateExtractionRow(Map<String, Object> row) {
-        String extractionId = String.valueOf(row.getOrDefault("id", "")).trim();
-        Map<String, Object> latest = extractionId.isBlank() ? null : store.getKv(EXTRACTION_SCOPE, extractionId);
-        return pipelineSupport.hydrateExtractionRow(row, latest);
+        return extractionReadSupport.extractions(store, EXTRACTION_SCOPE, lectureId, pipelineSupport);
     }
 
     public Map<String, Object> completeExtractionCallback(String extractionId, String status, String errorMessage, long eventVersion) {
