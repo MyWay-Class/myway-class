@@ -41,6 +41,7 @@ public class DemoLearningService {
     private final DemoLearningCourseAccessSupport demoLearningCourseAccessSupport;
     private final DemoLearningDashboardSupport demoLearningDashboardSupport;
     private final DemoLearningLectureQuerySupport demoLearningLectureQuerySupport;
+    private final DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade;
 
     @Autowired
     public DemoLearningService(
@@ -59,7 +60,8 @@ public class DemoLearningService {
             DemoLearningBootstrapSupport demoLearningBootstrapSupport,
             DemoLearningCourseAccessSupport demoLearningCourseAccessSupport,
             DemoLearningDashboardSupport demoLearningDashboardSupport,
-            DemoLearningLectureQuerySupport demoLearningLectureQuerySupport
+            DemoLearningLectureQuerySupport demoLearningLectureQuerySupport,
+            DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -77,6 +79,7 @@ public class DemoLearningService {
         this.demoLearningCourseAccessSupport = demoLearningCourseAccessSupport;
         this.demoLearningDashboardSupport = demoLearningDashboardSupport;
         this.demoLearningLectureQuerySupport = demoLearningLectureQuerySupport;
+        this.demoLearningMetadataSyncFacade = demoLearningMetadataSyncFacade;
         initSeedData();
     }
 
@@ -98,6 +101,7 @@ public class DemoLearningService {
         this.demoLearningCourseAccessSupport = new DemoLearningCourseAccessSupport();
         this.demoLearningDashboardSupport = new DemoLearningDashboardSupport();
         this.demoLearningLectureQuerySupport = new DemoLearningLectureQuerySupport();
+        this.demoLearningMetadataSyncFacade = new DemoLearningMetadataSyncFacade();
         initSeedData();
     }
 
@@ -376,11 +380,17 @@ public class DemoLearningService {
     }
 
     private List<LectureItem> alignLectureDurations(List<LectureItem> lectures) {
-        return demoLearningMetadataSupport.alignLectureDurations(lectures, useStore(), this::alignLectureDuration);
+        return demoLearningMetadataSyncFacade.alignLectureDurations(
+                demoLearningMetadataSupport,
+                lectures,
+                useStore(),
+                this::alignLectureDuration
+        );
     }
 
     private LectureItem alignLectureDuration(LectureItem lecture) {
-        return demoLearningMetadataSupport.alignLectureDuration(
+        return demoLearningMetadataSyncFacade.alignLectureDuration(
+                demoLearningMetadataSupport,
                 store,
                 useStore(),
                 lecture,
@@ -395,7 +405,8 @@ public class DemoLearningService {
     }
 
     public Map<String, Object> syncLectureMetadataFromTranscripts(boolean overwriteExisting) {
-        return demoLearningMetadataSupport.syncAll(
+        return demoLearningMetadataSyncFacade.syncAll(
+                demoLearningMetadataSupport,
                 store,
                 useStore(),
                 listAllLectures(),
@@ -411,7 +422,8 @@ public class DemoLearningService {
     public Map<String, Object> syncLectureMetadataForLectureFromTranscript(String lectureId, boolean overwriteExisting) {
         String normalizedLectureId = lectureId == null ? "" : lectureId.trim();
         LectureItem lecture = normalizedLectureId.isBlank() ? null : getLecture(normalizedLectureId);
-        return demoLearningMetadataSupport.syncOne(
+        return demoLearningMetadataSyncFacade.syncOne(
+                demoLearningMetadataSupport,
                 store,
                 useStore(),
                 normalizedLectureId,
