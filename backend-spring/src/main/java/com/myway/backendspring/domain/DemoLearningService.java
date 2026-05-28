@@ -42,6 +42,7 @@ public class DemoLearningService {
     private final DemoLearningDashboardSupport demoLearningDashboardSupport;
     private final DemoLearningLectureQuerySupport demoLearningLectureQuerySupport;
     private final DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade;
+    private final DemoLearningCourseWriteSupport demoLearningCourseWriteSupport;
 
     @Autowired
     public DemoLearningService(
@@ -61,7 +62,8 @@ public class DemoLearningService {
             DemoLearningCourseAccessSupport demoLearningCourseAccessSupport,
             DemoLearningDashboardSupport demoLearningDashboardSupport,
             DemoLearningLectureQuerySupport demoLearningLectureQuerySupport,
-            DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade
+            DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade,
+            DemoLearningCourseWriteSupport demoLearningCourseWriteSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -80,6 +82,7 @@ public class DemoLearningService {
         this.demoLearningDashboardSupport = demoLearningDashboardSupport;
         this.demoLearningLectureQuerySupport = demoLearningLectureQuerySupport;
         this.demoLearningMetadataSyncFacade = demoLearningMetadataSyncFacade;
+        this.demoLearningCourseWriteSupport = demoLearningCourseWriteSupport;
         initSeedData();
     }
 
@@ -102,6 +105,7 @@ public class DemoLearningService {
         this.demoLearningDashboardSupport = new DemoLearningDashboardSupport();
         this.demoLearningLectureQuerySupport = new DemoLearningLectureQuerySupport();
         this.demoLearningMetadataSyncFacade = new DemoLearningMetadataSyncFacade();
+        this.demoLearningCourseWriteSupport = new DemoLearningCourseWriteSupport();
         initSeedData();
     }
 
@@ -150,19 +154,16 @@ public class DemoLearningService {
     }
 
     public CourseDetail createCourse(String instructorId, String title, List<String> lectureTitles) {
-        String courseId = "crs_" + UUID.randomUUID();
-        List<String> titles = lectureTitles == null || lectureTitles.isEmpty() ? List.of(title) : lectureTitles;
-        List<LectureItem> lectures = new ArrayList<>();
-        for (int i = 0; i < titles.size(); i++) {
-            lectures.add(new LectureItem("lec_" + UUID.randomUUID(), courseId, titles.get(i), 25 + (i * 5)));
-        }
-        CourseDetail detail = new CourseDetail(courseId, title, instructorId, List.copyOf(lectures), 0);
-        if (useStore()) {
-            store.upsertKv(COURSE_SCOPE, courseId, learningPayloadMapper.toCoursePayload(detail));
-        } else {
-            courses.put(courseId, detail);
-        }
-        return detail;
+        return demoLearningCourseWriteSupport.createCourse(
+                useStore(),
+                store,
+                COURSE_SCOPE,
+                learningPayloadMapper,
+                courses,
+                instructorId,
+                title,
+                lectureTitles
+        );
     }
 
     public CourseDetail getCourseDetail(String courseId, String userId) {
