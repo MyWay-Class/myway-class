@@ -2,6 +2,7 @@ package com.myway.backendspring.api;
 
 import com.myway.backendspring.api.support.ApiAuthGuards;
 import com.myway.backendspring.api.support.MediaAssetPlaybackSupport;
+import com.myway.backendspring.api.support.MediaControllerAssetSupport;
 import com.myway.backendspring.api.support.MediaControllerAdminSupport;
 import com.myway.backendspring.api.support.MediaControllerSupport;
 import com.myway.backendspring.auth.SessionService;
@@ -16,7 +17,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.HandlerMapping;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -30,6 +30,7 @@ public class MediaController {
     private final DemoLearningService learningService;
     private final String callbackToken;
     private final MediaAssetPlaybackSupport playbackSupport;
+    private final MediaControllerAssetSupport assetSupport;
     private final MediaControllerSupport support;
     private final MediaControllerAdminSupport adminSupport;
 
@@ -39,6 +40,7 @@ public class MediaController {
             DemoLearningService learningService,
             @Value("${myway.media.callback.token:dev-media-callback-token}") String callbackToken,
             MediaAssetPlaybackSupport playbackSupport,
+            MediaControllerAssetSupport assetSupport,
             MediaControllerSupport support,
             MediaControllerAdminSupport adminSupport
     ) {
@@ -47,6 +49,7 @@ public class MediaController {
         this.learningService = learningService;
         this.callbackToken = callbackToken;
         this.playbackSupport = playbackSupport;
+        this.assetSupport = assetSupport;
         this.support = support;
         this.adminSupport = adminSupport;
     }
@@ -224,45 +227,17 @@ public class MediaController {
             @RequestParam(value = "token", required = false) String queryToken,
             HttpServletRequest request
     ) {
-        String path = String.valueOf(request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE));
-        String prefix = "/api/v1/media/assets/";
-        String assetKey = path.startsWith(prefix) ? path.substring(prefix.length()) : "";
-        if (assetKey.isBlank()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure("ASSET_NOT_FOUND", "미디어 파일을 찾을 수 없습니다."));
-        }
-        String resolvedQueryToken = playbackSupport.resolveQueryToken(queryToken, request);
-        String resolvedAuth = auth;
-        if ((resolvedAuth == null || resolvedAuth.isBlank()) && resolvedQueryToken != null && !resolvedQueryToken.isBlank()) {
-            resolvedAuth = "Bearer " + resolvedQueryToken;
-        }
-        boolean playbackMode = playbackSupport.isPlaybackRequest(request, resolvedQueryToken);
-        boolean processorBypass = processorToken != null && processorToken.equals(callbackToken);
-        SessionView session = null;
-        if (!processorBypass) {
-            session = require(resolvedAuth);
-            if (session == null) {
-                if (playbackMode) {
-                    return playbackSupport.playbackFailure(HttpStatus.UNAUTHORIZED, "MEDIA_PLAYBACK_TOKEN_INVALID", "유효한 재생 토큰이 필요합니다.");
-                }
-                return unauthenticated();
-            }
-        }
-        ResponseEntity<?> proxied = playbackSupport.proxyRemoteAsset(assetKey);
-        if (playbackMode && proxied != null) return proxied;
-        Map<String, Object> asset = mediaPipelineService.mediaAsset(assetKey);
-        if (asset != null) {
-            if (playbackMode) {
-                ResponseEntity<?> localPlayback = playbackSupport.fallbackLocalPlaybackAsset(assetKey);
-                if (localPlayback != null) return localPlayback;
-                return playbackSupport.playbackFailure(HttpStatus.BAD_GATEWAY, "MEDIA_PLAYBACK_SOURCE_UNAVAILABLE", "재생 가능한 원본 영상을 찾을 수 없습니다.");
-            }
-            return ResponseEntity.ok(ApiResponse.success(asset));
-        }
-        if (playbackMode) {
-            return playbackSupport.playbackFailure(HttpStatus.BAD_GATEWAY, "MEDIA_ASSET_PROXY_UNAVAILABLE", "영상 원본 서버에 연결할 수 없습니다.");
-        }
-        if (proxied != null) return proxied;
-        return playbackSupport.assetNotFound();
+        return assetSupport.handleAssets(
+                auth,
+                processorToken,
+                queryToken,
+                request,
+                callbackToken,
+                this::require,
+                this::unauthenticated,
+                playbackSupport,
+                mediaPipelineService
+        );
     }
 
     public ResponseEntity<?> assets(
