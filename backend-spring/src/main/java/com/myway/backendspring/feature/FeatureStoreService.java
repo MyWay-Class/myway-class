@@ -42,6 +42,7 @@ public class FeatureStoreService {
     private final FeatureStoreAssetSupport assetSupport;
     private final FeatureStoreReadSupport readSupport;
     private final FeatureStoreExtractionReadSupport extractionReadSupport;
+    private final FeatureStoreExtractionCallbackSupport extractionCallbackSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -62,7 +63,8 @@ public class FeatureStoreService {
             FeatureStoreDomainOpsSupport domainOpsSupport,
             FeatureStoreAssetSupport assetSupport,
             FeatureStoreReadSupport readSupport,
-            FeatureStoreExtractionReadSupport extractionReadSupport
+            FeatureStoreExtractionReadSupport extractionReadSupport,
+            FeatureStoreExtractionCallbackSupport extractionCallbackSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -82,6 +84,7 @@ public class FeatureStoreService {
         this.assetSupport = assetSupport;
         this.readSupport = readSupport;
         this.extractionReadSupport = extractionReadSupport;
+        this.extractionCallbackSupport = extractionCallbackSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -104,7 +107,8 @@ public class FeatureStoreService {
                 new FeatureStoreDomainOpsSupport(),
                 new FeatureStoreAssetSupport(),
                 new FeatureStoreReadSupport(),
-                new FeatureStoreExtractionReadSupport()
+                new FeatureStoreExtractionReadSupport(),
+                new FeatureStoreExtractionCallbackSupport()
         );
     }
 
@@ -267,8 +271,8 @@ public class FeatureStoreService {
             String approvalState,
             String notificationChannel
     ) {
-        if (mediaTranscriptionService == null) return null;
-        return transcribeSupport.completeExtractionCallback(
+        return extractionCallbackSupport.complete(
+                transcribeSupport,
                 mediaTranscriptionService,
                 extractionId,
                 status,
