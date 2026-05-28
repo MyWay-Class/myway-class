@@ -35,6 +35,7 @@ public class DemoLearningService {
     private final CourseCatalogStoreSupport courseCatalogStoreSupport;
     private final LearningContentStoreSupport learningContentStoreSupport;
     private final LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport;
+    private final DemoLearningProgressSupport demoLearningProgressSupport;
 
     @Autowired
     public DemoLearningService(
@@ -47,7 +48,8 @@ public class DemoLearningService {
             LectureDurationResolver lectureDurationResolver,
             CourseCatalogStoreSupport courseCatalogStoreSupport,
             LearningContentStoreSupport learningContentStoreSupport,
-            LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport
+            LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport,
+            DemoLearningProgressSupport demoLearningProgressSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -59,6 +61,7 @@ public class DemoLearningService {
         this.courseCatalogStoreSupport = courseCatalogStoreSupport;
         this.learningContentStoreSupport = learningContentStoreSupport;
         this.lectureMetadataSyncServiceSupport = lectureMetadataSyncServiceSupport;
+        this.demoLearningProgressSupport = demoLearningProgressSupport;
         initSeedData();
     }
 
@@ -74,6 +77,7 @@ public class DemoLearningService {
         this.courseCatalogStoreSupport = new CourseCatalogStoreSupport();
         this.learningContentStoreSupport = new LearningContentStoreSupport();
         this.lectureMetadataSyncServiceSupport = new LectureMetadataSyncServiceSupport();
+        this.demoLearningProgressSupport = new DemoLearningProgressSupport();
         initSeedData();
     }
 
@@ -281,32 +285,44 @@ public class DemoLearningService {
 
     private int progressPercent(String userId, String courseId) {
         List<LectureItem> lectures = getCourseLectures(courseId);
-        Set<String> completedLectureIds = listCompletedLectureIds(userId);
-        return progressCalculator.progressPercent(lectures, completedLectureIds);
+        return demoLearningProgressSupport.progressPercent(
+                userId,
+                courseId,
+                lectures,
+                completedLectureKeys,
+                useStore(),
+                store,
+                learningEnrollmentStoreSupport,
+                progressCalculator,
+                LECTURE_COMPLETION_SCOPE
+        );
     }
 
     private EnrollmentItem findEnrollment(String userId, String courseId) {
-        if (!useStore()) {
-            return enrollments.stream()
-                    .filter(e -> e.user_id().equals(userId) && e.course_id().equals(courseId))
-                    .findFirst()
-                    .orElse(null);
-        }
-        return learningEnrollmentStoreSupport.findEnrollment(store, ENROLLMENT_SCOPE, userId, courseId);
+        return demoLearningProgressSupport.findEnrollment(
+                userId,
+                courseId,
+                enrollments,
+                useStore(),
+                store,
+                learningEnrollmentStoreSupport,
+                ENROLLMENT_SCOPE
+        );
     }
 
     private Set<String> listCompletedLectureIds(String userId) {
-        if (!useStore()) {
-            return completedLectureKeys.stream()
-                    .filter(key -> key.startsWith(userId + ":"))
-                    .map(key -> key.substring((userId + ":").length()))
-                    .collect(java.util.stream.Collectors.toSet());
-        }
-        return learningEnrollmentStoreSupport.listCompletedLectureIds(store, LECTURE_COMPLETION_SCOPE, userId);
+        return demoLearningProgressSupport.listCompletedLectureIds(
+                userId,
+                completedLectureKeys,
+                useStore(),
+                store,
+                learningEnrollmentStoreSupport,
+                LECTURE_COMPLETION_SCOPE
+        );
     }
 
     private String completionKey(String userId, String lectureId) {
-        return learningEnrollmentStoreSupport.completionKey(userId, lectureId);
+        return demoLearningProgressSupport.completionKey(userId, lectureId, learningEnrollmentStoreSupport);
     }
 
     private boolean useStore() {
