@@ -1,6 +1,7 @@
 package com.myway.backendspring.api;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.myway.backendspring.api.support.AiControllerRagSupport;
 import com.myway.backendspring.api.support.AiControllerSupport;
 import com.myway.backendspring.api.support.AiRequestSupport;
 import com.myway.backendspring.auth.SessionService;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/ai")
@@ -82,6 +82,7 @@ public class AiController {
     private final AiRuntimeService aiRuntimeService;
     private final AiRequestSupport aiRequestSupport;
     private final AiControllerSupport aiControllerSupport;
+    private final AiControllerRagSupport aiControllerRagSupport;
 
     public AiController(
             SessionService sessionService,
@@ -89,7 +90,8 @@ public class AiController {
             DemoLearningService learningService,
             AiRuntimeService aiRuntimeService,
             AiRequestSupport aiRequestSupport,
-            AiControllerSupport aiControllerSupport
+            AiControllerSupport aiControllerSupport,
+            AiControllerRagSupport aiControllerRagSupport
     ) {
         this.sessionService = sessionService;
         this.featureStore = featureStore;
@@ -97,6 +99,7 @@ public class AiController {
         this.aiRuntimeService = aiRuntimeService;
         this.aiRequestSupport = aiRequestSupport;
         this.aiControllerSupport = aiControllerSupport;
+        this.aiControllerRagSupport = aiControllerRagSupport;
     }
 
     private SessionView require(String auth) { return sessionService.me(auth); }
@@ -163,7 +166,7 @@ public class AiController {
 
         Integer limit = body.limit();
         Double minScore = body.min_score();
-        boolean includeDebug = Boolean.TRUE.equals(body.include_debug());
+        boolean includeDebug = aiControllerRagSupport.includeDebug(body.include_debug());
         Map<String, Object> data = featureStore.ragOverview(
                 query,
                 aiRequestSupport.optionalNormalized(scope.lectureId()),
@@ -232,10 +235,8 @@ public class AiController {
     ) {
         SessionView session = require(auth);
         if (session == null) return aiControllerSupport.unauthenticated();
-        Integer topK = body == null ? null : body.top_k();
-        List<Map<String, Object>> cases = body == null || body.cases() == null
-                ? List.of()
-                : body.cases().stream().map(RagEvaluateCaseRequest::payload).collect(Collectors.toList());
+        Integer topK = aiControllerRagSupport.topK(body);
+        List<Map<String, Object>> cases = aiControllerRagSupport.evaluateCases(body);
         Map<String, Object> data = featureStore.evaluateRagBatch(cases, topK);
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 배치 평가를 완료했습니다."));
     }

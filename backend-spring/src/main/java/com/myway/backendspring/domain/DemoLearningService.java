@@ -36,6 +36,7 @@ public class DemoLearningService {
     private final LearningContentStoreSupport learningContentStoreSupport;
     private final LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport;
     private final DemoLearningProgressSupport demoLearningProgressSupport;
+    private final DemoLearningBootstrapSupport demoLearningBootstrapSupport;
 
     @Autowired
     public DemoLearningService(
@@ -49,7 +50,8 @@ public class DemoLearningService {
             CourseCatalogStoreSupport courseCatalogStoreSupport,
             LearningContentStoreSupport learningContentStoreSupport,
             LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport,
-            DemoLearningProgressSupport demoLearningProgressSupport
+            DemoLearningProgressSupport demoLearningProgressSupport,
+            DemoLearningBootstrapSupport demoLearningBootstrapSupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -62,6 +64,7 @@ public class DemoLearningService {
         this.learningContentStoreSupport = learningContentStoreSupport;
         this.lectureMetadataSyncServiceSupport = lectureMetadataSyncServiceSupport;
         this.demoLearningProgressSupport = demoLearningProgressSupport;
+        this.demoLearningBootstrapSupport = demoLearningBootstrapSupport;
         initSeedData();
     }
 
@@ -78,6 +81,7 @@ public class DemoLearningService {
         this.learningContentStoreSupport = new LearningContentStoreSupport();
         this.lectureMetadataSyncServiceSupport = new LectureMetadataSyncServiceSupport();
         this.demoLearningProgressSupport = new DemoLearningProgressSupport();
+        this.demoLearningBootstrapSupport = new DemoLearningBootstrapSupport();
         initSeedData();
     }
 
@@ -330,22 +334,22 @@ public class DemoLearningService {
     }
 
     private void ensureDefaultDemoStudentEnrollmentsInMemory() {
-        for (CourseDetail course : new ArrayList<>(courses.values())) {
-            if (findEnrollment(DEFAULT_DEMO_STUDENT_ID, course.id()) == null) {
-                enrollments.add(new EnrollmentItem(UUID.randomUUID().toString(), DEFAULT_DEMO_STUDENT_ID, course.id()));
-            }
-        }
+        demoLearningBootstrapSupport.ensureDefaultDemoStudentEnrollmentsInMemory(
+                DEFAULT_DEMO_STUDENT_ID,
+                enrollments,
+                new ArrayList<>(courses.values()),
+                this::findEnrollment
+        );
     }
 
     private void ensureDefaultDemoStudentEnrollmentsInStore() {
-        for (CourseDetail course : listAllCourses()) {
-            learningEnrollmentStoreSupport.ensureDefaultEnrollment(
-                    store,
-                    ENROLLMENT_SCOPE,
-                    DEFAULT_DEMO_STUDENT_ID,
-                    course.id()
-            );
-        }
+        demoLearningBootstrapSupport.ensureDefaultDemoStudentEnrollmentsInStore(
+                store,
+                ENROLLMENT_SCOPE,
+                DEFAULT_DEMO_STUDENT_ID,
+                listAllCourses(),
+                learningEnrollmentStoreSupport
+        );
     }
 
     private List<LectureItem> alignLectureDurations(List<LectureItem> lectures) {
