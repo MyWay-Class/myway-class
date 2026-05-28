@@ -39,6 +39,7 @@ public class FeatureStoreService {
     private final FeatureStoreRagSupport ragSupport;
     private final FeatureStoreAiSupport aiSupport;
     private final FeatureStoreMediaOpsSupport mediaOpsSupport;
+    private final FeatureStoreDomainOpsSupport domainOpsSupport;
 
     @Autowired
     public FeatureStoreService(
@@ -55,7 +56,8 @@ public class FeatureStoreService {
             FeatureStoreTranscribeSupport transcribeSupport,
             FeatureStoreRagSupport ragSupport,
             FeatureStoreAiSupport aiSupport,
-            FeatureStoreMediaOpsSupport mediaOpsSupport
+            FeatureStoreMediaOpsSupport mediaOpsSupport,
+            FeatureStoreDomainOpsSupport domainOpsSupport
     ) {
         this.store = store;
         this.ragService = ragService;
@@ -71,6 +73,7 @@ public class FeatureStoreService {
         this.ragSupport = ragSupport;
         this.aiSupport = aiSupport;
         this.mediaOpsSupport = mediaOpsSupport;
+        this.domainOpsSupport = domainOpsSupport;
     }
 
     // Backward-compatible constructor for tests instantiating service directly.
@@ -89,7 +92,8 @@ public class FeatureStoreService {
                 new FeatureStoreTranscribeSupport(),
                 new FeatureStoreRagSupport(),
                 new FeatureStoreAiSupport(),
-                new FeatureStoreMediaOpsSupport()
+                new FeatureStoreMediaOpsSupport(),
+                new FeatureStoreDomainOpsSupport()
         );
     }
 
@@ -320,79 +324,79 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> createShortformExtraction(String userId, Map<String, Object> payload) {
-        return shortformService == null ? Map.of() : shortformService.createShortformExtraction(userId, payload);
+        return domainOpsSupport.createShortformExtraction(shortformService, userId, payload);
     }
 
     public Map<String, Object> getShortformExtraction(String id) {
-        return shortformService == null ? null : shortformService.getShortformExtraction(id);
+        return domainOpsSupport.getShortformExtraction(shortformService, id);
     }
 
     public Map<String, Object> selectShortformCandidates(String extractionId, List<String> candidateIds) {
-        return shortformService == null ? null : shortformService.selectShortformCandidates(extractionId, candidateIds);
+        return domainOpsSupport.selectShortformCandidates(shortformService, extractionId, candidateIds);
     }
 
     public Map<String, Object> composeShortform(String userId, Map<String, Object> payload) {
-        return shortformService == null ? Map.of() : shortformService.composeShortform(userId, payload);
+        return domainOpsSupport.composeShortform(shortformService, userId, payload);
     }
 
     public Map<String, Object> shortformVideo(String id) {
-        return shortformService == null ? null : shortformService.shortformVideo(id);
+        return domainOpsSupport.shortformVideo(shortformService, id);
     }
 
     public List<Map<String, Object>> shortformVideos(String userId) {
-        return shortformService == null ? List.of() : shortformService.shortformVideos(userId);
+        return domainOpsSupport.shortformVideos(shortformService, userId);
     }
 
     public Map<String, Object> shareShortform(String userId, Map<String, Object> payload) {
-        return shortformService == null ? null : shortformService.shareShortform(userId, payload);
+        return domainOpsSupport.shareShortform(shortformService, userId, payload);
     }
 
     public Map<String, Object> saveShortform(String userId, Map<String, Object> payload) {
-        return shortformService == null ? null : shortformService.saveShortform(userId, payload);
+        return domainOpsSupport.saveShortform(shortformService, userId, payload);
     }
 
     public Map<String, Object> toggleShortformLike(String userId, String videoId) {
-        return shortformService == null ? null : shortformService.toggleShortformLike(userId, videoId);
+        return domainOpsSupport.toggleShortformLike(shortformService, userId, videoId);
     }
 
     public Map<String, Object> retryShortformExport(String userId, String shortformId) {
-        return shortformService == null ? null : shortformService.retryShortformExport(userId, shortformId);
+        return domainOpsSupport.retryShortformExport(shortformService, userId, shortformId);
     }
 
     public Map<String, Object> applyShortformExportCallback(String shortformId, String status, long eventVersion, String videoUrl, String errorMessage) {
-        return shortformService == null ? null : shortformService.applyShortformExportCallback(shortformId, status, eventVersion, videoUrl, errorMessage);
+        return domainOpsSupport.applyShortformExportCallback(shortformService, shortformId, status, eventVersion, videoUrl, errorMessage);
     }
 
     public List<Map<String, Object>> shortformLibrary(String userId) {
-        return shortformService == null ? List.of() : shortformService.shortformLibrary(userId);
+        return domainOpsSupport.shortformLibrary(shortformService, userId);
     }
 
     public List<Map<String, Object>> shortformCommunity(String courseId) {
-        return shortformService == null ? List.of() : shortformService.shortformCommunity(courseId);
+        return domainOpsSupport.shortformCommunity(shortformService, courseId);
     }
 
     public Map<String, Object> customCompose(String userId, Map<String, Object> payload) {
-        return customCourseService == null ? Map.of() : customCourseService.customCompose(userId, payload);
+        return domainOpsSupport.customCompose(customCourseService, userId, payload);
     }
 
     public List<Map<String, Object>> myCustomCourses(String userId) {
-        return customCourseService == null ? List.of() : customCourseService.myCustomCourses(userId);
+        return domainOpsSupport.myCustomCourses(customCourseService, userId);
     }
 
     public Map<String, Object> customCourse(String id) {
-        return customCourseService == null ? null : customCourseService.customCourse(id);
+        return domainOpsSupport.customCourse(customCourseService, id);
     }
 
     public List<Map<String, Object>> communityCustomCourses(String courseId) {
-        return customCourseService == null ? List.of() : customCourseService.communityCustomCourses(courseId);
+        return domainOpsSupport.communityCustomCourses(customCourseService, courseId);
     }
 
     public Map<String, Object> getAdminAssignment(String courseId) {
-        return adminAssignmentService == null ? Map.of("course_id", courseId, "student_ids", List.of(), "updated_at", Instant.now().toString()) : adminAssignmentService.getAdminAssignment(courseId);
+        return domainOpsSupport.getAdminAssignment(adminAssignmentService, courseId);
     }
 
     public Map<String, Object> saveAdminAssignment(String actorUserId, String courseId, List<String> studentIds) {
-        return adminAssignmentService == null ? Map.of() : adminAssignmentService.saveAdminAssignment(actorUserId, courseId, studentIds);
+        return domainOpsSupport.saveAdminAssignment(adminAssignmentService, actorUserId, courseId, studentIds);
     }
 
 }
