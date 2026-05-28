@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AIRecommendationOverview, CourseCard, ShortformCommunityItem } from '@myway/shared';
 import { loadShortformCommunity } from '../../../lib/api';
 import { resolvePlayableVideoUrl } from '../../../lib/video-url';
@@ -6,69 +6,14 @@ import { ShortformCommunityCard } from '../components/ShortformCommunityCard';
 import { ShortformCommunityHero } from '../components/ShortformCommunityHero';
 import { ShortformPreviewModal } from '../components/ShortformPreviewModal';
 import { StatePanel } from '../components/StatePanel';
+import { formatDuration, shortformSummary, type FeedFilter, useCommunityDerived } from './useCommunityDerived';
 
 type CommunityPageProps = {
   courses: CourseCard[];
   recommendations: AIRecommendationOverview | null;
 };
 
-type FeedFilter = 'all' | 'popular' | 'saved' | 'recent';
 type DetailTab = 'video' | 'clips' | 'info';
-
-function rankItems(items: ShortformCommunityItem[], filter: FeedFilter, query: string): ShortformCommunityItem[] {
-  const normalized = query.trim().toLowerCase();
-
-  return [...items]
-    .filter((item) => {
-      const matchesQuery = normalized
-        ? [item.title, item.description, item.course_title, item.shared_by_name, ...item.clips.map((clip) => clip.lecture_title)]
-            .join(' ')
-            .toLowerCase()
-            .includes(normalized)
-        : true;
-
-      const matchesFilter =
-        filter === 'all'
-          ? true
-          : filter === 'popular'
-            ? item.like_count >= 10
-            : filter === 'saved'
-              ? item.is_saved
-              : true;
-
-      return matchesQuery && matchesFilter;
-    })
-    .sort((left, right) => {
-      if (filter === 'recent') {
-        return right.updated_at.localeCompare(left.updated_at);
-      }
-
-      return right.view_count + right.like_count - (left.view_count + left.like_count);
-    });
-}
-
-function formatDuration(ms: number): string {
-  const seconds = Math.max(1, Math.round(ms / 1000));
-  if (seconds < 60) {
-    return `${seconds}초`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remain = seconds % 60;
-  return remain > 0 ? `${minutes}분 ${remain}초` : `${minutes}분`;
-}
-
-function shortformSummary(item: ShortformCommunityItem | null): string {
-  if (!item) {
-    return '선택된 숏폼이 없습니다.';
-  }
-
-  if (item.clips.length === 0) {
-    return '클립이 아직 준비되지 않았습니다.';
-  }
-
-  return `${item.clips.length}개 클립 · ${formatDuration(item.duration_ms)} · ${item.view_count}회 조회`;
-}
 
 export function CommunityPage({ courses, recommendations }: CommunityPageProps) {
   const [community, setCommunity] = useState<ShortformCommunityItem[]>([]);
@@ -77,7 +22,17 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [detailTab, setDetailTab] = useState<DetailTab>('video');
   const [query, setQuery] = useState('');
-  const enrolledCourses = useMemo(() => courses.filter((course) => course.enrolled), [courses]);
+  const {
+    enrolledCourses,
+    items,
+    selectedItem,
+    totalClips,
+    totalViews,
+    totalLikes,
+    selectedClipCount,
+    hasEnrolledCourses,
+    hasRealFeed,
+  } = useCommunityDerived(courses, community, filter, query, activeItemId, setActiveItemId, setDetailTab);
 
   useEffect(() => {
     let mounted = true;
@@ -108,32 +63,6 @@ export function CommunityPage({ courses, recommendations }: CommunityPageProps) 
       mounted = false;
     };
   }, [enrolledCourses]);
-
-  const items = useMemo(() => {
-    return rankItems(community, filter, query);
-  }, [community, filter, query]);
-
-  useEffect(() => {
-    if (items.length === 0) {
-      setActiveItemId(null);
-      setDetailTab('video');
-      return;
-    }
-
-    const isActiveVisible = items.some((item) => item.id === activeItemId);
-    if (!isActiveVisible) {
-      setActiveItemId(items[0].id);
-      setDetailTab('video');
-    }
-  }, [activeItemId, items]);
-
-  const selectedItem = items.find((item) => item.id === activeItemId) ?? items[0] ?? null;
-  const totalClips = items.reduce((sum, item) => sum + item.clips.length, 0);
-  const totalViews = items.reduce((sum, item) => sum + item.view_count, 0);
-  const totalLikes = items.reduce((sum, item) => sum + item.like_count, 0);
-  const selectedClipCount = selectedItem?.clips.length ?? 0;
-  const hasEnrolledCourses = enrolledCourses.length > 0;
-  const hasRealFeed = items.length > 0;
 
   return (
     <div className="space-y-6">
