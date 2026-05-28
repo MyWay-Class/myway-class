@@ -29,6 +29,7 @@ import {
 } from '../../../lib/api-shortforms';
 import { getAiErrorMessage, getQuotaStatusText, getPublicTestPolicyText } from '../../../lib/ai-access';
 import { demoAudioExtraction, demoCourseDetail, demoLectureDetail, demoLecturePipeline, demoLectureTranscript, demoMediaProcessorHealth } from '../data/demo';
+import { buildDefaultDemoUploadResult, isManualApprovalRequired, toSttPolicySummary } from './mediaPipelinePageUtils';
 
 type MediaPipelinePageProps = {
   selectedCourse: CourseDetail | null;
@@ -54,16 +55,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
   const [providers, setProviders] = useState<STTProviderCatalog | null>(demoMode ? getSTTProviderCatalog() : null);
   const [processorHealth, setProcessorHealth] = useState<MediaProcessorHealth | null>(demoMode ? demoMediaProcessorHealth : null);
   const [uploadResult, setUploadResult] = useState<MediaUploadResult | null>(
-    demoMode
-      ? {
-          lecture_id: demoLectureDetail.id,
-          asset_key: demoAudioExtraction.source_video_key ?? 'media/demo/ai-orchestration-intro.mp4',
-          video_url: demoLectureDetail.video_url,
-          file_name: 'ai-orchestration-intro.mp4',
-          content_type: 'video/mp4',
-          size_bytes: demoAudioExtraction.source_size_bytes ?? 0,
-        }
-      : null,
+    demoMode ? buildDefaultDemoUploadResult(demoLectureDetail, demoAudioExtraction) : null,
   );
   const [extractions, setExtractions] = useState<AudioExtraction[]>(demoMode ? [demoAudioExtraction] : []);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -92,12 +84,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
         setProcessorHealth(demoMediaProcessorHealth);
         setTranscript(demoLectureTranscript);
         setUploadResult({
-          lecture_id: demoLectureDetail.id,
-          asset_key: demoAudioExtraction.source_video_key ?? 'media/demo/ai-orchestration-intro.mp4',
-          video_url: demoLectureDetail.video_url,
-          file_name: 'ai-orchestration-intro.mp4',
-          content_type: 'video/mp4',
-          size_bytes: demoAudioExtraction.source_size_bytes ?? 0,
+          ...buildDefaultDemoUploadResult(demoLectureDetail, demoAudioExtraction),
         });
         return;
       }
@@ -148,12 +135,7 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
       setTranscript(demoLectureTranscript);
       setSpeakerReview(null);
       setUploadResult({
-        lecture_id: demoLectureDetail.id,
-        asset_key: demoAudioExtraction.source_video_key ?? 'media/demo/ai-orchestration-intro.mp4',
-        video_url: demoLectureDetail.video_url,
-        file_name: 'ai-orchestration-intro.mp4',
-        content_type: 'video/mp4',
-        size_bytes: demoAudioExtraction.source_size_bytes ?? 0,
+        ...buildDefaultDemoUploadResult(demoLectureDetail, demoAudioExtraction),
       });
       setNotice('데모 데이터로 미디어 업로드, 전사, 타임라인, 파이프라인 상태를 미리 보여주고 있습니다.');
       return;
@@ -263,33 +245,9 @@ export function MediaPipelinePage({ selectedCourse, highlightedLecture, sessionT
     };
   }, [demoMode, sessionToken, viewerRole]);
 
-  const requiresManualApproval = useMemo(
-    () =>
-      !!latestExtraction &&
-      String(latestExtraction.stt_sync_mode ?? '').toLowerCase() === 'approval' &&
-      String(latestExtraction.stt_approval_state ?? '').toLowerCase() === 'pending',
-    [latestExtraction],
-  );
+  const requiresManualApproval = useMemo(() => isManualApprovalRequired(latestExtraction), [latestExtraction]);
   const sttPolicySummary = useMemo(() => {
-    if (!latestExtraction) {
-      return null;
-    }
-    const mode = String(latestExtraction.stt_sync_mode ?? '-');
-    const overwritePolicy = String(latestExtraction.stt_overwrite_policy ?? '-');
-    const approvalState = String(latestExtraction.stt_approval_state ?? '-');
-    const notificationChannel = latestExtraction.stt_sync_notification_channel ?? '-';
-    const notifiedAt = latestExtraction.stt_sync_notified_at ?? '-';
-    const callbackEvents = latestExtraction.stt_sync_metrics?.callback_events ?? 0;
-    const notifications = latestExtraction.stt_sync_metrics?.notifications ?? 0;
-    return {
-      mode,
-      overwritePolicy,
-      approvalState,
-      notificationChannel,
-      notifiedAt,
-      callbackEvents,
-      notifications,
-    };
+    return toSttPolicySummary(latestExtraction);
   }, [latestExtraction]);
 
   async function submitExtraction(input: {
