@@ -5,9 +5,6 @@ import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.util.Comparator;
@@ -26,19 +23,22 @@ public class MediaProcessingService {
     private final String mediaCallbackSecret;
     private final String mediaPublicBaseUrl;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final MediaProcessingDispatchSupport dispatchSupport;
 
     public MediaProcessingService(
             FeatureStoreRepository repository,
             @Value("${myway.media.processor.url:}") String mediaProcessorUrl,
             @Value("${myway.media.processor.token:}") String mediaProcessorToken,
             @Value("${myway.media.callback.secret:}") String mediaCallbackSecret,
-            @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl
+            @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl,
+            MediaProcessingDispatchSupport dispatchSupport
     ) {
         this.repository = repository;
         this.mediaProcessorUrl = mediaProcessorUrl == null ? "" : mediaProcessorUrl.trim();
         this.mediaProcessorToken = mediaProcessorToken == null ? "" : mediaProcessorToken.trim();
         this.mediaCallbackSecret = mediaCallbackSecret == null ? "" : mediaCallbackSecret.trim();
         this.mediaPublicBaseUrl = mediaPublicBaseUrl == null ? "http://127.0.0.1:8787" : mediaPublicBaseUrl.trim();
+        this.dispatchSupport = dispatchSupport;
     }
 
     public Map<String, Object> sttProviders() {
@@ -67,7 +67,7 @@ public class MediaProcessingService {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> processorHealth() {
-        Map<String, Object> remoteHealth = fetchRemoteProcessorHealth();
+        Map<String, Object> remoteHealth = dispatchSupport.fetchRemoteProcessorHealth(mediaProcessorUrl, mediaProcessorToken, objectMapper);
         List<Map<String, Object>> rows = repository.listKvByScope(EXTRACTION_SCOPE);
         long processing = countByStatus(rows, MediaStatus.PROCESSING);
         long failed = countByStatus(rows, MediaStatus.FAILED);
@@ -107,7 +107,16 @@ public class MediaProcessingService {
         }
 
         try {
-            HttpResponse<String> response = dispatchRequest(extractionId, sourceVideoUrl, mutable);
+            HttpResponse<String> response = dispatchSupport.dispatchRequest(
+                    objectMapper,
+                    mediaProcessorUrl,
+                    mediaProcessorToken,
+                    mediaCallbackSecret,
+                    mediaPublicBaseUrl,
+                    extractionId,
+                    sourceVideoUrl,
+                    mutable
+            );
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 applyDispatchSuccess(mutable, response.body());
             } else {
@@ -121,40 +130,8 @@ public class MediaProcessingService {
         return mutable;
     }
 
-    private HttpResponse<String> dispatchRequest(String extractionId, String sourceVideoUrl, Map<String, Object> extraction) throws Exception {
-        URI callbackUri = URI.create(mediaPublicBaseUrl + "/api/v1/media/extract-audio/callback");
-        String normalizedSourceVideoUrl = normalizeSourceVideoUrl(sourceVideoUrl);
-        Map<String, Object> body = new HashMap<>();
-        body.put("extraction_id", extractionId);
-        body.put("lecture_id", String.valueOf(extraction.getOrDefault("lecture_id", "")));
-        body.put("source_video_url", normalizedSourceVideoUrl);
-        body.put("callback", Map.of("url", callbackUri.toString(), "secret", mediaCallbackSecret.isBlank() ? null : mediaCallbackSecret));
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(mediaProcessorUrl + "/jobs/audio-extraction"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
-        if (!mediaProcessorToken.isBlank()) {
-            builder.header("Authorization", "Bearer " + mediaProcessorToken);
-        }
-        return HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString());
-    }
-
-    private String normalizeSourceVideoUrl(String sourceVideoUrl) {
-        String trimmed = sourceVideoUrl == null ? "" : sourceVideoUrl.trim();
-        if (trimmed.isBlank()) {
-            return mediaPublicBaseUrl + "/api/v1/media/assets/unknown";
-        }
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            return trimmed;
-        }
-        if (trimmed.startsWith("/")) {
-            return mediaPublicBaseUrl + trimmed;
-        }
-        return mediaPublicBaseUrl + "/" + trimmed;
-    }
-
     private void applyDispatchSuccess(Map<String, Object> extraction, String responseBody) throws Exception {
-        DispatchResponse payload = parseDispatchResponse(responseBody);
+        MediaProcessingDispatchSupport.DispatchResponse payload = dispatchSupport.parseDispatchResponse(objectMapper, responseBody);
         MediaStatus status = MediaStatus.fromNullable(payload.status(), MediaStatus.PROCESSING);
         extraction.put("processing_job_id", payload.jobId());
         extraction.put("processing_step", "dispatched");
@@ -177,37 +154,6 @@ public class MediaProcessingService {
         return extraction;
     }
 
-    private Map<String, Object> fetchRemoteProcessorHealth() {
-        if (mediaProcessorUrl.isBlank()) return null;
-        try {
-            HttpRequest.Builder builder = HttpRequest.newBuilder().uri(URI.create(mediaProcessorUrl + "/health")).GET();
-            if (!mediaProcessorToken.isBlank()) {
-                builder.header("Authorization", "Bearer " + mediaProcessorToken);
-            }
-            HttpResponse<String> response = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) return null;
-            return parseRemoteHealth(response.body()).toMap();
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private DispatchResponse parseDispatchResponse(String responseBody) throws Exception {
-        Map<String, Object> payload = objectMapper.readValue(responseBody, Map.class);
-        String jobId = payload.get("job_id") == null ? null : String.valueOf(payload.get("job_id"));
-        String status = payload.get("status") == null ? null : String.valueOf(payload.get("status"));
-        return new DispatchResponse(jobId, status);
-    }
-
-    @SuppressWarnings("unchecked")
-    private RemoteHealth parseRemoteHealth(String responseBody) throws Exception {
-        Map<String, Object> payload = objectMapper.readValue(responseBody, Map.class);
-        boolean ok = Boolean.TRUE.equals(payload.getOrDefault("ok", false));
-        Map<String, Object> ffmpeg = payload.get("ffmpeg") instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of("available", false, "path", "unknown");
-        return new RemoteHealth(ok, ffmpeg);
-    }
-
     private long countByStatus(List<Map<String, Object>> rows, MediaStatus expected) {
         return rows.stream()
                 .map(item -> MediaStatus.fromNullable(String.valueOf(item.getOrDefault("status", MediaStatus.PROCESSING.name())), MediaStatus.PROCESSING))
@@ -218,17 +164,6 @@ public class MediaProcessingService {
     private record ProviderInfo(String name, String label, String description, String status, List<String> capabilities) {
         Map<String, Object> toMap() {
             return Map.of("name", name, "label", label, "description", description, "status", status, "capabilities", capabilities);
-        }
-    }
-
-    private record DispatchResponse(String jobId, String status) {}
-
-    private record RemoteHealth(boolean ok, Map<String, Object> ffmpeg) {
-        Map<String, Object> toMap() {
-            Map<String, Object> map = new HashMap<>();
-            map.put("ok", ok);
-            map.put("ffmpeg", ffmpeg);
-            return map;
         }
     }
 
