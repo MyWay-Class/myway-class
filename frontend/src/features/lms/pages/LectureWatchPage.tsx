@@ -3,6 +3,7 @@ import { CourseSessionTimeline } from '../components/CourseSessionTimeline';
 import { LectureSideChatPanel } from '../components/LectureSideChatPanel';
 import { StatePanel } from '../components/StatePanel';
 import { useLectureWatchPlayback } from './useLectureWatchPlayback';
+import { formatWatchDuration, formatWatchTimecode, lectureWatchTabs, type LectureWatchPanelTab } from './lectureWatchPageUtils';
 
 type LectureWatchPageProps = {
   courses: CourseCard[];
@@ -17,18 +18,6 @@ type LectureWatchPageProps = {
   onNavigate: (page: 'courses' | 'lecture-watch' | 'my-courses' | 'shortform' | 'ai-chat' | 'course-create' | 'lecture-studio' | 'media-pipeline') => void;
 };
 
-type RightTab = 'sessions' | 'script' | 'chat';
-type ScriptTab = RightTab;
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) {
-    return `${minutes}분`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remain = minutes % 60;
-  return remain > 0 ? `${hours}시간 ${remain}분` : `${hours}시간`;
-}
 
 export function LectureWatchPage({
   courses,
@@ -73,19 +62,6 @@ export function LectureWatchPage({
     onSelectLecture,
     onNavigate,
   });
-
-  function formatTimecode(value: number): string {
-    const totalSeconds = Math.max(0, Math.floor(value / 1000));
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (hours > 0) {
-      return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  }
 
   if (!selectedCourse) {
     return (
@@ -259,7 +235,7 @@ export function LectureWatchPage({
                 </p>
                 {transcript?.duration_ms ? (
                   <div className="mt-3 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">
-                    실제 재생 길이 {formatTimecode(transcript.duration_ms)}
+                    실제 재생 길이 {formatWatchTimecode(transcript.duration_ms)}
                   </div>
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -295,7 +271,7 @@ export function LectureWatchPage({
                   <div className="text-[30px] font-extrabold tracking-[-0.05em] text-[var(--app-text)]">{selectedCourse.progress_percent}%</div>
                   <div className="text-right text-[11px] text-[var(--app-text-muted)]">
                     <div>{selectedCourse.completed_lectures}/{selectedCourse.lecture_count}차시</div>
-                    <div>{formatDuration(selectedCourse.total_duration_minutes)}</div>
+                    <div>{formatWatchDuration(selectedCourse.total_duration_minutes)}</div>
                   </div>
                 </div>
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/80">
@@ -330,17 +306,13 @@ export function LectureWatchPage({
             <>
               <div className="border-b border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-4">
                 <div className="flex gap-2">
-                  {[
-                    { key: 'sessions', label: '차시 목록', icon: 'ri-list-check-2' },
-                    { key: 'script', label: '스크립트', icon: 'ri-subtitle' },
-                    { key: 'chat', label: '챗봇', icon: 'ri-robot-line' },
-                  ].map((tab) => {
+                  {lectureWatchTabs.map((tab) => {
                     const active = activePanelTab === tab.key;
                     return (
                       <button
                         key={tab.key}
                         type="button"
-                        onClick={() => setActivePanelTab(tab.key as RightTab)}
+                        onClick={() => setActivePanelTab(tab.key as LectureWatchPanelTab)}
                         className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-[12px] font-semibold transition ${
                           active
                             ? 'bg-indigo-600 text-white shadow-sm'
@@ -401,7 +373,7 @@ export function LectureWatchPage({
                                 }}
                                 className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-indigo-600"
                               >
-                                {formatTimecode(segment.start_ms)} - {formatTimecode(segment.end_ms)}
+                                {formatWatchTimecode(segment.start_ms)} - {formatWatchTimecode(segment.end_ms)}
                               </button>
                               <span className="text-[11px] font-semibold text-slate-400">#{segment.index + 1}</span>
                             </div>
