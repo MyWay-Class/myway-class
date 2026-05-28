@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 
 @Component
 public class DemoLearningMetadataSyncFacade {
@@ -30,7 +29,7 @@ public class DemoLearningMetadataSyncFacade {
             LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport,
             LectureMetadataSyncSupport lectureMetadataSyncSupport,
             LectureDurationResolver lectureDurationResolver,
-            BiFunction<LectureItem, Map<String, Object>, Map<String, Object>> metaBuilder
+            LectureMetadataSyncServiceSupport.TranscriptMetaBuilder metaBuilder
     ) {
         return metadataSupport.alignLectureDuration(
                 store,
@@ -55,7 +54,7 @@ public class DemoLearningMetadataSyncFacade {
             String transcriptScope,
             LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport,
             LectureMetadataSyncSupport lectureMetadataSyncSupport,
-            BiFunction<LectureItem, Map<String, Object>, Map<String, Object>> metaBuilder,
+            LectureMetadataSyncServiceSupport.TranscriptMetaBuilder metaBuilder,
             boolean overwriteExisting
     ) {
         return metadataSupport.syncAll(
@@ -81,7 +80,7 @@ public class DemoLearningMetadataSyncFacade {
             String transcriptScope,
             LectureMetadataSyncServiceSupport lectureMetadataSyncServiceSupport,
             LectureMetadataSyncSupport lectureMetadataSyncSupport,
-            BiFunction<LectureItem, Map<String, Object>, Map<String, Object>> metaBuilder,
+            LectureMetadataSyncServiceSupport.TranscriptMetaBuilder metaBuilder,
             boolean overwriteExisting
     ) {
         return metadataSupport.syncOne(
