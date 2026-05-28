@@ -40,6 +40,7 @@ public class DemoLearningService {
     private final DemoLearningBootstrapSupport demoLearningBootstrapSupport;
     private final DemoLearningCourseAccessSupport demoLearningCourseAccessSupport;
     private final DemoLearningDashboardSupport demoLearningDashboardSupport;
+    private final DemoLearningLectureQuerySupport demoLearningLectureQuerySupport;
 
     @Autowired
     public DemoLearningService(
@@ -57,7 +58,8 @@ public class DemoLearningService {
             DemoLearningMetadataSupport demoLearningMetadataSupport,
             DemoLearningBootstrapSupport demoLearningBootstrapSupport,
             DemoLearningCourseAccessSupport demoLearningCourseAccessSupport,
-            DemoLearningDashboardSupport demoLearningDashboardSupport
+            DemoLearningDashboardSupport demoLearningDashboardSupport,
+            DemoLearningLectureQuerySupport demoLearningLectureQuerySupport
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -74,6 +76,7 @@ public class DemoLearningService {
         this.demoLearningBootstrapSupport = demoLearningBootstrapSupport;
         this.demoLearningCourseAccessSupport = demoLearningCourseAccessSupport;
         this.demoLearningDashboardSupport = demoLearningDashboardSupport;
+        this.demoLearningLectureQuerySupport = demoLearningLectureQuerySupport;
         initSeedData();
     }
 
@@ -94,6 +97,7 @@ public class DemoLearningService {
         this.demoLearningBootstrapSupport = new DemoLearningBootstrapSupport();
         this.demoLearningCourseAccessSupport = new DemoLearningCourseAccessSupport();
         this.demoLearningDashboardSupport = new DemoLearningDashboardSupport();
+        this.demoLearningLectureQuerySupport = new DemoLearningLectureQuerySupport();
         initSeedData();
     }
 
@@ -170,17 +174,15 @@ public class DemoLearningService {
     }
 
     public LectureItem getLecture(String lectureId) {
-        return listAllCourses().stream().flatMap(c -> c.lectures().stream()).filter(l -> l.id().equals(lectureId)).findFirst().orElse(null);
+        return demoLearningLectureQuerySupport.getLecture(lectureId, this::listAllCourses);
     }
 
     public LectureItem getCourseLecture(String courseId, String lectureId) {
-        return getCourseLectures(courseId).stream().filter(l -> l.id().equals(lectureId)).findFirst().orElse(null);
+        return demoLearningLectureQuerySupport.getCourseLecture(courseId, lectureId, () -> getCourseLectures(courseId));
     }
 
     public List<LectureItem> listAllLectures() {
-        return listAllCourses().stream()
-                .flatMap(course -> course.lectures().stream())
-                .toList();
+        return demoLearningLectureQuerySupport.listAllLectures(this::listAllCourses);
     }
 
     public DashboardView getDashboard(String userId) {
