@@ -1,9 +1,11 @@
-import { getLectureDisplayDurationMinutes, type CourseDetail, type LectureDetail } from '@myway/shared';
+import type { CourseDetail, LectureDetail } from '@myway/shared';
 import { CourseSessionTimeline } from './CourseSessionTimeline';
 import { StatePanel } from './StatePanel';
-import { buildProtectedVideoUrl, resolveLectureVideoUrl } from '../../../lib/video-url';
+import { resolveLectureVideoUrl } from '../../../lib/video-url';
 import { useLectureAssetRemap } from './useLectureAssetRemap';
 import { formatDuration, renderMaterialList, renderNoticeList } from './CourseExploreDetailPanelSections';
+import { CourseExploreDetailHeader } from './CourseExploreDetailPanelHeader';
+import { CourseExploreLectureCard } from './CourseExploreLectureCard';
 
 type CourseExploreDetailPanelProps = {
   course: CourseDetail | null;
@@ -25,11 +27,6 @@ const courseTabs: { key: '강의' | '공지' | '자료'; label: string; icon: st
   { key: '자료', label: '자료', icon: 'ri-folder-line' },
 ];
 
-const primaryButtonClass =
-  'rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500';
-const secondaryButtonClass =
-  'rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700';
-
 
 export function CourseExploreDetailPanel({
   course,
@@ -48,8 +45,6 @@ export function CourseExploreDetailPanel({
   const detailLecture = highlightedLecture;
   const isLocked = Boolean(course && !course.enrolled && !canManageCurrent);
   const resolvedLectureVideoUrl = detailLecture ? resolveLectureVideoUrl(detailLecture) : undefined;
-  const protectedVideoUrl = buildProtectedVideoUrl(resolvedLectureVideoUrl, sessionToken);
-  const safeRating = Number.isFinite(course?.rating) ? course.rating : 0;
 
   const handleOpenMaterial = (fileName: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -59,81 +54,7 @@ export function CourseExploreDetailPanel({
 
   return (
     <section className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
-      {course ? (
-        <div className="bg-[radial-gradient(circle_at_18%_10%,rgba(34,211,238,0.24),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(14,116,144,0.32),transparent_42%),linear-gradient(135deg,#071a35_0%,#123f66_52%,#175479_100%)] px-5 py-5 text-white">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold opacity-90">
-                <span className="rounded-full bg-white/15 px-2.5 py-1">{course.category}</span>
-                <span className="rounded-full bg-white/15 px-2.5 py-1">
-                  {course.difficulty === 'beginner' ? '입문' : course.difficulty === 'intermediate' ? '중급' : '고급'}
-                </span>
-              </div>
-              <h1 className="mt-3 text-[24px] font-extrabold tracking-[-0.04em]">{course.title}</h1>
-              <p className="mt-2 text-[13px] leading-6 text-white/80">{course.description}</p>
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-white/80">
-                <span>{course.instructor_name}</span>
-                <span>·</span>
-                <span>{course.lecture_count}강의</span>
-                <span>·</span>
-                <span>{course.student_count}명 수강</span>
-                <span>·</span>
-                <span>{formatDuration(course.total_duration_minutes)}</span>
-              </div>
-            </div>
-
-            <div className="flex-shrink-0 rounded-3xl bg-white/10 px-4 py-4 text-center backdrop-blur">
-              <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/5">
-                <svg className="h-16 w-16 -rotate-90" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="16"
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth="2.5"
-                    strokeDasharray={`${course.progress_percent} ${100 - course.progress_percent}`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span className="absolute text-[13px] font-bold">{course.progress_percent}%</span>
-              </div>
-              <p className="mt-2 text-[11px] font-medium text-white/70">{course.enrolled ? '진행률' : '미수강'}</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="px-5 py-5">
-          <StatePanel
-            icon="ri-cursor-line"
-            tone="violet"
-            title="코스를 선택하세요."
-            description="선택한 코스의 메타데이터, 주차/차시 타임라인, 공지와 자료를 오른쪽 패널에서 확인할 수 있습니다."
-          />
-        </div>
-      )}
-
-      {course ? (
-        <div className="grid grid-cols-2 gap-3 border-t border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 py-5 text-[var(--app-text)] md:grid-cols-4">
-          <div className="rounded-2xl bg-white px-4 py-4">
-            <div className="text-[12px] text-[var(--app-text-muted)]">총 강의 수</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{course.lecture_count}</div>
-          </div>
-          <div className="rounded-2xl bg-white px-4 py-4">
-            <div className="text-[12px] text-[var(--app-text-muted)]">총 러닝타임</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{formatDuration(course.total_duration_minutes)}</div>
-          </div>
-          <div className="rounded-2xl bg-white px-4 py-4">
-            <div className="text-[12px] text-[var(--app-text-muted)]">평점</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{safeRating.toFixed(1)}</div>
-          </div>
-          <div className="rounded-2xl bg-white px-4 py-4">
-            <div className="text-[12px] text-[var(--app-text-muted)]">수강생</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.03em] text-[var(--app-text)]">{course.student_count}</div>
-          </div>
-        </div>
-      ) : null}
+      <CourseExploreDetailHeader course={course} />
 
       <div className="px-5 py-5">
         {course ? (
@@ -169,166 +90,23 @@ export function CourseExploreDetailPanel({
                       onNavigate('lecture-watch');
                     }}
                   />
-                  {detailLecture ? (
-                    <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[12px] font-semibold text-slate-500">선택한 차시</div>
-                          <div className="mt-1 text-[16px] font-bold text-slate-900">{detailLecture.title}</div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                            <span>{detailLecture.course_title}</span>
-                            <span>·</span>
-                            <span>{detailLecture.course_instructor}</span>
-                            <span>·</span>
-                            <span>{formatDuration(getLectureDisplayDurationMinutes(detailLecture))}</span>
-                          </div>
-                        </div>
-                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-white text-[18px] text-indigo-500 shadow-sm">
-                          <i className="ri-play-circle-line" />
-                        </div>
-                      </div>
-                      <p className="mt-4 text-[13px] leading-7 text-slate-600">
-                        {viewMode === 'watch' ? detailLecture.transcript_excerpt : course.description}
-                      </p>
-                      {viewMode === 'watch' && resolvedLectureVideoUrl ? (
-                        isLocked ? (
-                          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-                            <div className="text-[12px] font-semibold text-amber-700">수강 신청이 필요합니다.</div>
-                            <p className="mt-2 text-[13px] leading-6 text-amber-900/80">
-                              이 차시의 영상을 보려면 먼저 강의를 수강 신청해야 합니다.
-                            </p>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => course && onEnroll(course.id)}
-                                className={primaryButtonClass}
-                              >
-                                수강 신청하기
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onNavigate('my-courses')}
-                                className={secondaryButtonClass}
-                              >
-                                내 강의로 이동
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-black">
-                            <video
-                              className="h-auto w-full max-h-[240px]"
-                              controls
-                              preload="metadata"
-                              src={protectedVideoUrl}
-                            />
-                          </div>
-                        )
-                      ) : viewMode === 'watch' ? (
-                        <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                          <div className="text-[12px] font-semibold text-slate-700">재생 가능한 영상이 없습니다.</div>
-                          <p className="mt-2 text-[12px] leading-6 text-slate-500">
-                            강의 영상 URL이 비어 있습니다. 관리자라면 아래에서 R2 asset key를 재매핑할 수 있습니다.
-                          </p>
-                          {canManageCurrent ? (
-                            <div className="mt-3">
-                              <div className="flex flex-wrap gap-2">
-                                <input
-                                  type="text"
-                                  value={remapAssetKey}
-                                  onChange={(event) => setRemapAssetKey(event.target.value)}
-                                  placeholder="media/crs_xxx/lec_xxx.mp4"
-                                  className="min-w-[260px] flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-cyan-300 focus:outline-none"
-                                />
-                                <button
-                                  type="button"
-                                  disabled={remapBusy}
-                            onClick={() => void handleRemapAssetKey(detailLecture?.id)}
-                                  className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-60"
-                                >
-                                  R2 재매핑
-                                </button>
-                              </div>
-                              {remapMessage ? <div className="mt-2 text-[11px] text-slate-500">{remapMessage}</div> : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {viewMode === 'watch' ? (
-                          <>
-                            {isLocked ? (
-                              <button
-                                type="button"
-                                onClick={() => course && onEnroll(course.id)}
-                                className={primaryButtonClass}
-                              >
-                                수강 신청하기
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => onNavigate('courses')}
-                                  className={secondaryButtonClass}
-                                >
-                                  강의 상세로 돌아가기
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => onNavigate('shortform')}
-                                  className={primaryButtonClass}
-                                >
-                                  숏폼 만들기
-                                </button>
-                                {canManageCurrent ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => onNavigate('media-pipeline')}
-                                    className={secondaryButtonClass}
-                                  >
-                                    업로드/전사 관리
-                                  </button>
-                                ) : null}
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            {isLocked ? (
-                              <button
-                                type="button"
-                                onClick={() => course && onEnroll(course.id)}
-                                className={primaryButtonClass}
-                              >
-                                수강 신청하기
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    onSelectLecture(detailLecture.id);
-                                    onNavigate('lecture-watch');
-                                  }}
-                                  className={primaryButtonClass}
-                                >
-                                  강의 시청으로 이동
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => onNavigate('ai-chat')}
-                                  className={secondaryButtonClass}
-                                >
-                                  챗봇으로 질문
-                                </button>
-                              </>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
+                  <CourseExploreLectureCard
+                    course={course}
+                    detailLecture={detailLecture}
+                    viewMode={viewMode}
+                    isLocked={isLocked}
+                    canManageCurrent={canManageCurrent}
+                    resolvedLectureVideoUrl={resolvedLectureVideoUrl}
+                    sessionToken={sessionToken}
+                    remapAssetKey={remapAssetKey}
+                    setRemapAssetKey={setRemapAssetKey}
+                    remapBusy={remapBusy}
+                    remapMessage={remapMessage}
+                    handleRemapAssetKey={handleRemapAssetKey}
+                    onEnroll={onEnroll}
+                    onNavigate={onNavigate}
+                    onSelectLecture={onSelectLecture}
+                  />
                 </div>
               ) : activeTab === '공지' ? (
                 renderNoticeList(course)
@@ -355,27 +133,15 @@ export function CourseExploreDetailPanel({
                   )}
                   <div className="flex flex-wrap gap-2">
                     {isLocked ? (
-                      <button
-                        type="button"
-                        onClick={() => course && onEnroll(course.id)}
-                        className={primaryButtonClass}
-                      >
+                      <button type="button" onClick={() => course && onEnroll(course.id)} className="rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500">
                         수강 신청하기
                       </button>
                     ) : (
                       <>
-                        <button
-                          type="button"
-                          onClick={() => onNavigate('ai-chat')}
-                          className={primaryButtonClass}
-                        >
+                        <button type="button" onClick={() => onNavigate('ai-chat')} className="rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500">
                           AI 챗봇으로 질문하기
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => onNavigate('lecture-watch')}
-                          className={secondaryButtonClass}
-                        >
+                        <button type="button" onClick={() => onNavigate('lecture-watch')} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700">
                           강의 시청으로 이동
                         </button>
                       </>
