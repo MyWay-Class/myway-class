@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 @Service
 public class DemoLearningService {
@@ -44,6 +45,7 @@ public class DemoLearningService {
     private final DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade;
     private final DemoLearningCourseWriteSupport demoLearningCourseWriteSupport;
     private final DemoLearningContentFacade demoLearningContentFacade;
+    private final DemoLearningEnrollmentFacade demoLearningEnrollmentFacade;
 
     @Autowired
     public DemoLearningService(
@@ -65,7 +67,8 @@ public class DemoLearningService {
             DemoLearningLectureQuerySupport demoLearningLectureQuerySupport,
             DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade,
             DemoLearningCourseWriteSupport demoLearningCourseWriteSupport,
-            DemoLearningContentFacade demoLearningContentFacade
+            DemoLearningContentFacade demoLearningContentFacade,
+            DemoLearningEnrollmentFacade demoLearningEnrollmentFacade
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -86,6 +89,7 @@ public class DemoLearningService {
         this.demoLearningMetadataSyncFacade = demoLearningMetadataSyncFacade;
         this.demoLearningCourseWriteSupport = demoLearningCourseWriteSupport;
         this.demoLearningContentFacade = demoLearningContentFacade;
+        this.demoLearningEnrollmentFacade = demoLearningEnrollmentFacade;
         initSeedData();
     }
 
@@ -110,6 +114,7 @@ public class DemoLearningService {
         this.demoLearningMetadataSyncFacade = new DemoLearningMetadataSyncFacade();
         this.demoLearningCourseWriteSupport = new DemoLearningCourseWriteSupport();
         this.demoLearningContentFacade = new DemoLearningContentFacade();
+        this.demoLearningEnrollmentFacade = new DemoLearningEnrollmentFacade();
         initSeedData();
     }
 
@@ -259,63 +264,60 @@ public class DemoLearningService {
     }
 
     public EnrollmentItem enroll(String userId, String courseId) {
-        EnrollmentItem existing = findEnrollment(userId, courseId);
-        if (existing != null) return existing;
-        EnrollmentItem item = new EnrollmentItem(UUID.randomUUID().toString(), userId, courseId);
-        if (useStore()) {
-            learningEnrollmentStoreSupport.upsertEnrollment(store, ENROLLMENT_SCOPE, item);
-        } else {
-            enrollments.add(item);
-        }
-        appendActivity(userId, "enrollment", "course", courseId, Map.of("enrollment_id", item.id()));
-        return item;
+        return demoLearningEnrollmentFacade.enroll(
+                userId,
+                courseId,
+                useStore(),
+                store,
+                ENROLLMENT_SCOPE,
+                learningEnrollmentStoreSupport,
+                enrollments,
+                this::findEnrollment,
+                item -> appendActivity(userId, "enrollment", "course", courseId, Map.of("enrollment_id", item.id()))
+        );
     }
 
     public List<EnrollmentItem> listEnrollments(String userId) {
-        if (!useStore()) {
-            return enrollments.stream().filter(e -> e.user_id().equals(userId)).toList();
-        }
-        return learningEnrollmentStoreSupport.listEnrollments(store, ENROLLMENT_SCOPE, userId);
+        return demoLearningEnrollmentFacade.listEnrollments(
+                userId,
+                useStore(),
+                store,
+                ENROLLMENT_SCOPE,
+                enrollments,
+                learningEnrollmentStoreSupport
+        );
     }
 
     public Map<String, Object> completeLecture(String userId, String lectureId) {
-        LectureItem lecture = getLecture(lectureId);
-        if (lecture == null) return null;
-
-        boolean enrolled = findEnrollment(userId, lecture.course_id()) != null;
-        if (!enrolled) return Map.of("reason", "enrollment_required");
-
-        if (useStore()) {
-            learningEnrollmentStoreSupport.upsertLectureCompletion(
-                    store,
-                    LECTURE_COMPLETION_SCOPE,
+        Consumer<Map<String, Object>> activityAppender = summary -> {
+            LectureItem lecture = getLecture(lectureId);
+            if (lecture == null) return;
+            appendActivity(
                     userId,
+                    "lecture_complete",
+                    "lecture",
                     lectureId,
-                    lecture.course_id()
+                    Map.of(
+                            "course_id", lecture.course_id(),
+                            "progress_percent", summary.get("progress_percent")
+                    )
             );
-        } else {
-            completedLectureKeys.add(completionKey(userId, lectureId));
-        }
-
-        List<LectureItem> lectures = getCourseLectures(lecture.course_id());
-        Set<String> completedLectureIds = listCompletedLectureIds(userId);
-        Map<String, Object> summary = progressCalculator.completionSummary(
-                lectureId,
-                lecture.course_id(),
-                lectures,
-                completedLectureIds
-        );
-        appendActivity(
+        };
+        return demoLearningEnrollmentFacade.completeLecture(
                 userId,
-                "lecture_complete",
-                "lecture",
                 lectureId,
-                Map.of(
-                        "course_id", lecture.course_id(),
-                        "progress_percent", summary.get("progress_percent")
-                )
+                this::getLecture,
+                this::findEnrollment,
+                useStore(),
+                store,
+                LECTURE_COMPLETION_SCOPE,
+                learningEnrollmentStoreSupport,
+                completedLectureKeys,
+                this::getCourseLectures,
+                this::listCompletedLectureIds,
+                progressCalculator,
+                activityAppender
         );
-        return summary;
     }
 
     public SmartChatResult chat(String message) {
