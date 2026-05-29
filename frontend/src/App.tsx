@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   canEnroll,
   canManageCourses,
@@ -20,10 +20,6 @@ import {
   createCourse,
   enrollCourse,
   getCurrentRoleLabel,
-  loadBackendHealth,
-  loadCourseDetail,
-  loadCurrentSession,
-  loadLoginUsers,
   loadLectureDetail,
   loginWithUser,
   logoutCurrentSession,
@@ -37,6 +33,8 @@ import {
 } from './lib/course-flow';
 import { refreshLearningState } from './lib/app-state';
 import { LmsDashboard } from './components/LmsDashboard';
+import { useAppBootstrap } from './hooks/useAppBootstrap';
+import { useAppSelectionSync } from './hooks/useAppSelectionSync';
 
 export default function App() {
   const [session, setSession] = useState<LoginResponse | null>(null);
@@ -83,105 +81,18 @@ export default function App() {
     setNotice,
   };
 
-  useEffect(() => {
-    let active = true;
-
-    async function initialize() {
-      setLoading(true);
-
-      const [storedSession, backendOnline] = await Promise.all([loadCurrentSession(), loadBackendHealth()]);
-      const resolvedUsers = await loadLoginUsers();
-
-      if (!active) {
-        return;
-      }
-
-      setSession(storedSession);
-      setApiStatus(backendOnline ? 'online' : 'offline');
-      setLoginUsers(resolvedUsers);
-      await refreshLearningState(learningDeps, storedSession);
-      setLoading(false);
-    }
-
-    void initialize();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedCourseId) {
-      setSelectedCourse(null);
-      setSelectedLectureId('');
-      return;
-    }
-
-    let active = true;
-
-    async function loadSelectedCourse() {
-      const course = await loadCourseDetail(selectedCourseId, session?.session_token);
-
-      if (!active) {
-        return;
-      }
-
-      if (!course) {
-        const fallbackCourseId = courseCards[0]?.id ?? '';
-        if (fallbackCourseId && fallbackCourseId !== selectedCourseId) {
-          setSelectedCourseId(fallbackCourseId);
-          return;
-        }
-      }
-
-      setSelectedCourse(course);
-      setSelectedLectureId(course?.lectures[0]?.id ?? '');
-    }
-
-    void loadSelectedCourse();
-
-    return () => {
-      active = false;
-    };
-  }, [courseCards, selectedCourseId, session?.session_token]);
-
-  useEffect(() => {
-    if (!selectedLectureId) {
-      setSelectedLecture(null);
-      return;
-    }
-
-    if (selectedCourse) {
-      const exists = selectedCourse.lectures.some((lecture) => lecture.id === selectedLectureId);
-      if (!exists) {
-        const fallbackLectureId = selectedCourse.lectures[0]?.id ?? '';
-        if (fallbackLectureId && fallbackLectureId !== selectedLectureId) {
-          setSelectedLectureId(fallbackLectureId);
-        } else {
-          setSelectedLecture(null);
-        }
-        return;
-      }
-    }
-
-    let active = true;
-
-    async function loadSelectedLecture() {
-      const lecture = await loadLectureDetail(selectedLectureId, session?.session_token);
-
-      if (!active) {
-        return;
-      }
-
-      setSelectedLecture(lecture);
-    }
-
-    void loadSelectedLecture();
-
-    return () => {
-      active = false;
-    };
-  }, [selectedCourse, selectedLectureId, session?.session_token]);
+  useAppBootstrap({ setSession, setApiStatus, setLoginUsers, setLoading, learningDeps });
+  useAppSelectionSync({
+    courseCards,
+    selectedCourseId,
+    selectedCourse,
+    selectedLectureId,
+    session,
+    setSelectedCourse,
+    setSelectedCourseId,
+    setSelectedLectureId,
+    setSelectedLecture,
+  });
 
   async function handleLogin(userId: string) {
     setBusy(true);
