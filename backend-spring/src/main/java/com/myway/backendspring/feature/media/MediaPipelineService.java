@@ -16,39 +16,30 @@ public class MediaPipelineService {
     private static final String EXTRACTION_SCOPE = "media_extraction";
     private static final String PIPELINE_SCOPE = "media_pipeline";
     private static final String MEDIA_NOTE_SCOPE = "media_note";
-    private static final String MEDIA_ASSET_SCOPE = "media_asset";
-    private static final String LECTURE_VIDEO_ASSET_SCOPE = "lecture_video_asset";
-    private static final String MEDIA_BATCH_STATUS_SCOPE = "media_batch_status";
     private static final String SPEAKER_REVIEW_SCOPE = "media_speaker_review";
 
     private final FeatureStoreRepository repository;
     private final FeatureStoreService featureStoreService;
     private final MediaPipelineQuerySupport querySupport;
     private final MediaPipelineBatchSupport batchSupport;
+    private final MediaPipelineAssetService assetService;
 
     public MediaPipelineService(
             FeatureStoreRepository repository,
             FeatureStoreService featureStoreService,
             MediaPipelineQuerySupport querySupport,
-            MediaPipelineBatchSupport batchSupport
+            MediaPipelineBatchSupport batchSupport,
+            MediaPipelineAssetService assetService
     ) {
         this.repository = repository;
         this.featureStoreService = featureStoreService;
         this.querySupport = querySupport;
         this.batchSupport = batchSupport;
+        this.assetService = assetService;
     }
 
     public Map<String, Object> mediaUpload(String lectureId, String fileName) {
-        String key = "asset/" + lectureId + "/" + UUID.randomUUID();
-        Map<String, Object> payload = Map.of(
-                "lecture_id", lectureId,
-                "asset_key", key,
-                "video_url", "/api/v1/media/assets/" + key,
-                "file_name", fileName
-        );
-        repository.upsertKv(MEDIA_ASSET_SCOPE, key, payload);
-        upsertLectureVideoAssetMapping(lectureId, key);
-        return payload;
+        return assetService.mediaUpload(lectureId, fileName);
     }
 
     public Map<String, Object> createExtraction(String lectureId, String audioUrl) {
@@ -137,30 +128,15 @@ public class MediaPipelineService {
     }
 
     public Map<String, Object> mediaAsset(String assetKey) {
-        return repository.getKv(MEDIA_ASSET_SCOPE, assetKey);
+        return assetService.mediaAsset(assetKey);
     }
 
     public Map<String, Object> bindLectureVideoAsset(String lectureId, String assetKey, String videoUrl) {
-        String normalizedLectureId = lectureId == null ? "" : lectureId.trim();
-        String normalizedAssetKey = assetKey == null ? "" : assetKey.trim();
-        if (normalizedLectureId.isBlank() || normalizedAssetKey.isBlank()) {
-            return null;
-        }
-        String resolvedVideoUrl = (videoUrl == null || videoUrl.trim().isBlank())
-                ? "/api/v1/media/assets/" + normalizedAssetKey
-                : videoUrl.trim();
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("lecture_id", normalizedLectureId);
-        payload.put("asset_key", normalizedAssetKey);
-        payload.put("video_url", resolvedVideoUrl);
-        payload.put("updated_at", Instant.now().toString());
-        repository.upsertKv(LECTURE_VIDEO_ASSET_SCOPE, normalizedLectureId, payload);
-        return payload;
+        return assetService.bindLectureVideoAsset(lectureId, assetKey, videoUrl);
     }
 
     public Map<String, Object> lectureVideoAsset(String lectureId) {
-        if (lectureId == null || lectureId.isBlank()) return null;
-        return repository.getKv(LECTURE_VIDEO_ASSET_SCOPE, lectureId.trim());
+        return assetService.lectureVideoAsset(lectureId);
     }
 
     public Map<String, Object> runBatchPipeline(
@@ -178,41 +154,35 @@ public class MediaPipelineService {
                 language,
                 sttProvider,
                 sttModel,
-                this::lectureVideoAsset,
-                this::lectureVideoAssetMap,
+                assetService::lectureVideoAsset,
+                assetService::lectureVideoAssetMap,
                 this::createExtraction,
                 this::dispatchExtractionJob
         );
     }
 
     public void upsertMediaAsset(String assetKey, String lectureId) {
-        repository.upsertKv(MEDIA_ASSET_SCOPE, assetKey, Map.of(
-                "lecture_id", lectureId,
-                "asset_key", assetKey,
-                "video_url", "/api/v1/media/assets/" + assetKey,
-                "file_name", "auto-mapped.mp4",
-                "updated_at", Instant.now().toString()
-        ));
+        assetService.upsertMediaAsset(assetKey, lectureId);
     }
 
     public void upsertLectureVideoAssetMapping(String lectureId, String assetKey) {
-        bindLectureVideoAsset(lectureId, assetKey, null);
+        assetService.upsertLectureVideoAssetMapping(lectureId, assetKey);
     }
 
     public Map<String, Object> lectureVideoAssetMapping(String lectureId) {
-        return repository.getKv(LECTURE_VIDEO_ASSET_SCOPE, lectureId);
+        return assetService.lectureVideoAssetMapping(lectureId);
     }
 
     public Map<String, String> lectureVideoAssetMap() {
-        return querySupport.lectureVideoAssetMap(repository, LECTURE_VIDEO_ASSET_SCOPE);
+        return assetService.lectureVideoAssetMap();
     }
 
     public void upsertBatchStatus(Map<String, Object> payload) {
-        repository.upsertKv(MEDIA_BATCH_STATUS_SCOPE, "pipeline", payload);
+        assetService.upsertBatchStatus(payload);
     }
 
     public Map<String, Object> batchStatus() {
-        return repository.getKv(MEDIA_BATCH_STATUS_SCOPE, "pipeline");
+        return assetService.batchStatus();
     }
 
     public Map<String, Object> completeExtractionCallback(
