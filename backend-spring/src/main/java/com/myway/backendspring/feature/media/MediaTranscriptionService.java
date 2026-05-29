@@ -26,6 +26,7 @@ public class MediaTranscriptionService {
     private final TranscriptSegmenter segmenter;
     private final MediaTranscriptionMetrics metrics;
     private final MediaExtractionCallbackSupport callbackSupport;
+    private final MediaTranscriptionCallbackFacade callbackFacade;
     private final MediaTranscriptionDraftSupport draftSupport;
     private final MediaTranscriptionPersistenceSupport persistenceSupport;
 
@@ -37,6 +38,7 @@ public class MediaTranscriptionService {
             TranscriptSegmenter segmenter,
             MediaTranscriptionMetrics metrics,
             MediaExtractionCallbackSupport callbackSupport,
+            MediaTranscriptionCallbackFacade callbackFacade,
             MediaTranscriptionDraftSupport draftSupport,
             MediaTranscriptionPersistenceSupport persistenceSupport
     ) {
@@ -47,6 +49,7 @@ public class MediaTranscriptionService {
         this.segmenter = segmenter;
         this.metrics = metrics;
         this.callbackSupport = callbackSupport;
+        this.callbackFacade = callbackFacade;
         this.draftSupport = draftSupport;
         this.persistenceSupport = persistenceSupport;
     }
@@ -90,21 +93,17 @@ public class MediaTranscriptionService {
             String approvalState,
             String notificationChannel
     ) {
-        MediaTranscriptionPersistenceSupport.ExtractionSnapshot extraction = persistenceSupport.findExtraction(repository, EXTRACTION_SCOPE, extractionId);
-        if (extraction == null) return null;
-        if (callbackSupport.isStaleCallback(extraction.toMap(), eventVersion)) {
-            return persistenceSupport.normalizeExtractionForResponse(callbackSupport.staleCallbackResponse(extraction.toMap()));
-        }
-
-        String now = Instant.now().toString();
-        MediaStatus callbackStatus = MediaStatus.fromNullable(status, MediaStatus.COMPLETED);
-        String resolvedError = callbackSupport.resolveErrorMessage(callbackStatus, errorMessage);
-        Map<String, Object> mutable = extraction.toMap();
-        callbackSupport.applyCallbackMetadata(
-                mutable,
+        return callbackFacade.completeExtractionCallback(
+                repository,
+                persistenceSupport,
+                callbackSupport,
+                activityEventService,
+                EXTRACTION_SCOPE,
+                PIPELINE_SCOPE,
+                extractionId,
+                status,
+                errorMessage,
                 eventVersion,
-                callbackStatus,
-                resolvedError,
                 audioUrl,
                 processingJobId,
                 processingStage,
@@ -115,22 +114,8 @@ public class MediaTranscriptionService {
                 syncMode,
                 overwritePolicy,
                 approvalState,
-                notificationChannel,
-                now
+                notificationChannel
         );
-        repository.upsertKv(EXTRACTION_SCOPE, extractionId, mutable);
-        MediaTranscriptionPersistenceSupport.ExtractionSnapshot applied = MediaTranscriptionPersistenceSupport.ExtractionSnapshot.from(mutable);
-
-        String lectureId = applied.lectureId();
-        if (!lectureId.isBlank()) {
-            repository.upsertKv(
-                    PIPELINE_SCOPE,
-                    lectureId,
-                    callbackSupport.buildPipelineFromCallback(lectureId, applied.transcriptId(), applied.id(), callbackStatus, resolvedError, now)
-            );
-        }
-        appendActivity(mutable, extractionId, lectureId, callbackStatus);
-        return persistenceSupport.normalizeExtractionForResponse(mutable);
     }
 
     private TranscriptionDraft buildDraft(Map<String, Object> extraction, String lectureId, String language, Integer durationMsInput, String sttProvider, String sttModel, String audioUrl) {
@@ -213,13 +198,6 @@ public class MediaTranscriptionService {
                 draft.instructorGuess(),
                 draftSupport.getSpeakerReview(repository, lectureId)
         );
-    }
-
-    private void appendActivity(Map<String, Object> extraction, String extractionId, String lectureId, MediaStatus status) {
-        if (activityEventService == null) return;
-        String userId = String.valueOf(extraction.getOrDefault("user_id", "")).trim();
-        if (userId.isBlank()) return;
-        activityEventService.append(userId, "media_extraction_" + status.name().toLowerCase(), "extraction", extractionId, Map.of("lecture_id", lectureId, "status", status.name()));
     }
 
     private record TranscriptionDraft(
