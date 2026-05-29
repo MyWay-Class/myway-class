@@ -43,6 +43,7 @@ public class DemoLearningService {
     private final DemoLearningDashboardSupport demoLearningDashboardSupport;
     private final DemoLearningLectureQuerySupport demoLearningLectureQuerySupport;
     private final DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade;
+    private final DemoLearningTranscriptSyncFacade demoLearningTranscriptSyncFacade;
     private final DemoLearningCourseWriteSupport demoLearningCourseWriteSupport;
     private final DemoLearningContentFacade demoLearningContentFacade;
     private final DemoLearningEnrollmentFacade demoLearningEnrollmentFacade;
@@ -66,6 +67,7 @@ public class DemoLearningService {
             DemoLearningDashboardSupport demoLearningDashboardSupport,
             DemoLearningLectureQuerySupport demoLearningLectureQuerySupport,
             DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade,
+            DemoLearningTranscriptSyncFacade demoLearningTranscriptSyncFacade,
             DemoLearningCourseWriteSupport demoLearningCourseWriteSupport,
             DemoLearningContentFacade demoLearningContentFacade,
             DemoLearningEnrollmentFacade demoLearningEnrollmentFacade
@@ -87,6 +89,7 @@ public class DemoLearningService {
         this.demoLearningDashboardSupport = demoLearningDashboardSupport;
         this.demoLearningLectureQuerySupport = demoLearningLectureQuerySupport;
         this.demoLearningMetadataSyncFacade = demoLearningMetadataSyncFacade;
+        this.demoLearningTranscriptSyncFacade = demoLearningTranscriptSyncFacade;
         this.demoLearningCourseWriteSupport = demoLearningCourseWriteSupport;
         this.demoLearningContentFacade = demoLearningContentFacade;
         this.demoLearningEnrollmentFacade = demoLearningEnrollmentFacade;
@@ -112,6 +115,7 @@ public class DemoLearningService {
         this.demoLearningDashboardSupport = new DemoLearningDashboardSupport();
         this.demoLearningLectureQuerySupport = new DemoLearningLectureQuerySupport();
         this.demoLearningMetadataSyncFacade = new DemoLearningMetadataSyncFacade();
+        this.demoLearningTranscriptSyncFacade = new DemoLearningTranscriptSyncFacade();
         this.demoLearningCourseWriteSupport = new DemoLearningCourseWriteSupport();
         this.demoLearningContentFacade = new DemoLearningContentFacade();
         this.demoLearningEnrollmentFacade = new DemoLearningEnrollmentFacade();
@@ -391,10 +395,11 @@ public class DemoLearningService {
     }
 
     private List<LectureItem> alignLectureDurations(List<LectureItem> lectures) {
-        return demoLearningMetadataSyncFacade.alignLectureDurations(
+        return demoLearningTranscriptSyncFacade.alignCourseLectures(
+                demoLearningMetadataSyncFacade,
                 demoLearningMetadataSupport,
-                lectures,
                 useStore(),
+                lectures,
                 this::alignLectureDuration
         );
     }
@@ -416,7 +421,8 @@ public class DemoLearningService {
     }
 
     public Map<String, Object> syncLectureMetadataFromTranscripts(boolean overwriteExisting) {
-        return demoLearningMetadataSyncFacade.syncAll(
+        return demoLearningTranscriptSyncFacade.syncAll(
+                demoLearningMetadataSyncFacade,
                 demoLearningMetadataSupport,
                 store,
                 useStore(),
@@ -433,7 +439,8 @@ public class DemoLearningService {
     public Map<String, Object> syncLectureMetadataForLectureFromTranscript(String lectureId, boolean overwriteExisting) {
         String normalizedLectureId = lectureId == null ? "" : lectureId.trim();
         LectureItem lecture = normalizedLectureId.isBlank() ? null : getLecture(normalizedLectureId);
-        return demoLearningMetadataSyncFacade.syncOne(
+        return demoLearningTranscriptSyncFacade.syncOne(
+                demoLearningMetadataSyncFacade,
                 demoLearningMetadataSupport,
                 store,
                 useStore(),
