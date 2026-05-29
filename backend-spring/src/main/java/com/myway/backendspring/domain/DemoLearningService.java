@@ -43,6 +43,7 @@ public class DemoLearningService {
     private final DemoLearningLectureQuerySupport demoLearningLectureQuerySupport;
     private final DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade;
     private final DemoLearningCourseWriteSupport demoLearningCourseWriteSupport;
+    private final DemoLearningContentFacade demoLearningContentFacade;
 
     @Autowired
     public DemoLearningService(
@@ -63,7 +64,8 @@ public class DemoLearningService {
             DemoLearningDashboardSupport demoLearningDashboardSupport,
             DemoLearningLectureQuerySupport demoLearningLectureQuerySupport,
             DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade,
-            DemoLearningCourseWriteSupport demoLearningCourseWriteSupport
+            DemoLearningCourseWriteSupport demoLearningCourseWriteSupport,
+            DemoLearningContentFacade demoLearningContentFacade
     ) {
         this.store = store;
         this.activityEventService = activityEventService;
@@ -83,6 +85,7 @@ public class DemoLearningService {
         this.demoLearningLectureQuerySupport = demoLearningLectureQuerySupport;
         this.demoLearningMetadataSyncFacade = demoLearningMetadataSyncFacade;
         this.demoLearningCourseWriteSupport = demoLearningCourseWriteSupport;
+        this.demoLearningContentFacade = demoLearningContentFacade;
         initSeedData();
     }
 
@@ -106,6 +109,7 @@ public class DemoLearningService {
         this.demoLearningLectureQuerySupport = new DemoLearningLectureQuerySupport();
         this.demoLearningMetadataSyncFacade = new DemoLearningMetadataSyncFacade();
         this.demoLearningCourseWriteSupport = new DemoLearningCourseWriteSupport();
+        this.demoLearningContentFacade = new DemoLearningContentFacade();
         initSeedData();
     }
 
@@ -201,7 +205,8 @@ public class DemoLearningService {
     }
 
     public List<MaterialItem> getMaterials(String courseId) {
-        return learningContentStoreSupport.getMaterials(
+        return demoLearningContentFacade.getMaterials(
+                learningContentStoreSupport,
                 useStore(),
                 store,
                 MATERIAL_SCOPE,
@@ -212,7 +217,8 @@ public class DemoLearningService {
     }
 
     public List<NoticeItem> getNotices(String courseId) {
-        return learningContentStoreSupport.getNotices(
+        return demoLearningContentFacade.getNotices(
+                learningContentStoreSupport,
                 useStore(),
                 store,
                 NOTICE_SCOPE,
@@ -223,7 +229,8 @@ public class DemoLearningService {
     }
 
     public MaterialItem addMaterial(String userId, String courseId, String title, String summary, String fileName) {
-        return learningContentStoreSupport.addMaterial(
+        return demoLearningContentFacade.addMaterial(
+                learningContentStoreSupport,
                 useStore(),
                 store,
                 MATERIAL_SCOPE,
@@ -237,7 +244,8 @@ public class DemoLearningService {
     }
 
     public NoticeItem addNotice(String userId, String courseId, String title, String content, boolean pinned) {
-        return learningContentStoreSupport.addNotice(
+        return demoLearningContentFacade.addNotice(
+                learningContentStoreSupport,
                 useStore(),
                 store,
                 NOTICE_SCOPE,
