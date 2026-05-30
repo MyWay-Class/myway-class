@@ -34,6 +34,14 @@ import type { RuntimeBindings } from '../lib/runtime-env';
 
 const media = new Hono();
 
+function requireUser(request: Request) {
+  const user = getAuthenticatedUser(request);
+  if (!user) {
+    return { error: jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401) as Response };
+  }
+  return { user };
+}
+
 function ensureLectureExists(lectureId: string, userId: string): boolean {
   return Boolean(getLectureDetail(lectureId, userId));
 }
@@ -60,11 +68,26 @@ function getMediaRepository(env: RuntimeBindings | undefined) {
   return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
 }
 
-media.post('/upload-video', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+function requireLectureAccess(
+  request: Request,
+  lectureId: string,
+  unauthMessage: string,
+  forbiddenMessage: string,
+): { user: NonNullable<ReturnType<typeof getAuthenticatedUser>> } | { error: Response } {
+  const user = getAuthenticatedUser(request);
+  if (!canAccessLectureContent(user, lectureId)) {
+    return {
+      error: jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', user ? forbiddenMessage : unauthMessage, user ? 403 : 401),
+    };
   }
+
+  return { user: user! };
+}
+
+media.post('/upload-video', async (c) => {
+  const auth = requireUser(c.req.raw);
+  if ('error' in auth) return auth.error;
+  const { user } = auth;
 
   if (!hasRole(user, ['INSTRUCTOR', 'ADMIN'])) {
     return jsonFailure('FORBIDDEN', '영상 업로드는 강사와 운영자만 사용할 수 있습니다.', 403);
@@ -110,10 +133,9 @@ media.post('/upload-video', async (c) => {
 });
 
 media.post('/transcribe', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireUser(c.req.raw);
+  if ('error' in auth) return auth.error;
+  const { user } = auth;
 
   const access = await guardAiRequest(c.req.raw, c.env as RuntimeBindings | undefined, 'stt');
   if (access instanceof Response) {
@@ -185,10 +207,8 @@ media.post('/transcribe', async (c) => {
 media.get('/providers', (c) => jsonSuccess(getSTTProviderOverview() satisfies STTProviderCatalog, 'STT provider 계층을 조회했습니다.'));
 
 media.get('/processor-health', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireUser(c.req.raw);
+  if ('error' in auth) return auth.error;
 
   const health = await loadMediaProcessorHealth(c.env as RuntimeBindings | undefined);
   if (!health) {
@@ -233,10 +253,9 @@ media.get('/assets/:assetKey', async (c) => {
 });
 
 media.post('/summarize', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireUser(c.req.raw);
+  if ('error' in auth) return auth.error;
+  const { user } = auth;
 
   const body = await readJsonBody<MediaSummaryRequest>(c.req.raw);
   const lectureId = body?.lecture_id?.trim();
@@ -277,10 +296,9 @@ media.post('/summarize', async (c) => {
 });
 
 media.post('/extract-audio', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireUser(c.req.raw);
+  if ('error' in auth) return auth.error;
+  const { user } = auth;
 
   if (!hasRole(user, ['INSTRUCTOR', 'ADMIN'])) {
     return jsonFailure('FORBIDDEN', '오디오 추출은 강사와 운영자만 사용할 수 있습니다.', 403);
@@ -348,14 +366,10 @@ media.post('/extract-audio/callback', async (c) => {
 });
 
 media.get('/transcript/:lectureId', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
-
-  if (!canAccessLectureContent(user, lectureId)) {
-    return jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', '강의 수강 후에 스크립트를 볼 수 있습니다.', user ? 403 : 401);
-  }
-
-  if (!ensureLectureExists(lectureId, user?.id ?? 'guest')) {
+  const access = requireLectureAccess(c.req.raw, lectureId, '강의 수강 후에 스크립트를 볼 수 있습니다.', '강의 수강 후에 스크립트를 볼 수 있습니다.');
+  if ('error' in access) return access.error;
+  if (!ensureLectureExists(lectureId, access.user.id)) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
@@ -363,14 +377,10 @@ media.get('/transcript/:lectureId', async (c) => {
 });
 
 media.get('/notes/:lectureId', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
-
-  if (!canAccessLectureContent(user, lectureId)) {
-    return jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', '강의 수강 후에 자료를 볼 수 있습니다.', user ? 403 : 401);
-  }
-
-  if (!ensureLectureExists(lectureId, user?.id ?? 'guest')) {
+  const access = requireLectureAccess(c.req.raw, lectureId, '강의 수강 후에 자료를 볼 수 있습니다.', '강의 수강 후에 자료를 볼 수 있습니다.');
+  if ('error' in access) return access.error;
+  if (!ensureLectureExists(lectureId, access.user.id)) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
@@ -378,14 +388,10 @@ media.get('/notes/:lectureId', async (c) => {
 });
 
 media.get('/audio-extractions/:lectureId', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
-
-  if (!canAccessLectureContent(user, lectureId)) {
-    return jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', '강의 수강 후에 추출 기록을 볼 수 있습니다.', user ? 403 : 401);
-  }
-
-  if (!ensureLectureExists(lectureId, user?.id ?? 'guest')) {
+  const access = requireLectureAccess(c.req.raw, lectureId, '강의 수강 후에 추출 기록을 볼 수 있습니다.', '강의 수강 후에 추출 기록을 볼 수 있습니다.');
+  if ('error' in access) return access.error;
+  if (!ensureLectureExists(lectureId, access.user.id)) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
@@ -393,14 +399,10 @@ media.get('/audio-extractions/:lectureId', async (c) => {
 });
 
 media.get('/pipeline/:lectureId', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
   const lectureId = c.req.param('lectureId');
-
-  if (!canAccessLectureContent(user, lectureId)) {
-    return jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.', user ? 403 : 401);
-  }
-
-  if (!ensureLectureExists(lectureId, user?.id ?? 'guest')) {
+  const access = requireLectureAccess(c.req.raw, lectureId, '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.', '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.');
+  if ('error' in access) return access.error;
+  if (!ensureLectureExists(lectureId, access.user.id)) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
