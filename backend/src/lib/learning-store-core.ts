@@ -88,6 +88,21 @@ function syncLectureDurationMemory(lectureId: string, durationMinutes: number): 
   }
 }
 
+function learningStoreSeedState() {
+  return {
+    courses: demoCourses,
+    lectures: demoLectures,
+    materials: demoMaterials,
+    notices: demoNotices,
+    enrollments: demoEnrollments,
+    progress: demoLectureProgress,
+    transcripts: seedDemoLectureTranscripts,
+    notes: seedDemoLectureNotes,
+    extractions: seedDemoAudioExtractions,
+    pipelines: seedDemoLecturePipelines,
+  };
+}
+
 async function syncLectureDurationsFromMedia(db: D1Database): Promise<void> {
   const [transcriptRows, extractionRows] = await Promise.all([
     db
@@ -122,6 +137,34 @@ async function syncLectureDurationsFromMedia(db: D1Database): Promise<void> {
   }
 }
 
+async function bootstrapLearningStore(db: D1Database): Promise<void> {
+  await ensureLearningStoreSchema(db);
+  const seedState = learningStoreSeedState();
+  await seedLearningStoreCourseData(db, seedState);
+  await seedLearningStoreMediaData(db, seedState);
+  await hydrateLearningStoreMemory(db, {
+    demoCourses,
+    demoLectures,
+    demoMaterials,
+    demoNotices,
+    demoEnrollments,
+    demoLectureProgress,
+    demoLectureTranscripts,
+    demoLectureNotes,
+    demoAudioExtractions,
+    demoLecturePipelines,
+  });
+  await syncLectureDurationsFromMedia(db);
+  learningStoreReady = true;
+}
+
+function createLearningStorePromise(db: D1Database): Promise<void> {
+  return bootstrapLearningStore(db).catch((error) => {
+    learningStorePromise = null;
+    throw error;
+  });
+}
+
 
 
 
@@ -137,50 +180,7 @@ export async function ensureLearningStore(env?: RuntimeBindings): Promise<void> 
   }
 
   if (!learningStorePromise) {
-    learningStorePromise = (async () => {
-      await ensureLearningStoreSchema(db);
-      await seedLearningStoreCourseData(db, {
-        courses: demoCourses,
-        lectures: demoLectures,
-        materials: demoMaterials,
-        notices: demoNotices,
-        enrollments: demoEnrollments,
-        progress: demoLectureProgress,
-        transcripts: seedDemoLectureTranscripts,
-        notes: seedDemoLectureNotes,
-        extractions: seedDemoAudioExtractions,
-        pipelines: seedDemoLecturePipelines,
-      });
-      await seedLearningStoreMediaData(db, {
-        courses: demoCourses,
-        lectures: demoLectures,
-        materials: demoMaterials,
-        notices: demoNotices,
-        enrollments: demoEnrollments,
-        progress: demoLectureProgress,
-        transcripts: seedDemoLectureTranscripts,
-        notes: seedDemoLectureNotes,
-        extractions: seedDemoAudioExtractions,
-        pipelines: seedDemoLecturePipelines,
-      });
-      await hydrateLearningStoreMemory(db, {
-        demoCourses,
-        demoLectures,
-        demoMaterials,
-        demoNotices,
-        demoEnrollments,
-        demoLectureProgress,
-        demoLectureTranscripts,
-        demoLectureNotes,
-        demoAudioExtractions,
-        demoLecturePipelines,
-      });
-      await syncLectureDurationsFromMedia(db);
-      learningStoreReady = true;
-    })().catch((error) => {
-      learningStorePromise = null;
-      throw error;
-    });
+    learningStorePromise = createLearningStorePromise(db);
   }
 
   await learningStorePromise;
@@ -208,50 +208,7 @@ export async function refreshLearningStoreFromDatabase(env?: RuntimeBindings): P
   resetMemoryState();
 
   if (!learningStorePromise) {
-    learningStorePromise = (async () => {
-      await ensureLearningStoreSchema(db);
-      await seedLearningStoreCourseData(db, {
-        courses: demoCourses,
-        lectures: demoLectures,
-        materials: demoMaterials,
-        notices: demoNotices,
-        enrollments: demoEnrollments,
-        progress: demoLectureProgress,
-        transcripts: seedDemoLectureTranscripts,
-        notes: seedDemoLectureNotes,
-        extractions: seedDemoAudioExtractions,
-        pipelines: seedDemoLecturePipelines,
-      });
-      await seedLearningStoreMediaData(db, {
-        courses: demoCourses,
-        lectures: demoLectures,
-        materials: demoMaterials,
-        notices: demoNotices,
-        enrollments: demoEnrollments,
-        progress: demoLectureProgress,
-        transcripts: seedDemoLectureTranscripts,
-        notes: seedDemoLectureNotes,
-        extractions: seedDemoAudioExtractions,
-        pipelines: seedDemoLecturePipelines,
-      });
-      await hydrateLearningStoreMemory(db, {
-        demoCourses,
-        demoLectures,
-        demoMaterials,
-        demoNotices,
-        demoEnrollments,
-        demoLectureProgress,
-        demoLectureTranscripts,
-        demoLectureNotes,
-        demoAudioExtractions,
-        demoLecturePipelines,
-      });
-      await syncLectureDurationsFromMedia(db);
-      learningStoreReady = true;
-    })().catch((error) => {
-      learningStorePromise = null;
-      throw error;
-    });
+    learningStorePromise = createLearningStorePromise(db);
   }
 
   await learningStorePromise;
