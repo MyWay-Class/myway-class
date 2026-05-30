@@ -11,8 +11,8 @@ import type {
   MediaRepository,
 } from '@myway/shared';
 import { getAIProviderSelectionForRuntime } from './ai-provider';
-import { runGeminiJsonPrompt, runOllamaChat } from './providers';
 import type { RuntimeBindings } from './runtime-env';
+import { runProviderFallbackChain } from './ai-engine-runner-helpers';
 import {
   getGeminiModel,
   OLLAMA_TIMEOUT_MS,
@@ -52,30 +52,8 @@ async function runStructuredJsonFallback(
   env?: RuntimeBindings,
 ): Promise<string | null> {
   const providerPlan = getAIProviderSelectionForRuntime(feature, env, preferredProvider);
-
-  for (const provider of providerPlan.fallback_chain) {
-    if (provider === 'ollama') {
-      const response = await runOllamaChat(messages, env, {
-        model: getOllamaModel(env),
-        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
-      });
-      if (response) {
-        return response;
-      }
-    }
-
-    if (provider === 'gemini') {
-      const response = await runGeminiJsonPrompt(messages, env, {
-        model: getGeminiModel(env),
-        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
-      });
-      if (response) {
-        return response;
-      }
-    }
-  }
-
-  return null;
+  const { response } = await runProviderFallbackChain(providerPlan.fallback_chain, messages, OLLAMA_QUIZ_TIMEOUT_MS, env);
+  return response;
 }
 
 async function runOllamaStructuredIntent(
@@ -96,31 +74,13 @@ async function runOllamaStructuredIntent(
   }
 
   const messages = buildIntentPrompt(input, fallback);
-  let response: string | null = null;
-  let responseProvider: AIProviderName | null = null;
-
-  for (const provider of providerPlan.fallback_chain) {
-    if (provider === 'ollama') {
-      response = await runOllamaChat(messages, env, {
-        model: getOllamaModel(env),
-        temperature: 0.1,
-        timeoutMs: OLLAMA_TIMEOUT_MS,
-      });
-      responseProvider = response ? 'ollama' : null;
-    }
-
-    if (!response && provider === 'gemini') {
-      response = await runGeminiJsonPrompt(messages, env, {
-        model: getGeminiModel(env),
-        timeoutMs: OLLAMA_TIMEOUT_MS,
-      });
-      responseProvider = response ? 'gemini' : responseProvider;
-    }
-
-    if (response) {
-      break;
-    }
-  }
+  const { response, provider: responseProvider } = await runProviderFallbackChain(
+    providerPlan.fallback_chain,
+    messages,
+    OLLAMA_TIMEOUT_MS,
+    env,
+    0.1,
+  );
 
   const parsed = parseJsonObject(response ?? '');
   if (!parsed) {
@@ -164,31 +124,13 @@ async function runOllamaStructuredAnswer(
   }
 
   const messages = buildAnswerPrompt(input, fallback);
-  let response: string | null = null;
-  let responseProvider: AIProviderName | null = null;
-
-  for (const provider of providerPlan.fallback_chain) {
-    if (provider === 'ollama') {
-      response = await runOllamaChat(messages, env, {
-        model: getOllamaModel(env),
-        temperature: 0.2,
-        timeoutMs: OLLAMA_TIMEOUT_MS,
-      });
-      responseProvider = response ? 'ollama' : null;
-    }
-
-    if (!response && provider === 'gemini') {
-      response = await runGeminiJsonPrompt(messages, env, {
-        model: getGeminiModel(env),
-        timeoutMs: OLLAMA_TIMEOUT_MS,
-      });
-      responseProvider = response ? 'gemini' : responseProvider;
-    }
-
-    if (response) {
-      break;
-    }
-  }
+  const { response, provider: responseProvider } = await runProviderFallbackChain(
+    providerPlan.fallback_chain,
+    messages,
+    OLLAMA_TIMEOUT_MS,
+    env,
+    0.2,
+  );
 
   const parsed = parseJsonObject(response ?? '');
   if (!parsed) {
@@ -277,30 +219,12 @@ export async function runAISummaryWithEngine(
 
   const messages = buildSummaryPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input.style, input.language);
   const providerPlan = getAIProviderSelectionForRuntime('summary', env, preferredProvider);
-  let response: string | null = null;
-  let responseProvider: AIProviderName | null = null;
-
-  for (const provider of providerPlan.fallback_chain) {
-    if (provider === 'ollama') {
-      response = await runOllamaChat(messages, env, {
-        model: getOllamaModel(env),
-        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
-      });
-      responseProvider = response ? 'ollama' : null;
-    }
-
-    if (!response && provider === 'gemini') {
-      response = await runGeminiJsonPrompt(messages, env, {
-        model: getGeminiModel(env),
-        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
-      });
-      responseProvider = response ? 'gemini' : responseProvider;
-    }
-
-    if (response) {
-      break;
-    }
-  }
+  const { response, provider: responseProvider } = await runProviderFallbackChain(
+    providerPlan.fallback_chain,
+    messages,
+    OLLAMA_QUIZ_TIMEOUT_MS,
+    env,
+  );
 
   if (!response) {
     return {
@@ -368,30 +292,12 @@ export async function runAIQuizWithEngine(
 
   const messages = buildQuizPrompt(source.lectureTitle, source.courseTitle, truncate(source.sourceText, 6000), input);
   const providerPlan = getAIProviderSelectionForRuntime('quiz', env, preferredProvider);
-  let response: string | null = null;
-  let responseProvider: AIProviderName | null = null;
-
-  for (const provider of providerPlan.fallback_chain) {
-    if (provider === 'ollama') {
-      response = await runOllamaChat(messages, env, {
-        model: getOllamaModel(env),
-        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
-      });
-      responseProvider = response ? 'ollama' : null;
-    }
-
-    if (!response && provider === 'gemini') {
-      response = await runGeminiJsonPrompt(messages, env, {
-        model: getGeminiModel(env),
-        timeoutMs: OLLAMA_QUIZ_TIMEOUT_MS,
-      });
-      responseProvider = response ? 'gemini' : responseProvider;
-    }
-
-    if (response) {
-      break;
-    }
-  }
+  const { response, provider: responseProvider } = await runProviderFallbackChain(
+    providerPlan.fallback_chain,
+    messages,
+    OLLAMA_QUIZ_TIMEOUT_MS,
+    env,
+  );
 
   if (!response) {
     return {
