@@ -16,10 +16,6 @@ public class DemoLearningService {
     private static final String COURSE_SCOPE = "learning_course";
     private static final String MATERIAL_SCOPE = "learning_material";
     private static final String NOTICE_SCOPE = "learning_notice";
-    private static final String LECTURE_META_SCOPE = "learning_lecture_meta";
-    private static final String TRANSCRIPT_SCOPE = "media_transcript";
-    private static final String EXTRACTION_SCOPE = "media_extraction";
-    private static final String SPEAKER_REVIEW_SCOPE = "media_speaker_review";
     private static final String DEFAULT_DEMO_STUDENT_ID = "usr_std_001";
     private final Map<String, CourseDetail> courses = new LinkedHashMap<>();
     private final Map<String, List<MaterialItem>> materialsByCourse = new ConcurrentHashMap<>();
@@ -42,8 +38,7 @@ public class DemoLearningService {
     private final DemoLearningCourseAccessSupport demoLearningCourseAccessSupport;
     private final DemoLearningDashboardSupport demoLearningDashboardSupport;
     private final DemoLearningLectureQuerySupport demoLearningLectureQuerySupport;
-    private final DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade;
-    private final DemoLearningTranscriptSyncFacade demoLearningTranscriptSyncFacade;
+    private final DemoLearningLectureMetadataFacade demoLearningLectureMetadataFacade;
     private final DemoLearningCourseWriteSupport demoLearningCourseWriteSupport;
     private final DemoLearningContentFacade demoLearningContentFacade;
     private final DemoLearningEnrollmentFacade demoLearningEnrollmentFacade;
@@ -66,8 +61,7 @@ public class DemoLearningService {
             DemoLearningCourseAccessSupport demoLearningCourseAccessSupport,
             DemoLearningDashboardSupport demoLearningDashboardSupport,
             DemoLearningLectureQuerySupport demoLearningLectureQuerySupport,
-            DemoLearningMetadataSyncFacade demoLearningMetadataSyncFacade,
-            DemoLearningTranscriptSyncFacade demoLearningTranscriptSyncFacade,
+            DemoLearningLectureMetadataFacade demoLearningLectureMetadataFacade,
             DemoLearningCourseWriteSupport demoLearningCourseWriteSupport,
             DemoLearningContentFacade demoLearningContentFacade,
             DemoLearningEnrollmentFacade demoLearningEnrollmentFacade
@@ -88,8 +82,7 @@ public class DemoLearningService {
         this.demoLearningCourseAccessSupport = demoLearningCourseAccessSupport;
         this.demoLearningDashboardSupport = demoLearningDashboardSupport;
         this.demoLearningLectureQuerySupport = demoLearningLectureQuerySupport;
-        this.demoLearningMetadataSyncFacade = demoLearningMetadataSyncFacade;
-        this.demoLearningTranscriptSyncFacade = demoLearningTranscriptSyncFacade;
+        this.demoLearningLectureMetadataFacade = demoLearningLectureMetadataFacade;
         this.demoLearningCourseWriteSupport = demoLearningCourseWriteSupport;
         this.demoLearningContentFacade = demoLearningContentFacade;
         this.demoLearningEnrollmentFacade = demoLearningEnrollmentFacade;
@@ -114,8 +107,15 @@ public class DemoLearningService {
         this.demoLearningCourseAccessSupport = new DemoLearningCourseAccessSupport();
         this.demoLearningDashboardSupport = new DemoLearningDashboardSupport();
         this.demoLearningLectureQuerySupport = new DemoLearningLectureQuerySupport();
-        this.demoLearningMetadataSyncFacade = new DemoLearningMetadataSyncFacade();
-        this.demoLearningTranscriptSyncFacade = new DemoLearningTranscriptSyncFacade();
+        this.demoLearningLectureMetadataFacade = new DemoLearningLectureMetadataFacade(
+                null,
+                new DemoLearningMetadataSyncFacade(),
+                new DemoLearningTranscriptSyncFacade(),
+                demoLearningMetadataSupport,
+                lectureMetadataSyncServiceSupport,
+                lectureMetadataSyncSupport,
+                lectureDurationResolver
+        );
         this.demoLearningCourseWriteSupport = new DemoLearningCourseWriteSupport();
         this.demoLearningContentFacade = new DemoLearningContentFacade();
         this.demoLearningEnrollmentFacade = new DemoLearningEnrollmentFacade();
@@ -395,64 +395,15 @@ public class DemoLearningService {
     }
 
     private List<LectureItem> alignLectureDurations(List<LectureItem> lectures) {
-        return demoLearningTranscriptSyncFacade.alignCourseLectures(
-                demoLearningMetadataSyncFacade,
-                demoLearningMetadataSupport,
-                useStore(),
-                lectures,
-                this::alignLectureDuration
-        );
-    }
-
-    private LectureItem alignLectureDuration(LectureItem lecture) {
-        return demoLearningMetadataSyncFacade.alignLectureDuration(
-                demoLearningMetadataSupport,
-                store,
-                useStore(),
-                lecture,
-                LECTURE_META_SCOPE,
-                TRANSCRIPT_SCOPE,
-                EXTRACTION_SCOPE,
-                lectureMetadataSyncServiceSupport,
-                lectureMetadataSyncSupport,
-                lectureDurationResolver,
-                this::buildLectureMetaFromTranscript
-        );
+        return demoLearningLectureMetadataFacade.alignCourseLectures(useStore(), lectures);
     }
 
     public Map<String, Object> syncLectureMetadataFromTranscripts(boolean overwriteExisting) {
-        return demoLearningTranscriptSyncFacade.syncAll(
-                demoLearningMetadataSyncFacade,
-                demoLearningMetadataSupport,
-                store,
-                useStore(),
-                listAllLectures(),
-                LECTURE_META_SCOPE,
-                TRANSCRIPT_SCOPE,
-                lectureMetadataSyncServiceSupport,
-                lectureMetadataSyncSupport,
-                this::buildLectureMetaFromTranscript,
-                overwriteExisting
-        );
+        return demoLearningLectureMetadataFacade.syncAllFromTranscripts(useStore(), overwriteExisting, this::listAllLectures);
     }
 
     public Map<String, Object> syncLectureMetadataForLectureFromTranscript(String lectureId, boolean overwriteExisting) {
-        String normalizedLectureId = lectureId == null ? "" : lectureId.trim();
-        LectureItem lecture = normalizedLectureId.isBlank() ? null : getLecture(normalizedLectureId);
-        return demoLearningTranscriptSyncFacade.syncOne(
-                demoLearningMetadataSyncFacade,
-                demoLearningMetadataSupport,
-                store,
-                useStore(),
-                normalizedLectureId,
-                lecture,
-                LECTURE_META_SCOPE,
-                TRANSCRIPT_SCOPE,
-                lectureMetadataSyncServiceSupport,
-                lectureMetadataSyncSupport,
-                this::buildLectureMetaFromTranscript,
-                overwriteExisting
-        );
+        return demoLearningLectureMetadataFacade.syncLectureFromTranscript(useStore(), lectureId, overwriteExisting, this::getLecture);
     }
 
     private List<CourseDetail> listAllCourses() {
@@ -484,9 +435,4 @@ public class DemoLearningService {
         }
     }
 
-    private Map<String, Object> buildLectureMetaFromTranscript(LectureItem lecture, Map<String, Object> transcript) {
-        String lectureId = lecture == null ? "" : lecture.id();
-        Map<String, Object> speakerReview = store.getKv(SPEAKER_REVIEW_SCOPE, lectureId);
-        return lectureMetadataSyncSupport.buildLectureMetaFromTranscript(lecture, transcript, speakerReview);
-    }
 }
