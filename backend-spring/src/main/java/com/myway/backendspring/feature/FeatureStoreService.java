@@ -35,6 +35,7 @@ public class FeatureStoreService {
     private final FeatureStoreTranscribeSupport transcribeSupport;
     private final FeatureStoreRagSupport ragSupport;
     private final FeatureStoreAiSupport aiSupport;
+    private final FeatureStoreAiFacade aiFacade;
     private final FeatureStoreMediaOpsSupport mediaOpsSupport;
     private final FeatureStoreDomainOpsSupport domainOpsSupport;
     private final FeatureStoreDomainFacade domainFacade;
@@ -59,6 +60,7 @@ public class FeatureStoreService {
             FeatureStoreTranscribeSupport transcribeSupport,
             FeatureStoreRagSupport ragSupport,
             FeatureStoreAiSupport aiSupport,
+            FeatureStoreAiFacade aiFacade,
             FeatureStoreMediaOpsSupport mediaOpsSupport,
             FeatureStoreDomainOpsSupport domainOpsSupport,
             FeatureStoreDomainFacade domainFacade,
@@ -81,6 +83,7 @@ public class FeatureStoreService {
         this.transcribeSupport = transcribeSupport;
         this.ragSupport = ragSupport;
         this.aiSupport = aiSupport;
+        this.aiFacade = aiFacade;
         this.mediaOpsSupport = mediaOpsSupport;
         this.domainOpsSupport = domainOpsSupport;
         this.domainFacade = domainFacade;
@@ -107,6 +110,7 @@ public class FeatureStoreService {
                 new FeatureStoreTranscribeSupport(),
                 new FeatureStoreRagSupport(),
                 new FeatureStoreAiSupport(),
+                new FeatureStoreAiFacade(new FeatureStoreAiSupport(), new AiFeatureService(new FeatureStoreRepository(store), null, null, null, "dev")),
                 new FeatureStoreMediaOpsSupport(),
                 new FeatureStoreDomainOpsSupport(),
                 new FeatureStoreDomainFacade(new FeatureStoreDomainOpsSupport(), null, null, null),
@@ -119,27 +123,27 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> aiInsights(String userId) {
-        return aiSupport.aiInsights(aiFeatureService, userId);
+        return aiFacade.aiInsights(userId);
     }
 
     public Map<String, Object> aiLogs(String userId) {
-        return aiSupport.aiLogs(aiFeatureService, userId);
+        return aiFacade.aiLogs(userId);
     }
 
     public Map<String, Object> aiRecommendations(String userId) {
-        return aiSupport.aiRecommendations(aiFeatureService, userId);
+        return aiFacade.aiRecommendations(userId);
     }
 
     public Map<String, Object> aiSettings(String userId) {
-        return aiSupport.aiSettings(aiFeatureService, userId);
+        return aiFacade.aiSettings(userId);
     }
 
     public Map<String, Object> updateAiSettings(String userId, Map<String, Object> patch) {
-        return aiSupport.updateAiSettings(aiFeatureService, userId, patch);
+        return aiFacade.updateAiSettings(userId, patch);
     }
 
     public Map<String, Object> aiProviders(String userId) {
-        return aiSupport.aiProviders(aiFeatureService, userId);
+        return aiFacade.aiProviders(userId);
     }
 
     public Map<String, Object> sttProviders() {
@@ -151,11 +155,11 @@ public class FeatureStoreService {
     }
 
     public boolean canConsumeAi(String userId) {
-        return aiSupport.canConsumeAi(aiFeatureService, userId);
+        return aiFacade.canConsumeAi(userId);
     }
 
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
-        aiSupport.recordAiUsage(aiFeatureService, userId, feature, success, inputText);
+        aiFacade.recordAiUsage(userId, feature, success, inputText);
     }
 
     public Map<String, Object> ragOverview(String query, String lectureId, String courseId, Integer limit) {
