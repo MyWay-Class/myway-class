@@ -27,6 +27,7 @@ import { dispatchShortformExportJob } from '../lib/shortform-export';
 import { verifyMediaCallbackSecret } from '../lib/media-processor';
 import { createMediaRepository } from '../lib/media-repository';
 import type { RuntimeBindings } from '../lib/runtime-env';
+import type { AuthUser } from '@myway/shared';
 
 type ShortformExportCallbackRequest = {
   shortform_id: string;
@@ -51,11 +52,80 @@ function getMediaRepository(env: RuntimeBindings | undefined) {
   return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
 }
 
-shortform.post('/generate', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
+function requireAuth(request: Request): AuthUser | Response {
+  const user = getAuthenticatedUser(request);
   if (!user) {
     return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
   }
+  return user;
+}
+
+async function startShortformExport(
+  shortformId: string,
+  requestUrl: string,
+  env: RuntimeBindings | undefined,
+): Promise<
+  | { ok: true; payload: unknown }
+  | { ok: false; response: Response }
+> {
+  const detail = getShortformVideoDetail(shortformId);
+  if (!detail) {
+    return {
+      ok: false,
+      response: jsonFailure('SHORTFORM_NOT_FOUND', '숏폼을 찾을 수 없습니다.', 404),
+    };
+  }
+
+  const exportResult = await dispatchShortformExportJob(
+    {
+      shortform: detail,
+      clips: detail.clips,
+      source_base_url: requestUrl,
+      callback_url: buildExportCallbackUrl(requestUrl),
+    },
+    env,
+  );
+
+  if (!exportResult.ok) {
+    updateVideoExport(shortformId, {
+      export_status: 'FAILED',
+      export_error_message: exportResult.message,
+      export_failure_reason: exportResult.reason,
+      export_result_url: null,
+      export_job_id: null,
+    });
+
+    return {
+      ok: false,
+      response: jsonSuccess(
+        updateVideoExport(shortformId, {
+          export_status: 'FAILED',
+          export_error_message: exportResult.message,
+          export_failure_reason: exportResult.reason,
+        }),
+        '숏폼은 생성되었지만 export job을 시작하지 못했습니다.',
+        201,
+      ),
+    };
+  }
+
+  const updated = updateVideoExport(shortformId, {
+    export_status: exportResult.status,
+    export_job_id: exportResult.job_id,
+    export_error_message: null,
+    export_failure_reason: null,
+  });
+
+  return {
+    ok: true,
+    payload: jsonSuccess(updated ?? detail, '숏폼 export job이 시작되었습니다.', 201),
+  };
+}
+
+shortform.post('/generate', async (c) => {
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
+  const user = auth;
 
   const body = await readJsonBody<ShortformGenerateRequest>(c.req.raw);
   const courseId = body?.course_id?.trim();
@@ -99,10 +169,8 @@ shortform.post('/generate', async (c) => {
 });
 
 shortform.put('/candidates/select', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
 
   const body = await readJsonBody<ShortformSelectRequest>(c.req.raw);
   if (!body?.candidate_ids?.length) {
@@ -113,10 +181,8 @@ shortform.put('/candidates/select', async (c) => {
 });
 
 shortform.get('/extraction/:id', (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
 
   const extraction = getShortformExtractionById(c.req.param('id'));
   if (!extraction) {
@@ -127,10 +193,9 @@ shortform.get('/extraction/:id', (c) => {
 });
 
 shortform.post('/compose', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
+  const user = auth;
 
   const body = await readJsonBody<ShortformComposeRequest>(c.req.raw);
   const extractionId = body?.extraction_id?.trim();
@@ -151,11 +216,6 @@ shortform.post('/compose', async (c) => {
     return jsonFailure('SHORTFORM_COMPOSE_FAILED', '숏폼을 생성할 수 없습니다.', 400);
   }
 
-  const detail = getShortformVideoDetail(video.id);
-  if (!detail) {
-    return jsonSuccess(video, '숏폼이 생성되었습니다.', 201);
-  }
-
   updateVideoExport(video.id, {
     export_status: 'PROCESSING',
     export_error_message: null,
@@ -165,44 +225,11 @@ shortform.post('/compose', async (c) => {
     export_retry_count: 0,
   });
 
-  const exportResult = await dispatchShortformExportJob(
-    {
-      shortform: detail,
-      clips: detail.clips,
-      source_base_url: c.req.url,
-      callback_url: buildExportCallbackUrl(c.req.url),
-    },
-    c.env as RuntimeBindings | undefined,
-  );
-
-  if (!exportResult.ok) {
-    updateVideoExport(video.id, {
-      export_status: 'FAILED',
-      export_error_message: exportResult.message,
-      export_failure_reason: exportResult.reason,
-      export_result_url: null,
-      export_job_id: null,
-    });
-
-    return jsonSuccess(
-      updateVideoExport(video.id, {
-        export_status: 'FAILED',
-        export_error_message: exportResult.message,
-        export_failure_reason: exportResult.reason,
-      }),
-      '숏폼은 생성되었지만 export job을 시작하지 못했습니다.',
-      201,
-    );
+  const exportStart = await startShortformExport(video.id, c.req.url, c.env as RuntimeBindings | undefined);
+  if (!exportStart.ok) {
+    return exportStart.response;
   }
-
-  const updated = updateVideoExport(video.id, {
-    export_status: exportResult.status,
-    export_job_id: exportResult.job_id,
-    export_error_message: null,
-    export_failure_reason: null,
-  });
-
-  return jsonSuccess(updated ?? video, '숏폼 export job이 시작되었습니다.', 201);
+  return exportStart.payload as Response;
 });
 
 shortform.post('/export/callback', async (c) => {
@@ -242,10 +269,9 @@ shortform.post('/export/callback', async (c) => {
 });
 
 shortform.post('/:shortformId/export/retry', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
+  const user = auth;
 
   const shortformId = c.req.param('shortformId');
   const current = getShortformVideoDetail(shortformId);
@@ -264,53 +290,29 @@ shortform.post('/:shortformId/export/retry', async (c) => {
     export_failure_reason: null,
   });
 
-  const detail = getShortformVideoDetail(shortformId);
-  if (!detail || !retried) {
+  if (!retried) {
     return jsonFailure('SHORTFORM_NOT_FOUND', '숏폼을 찾을 수 없습니다.', 404);
   }
 
-  const exportResult = await dispatchShortformExportJob(
-    {
-      shortform: detail,
-      clips: detail.clips,
-      source_base_url: c.req.url,
-      callback_url: buildExportCallbackUrl(c.req.url),
-    },
-    c.env as RuntimeBindings | undefined,
-  );
-
-  if (!exportResult.ok) {
-    updateVideoExport(shortformId, {
-      export_status: 'FAILED',
-      export_error_message: exportResult.message,
-      export_failure_reason: exportResult.reason,
-    });
-
-    return jsonFailure('SHORTFORM_EXPORT_FAILED', exportResult.message, exportResult.reason === 'not_configured' ? 503 : 502);
+  const exportStart = await startShortformExport(shortformId, c.req.url, c.env as RuntimeBindings | undefined);
+  if (!exportStart.ok) {
+    return exportStart.response;
   }
-
-  const updated = updateVideoExport(shortformId, {
-    export_status: exportResult.status,
-    export_job_id: exportResult.job_id,
-  });
-
-  return jsonSuccess(updated ?? retried, '숏폼 export job이 다시 시작되었습니다.', 202);
+  const next = getShortformVideoDetail(shortformId);
+  return jsonSuccess(next ?? retried, '숏폼 export job이 다시 시작되었습니다.', 202);
 });
 
 shortform.get('/videos/my', (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
+  const user = auth;
 
   return jsonSuccess(listMyShortformVideos(user.id));
 });
 
 shortform.get('/video/:id', (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
 
   const video = getShortformVideoDetail(c.req.param('id'));
   if (!video) {
@@ -321,10 +323,9 @@ shortform.get('/video/:id', (c) => {
 });
 
 shortform.post('/share', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
+  const user = auth;
 
   const body = await readJsonBody<ShortformShareRequest>(c.req.raw);
   const videoId = body?.video_id?.trim();
@@ -349,20 +350,18 @@ shortform.post('/share', async (c) => {
 });
 
 shortform.get('/community', (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
+  const user = auth;
 
   const courseId = c.req.query('course_id')?.trim();
   return jsonSuccess(listShortformCommunity(user.id, courseId || undefined));
 });
 
 shortform.post('/save', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
+  const user = auth;
 
   const body = await readJsonBody<ShortformSaveRequest>(c.req.raw);
   const videoId = body?.video_id?.trim();
@@ -384,10 +383,9 @@ shortform.post('/save', async (c) => {
 });
 
 shortform.post('/like', async (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
+  const user = auth;
 
   const body = await readJsonBody<ShortformLikeRequest>(c.req.raw);
   const videoId = body?.video_id?.trim();
@@ -404,10 +402,9 @@ shortform.post('/like', async (c) => {
 });
 
 shortform.get('/library', (c) => {
-  const user = getAuthenticatedUser(c.req.raw);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
+  const auth = requireAuth(c.req.raw);
+  if (auth instanceof Response) return auth;
+  const user = auth;
 
   return jsonSuccess(listMyShortformLibrary(user.id));
 });
