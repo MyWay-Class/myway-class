@@ -37,6 +37,7 @@ public class FeatureStoreService {
     private final FeatureStoreAiSupport aiSupport;
     private final FeatureStoreMediaOpsSupport mediaOpsSupport;
     private final FeatureStoreDomainOpsSupport domainOpsSupport;
+    private final FeatureStoreDomainFacade domainFacade;
     private final FeatureStoreAssetSupport assetSupport;
     private final FeatureStoreReadSupport readSupport;
     private final FeatureStoreExtractionReadSupport extractionReadSupport;
@@ -60,6 +61,7 @@ public class FeatureStoreService {
             FeatureStoreAiSupport aiSupport,
             FeatureStoreMediaOpsSupport mediaOpsSupport,
             FeatureStoreDomainOpsSupport domainOpsSupport,
+            FeatureStoreDomainFacade domainFacade,
             FeatureStoreAssetSupport assetSupport,
             FeatureStoreReadSupport readSupport,
             FeatureStoreExtractionReadSupport extractionReadSupport,
@@ -81,6 +83,7 @@ public class FeatureStoreService {
         this.aiSupport = aiSupport;
         this.mediaOpsSupport = mediaOpsSupport;
         this.domainOpsSupport = domainOpsSupport;
+        this.domainFacade = domainFacade;
         this.assetSupport = assetSupport;
         this.readSupport = readSupport;
         this.extractionReadSupport = extractionReadSupport;
@@ -106,6 +109,7 @@ public class FeatureStoreService {
                 new FeatureStoreAiSupport(),
                 new FeatureStoreMediaOpsSupport(),
                 new FeatureStoreDomainOpsSupport(),
+                new FeatureStoreDomainFacade(new FeatureStoreDomainOpsSupport(), null, null, null),
                 new FeatureStoreAssetSupport(),
                 new FeatureStoreReadSupport(),
                 new FeatureStoreExtractionReadSupport(),
@@ -311,79 +315,79 @@ public class FeatureStoreService {
     }
 
     public Map<String, Object> createShortformExtraction(String userId, Map<String, Object> payload) {
-        return domainOpsSupport.createShortformExtraction(shortformService, userId, payload);
+        return domainFacade.createShortformExtraction(userId, payload);
     }
 
     public Map<String, Object> getShortformExtraction(String id) {
-        return domainOpsSupport.getShortformExtraction(shortformService, id);
+        return domainFacade.getShortformExtraction(id);
     }
 
     public Map<String, Object> selectShortformCandidates(String extractionId, List<String> candidateIds) {
-        return domainOpsSupport.selectShortformCandidates(shortformService, extractionId, candidateIds);
+        return domainFacade.selectShortformCandidates(extractionId, candidateIds);
     }
 
     public Map<String, Object> composeShortform(String userId, Map<String, Object> payload) {
-        return domainOpsSupport.composeShortform(shortformService, userId, payload);
+        return domainFacade.composeShortform(userId, payload);
     }
 
     public Map<String, Object> shortformVideo(String id) {
-        return domainOpsSupport.shortformVideo(shortformService, id);
+        return domainFacade.shortformVideo(id);
     }
 
     public List<Map<String, Object>> shortformVideos(String userId) {
-        return domainOpsSupport.shortformVideos(shortformService, userId);
+        return domainFacade.shortformVideos(userId);
     }
 
     public Map<String, Object> shareShortform(String userId, Map<String, Object> payload) {
-        return domainOpsSupport.shareShortform(shortformService, userId, payload);
+        return domainFacade.shareShortform(userId, payload);
     }
 
     public Map<String, Object> saveShortform(String userId, Map<String, Object> payload) {
-        return domainOpsSupport.saveShortform(shortformService, userId, payload);
+        return domainFacade.saveShortform(userId, payload);
     }
 
     public Map<String, Object> toggleShortformLike(String userId, String videoId) {
-        return domainOpsSupport.toggleShortformLike(shortformService, userId, videoId);
+        return domainFacade.toggleShortformLike(userId, videoId);
     }
 
     public Map<String, Object> retryShortformExport(String userId, String shortformId) {
-        return domainOpsSupport.retryShortformExport(shortformService, userId, shortformId);
+        return domainFacade.retryShortformExport(userId, shortformId);
     }
 
     public Map<String, Object> applyShortformExportCallback(String shortformId, String status, long eventVersion, String videoUrl, String errorMessage) {
-        return domainOpsSupport.applyShortformExportCallback(shortformService, shortformId, status, eventVersion, videoUrl, errorMessage);
+        return domainFacade.applyShortformExportCallback(shortformId, status, eventVersion, videoUrl, errorMessage);
     }
 
     public List<Map<String, Object>> shortformLibrary(String userId) {
-        return domainOpsSupport.shortformLibrary(shortformService, userId);
+        return domainFacade.shortformLibrary(userId);
     }
 
     public List<Map<String, Object>> shortformCommunity(String courseId) {
-        return domainOpsSupport.shortformCommunity(shortformService, courseId);
+        return domainFacade.shortformCommunity(courseId);
     }
 
     public Map<String, Object> customCompose(String userId, Map<String, Object> payload) {
-        return domainOpsSupport.customCompose(customCourseService, userId, payload);
+        return domainFacade.customCompose(userId, payload);
     }
 
     public List<Map<String, Object>> myCustomCourses(String userId) {
-        return domainOpsSupport.myCustomCourses(customCourseService, userId);
+        return domainFacade.myCustomCourses(userId);
     }
 
     public Map<String, Object> customCourse(String id) {
-        return domainOpsSupport.customCourse(customCourseService, id);
+        return domainFacade.customCourse(id);
     }
 
     public List<Map<String, Object>> communityCustomCourses(String courseId) {
-        return domainOpsSupport.communityCustomCourses(customCourseService, courseId);
+        return domainFacade.communityCustomCourses(courseId);
     }
 
     public Map<String, Object> getAdminAssignment(String courseId) {
-        return domainOpsSupport.getAdminAssignment(adminAssignmentService, courseId);
+        return domainFacade.getAdminAssignment(courseId);
     }
 
     public Map<String, Object> saveAdminAssignment(String actorUserId, String courseId, List<String> studentIds) {
-        return domainOpsSupport.saveAdminAssignment(adminAssignmentService, actorUserId, courseId, studentIds);
+        return domainFacade.saveAdminAssignment(actorUserId, courseId, studentIds);
     }
 
 }
