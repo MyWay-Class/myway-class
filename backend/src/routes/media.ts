@@ -2,9 +2,6 @@ import { Hono } from 'hono';
 import {
   buildPipelineOverview,
   createLectureSummaryNote,
-  canManageCourses,
-  getCourseDetail,
-  getLectureDetail,
   listAudioExtractions,
   listLectureNotes,
   listLectureTranscripts,
@@ -18,7 +15,6 @@ import { getAuthenticatedUser, hasRole } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { readLectureVideoAsset, uploadLectureVideoAsset } from '../lib/media-assets';
 import { completeMediaExtractionJob, createMediaExtractionJob } from '../lib/media-pipeline';
-import { createMediaRepository } from '../lib/media-repository';
 import { persistLectureDuration, persistLectureVideoAsset } from '../lib/learning-store';
 import {
   loadMediaProcessorHealth,
@@ -31,58 +27,14 @@ import { getSTTProviderOverview } from '../lib/stt-provider';
 import { PUBLIC_STT_MAX_DURATION_MS, runTranscriptGeneration } from '../lib/stt-adapter';
 import { guardAiRequest } from '../lib/ai-controls';
 import type { RuntimeBindings } from '../lib/runtime-env';
+import {
+  ensureLectureExists,
+  getMediaRepository,
+  requireLectureAccess,
+  requireUser,
+} from './media-route-guards';
 
 const media = new Hono();
-
-function requireUser(request: Request) {
-  const user = getAuthenticatedUser(request);
-  if (!user) {
-    return { error: jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401) as Response };
-  }
-  return { user };
-}
-
-function ensureLectureExists(lectureId: string, userId: string): boolean {
-  return Boolean(getLectureDetail(lectureId, userId));
-}
-
-function canAccessLectureContent(user: ReturnType<typeof getAuthenticatedUser>, lectureId: string): boolean {
-  if (!user) {
-    return false;
-  }
-
-  const lecture = getLectureDetail(lectureId, user.id);
-  if (!lecture) {
-    return false;
-  }
-
-  if (canManageCourses(user.role)) {
-    return true;
-  }
-
-  const course = getCourseDetail(lecture.course_id, user.id);
-  return Boolean(course?.enrolled);
-}
-
-function getMediaRepository(env: RuntimeBindings | undefined) {
-  return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
-}
-
-function requireLectureAccess(
-  request: Request,
-  lectureId: string,
-  unauthMessage: string,
-  forbiddenMessage: string,
-): { user: NonNullable<ReturnType<typeof getAuthenticatedUser>> } | { error: Response } {
-  const user = getAuthenticatedUser(request);
-  if (!canAccessLectureContent(user, lectureId)) {
-    return {
-      error: jsonFailure(user ? 'FORBIDDEN' : 'UNAUTHENTICATED', user ? forbiddenMessage : unauthMessage, user ? 403 : 401),
-    };
-  }
-
-  return { user: user! };
-}
 
 media.post('/upload-video', async (c) => {
   const auth = requireUser(c.req.raw);
