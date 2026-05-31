@@ -21,13 +21,14 @@ import {
   type ShortformSelectRequest,
   type ShortformShareRequest,
 } from '@myway/shared';
-import { getAuthenticatedUser } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
-import { dispatchShortformExportJob } from '../lib/shortform-export';
-import { verifyMediaCallbackSecret } from '../lib/media-processor';
-import { createMediaRepository } from '../lib/media-repository';
 import type { RuntimeBindings } from '../lib/runtime-env';
-import type { AuthUser } from '@myway/shared';
+import {
+  getMediaRepository,
+  requireAuth,
+  startShortformExport,
+  verifyShortformCallbackSecret,
+} from './shortform-route-helpers';
 
 type ShortformExportCallbackRequest = {
   shortform_id: string;
@@ -41,86 +42,7 @@ type ShortformExportCallbackRequest = {
   processing_step?: string;
 };
 
-function buildExportCallbackUrl(requestUrl: string): string {
-  const url = new URL(requestUrl);
-  return `${url.origin}/api/v1/shortform/export/callback`;
-}
-
 const shortform = new Hono();
-
-function getMediaRepository(env: RuntimeBindings | undefined) {
-  return env?.MEDIA_DB ? createMediaRepository(env.MEDIA_DB) : undefined;
-}
-
-function requireAuth(request: Request): AuthUser | Response {
-  const user = getAuthenticatedUser(request);
-  if (!user) {
-    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-  }
-  return user;
-}
-
-async function startShortformExport(
-  shortformId: string,
-  requestUrl: string,
-  env: RuntimeBindings | undefined,
-): Promise<
-  | { ok: true; payload: unknown }
-  | { ok: false; response: Response }
-> {
-  const detail = getShortformVideoDetail(shortformId);
-  if (!detail) {
-    return {
-      ok: false,
-      response: jsonFailure('SHORTFORM_NOT_FOUND', '숏폼을 찾을 수 없습니다.', 404),
-    };
-  }
-
-  const exportResult = await dispatchShortformExportJob(
-    {
-      shortform: detail,
-      clips: detail.clips,
-      source_base_url: requestUrl,
-      callback_url: buildExportCallbackUrl(requestUrl),
-    },
-    env,
-  );
-
-  if (!exportResult.ok) {
-    updateVideoExport(shortformId, {
-      export_status: 'FAILED',
-      export_error_message: exportResult.message,
-      export_failure_reason: exportResult.reason,
-      export_result_url: null,
-      export_job_id: null,
-    });
-
-    return {
-      ok: false,
-      response: jsonSuccess(
-        updateVideoExport(shortformId, {
-          export_status: 'FAILED',
-          export_error_message: exportResult.message,
-          export_failure_reason: exportResult.reason,
-        }),
-        '숏폼은 생성되었지만 export job을 시작하지 못했습니다.',
-        201,
-      ),
-    };
-  }
-
-  const updated = updateVideoExport(shortformId, {
-    export_status: exportResult.status,
-    export_job_id: exportResult.job_id,
-    export_error_message: null,
-    export_failure_reason: null,
-  });
-
-  return {
-    ok: true,
-    payload: jsonSuccess(updated ?? detail, '숏폼 export job이 시작되었습니다.', 201),
-  };
-}
 
 shortform.post('/generate', async (c) => {
   const auth = requireAuth(c.req.raw);
@@ -233,9 +155,8 @@ shortform.post('/compose', async (c) => {
 });
 
 shortform.post('/export/callback', async (c) => {
-  if (!verifyMediaCallbackSecret(c.req.raw, c.env as RuntimeBindings | undefined)) {
-    return jsonFailure('FORBIDDEN', '유효한 callback secret이 필요합니다.', 403);
-  }
+  const callbackAuthError = verifyShortformCallbackSecret(c.req.raw, c.env as RuntimeBindings | undefined);
+  if (callbackAuthError) return callbackAuthError;
 
   const body = await readJsonBody<ShortformExportCallbackRequest>(c.req.raw);
   if (!body) {
