@@ -1,6 +1,7 @@
 import { canManageCourses, getCourseDetail, getLectureDetail, type MediaRepository } from '@myway/shared';
 import { getAuthenticatedUser } from '../lib/auth';
 import { jsonFailure } from '../lib/http';
+import { verifyMediaProcessorToken } from '../lib/media-processor';
 import { createMediaRepository } from '../lib/media-repository';
 import type { RuntimeBindings } from '../lib/runtime-env';
 
@@ -48,4 +49,26 @@ export function requireLectureAccess(
     };
   }
   return { user: user! };
+}
+
+export function requireAssetAccess(
+  request: Request,
+  assetKey: string,
+  env: RuntimeBindings | undefined,
+): Response | null {
+  if (request.headers.get('x-media-processor-token') && verifyMediaProcessorToken(request, env)) {
+    return null;
+  }
+
+  const user = getAuthenticatedUser(request);
+  if (!user) {
+    return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
+  }
+
+  const lectureId = assetKey.split('/').pop()?.replace(/\.[^.]+$/, '') ?? '';
+  if (!canAccessLectureContent(user, lectureId)) {
+    return jsonFailure('FORBIDDEN', '수강 신청 후에 영상을 시청할 수 있습니다.', 403);
+  }
+
+  return null;
 }
