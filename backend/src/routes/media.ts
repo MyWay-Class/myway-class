@@ -11,7 +11,7 @@ import {
   type TranscriptCreateRequest,
   type STTProviderCatalog,
 } from '@myway/shared';
-import { getAuthenticatedUser, hasRole } from '../lib/auth';
+import { hasRole } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import { readLectureVideoAsset, uploadLectureVideoAsset } from '../lib/media-assets';
 import { completeMediaExtractionJob, createMediaExtractionJob } from '../lib/media-pipeline';
@@ -20,7 +20,6 @@ import {
   loadMediaProcessorHealth,
   normalizeMediaCallbackPayload,
   verifyMediaCallbackSecret,
-  verifyMediaProcessorToken,
 } from '../lib/media-processor';
 import { buildExtractionCallbackResponse, buildExtractionResponse } from '../lib/media-response';
 import { getSTTProviderOverview } from '../lib/stt-provider';
@@ -30,11 +29,27 @@ import type { RuntimeBindings } from '../lib/runtime-env';
 import {
   ensureLectureExists,
   getMediaRepository,
+  requireAssetAccess,
   requireLectureAccess,
   requireUser,
 } from './media-route-guards';
 
 const media = new Hono();
+
+async function withLectureAccessResponse<T>(
+  c: { req: { raw: Request; param: (name: string) => string }; env: unknown },
+  lectureId: string,
+  unauthMessage: string,
+  forbiddenMessage: string,
+  producer: (repository: ReturnType<typeof getMediaRepository>) => Promise<T>,
+): Promise<Response> {
+  const access = requireLectureAccess(c.req.raw, lectureId, unauthMessage, forbiddenMessage);
+  if ('error' in access) return access.error;
+  if (!ensureLectureExists(lectureId, access.user.id)) {
+    return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
+  }
+  return jsonSuccess(await producer(getMediaRepository(c.env as RuntimeBindings | undefined)));
+}
 
 media.post('/upload-video', async (c) => {
   const auth = requireUser(c.req.raw);
@@ -172,29 +187,8 @@ media.get('/processor-health', async (c) => {
 
 media.get('/assets/:assetKey', async (c) => {
   const assetKey = c.req.param('assetKey');
-  const user = getAuthenticatedUser(c.req.raw);
-
-  if (!verifyMediaProcessorToken(c.req.raw, c.env as RuntimeBindings | undefined)) {
-    if (!user) {
-      return jsonFailure('UNAUTHENTICATED', '로그인이 필요합니다.', 401);
-    }
-
-    const lectureId = assetKey.split('/').pop()?.replace(/\.[^.]+$/, '') ?? '';
-    const lecture = getLectureDetail(lectureId, user.id);
-
-    if (!lecture) {
-      return jsonFailure('ASSET_NOT_FOUND', '미디어 파일을 찾을 수 없습니다.', 404);
-    }
-
-    const course = getCourseDetail(lecture.course_id, user.id);
-    if (!course) {
-      return jsonFailure('ASSET_NOT_FOUND', '미디어 파일을 찾을 수 없습니다.', 404);
-    }
-
-    if (!canManageCourses(user.role) && !course.enrolled) {
-      return jsonFailure('FORBIDDEN', '수강 신청 후에 영상을 시청할 수 있습니다.', 403);
-    }
-  }
+  const accessError = requireAssetAccess(c.req.raw, assetKey, c.env as RuntimeBindings | undefined);
+  if (accessError) return accessError;
 
   const response = await readLectureVideoAsset(assetKey, c.env as RuntimeBindings | undefined);
   if (!response) {
@@ -319,46 +313,46 @@ media.post('/extract-audio/callback', async (c) => {
 
 media.get('/transcript/:lectureId', async (c) => {
   const lectureId = c.req.param('lectureId');
-  const access = requireLectureAccess(c.req.raw, lectureId, '강의 수강 후에 스크립트를 볼 수 있습니다.', '강의 수강 후에 스크립트를 볼 수 있습니다.');
-  if ('error' in access) return access.error;
-  if (!ensureLectureExists(lectureId, access.user.id)) {
-    return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
-  }
-
-  return jsonSuccess((await listLectureTranscripts(lectureId, getMediaRepository(c.env as RuntimeBindings | undefined)))[0] ?? null);
+  return withLectureAccessResponse(
+    c,
+    lectureId,
+    '강의 수강 후에 스크립트를 볼 수 있습니다.',
+    '강의 수강 후에 스크립트를 볼 수 있습니다.',
+    async (repository) => (await listLectureTranscripts(lectureId, repository))[0] ?? null,
+  );
 });
 
 media.get('/notes/:lectureId', async (c) => {
   const lectureId = c.req.param('lectureId');
-  const access = requireLectureAccess(c.req.raw, lectureId, '강의 수강 후에 자료를 볼 수 있습니다.', '강의 수강 후에 자료를 볼 수 있습니다.');
-  if ('error' in access) return access.error;
-  if (!ensureLectureExists(lectureId, access.user.id)) {
-    return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
-  }
-
-  return jsonSuccess(await listLectureNotes(lectureId, getMediaRepository(c.env as RuntimeBindings | undefined)));
+  return withLectureAccessResponse(
+    c,
+    lectureId,
+    '강의 수강 후에 자료를 볼 수 있습니다.',
+    '강의 수강 후에 자료를 볼 수 있습니다.',
+    async (repository) => listLectureNotes(lectureId, repository),
+  );
 });
 
 media.get('/audio-extractions/:lectureId', async (c) => {
   const lectureId = c.req.param('lectureId');
-  const access = requireLectureAccess(c.req.raw, lectureId, '강의 수강 후에 추출 기록을 볼 수 있습니다.', '강의 수강 후에 추출 기록을 볼 수 있습니다.');
-  if ('error' in access) return access.error;
-  if (!ensureLectureExists(lectureId, access.user.id)) {
-    return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
-  }
-
-  return jsonSuccess(await listAudioExtractions(lectureId, getMediaRepository(c.env as RuntimeBindings | undefined)));
+  return withLectureAccessResponse(
+    c,
+    lectureId,
+    '강의 수강 후에 추출 기록을 볼 수 있습니다.',
+    '강의 수강 후에 추출 기록을 볼 수 있습니다.',
+    async (repository) => listAudioExtractions(lectureId, repository),
+  );
 });
 
 media.get('/pipeline/:lectureId', async (c) => {
   const lectureId = c.req.param('lectureId');
-  const access = requireLectureAccess(c.req.raw, lectureId, '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.', '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.');
-  if ('error' in access) return access.error;
-  if (!ensureLectureExists(lectureId, access.user.id)) {
-    return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
-  }
-
-  return jsonSuccess(await buildPipelineOverview(lectureId, getMediaRepository(c.env as RuntimeBindings | undefined)));
+  return withLectureAccessResponse(
+    c,
+    lectureId,
+    '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.',
+    '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.',
+    async (repository) => buildPipelineOverview(lectureId, repository),
+  );
 });
 
 export default media;
