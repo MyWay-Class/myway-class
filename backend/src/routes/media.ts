@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import {
   buildPipelineOverview,
-  createLectureSummaryNote,
   listAudioExtractions,
   listLectureNotes,
   listLectureTranscripts,
@@ -13,19 +12,21 @@ import {
 } from '@myway/shared';
 import { hasRole } from '../lib/auth';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
-import { readLectureVideoAsset, uploadLectureVideoAsset } from '../lib/media-assets';
-import { completeMediaExtractionJob, createMediaExtractionJob } from '../lib/media-pipeline';
-import { persistLectureDuration, persistLectureVideoAsset } from '../lib/learning-store';
+import { readLectureVideoAsset } from '../lib/media-assets';
 import {
   loadMediaProcessorHealth,
-  normalizeMediaCallbackPayload,
   verifyMediaCallbackSecret,
 } from '../lib/media-processor';
-import { buildExtractionCallbackResponse, buildExtractionResponse } from '../lib/media-response';
 import { getSTTProviderOverview } from '../lib/stt-provider';
-import { PUBLIC_STT_MAX_DURATION_MS, runTranscriptGeneration } from '../lib/stt-adapter';
 import { guardAiRequest } from '../lib/ai-controls';
 import type { RuntimeBindings } from '../lib/runtime-env';
+import {
+  extractAudioAction,
+  extractionCallbackAction,
+  summarizeLectureAction,
+  transcribeLectureAction,
+  uploadLectureVideoAction,
+} from './media-route-actions';
 import {
   ensureLectureExists,
   getMediaRepository,
@@ -63,7 +64,7 @@ media.post('/upload-video', async (c) => {
   const formData = await c.req.formData();
   const lectureId = String(formData.get('lecture_id') ?? '').trim();
   const file = formData.get('video_file');
-  const videoFile = typeof file === 'string' ? null : (file as Parameters<typeof uploadLectureVideoAsset>[1] | null);
+  const videoFile = typeof file === 'string' ? null : file;
 
   if (!lectureId) {
     return jsonFailure('LECTURE_ID_REQUIRED', 'lecture_id가 필요합니다.');
@@ -77,16 +78,10 @@ media.post('/upload-video', async (c) => {
     return jsonFailure('VIDEO_FILE_REQUIRED', 'video_file이 필요합니다.');
   }
 
-  const upload = await uploadLectureVideoAsset(lectureId, videoFile, c.req.url, c.env as RuntimeBindings | undefined);
+  const upload = await uploadLectureVideoAction(lectureId, videoFile, c.req.url, c.env as RuntimeBindings | undefined);
 
   if (!upload) {
     return jsonFailure('R2_BINDING_REQUIRED', '영상 업로드를 위해 R2 바인딩이 필요합니다.', 503);
-  }
-
-  try {
-    await persistLectureVideoAsset(lectureId, upload.video_url, upload.asset_key, c.env as RuntimeBindings | undefined);
-  } catch (error) {
-    console.error('failed to persist lecture video asset', error);
   }
 
   return jsonSuccess(
@@ -111,7 +106,6 @@ media.post('/transcribe', async (c) => {
 
   const body = await readJsonBody<TranscriptCreateRequest>(c.req.raw);
   const lectureId = body?.lecture_id?.trim();
-  const language = body?.language === 'en' ? 'en' : 'ko';
 
   if (!lectureId) {
     return jsonFailure('LECTURE_ID_REQUIRED', 'lecture_id가 필요합니다.');
@@ -121,39 +115,17 @@ media.post('/transcribe', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  if (typeof body?.duration_ms === 'number' && body.duration_ms > PUBLIC_STT_MAX_DURATION_MS) {
-    return jsonFailure('STT_INPUT_TOO_LONG', '오디오 길이는 3분 이하만 허용됩니다.', 413);
-  }
-
-  const result = await runTranscriptGeneration(user.id, {
-    lecture_id: lectureId,
-    text: body?.text?.trim(),
-    audio_url: body?.audio_url?.trim(),
-    duration_ms: body?.duration_ms,
-    language,
-    stt_provider: body?.stt_provider?.trim(),
-    stt_model: body?.stt_model?.trim(),
-  }, undefined, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
-
-  if (!result.ok) {
-    if (result.reason === 'input_too_large') {
-      return jsonFailure('STT_INPUT_TOO_LONG', '오디오 길이는 3분 이하만 허용됩니다.', 413);
-    }
-
-    return jsonFailure('TRANSCRIPT_FAILED', '트랜스크립트를 생성할 수 없습니다.', 400);
-  }
-
-  await persistLectureDuration(lectureId, Math.max(1, Math.round(result.duration_ms / 60_000)), c.env as RuntimeBindings | undefined);
-
-  await createLectureSummaryNote(
-    user.id,
-    {
-      lecture_id: lectureId,
-      style: 'timeline',
-      language,
-    },
+  const transcription = await transcribeLectureAction(
+    user,
+    body,
+    c.env as RuntimeBindings | undefined,
     getMediaRepository(c.env as RuntimeBindings | undefined),
   );
+  if ('error' in transcription) {
+    if (transcription.error === 'STT_INPUT_TOO_LONG') return jsonFailure('STT_INPUT_TOO_LONG', '오디오 길이는 3분 이하만 허용됩니다.', 413);
+    return jsonFailure('TRANSCRIPT_FAILED', '트랜스크립트를 생성할 수 없습니다.', 400);
+  }
+  const { result } = transcription;
 
   return jsonSuccess(
     {
@@ -214,15 +186,11 @@ media.post('/summarize', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = await createLectureSummaryNote(user.id, {
-    lecture_id: lectureId,
-    style: body?.style ?? 'brief',
-    language: body?.language ?? 'ko',
-  }, getMediaRepository(c.env as RuntimeBindings | undefined));
-
-  if (!result) {
+  const summary = await summarizeLectureAction(user, body, getMediaRepository(c.env as RuntimeBindings | undefined));
+  if ('error' in summary) {
     return jsonFailure('SUMMARY_FAILED', '요약을 생성할 수 없습니다.', 400);
   }
+  const { result } = summary;
 
   return jsonSuccess(
     {
@@ -265,20 +233,17 @@ media.post('/extract-audio', async (c) => {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
 
-  const result = await createMediaExtractionJob(user.id, body, c.req.url, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
-  if (!result.ok) {
-    const status =
-      result.reason === 'processor_not_configured'
-        ? 503
-        : result.reason === 'dispatch_failed'
-          ? 502
-          : 400;
-    return jsonFailure(result.reason.toUpperCase(), result.message, status);
+  const extraction = await extractAudioAction(user, body, c.req.url, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
+  if ('error' in extraction) {
+    if (extraction.error === 'INVALID_BODY') return jsonFailure('INVALID_BODY', '요청 본문이 올바르지 않습니다.');
+    if (extraction.error === 'LECTURE_ID_REQUIRED') return jsonFailure('LECTURE_ID_REQUIRED', 'lecture_id가 필요합니다.');
+    const status = extraction.error === 'processor_not_configured' ? 503 : extraction.error === 'dispatch_failed' ? 502 : 400;
+    return jsonFailure(extraction.error.toUpperCase(), extraction.message ?? '오디오 추출 요청을 처리할 수 없습니다.', status);
   }
 
   return jsonSuccess(
-    buildExtractionResponse(result.extraction, result.pipeline),
-    result.mode === 'ready' ? '오디오 추출과 전사가 완료되었습니다.' : '오디오 추출 job이 생성되었습니다.',
+    extraction.payload,
+    extraction.message,
     201,
   );
 });
@@ -289,24 +254,21 @@ media.post('/extract-audio/callback', async (c) => {
   }
 
   const body = await readJsonBody<AudioExtractionCallbackRequest>(c.req.raw);
-  const payload = normalizeMediaCallbackPayload(body);
-  if (!payload) {
+  const callback = await extractionCallbackAction(body, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
+  if ('error' in callback) {
+    if (callback.error === 'CALLBACK_INVALID') {
+      return jsonFailure('CALLBACK_INVALID', 'callback payload가 올바르지 않습니다.', 400);
+    }
+    const status = callback.error === 'extraction_not_found' ? 404 : callback.error === 'transcript_failed' ? 502 : 400;
+    return jsonFailure(callback.error.toUpperCase(), callback.message ?? 'callback 처리에 실패했습니다.', status);
+  }
+
+  if (!callback.payload) {
     return jsonFailure('CALLBACK_INVALID', 'callback payload가 올바르지 않습니다.', 400);
   }
 
-  const result = await completeMediaExtractionJob('media-processor', payload, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
-  if (!result.ok) {
-    const status =
-      result.reason === 'extraction_not_found'
-        ? 404
-        : result.reason === 'transcript_failed'
-          ? 502
-          : 400;
-    return jsonFailure(result.reason.toUpperCase(), result.message, status);
-  }
-
   return jsonSuccess(
-    buildExtractionCallbackResponse(result.extraction, result.pipeline),
+    callback.payload,
     '오디오 추출 callback이 반영되었습니다.',
   );
 });
