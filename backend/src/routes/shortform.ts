@@ -1,9 +1,6 @@
 import { Hono } from 'hono';
 import {
-  composeShortformVideo,
-  getCourseDetail,
   getShortformVideoDetail,
-  generateShortformExtraction,
   getShortformExtractionById,
   listMyShortformLibrary,
   listMyShortformVideos,
@@ -13,7 +10,6 @@ import {
   updateVideoExport,
   toggleShortformCandidateSelection,
   toggleShortformLike,
-  listLectureTranscripts,
   type ShortformComposeRequest,
   type ShortformGenerateRequest,
   type ShortformLikeRequest,
@@ -23,6 +19,7 @@ import {
 } from '@myway/shared';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import type { RuntimeBindings } from '../lib/runtime-env';
+import { composeShortformAndMarkProcessing, generateShortformCandidates } from './shortform-route-actions';
 import {
   getMediaRepository,
   requireAuth,
@@ -50,41 +47,15 @@ shortform.post('/generate', async (c) => {
   const user = auth;
 
   const body = await readJsonBody<ShortformGenerateRequest>(c.req.raw);
-  const courseId = body?.course_id?.trim();
-  if (!courseId) {
+  if (!body?.course_id?.trim()) {
     return jsonFailure('COURSE_ID_REQUIRED', 'course_id가 필요합니다.');
   }
 
-  const repository = getMediaRepository(c.env as RuntimeBindings | undefined);
-  const transcriptSegmentsByLecture: Record<string, Array<{ start_ms: number; end_ms: number; text: string }>> = {};
-  const course = getCourseDetail(courseId, user.id);
-  const lectureIds = body?.mode === 'single' && body?.lecture_id?.trim()
-    ? [body.lecture_id.trim()]
-    : course?.lectures.map((lecture) => lecture.id) ?? [];
-
-  if (repository && lectureIds.length > 0) {
-    for (const lectureId of lectureIds) {
-      const transcript = (await listLectureTranscripts(lectureId, repository))[0] ?? null;
-      if (transcript?.segments?.length) {
-        transcriptSegmentsByLecture[lectureId] = transcript.segments.map((segment) => ({
-          start_ms: segment.start_ms,
-          end_ms: segment.end_ms,
-          text: segment.text,
-        }));
-      }
-    }
-  }
+  const extraction = await generateShortformCandidates(user.id, body, getMediaRepository(c.env as RuntimeBindings | undefined));
+  if (!extraction) return jsonFailure('COURSE_ID_REQUIRED', 'course_id가 필요합니다.');
 
   return jsonSuccess(
-    generateShortformExtraction(user.id, {
-      lecture_id: body?.lecture_id?.trim(),
-      course_id: courseId,
-      mode: body?.mode ?? 'cross',
-      style: body?.style ?? 'highlight',
-      target_duration_sec: body?.target_duration_sec ?? 300,
-      language: body?.language ?? 'ko',
-      transcript_segments_by_lecture: transcriptSegmentsByLecture,
-    }),
+    extraction,
     '숏폼 후보가 생성되었습니다.',
     201,
   );
@@ -120,32 +91,14 @@ shortform.post('/compose', async (c) => {
   const user = auth;
 
   const body = await readJsonBody<ShortformComposeRequest>(c.req.raw);
-  const extractionId = body?.extraction_id?.trim();
-  const title = body?.title?.trim();
-
-  if (!extractionId || !title) {
+  if (!body?.extraction_id?.trim() || !body?.title?.trim()) {
     return jsonFailure('SHORTFORM_FIELDS_REQUIRED', 'extraction_id와 title이 필요합니다.');
   }
 
-  const video = composeShortformVideo(user.id, {
-    extraction_id: extractionId,
-    title,
-    candidate_ids: body?.candidate_ids,
-    description: body?.description?.trim(),
-  });
-
-  if (!video) {
+  const video = composeShortformAndMarkProcessing(user.id, body);
+  if (!video?.id) {
     return jsonFailure('SHORTFORM_COMPOSE_FAILED', '숏폼을 생성할 수 없습니다.', 400);
   }
-
-  updateVideoExport(video.id, {
-    export_status: 'PROCESSING',
-    export_error_message: null,
-    export_failure_reason: null,
-    export_result_url: null,
-    export_job_id: null,
-    export_retry_count: 0,
-  });
 
   const exportStart = await startShortformExport(video.id, c.req.url, c.env as RuntimeBindings | undefined);
   if (!exportStart.ok) {
