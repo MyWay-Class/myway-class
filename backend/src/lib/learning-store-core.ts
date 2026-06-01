@@ -1,5 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import { demoCourses, demoEnrollments, demoLectureProgress, demoLectures } from '@myway/shared/data/courses';
+import { demoEnrollments, demoLectureProgress, demoLectures } from '@myway/shared/data/courses';
 import { demoAudioExtractions, demoLectureNotes, demoLecturePipelines, demoLectureTranscripts, demoMaterials, demoNotices } from '@myway/shared/data/media';
 import type {
   AudioExtraction,
@@ -21,27 +21,18 @@ import {
 } from './learning-store-bootstrap';
 import { hydrateLearningStoreMemory } from './learning-store-hydrator';
 import {
+  learningStoreSeedState,
+  resetMemoryState,
+  resolveDurationMinutes,
+  syncLectureDurationMemory,
+} from './learning-store-memory-state';
+import {
   persistCourseDetailToDb,
   persistEnrollmentToDb,
   persistLectureVideoAssetToDb,
   persistProgressAndEnrollmentToDb,
   updateLectureDuration,
 } from './learning-store-persistence';
-
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-const seedDemoCourses = clone(demoCourses);
-const seedDemoLectures = clone(demoLectures);
-const seedDemoMaterials = clone(demoMaterials);
-const seedDemoNotices = clone(demoNotices);
-const seedDemoLectureTranscripts = clone(demoLectureTranscripts);
-const seedDemoLectureNotes = clone(demoLectureNotes);
-const seedDemoAudioExtractions = clone(demoAudioExtractions);
-const seedDemoLecturePipelines = clone(demoLecturePipelines);
-const seedDemoEnrollments = clone(demoEnrollments);
-const seedDemoLectureProgress = clone(demoLectureProgress);
 
 type TranscriptDurationRow = {
   lecture_id: string;
@@ -58,50 +49,6 @@ type ExtractionDurationRow = {
 
 let learningStoreReady = false;
 let learningStorePromise: Promise<void> | null = null;
-
-function toBoolean(value: number): boolean {
-  return value === 1;
-}
-
-
-function resolveDurationMinutes(durationMs: number): number {
-  return Math.max(1, Math.ceil(durationMs / 60_000));
-}
-
-function resetMemoryState(): void {
-  demoCourses.splice(0, demoCourses.length, ...clone(seedDemoCourses));
-  demoLectures.splice(0, demoLectures.length, ...clone(seedDemoLectures));
-  demoMaterials.splice(0, demoMaterials.length, ...clone(seedDemoMaterials));
-  demoNotices.splice(0, demoNotices.length, ...clone(seedDemoNotices));
-  demoLectureTranscripts.splice(0, demoLectureTranscripts.length, ...clone(seedDemoLectureTranscripts));
-  demoLectureNotes.splice(0, demoLectureNotes.length, ...clone(seedDemoLectureNotes));
-  demoAudioExtractions.splice(0, demoAudioExtractions.length, ...clone(seedDemoAudioExtractions));
-  demoLecturePipelines.splice(0, demoLecturePipelines.length, ...clone(seedDemoLecturePipelines));
-  demoEnrollments.splice(0, demoEnrollments.length, ...clone(seedDemoEnrollments));
-  demoLectureProgress.splice(0, demoLectureProgress.length, ...clone(seedDemoLectureProgress));
-}
-
-function syncLectureDurationMemory(lectureId: string, durationMinutes: number): void {
-  const lecture = demoLectures.find((item) => item.id === lectureId);
-  if (lecture) {
-    lecture.duration_minutes = durationMinutes;
-  }
-}
-
-function learningStoreSeedState() {
-  return {
-    courses: demoCourses,
-    lectures: demoLectures,
-    materials: demoMaterials,
-    notices: demoNotices,
-    enrollments: demoEnrollments,
-    progress: demoLectureProgress,
-    transcripts: seedDemoLectureTranscripts,
-    notes: seedDemoLectureNotes,
-    extractions: seedDemoAudioExtractions,
-    pipelines: seedDemoLecturePipelines,
-  };
-}
 
 async function syncLectureDurationsFromMedia(db: D1Database): Promise<void> {
   const [transcriptRows, extractionRows] = await Promise.all([
