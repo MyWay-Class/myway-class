@@ -6,10 +6,11 @@ import {
   type SmartChatRoute,
   type MediaRepository,
 } from '@myway/shared';
-import { runAIAnswerWithExecution, runAIIntentWithExecution, runAIQuizWithEngine, runAISummaryWithEngine } from './ai-engine-runners';
+import { runAIIntentWithExecution } from './ai-engine-runners';
 import { getAIRuntimePolicy, type RuntimeBindings } from './runtime-env';
+import { resolveAnswerRoute, resolveQuizRoute, resolveSummaryRoute } from './smart-chat-route-actions';
 
-type SmartChatMetadata = {
+export type SmartChatMetadata = {
   provider: AIProviderName;
   model: string;
 };
@@ -37,14 +38,6 @@ function attachMetadata(result: SmartChatResult, metadata: SmartChatMetadata): S
     provider: metadata.provider,
     model: metadata.model,
   };
-}
-
-function buildSummarySuggestions(title: string): string[] {
-  return [`${title}를 타임라인으로도 요약해줘.`, `${title}의 핵심 키워드를 다시 정리해줘.`];
-}
-
-function buildQuizSuggestions(): string[] {
-  return ['이 퀴즈의 해설도 보여줘.', '문항 수를 줄여서 다시 만들어줘.'];
 }
 
 export async function runSmartChat(
@@ -133,138 +126,73 @@ export async function runSmartChat(
 
   if (route === 'summary' && lectureId) {
     const summaryStartedAt = performance.now();
-    const summaryExecution = await runAISummaryWithEngine(
-      {
-        lecture_id: lectureId,
-        style: 'brief',
-        language: input.language ?? 'ko',
-      },
-      undefined,
+    const summaryResult = await resolveSummaryRoute(
+      { message, lectureId, courseId, language: input.language, route, intent: intentExecution.result },
       env,
       repository,
     );
     logSmartChatTiming('summary', summaryStartedAt, {
-      provider: summaryExecution?.provider ?? 'demo',
-      model: summaryExecution?.model ?? 'demo-summary-v1',
-      has_result: Boolean(summaryExecution),
+      provider: summaryResult?.provider ?? 'demo',
+      model: summaryResult?.model ?? 'demo-summary-v1',
+      has_result: Boolean(summaryResult),
     });
 
-    if (summaryExecution) {
+    if (summaryResult) {
       logSmartChatTiming('complete', startedAt, {
         mode: policy.public_mode,
         route,
         intent: intentExecution.result.intent,
-        provider: summaryExecution.provider,
-        model: summaryExecution.model,
+        provider: summaryResult.provider,
+        model: summaryResult.model,
       });
-
-      return attachMetadata(
-        {
-          message,
-          lecture_id: lectureId,
-          course_id: courseId,
-          route,
-          intent: intentExecution.result,
-          answer: summaryExecution.result.content,
-          references: summaryExecution.result.references,
-          suggestions: buildSummarySuggestions(summaryExecution.result.title),
-          summary: summaryExecution.result,
-        },
-        {
-          provider: summaryExecution.provider,
-          model: summaryExecution.model,
-        },
-      );
+      return summaryResult;
     }
   }
 
   if (route === 'quiz' && lectureId) {
     const quizStartedAt = performance.now();
-    const quizExecution = await runAIQuizWithEngine(
-      {
-        lecture_id: lectureId,
-        count: 4,
-        difficulty: 'medium',
-      },
-      undefined,
+    const quizResult = await resolveQuizRoute(
+      { message, lectureId, courseId, route, intent: intentExecution.result },
       env,
       repository,
     );
     logSmartChatTiming('quiz', quizStartedAt, {
-      provider: quizExecution?.provider ?? 'demo',
-      model: quizExecution?.model ?? 'demo-quiz-v1',
-      has_result: Boolean(quizExecution),
+      provider: quizResult?.provider ?? 'demo',
+      model: quizResult?.model ?? 'demo-quiz-v1',
+      has_result: Boolean(quizResult),
     });
 
-    if (quizExecution) {
+    if (quizResult) {
       logSmartChatTiming('complete', startedAt, {
         mode: policy.public_mode,
         route,
         intent: intentExecution.result.intent,
-        provider: quizExecution.provider,
-        model: quizExecution.model,
+        provider: quizResult.provider,
+        model: quizResult.model,
       });
-
-      return attachMetadata(
-        {
-          message,
-          lecture_id: lectureId,
-          course_id: courseId,
-          route,
-          intent: intentExecution.result,
-          answer: `${quizExecution.result.title}가 생성되었습니다.`,
-          references: quizExecution.result.questions.map((question) => question.reference).slice(0, 4),
-          suggestions: buildQuizSuggestions(),
-          quiz: quizExecution.result,
-        },
-        {
-          provider: quizExecution.provider,
-          model: quizExecution.model,
-        },
-      );
+      return quizResult;
     }
   }
 
   if (route === 'answer') {
     const answerStartedAt = performance.now();
-    const answerExecution = await runAIAnswerWithExecution(
-      {
-        question: message,
-        lecture_id: lectureId ?? undefined,
-        limit: 4,
-      },
-      undefined,
+    const answerResult = await resolveAnswerRoute(
+      { message, lectureId, courseId, route, intent: intentExecution.result },
       env,
       repository,
     );
     logSmartChatTiming('answer', answerStartedAt, {
-      provider: answerExecution.provider,
-      model: answerExecution.model,
+      provider: answerResult.provider,
+      model: answerResult.model,
     });
     logSmartChatTiming('complete', startedAt, {
       mode: policy.public_mode,
       route,
       intent: intentExecution.result.intent,
-      provider: answerExecution.provider,
-      model: answerExecution.model,
+      provider: answerResult.provider,
+      model: answerResult.model,
     });
-
-    return attachMetadata(
-      {
-        message,
-        lecture_id: lectureId,
-        course_id: courseId,
-        route,
-        intent: intentExecution.result,
-        answer: answerExecution.result.answer,
-        references: answerExecution.result.references,
-        suggestions: answerExecution.result.suggestions,
-      },
-      {
-        provider: answerExecution.provider,
-        model: answerExecution.model,
-      },
-    );
+    return answerResult;
   }
 
   logSmartChatTiming('complete', startedAt, {
