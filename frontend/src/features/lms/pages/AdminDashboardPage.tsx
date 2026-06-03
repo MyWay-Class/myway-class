@@ -2,6 +2,7 @@ import type { AIInsights, AuthUser, CourseCard, Dashboard } from '@myway/shared'
 import { DashboardStatsGrid } from '../components/DashboardStatsGrid';
 import { DashboardTimeline } from '../components/DashboardTimeline';
 import { demoCourses, demoDashboard, demoInsights, demoUsers } from '../data/demo';
+import { DashboardHero } from './DashboardPageSections';
 
 type AdminDashboardPageProps = {
   dashboard: Dashboard | null;
@@ -9,14 +10,6 @@ type AdminDashboardPageProps = {
   courses: CourseCard[];
   insights: AIInsights | null;
 };
-
-function countByRole(users: AuthUser[]) {
-  return {
-    ADMIN: users.filter((user) => user.role === 'ADMIN').length,
-    INSTRUCTOR: users.filter((user) => user.role === 'INSTRUCTOR').length,
-    STUDENT: users.filter((user) => user.role === 'STUDENT').length,
-  };
-}
 
 function formatProgress(value: number): string {
   return `${Math.round(value)}%`;
@@ -27,7 +20,6 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
   const resolvedUsers = users.length > 0 ? users : demoUsers;
   const resolvedCourses = courses.length > 0 ? courses : demoCourses;
   const resolvedInsights = insights ?? demoInsights;
-  const roleCounts = countByRole(resolvedUsers);
   const stats =
     resolvedDashboard.stats ?? [
       {
@@ -70,44 +62,18 @@ export function AdminDashboardPage({ dashboard, users, courses, insights }: Admi
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-2xl border border-cyan-200/20 bg-[radial-gradient(circle_at_12%_8%,rgba(34,211,238,0.16),transparent_30%),linear-gradient(135deg,#f8fcff_0%,#f0f9ff_45%,#ecfeff_100%)] px-6 py-6 shadow-sm lg:px-8">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-end">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
-              <i className="ri-shield-star-line" />
-              관리자 대시보드
-            </div>
-            <h2 className="mt-4 text-[24px] font-bold text-slate-900 lg:text-[28px]">운영 관리자 대시보드</h2>
-            <p className="mt-2 max-w-2xl text-[14px] leading-6 text-slate-500">
-              {resolvedDashboard.next_action ?? '운영 통계와 AI 사용량을 확인하고 병목이 생긴 코스를 점검하세요.'}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-[#d6e6f5] bg-[#f4faff] px-5 py-5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">역할 분포</div>
-            <div className="mt-4 space-y-3">
-              {[
-                { label: '운영자', count: roleCounts.ADMIN, color: 'bg-amber-400' },
-                { label: '교강사', count: roleCounts.INSTRUCTOR, color: 'bg-emerald-400' },
-                { label: '수강생', count: roleCounts.STUDENT, color: 'bg-cyan-400' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-3">
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className={`h-full rounded-full ${item.color}`}
-                      style={{ width: `${Math.max((item.count / Math.max(resolvedUsers.length, 1)) * 100, item.count > 0 ? 12 : 0)}%` }}
-                    />
-                  </div>
-                  <div className="w-12 text-right text-[12px] font-semibold text-slate-700">
-                    {item.label}
-                    <span className="ml-1 text-slate-400">{item.count}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <DashboardHero
+        badge="관리자 대시보드"
+        title="운영 관리자 대시보드"
+        description={resolvedDashboard.next_action ?? '운영 통계와 AI 사용량을 확인하고 병목이 생긴 코스를 점검하세요.'}
+        summaryLabel="역할 분포"
+        summaryValue={`운영자 ${resolvedUsers.filter((user) => user.role === 'ADMIN').length} · 강사 ${resolvedUsers.filter((user) => user.role === 'INSTRUCTOR').length} · 학생 ${resolvedUsers.filter((user) => user.role === 'STUDENT').length}`}
+        icon="ri-shield-star-line"
+        secondaryLabel="전체 강의"
+        secondaryValue={`${resolvedCourses.length}개`}
+        footerLabel="AI 요청"
+        footerValue={`${resolvedInsights.summary.total_requests}회`}
+      />
 
       <DashboardStatsGrid stats={stats} />
 
