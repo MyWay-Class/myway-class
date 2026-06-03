@@ -46,20 +46,32 @@ public class RagService {
             Double minScore,
             boolean includeDebug
     ) {
+        return ragOverview(query, lectureId, courseId, limit, minScore, includeDebug, List.of());
+    }
+
+    public Map<String, Object> ragOverview(
+            String query,
+            String lectureId,
+            String courseId,
+            Integer limit,
+            Double minScore,
+            boolean includeDebug,
+            List<Map<String, Object>> requestEntities
+    ) {
         int resolvedLimit = Math.max(1, Math.min(6, limit == null ? 4 : limit));
         String normalizedQuery = normalizeText(query);
         List<String> targetLectureIds = targetLectureIds(lectureId, courseId);
         double threshold = minScore == null ? 0.0 : Math.max(0.0, Math.min(1.0, minScore));
 
-        List<Map<String, Object>> retrieved = retriever.retrieve(normalizedQuery, targetLectureIds, threshold);
+        List<Map<String, Object>> retrieved = retriever.retrieve(normalizedQuery, targetLectureIds, threshold, requestEntities);
         List<Map<String, Object>> rankedChunks = ensureChunkTimestamps(reranker.rerank(retrieved, resolvedLimit));
 
-        List<Map<String, Object>> entities = new ArrayList<>();
+        List<Map<String, Object>> responseEntities = new ArrayList<>();
         if (lectureId != null && !lectureId.isBlank()) {
-            entities.add(Map.of("kind", "lecture_id", "label", "강의", "value", lectureId));
+            responseEntities.add(Map.of("kind", "lecture_id", "label", "강의", "value", lectureId));
         }
         if (courseId != null && !courseId.isBlank()) {
-            entities.add(Map.of("kind", "course_id", "label", "코스", "value", courseId));
+            responseEntities.add(Map.of("kind", "course_id", "label", "코스", "value", courseId));
         }
 
         String intent = inferIntent(normalizedQuery);
@@ -85,7 +97,7 @@ public class RagService {
         payload.put("lecture_id", lectureId);
         payload.put("course_id", courseId);
         payload.put("intent", intentPayload);
-        payload.put("entities", entities);
+        payload.put("entities", responseEntities);
         payload.put("chunks", rankedChunks);
         Map<String, Object> searchPayload = new HashMap<>();
         searchPayload.put("query", normalizedQuery);
@@ -104,9 +116,11 @@ public class RagService {
                             .map(String::trim)
                             .filter(token -> token.length() > 1)
                             .toList(),
-                    "corpus_size", retrieved.size(),
-                    "filtered_count", rankedChunks.size(),
-                    "avg_similarity", Math.round(avgSimilarity * 1000.0) / 1000.0
+                "corpus_size", retrieved.size(),
+                "filtered_count", rankedChunks.size(),
+                "avg_similarity", Math.round(avgSimilarity * 1000.0) / 1000.0
+                        ,
+                "entity_count", requestEntities == null ? 0 : requestEntities.size()
             ));
         }
         return payload;
@@ -114,7 +128,7 @@ public class RagService {
 
     public Map<String, Object> ragIndexOverview(String lectureId, String courseId) {
         List<String> lectureIds = targetLectureIds(lectureId, courseId);
-        List<Map<String, Object>> chunks = retriever.retrieve("", lectureIds, 0.0);
+        List<Map<String, Object>> chunks = retriever.retrieve("", lectureIds, 0.0, List.of());
         Set<String> indexedLectures = chunks.stream()
                 .map(chunk -> String.valueOf(chunk.getOrDefault("lecture_id", "")))
                 .filter(id -> !id.isBlank())
@@ -129,7 +143,7 @@ public class RagService {
 
     public Map<String, Object> rebuildRagIndex(String lectureId, String courseId) {
         List<String> lectureIds = targetLectureIds(lectureId, courseId);
-        List<Map<String, Object>> chunks = retriever.retrieve("", lectureIds, 0.0);
+        List<Map<String, Object>> chunks = retriever.retrieve("", lectureIds, 0.0, List.of());
         String key = ragIndexKey(lectureId, courseId);
         Map<String, Object> payload = new HashMap<>();
         payload.put("id", key);

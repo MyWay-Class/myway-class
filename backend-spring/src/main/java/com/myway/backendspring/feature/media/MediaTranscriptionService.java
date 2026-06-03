@@ -69,7 +69,7 @@ public class MediaTranscriptionService {
         persistTranscript(lectureId, draft);
         Map<String, Object> pipelinePayload = persistenceSupport.persistPipeline(repository, PIPELINE_SCOPE, lectureId, extractionInProgress.get("id"), draft.transcriptId(), now);
         persistenceSupport.persistCompletedExtraction(
-                repository, EXTRACTION_SCOPE, extractionInProgress, draft.transcriptId(), draft.durationMs(), draft.language(),
+                repository, EXTRACTION_SCOPE, extractionInProgress, String.valueOf(extractionInProgress.getOrDefault("id", "")), draft.transcriptId(), draft.durationMs(), draft.language(),
                 draft.provider(), draft.model(), draft.audioUrl(), draft.quality(), now
         );
         Map<String, Object> ragIndex = ragService == null ? Map.of() : ragService.rebuildRagIndex(lectureId, null);
