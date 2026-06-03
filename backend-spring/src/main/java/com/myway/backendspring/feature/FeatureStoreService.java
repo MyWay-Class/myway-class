@@ -177,6 +177,18 @@ public class FeatureStoreService {
         return ragSupport.ragOverview(ragService, query, lectureId, courseId, limit, minScore, includeDebug);
     }
 
+    public Map<String, Object> ragOverview(
+            String query,
+            String lectureId,
+            String courseId,
+            Integer limit,
+            Double minScore,
+            boolean includeDebug,
+            List<Map<String, Object>> entities
+    ) {
+        return ragSupport.ragOverview(ragService, query, lectureId, courseId, limit, minScore, includeDebug, entities);
+    }
+
     public Map<String, Object> ragIndexOverview(String lectureId, String courseId) {
         return ragSupport.ragIndexOverview(ragService, lectureId, courseId);
     }

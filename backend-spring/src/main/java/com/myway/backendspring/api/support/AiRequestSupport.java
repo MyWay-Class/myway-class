@@ -69,8 +69,12 @@ public class AiRequestSupport {
     }
 
     public List<Map<String, Object>> resolveRagSources(String query, String lectureId, String courseId, int limit) {
+        return resolveRagSources(query, lectureId, courseId, limit, List.of());
+    }
+
+    public List<Map<String, Object>> resolveRagSources(String query, String lectureId, String courseId, int limit, List<Map<String, Object>> entities) {
         try {
-            Map<String, Object> rag = featureStore.ragOverview(query, lectureId, courseId, limit, 0.0, false);
+            Map<String, Object> rag = featureStore.ragOverview(query, lectureId, courseId, limit, 0.0, false, entities);
             List<Map<String, Object>> chunks = extractChunkList(rag);
             List<Map<String, Object>> sources = new ArrayList<>();
             for (Map<String, Object> chunk : chunks) {

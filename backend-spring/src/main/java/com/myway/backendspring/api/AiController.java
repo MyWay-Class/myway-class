@@ -12,6 +12,8 @@ import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.feature.FeatureStoreService;
 import com.myway.backendspring.feature.ai.AiRuntimeService;
+import com.myway.backendspring.feature.understanding.InputUnderstandingService;
+import com.myway.backendspring.feature.understanding.UnderstandingResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
@@ -82,6 +84,7 @@ public class AiController {
     private final FeatureStoreService featureStore;
     private final DemoLearningService learningService;
     private final AiRuntimeService aiRuntimeService;
+    private final InputUnderstandingService inputUnderstandingService;
     private final AiRequestSupport aiRequestSupport;
     private final AiControllerSupport aiControllerSupport;
     private final AiControllerAuthSupport aiControllerAuthSupport;
@@ -93,6 +96,7 @@ public class AiController {
             FeatureStoreService featureStore,
             DemoLearningService learningService,
             AiRuntimeService aiRuntimeService,
+            InputUnderstandingService inputUnderstandingService,
             AiRequestSupport aiRequestSupport,
             AiControllerSupport aiControllerSupport,
             AiControllerAuthSupport aiControllerAuthSupport,
@@ -103,6 +107,7 @@ public class AiController {
         this.featureStore = featureStore;
         this.learningService = learningService;
         this.aiRuntimeService = aiRuntimeService;
+        this.inputUnderstandingService = inputUnderstandingService;
         this.aiRequestSupport = aiRequestSupport;
         this.aiControllerSupport = aiControllerSupport;
         this.aiControllerAuthSupport = aiControllerAuthSupport;
@@ -277,13 +282,14 @@ public class AiController {
         ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session);
         if (guard != null) return guard;
         String message = aiRequestSupport.normalize(body.message());
-        Map<String, Object> runtime = generateAndRecord(
+        UnderstandingResult result = inputUnderstandingService.understandMessage(
                 session.user().id(),
-                "intent",
-                "메시지 의도를 한 단어로 분류하고 이유를 한 줄로 설명하세요: " + message,
-                message
+                message,
+                aiRequestSupport.optionalNormalized(body.lecture_id()),
+                null
         );
-        Map<String, Object> data = aiControllerSupport.intentResponse(runtime, aiRequestSupport.optionalNormalized(body.lecture_id()));
+        aiControllerRuntimeSupport.recordUsage(featureStore, session.user().id(), "intent", message);
+        Map<String, Object> data = aiControllerSupport.intentResponse(result);
         return ResponseEntity.ok(ApiResponse.success(data, "인텐트가 분류되었습니다."));
     }
 
@@ -296,6 +302,7 @@ public class AiController {
         String lectureId = aiRequestSupport.optionalNormalized(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = aiRequestSupport.validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
+        UnderstandingResult result = inputUnderstandingService.understandMessage(session.user().id(), query, lectureId, null);
         Map<String, Object> runtime = generateAndRecord(
                 session.user().id(),
                 "search",
@@ -304,7 +311,7 @@ public class AiController {
         );
         Map<String, Object> data = aiControllerSupport.searchResponse(
                 query,
-                aiRequestSupport.resolveRagSources(query, lectureId, null, 4),
+                aiRequestSupport.resolveRagSources(query, lectureId, null, 4, result.entities()),
                 runtime
         );
         return ResponseEntity.ok(ApiResponse.success(data, "검색 결과를 조회했습니다."));
@@ -319,8 +326,9 @@ public class AiController {
         String lectureId = aiRequestSupport.optionalNormalized(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = aiRequestSupport.validateLecture(body.lecture_id());
         if (lectureError != null) return lectureError;
+        UnderstandingResult result = inputUnderstandingService.understandMessage(session.user().id(), question, lectureId, null);
         Map<String, Object> runtime = generateAndRecord(session.user().id(), "answer", question, question);
-        List<Map<String, Object>> sources = aiRequestSupport.resolveRagSources(question, lectureId, null, 4);
+        List<Map<String, Object>> sources = aiRequestSupport.resolveRagSources(question, lectureId, null, 4, result.entities());
         Map<String, Object> data = aiControllerSupport.answerResponse(question, lectureId, sources, runtime);
         return ResponseEntity.ok(ApiResponse.success(data, "답변을 생성했습니다."));
     }
