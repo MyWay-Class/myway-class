@@ -1,0 +1,138 @@
+﻿import type { AudioExtraction, LecturePipeline, MediaProcessorHealth, STTProviderCatalog } from '@myway/shared';
+import type { MediaUploadResult } from '../../../../lib/api-media';
+
+type MediaPipelineBoardDetailsSectionProps = {
+  pipeline: LecturePipeline | null;
+  extraction: AudioExtraction | null;
+  uploadResult: MediaUploadResult | null;
+  recentExtractions: AudioExtraction[];
+  processorHealth: MediaProcessorHealth | null;
+  isRefreshing: boolean;
+  onRefresh?: () => void;
+  providers: STTProviderCatalog | null;
+};
+
+function statusTone(status: string): string {
+  if (status === 'COMPLETED' || status === 'available') return 'bg-emerald-100 text-emerald-700';
+  if (status === 'PROCESSING' || status === 'checking' || status === 'PENDING') return 'bg-amber-100 text-amber-700';
+  if (status === 'FAILED' || status === 'disabled') return 'bg-rose-100 text-rose-700';
+  return 'bg-slate-100 text-slate-700';
+}
+
+function statusLabel(status: string): string {
+  if (status === 'COMPLETED') return '완료';
+  if (status === 'PROCESSING') return '처리 중';
+  if (status === 'PENDING') return '대기';
+  if (status === 'FAILED') return '실패';
+  if (status === 'available') return '사용 가능';
+  if (status === 'planned') return '계획됨';
+  if (status === 'disabled') return '비활성';
+  return status;
+}
+
+function formatDateTime(value?: string | null): string {
+  return value ? new Date(value).toLocaleString('ko-KR') : '기록 없음';
+}
+
+function stageLabel(stage?: string | null): string {
+  switch (stage) {
+    case 'queued': return '대기열 등록';
+    case 'downloading': return '원본 다운로드';
+    case 'extracting': return '오디오 추출';
+    case 'uploading': return '오디오 업로드';
+    case 'callback': return '콜백 반영';
+    case 'transcribing': return 'STT 전사';
+    case 'summarizing': return '요약 생성';
+    case 'completed': return '완료';
+    case 'failed': return '실패';
+    default: return '미확인';
+  }
+}
+
+export function MediaPipelineBoardDetailsSection({ pipeline, extraction, uploadResult, recentExtractions, processorHealth, isRefreshing, onRefresh, providers }: MediaPipelineBoardDetailsSectionProps) {
+  return (
+    <section className="grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-semibold text-slate-900">파이프라인 상태</div>
+            <div className="text-xs text-slate-500">영상 업로드, 오디오 추출, 전사 상태를 같이 확인합니다.</div>
+          </div>
+          <div className="flex items-center gap-2">
+            {onRefresh ? <button type="button" onClick={onRefresh} disabled={isRefreshing} className="rounded-full border border-[#cce0f2] bg-white px-3 py-1 text-xs font-semibold text-[#3e5d7b] transition hover:border-cyan-300 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-60">{isRefreshing ? '갱신 중' : '상태 새로고침'}</button> : null}
+            {isRefreshing ? <div className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">상태 새로고침 중</div> : null}
+            <div className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">{pipeline?.updated_at ? new Date(pipeline.updated_at).toLocaleString('ko-KR') : '업데이트 전'}</div>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {[
+            { label: '오디오 상태', value: pipeline?.audio_status ?? 'PENDING' },
+            { label: 'STT 상태', value: extraction?.stt_status ?? pipeline?.transcript_status ?? 'PENDING' },
+            { label: '요약 상태', value: pipeline?.summary_status ?? 'PENDING' },
+            { label: '처리 단계', value: stageLabel(extraction?.processing_stage) },
+            { label: '처리 서비스 job', value: extraction?.processing_job_id ?? '없음' },
+            { label: '전사 ID', value: extraction?.transcript_id ?? pipeline?.transcript_id ?? '없음' },
+            { label: '처리 완료 시각', value: extraction?.processed_at ? new Date(extraction.processed_at).toLocaleString('ko-KR') : '대기 중' },
+          ].map((item) => (
+            <div key={item.label} className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] p-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">{item.label}</div>
+              <div className="mt-2 break-words text-sm font-semibold text-slate-900">{item.value}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 space-y-3">
+          <div className="text-sm font-semibold text-slate-900">최근 추출 이력</div>
+          {recentExtractions.length > 0 ? (
+            <div className="space-y-3">
+              {recentExtractions.slice(0, 3).map((item) => (
+                <div key={item.id} className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div><div className="text-sm font-semibold text-slate-900">{item.id}</div><div className="mt-1 text-xs text-slate-500">생성 {formatDateTime(item.created_at)} · 갱신 {formatDateTime(item.updated_at)}</div></div>
+                    <div className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.status)}`}>{statusLabel(item.status)}</div>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <div><div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">오디오 URL</div><div className="mt-1 break-all text-sm text-slate-700">{item.audio_url ?? 'callback 대기 중'}</div></div>
+                    <div><div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">처리 서비스 job</div><div className="mt-1 break-all text-sm text-slate-700">{item.processing_job_id ?? '아직 없음'}</div></div>
+                  </div>
+                  {item.processing_error ? <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">{item.processing_error}</div> : null}
+                </div>
+              ))}
+            </div>
+          ) : <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">아직 기록된 추출 이력이 없습니다.</div>}
+        </div>
+        <div className="mt-5 space-y-3">
+          <div className="text-sm font-semibold text-slate-900">업로드 산출물</div>
+          {uploadResult ? <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900"><div className="font-semibold">{uploadResult.asset_key}</div><div className="mt-1 break-all text-xs">{uploadResult.video_url}</div></div> : <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">아직 업로드된 영상이 없습니다.</div>}
+        </div>
+      </div>
+      <div className="rounded-3xl border border-[#d6e6f5] bg-white p-5 shadow-[0_14px_30px_rgba(6,31,57,0.08)]">
+        <div className="text-sm font-semibold text-slate-900">STT provider 상태</div>
+        <div className="mt-3 space-y-3">
+          {providers?.providers?.map((provider) => (
+            <div key={provider.name} className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div><div className="text-sm font-semibold text-slate-900">{provider.label}</div><div className="mt-1 text-xs text-slate-500">{provider.description}</div></div>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusTone(provider.status)}`}>{statusLabel(provider.status)}</span>
+              </div>
+            </div>
+          )) ?? <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">provider 정보를 불러오지 못했습니다.</div>}
+        </div>
+        <div className="mt-5 space-y-3">
+          <div className="text-sm font-semibold text-slate-900">최근 processor job</div>
+          {processorHealth?.recent_jobs?.length ? (
+            <div className="space-y-3">
+              {processorHealth.recent_jobs.slice(0, 3).map((job) => (
+                <div key={job.id} className="rounded-2xl border border-[#dce9f7] bg-[#f4faff] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div><div className="text-sm font-semibold text-slate-900">{job.lecture_id}</div><div className="mt-1 text-xs text-slate-500">생성 {formatDateTime(job.created_at)} · 갱신 {formatDateTime(job.updated_at)}</div></div>
+                    <div className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(job.status)}`}>{statusLabel(job.status)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">processor job 이력이 없습니다.</div>}
+        </div>
+      </div>
+    </section>
+  );
+}

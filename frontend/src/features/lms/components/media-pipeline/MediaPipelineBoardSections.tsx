@@ -1,1 +1,2 @@
-export { DetailSections, HealthCards, PipelineCards } from './MediaPipelineBoardSectionsParts';
+export { HealthCards, PipelineCards } from './MediaPipelineBoardSectionsParts';
+export { MediaPipelineBoardDetailsSection as DetailSections } from './MediaPipelineBoardDetailsSection';
