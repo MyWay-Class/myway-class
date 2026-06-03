@@ -1,7 +1,8 @@
 import type { CourseCard, CourseDetail, LectureDetail } from '@myway/shared';
 import { StatePanel } from '../components/StatePanel';
 import { useLectureWatchPlayback } from './useLectureWatchPlayback';
-import { LectureWatchAside, LectureWatchHero, LectureWatchMain } from './LectureWatchPageSections';
+import { LectureWatchHero, LectureWatchMain } from './LectureWatchPageSections';
+import { LectureWatchAside } from './LectureWatchPageAside';
 import type { LectureWatchPanelTab } from './lectureWatchPageUtils';
 
 type LectureWatchPageProps = {
