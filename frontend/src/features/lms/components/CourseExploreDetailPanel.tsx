@@ -1,11 +1,9 @@
 import type { CourseDetail, LectureDetail } from '@myway/shared';
-import { CourseSessionTimeline } from './CourseSessionTimeline';
-import { StatePanel } from './StatePanel';
 import { resolveLectureVideoUrl } from '../../../lib/video-url';
 import { useLectureAssetRemap } from './useLectureAssetRemap';
-import { formatDuration, renderMaterialList, renderNoticeList } from './CourseExploreDetailPanelSections';
+import { renderMaterialList, renderNoticeList } from './CourseExploreDetailPanelSections';
 import { CourseExploreDetailHeader } from './CourseExploreDetailPanelHeader';
-import { CourseExploreLectureCard } from './CourseExploreLectureCard';
+import { CourseExploreDetailPanelBody } from './CourseExploreDetailPanelBody';
 
 type CourseExploreDetailPanelProps = {
   course: CourseDetail | null;
@@ -20,13 +18,6 @@ type CourseExploreDetailPanelProps = {
   onTabChange: (tab: '강의' | '공지' | '자료') => void;
   onNavigate: (page: 'courses' | 'lecture-watch' | 'my-courses' | 'shortform' | 'ai-chat' | 'course-create' | 'lecture-studio' | 'media-pipeline') => void;
 };
-
-const courseTabs: { key: '강의' | '공지' | '자료'; label: string; icon: string }[] = [
-  { key: '강의', label: '강의', icon: 'ri-play-circle-line' },
-  { key: '공지', label: '공지', icon: 'ri-megaphone-line' },
-  { key: '자료', label: '자료', icon: 'ri-folder-line' },
-];
-
 
 export function CourseExploreDetailPanel({
   course,
@@ -46,121 +37,32 @@ export function CourseExploreDetailPanel({
   const isLocked = Boolean(course && !course.enrolled && !canManageCurrent);
   const resolvedLectureVideoUrl = detailLecture ? resolveLectureVideoUrl(detailLecture) : undefined;
 
-  const handleOpenMaterial = (fileName: string) => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      void navigator.clipboard.writeText(fileName);
-    }
-  };
-
   return (
     <section className="overflow-hidden rounded-[30px] border border-[var(--app-border)] bg-white shadow-sm">
       <CourseExploreDetailHeader course={course} />
 
-      <div className="px-5 py-5">
-        {course ? (
-          <>
-            <div className="flex gap-1 overflow-x-auto border-b border-[var(--app-border)] pb-0.5">
-              {courseTabs.map((tab) => {
-                const active = activeTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => onTabChange(tab.key)}
-                    className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm transition-colors ${
-                      active ? 'border-cyan-500 text-[var(--app-text)]' : 'border-transparent text-[var(--app-text-muted)] hover:border-slate-300 hover:text-[var(--app-text-secondary)]'
-                    }`}
-                  >
-                    <i className={`${tab.icon} text-[15px]`} />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="pt-5">
-              {activeTab === '강의' ? (
-                <div className="space-y-5">
-                  <CourseSessionTimeline
-                    course={course}
-                    selectedLectureId={selectedLectureId}
-                    onSelectLecture={onSelectLecture}
-                    onOpenLecture={(lectureId) => {
-                      onSelectLecture(lectureId);
-                      onNavigate('lecture-watch');
-                    }}
-                  />
-                  <CourseExploreLectureCard
-                    course={course}
-                    detailLecture={detailLecture}
-                    viewMode={viewMode}
-                    isLocked={isLocked}
-                    canManageCurrent={canManageCurrent}
-                    resolvedLectureVideoUrl={resolvedLectureVideoUrl}
-                    sessionToken={sessionToken}
-                    remapAssetKey={remapAssetKey}
-                    setRemapAssetKey={setRemapAssetKey}
-                    remapBusy={remapBusy}
-                    remapMessage={remapMessage}
-                    handleRemapAssetKey={handleRemapAssetKey}
-                    onEnroll={onEnroll}
-                    onNavigate={onNavigate}
-                    onSelectLecture={onSelectLecture}
-                  />
-                </div>
-              ) : activeTab === '공지' ? (
-                renderNoticeList(course)
-              ) : activeTab === '자료' ? (
-                renderMaterialList(course, canManageCurrent, handleOpenMaterial, () => onNavigate('lecture-studio'))
-              ) : (
-                <div className="space-y-3">
-                  {isLocked ? (
-                    <StatePanel
-                      compact
-                      icon="ri-lock-line"
-                      tone="amber"
-                      title="수강 신청 후 Q&A를 사용할 수 있습니다."
-                      description="질문 검색과 강의 내용 탐색은 수강 신청한 뒤 활성화됩니다."
-                    />
-                  ) : (
-                    <StatePanel
-                      compact
-                      icon="ri-question-line"
-                      tone="slate"
-                      title="Q&A는 강의 내용 검색으로 연결됩니다."
-                      description="질문은 우측 챗봇에서 먼저 바로 물어보고, 필요한 경우 강의 시청 화면으로 이어서 확인할 수 있습니다."
-                    />
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {isLocked ? (
-                      <button type="button" onClick={() => course && onEnroll(course.id)} className="rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500">
-                        수강 신청하기
-                      </button>
-                    ) : (
-                      <>
-                        <button type="button" onClick={() => onNavigate('ai-chat')} className="rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-cyan-500">
-                          AI 챗봇으로 질문하기
-                        </button>
-                        <button type="button" onClick={() => onNavigate('lecture-watch')} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700">
-                          강의 시청으로 이동
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <StatePanel
-            compact
-            icon="ri-play-circle-line"
-            tone="amber"
-            title="강의를 선택하면 상세가 펼쳐집니다."
-            description="선택한 코스의 주차/차시 타임라인, 공지, 자료가 이 영역에 표시됩니다."
-          />
-        )}
-      </div>
+      <CourseExploreDetailPanelBody
+        course={course}
+        selectedLectureId={selectedLectureId}
+        viewMode={viewMode}
+        activeTab={activeTab}
+        detailLecture={detailLecture}
+        isLocked={isLocked}
+        canManageCurrent={canManageCurrent}
+        resolvedLectureVideoUrl={resolvedLectureVideoUrl}
+        sessionToken={sessionToken}
+        remapAssetKey={remapAssetKey}
+        setRemapAssetKey={setRemapAssetKey}
+        remapBusy={remapBusy}
+        remapMessage={remapMessage}
+        handleRemapAssetKey={handleRemapAssetKey}
+        onSelectLecture={onSelectLecture}
+        onEnroll={onEnroll}
+        onTabChange={onTabChange}
+        onNavigate={onNavigate}
+        renderNoticeList={renderNoticeList}
+        renderMaterialList={renderMaterialList}
+      />
     </section>
   );
 }
