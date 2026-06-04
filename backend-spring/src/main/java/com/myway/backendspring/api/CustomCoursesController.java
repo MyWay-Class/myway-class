@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreDomainFacade;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,9 +29,9 @@ public class CustomCoursesController {
     }
 
     private final SessionService sessionService;
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreDomainFacade featureStore;
 
-    public CustomCoursesController(SessionService sessionService, FeatureStoreService featureStore) {
+    public CustomCoursesController(SessionService sessionService, FeatureStoreDomainFacade featureStore) {
         this.sessionService = sessionService;
         this.featureStore = featureStore;
     }

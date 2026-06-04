@@ -4,7 +4,8 @@ import com.myway.backendspring.api.AiController;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreAiFacade;
+import com.myway.backendspring.feature.FeatureStoreRagFacade;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -15,7 +16,8 @@ import java.util.Map;
 @Component
 public class AiControllerQuerySupport {
     private final SessionService sessionService;
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreAiFacade featureStore;
+    private final FeatureStoreRagFacade ragFacade;
     private final AiControllerSupport aiControllerSupport;
     private final AiControllerAuthSupport aiControllerAuthSupport;
     private final AiControllerRagSupport aiControllerRagSupport;
@@ -24,7 +26,8 @@ public class AiControllerQuerySupport {
 
     public AiControllerQuerySupport(
             SessionService sessionService,
-            FeatureStoreService featureStore,
+            FeatureStoreAiFacade featureStore,
+            FeatureStoreRagFacade ragFacade,
             AiControllerSupport aiControllerSupport,
             AiControllerAuthSupport aiControllerAuthSupport,
             AiControllerRagSupport aiControllerRagSupport,
@@ -33,6 +36,7 @@ public class AiControllerQuerySupport {
     ) {
         this.sessionService = sessionService;
         this.featureStore = featureStore;
+        this.ragFacade = ragFacade;
         this.aiControllerSupport = aiControllerSupport;
         this.aiControllerAuthSupport = aiControllerAuthSupport;
         this.aiControllerRagSupport = aiControllerRagSupport;
@@ -91,7 +95,7 @@ public class AiControllerQuerySupport {
         Integer limit = body.limit();
         Double minScore = body.min_score();
         boolean includeDebug = aiControllerRagSupport.includeDebug(body.include_debug());
-        Map<String, Object> data = featureStore.ragOverview(
+        Map<String, Object> data = ragFacade.ragOverview(
                 query,
                 aiRequestSupport.optionalNormalized(scope.lectureId()),
                 aiRequestSupport.optionalNormalized(scope.courseId()),
@@ -106,7 +110,7 @@ public class AiControllerQuerySupport {
     public ResponseEntity<ApiResponse<Map<String, Object>>> ragIndex(String auth, String lectureId, String courseId) {
         SessionView session = require(auth);
         if (session == null) return aiControllerSupport.unauthenticated();
-        Map<String, Object> data = featureStore.ragIndexOverview(
+        Map<String, Object> data = ragFacade.ragIndexOverview(
                 aiRequestSupport.optionalNormalized(lectureId),
                 aiRequestSupport.optionalNormalized(courseId)
         );
@@ -119,7 +123,7 @@ public class AiControllerQuerySupport {
         AiRequestSupport.RagScope scope = aiRequestSupport.resolveRagScope(body.lecture_id(), body.course_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> scopeError = aiRequestSupport.validateRagScope(scope);
         if (scopeError != null) return scopeError;
-        Map<String, Object> data = featureStore.rebuildRagIndex(
+        Map<String, Object> data = ragFacade.rebuildRagIndex(
                 aiRequestSupport.optionalNormalized(scope.lectureId()),
                 aiRequestSupport.optionalNormalized(scope.courseId())
         );
@@ -132,7 +136,7 @@ public class AiControllerQuerySupport {
         AiRequestSupport.RagScope scope = aiRequestSupport.resolveRagScope(body.lecture_id(), body.course_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> scopeError = aiRequestSupport.validateRagScope(scope);
         if (scopeError != null) return scopeError;
-        Map<String, Object> data = featureStore.clearRagIndex(
+        Map<String, Object> data = ragFacade.clearRagIndex(
                 aiRequestSupport.optionalNormalized(scope.lectureId()),
                 aiRequestSupport.optionalNormalized(scope.courseId())
         );
@@ -144,7 +148,7 @@ public class AiControllerQuerySupport {
         if (session == null) return aiControllerSupport.unauthenticated();
         Integer topK = aiControllerRagSupport.topK(body);
         List<Map<String, Object>> cases = aiControllerRagSupport.evaluateCases(body);
-        Map<String, Object> data = featureStore.evaluateRagBatch(cases, topK);
+        Map<String, Object> data = ragFacade.evaluateRagBatch(cases, topK);
         return ResponseEntity.ok(ApiResponse.success(data, "RAG 배치 평가를 완료했습니다."));
     }
 

@@ -2,7 +2,7 @@ package com.myway.backendspring.api.support;
 
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreAiFacade;
 import com.myway.backendspring.feature.ai.AiRuntimeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -12,7 +12,7 @@ import java.util.Map;
 @Component
 public class AiControllerRuntimeSupport {
     public ResponseEntity<ApiResponse<Map<String, Object>>> requireAiEligible(
-            FeatureStoreService featureStore,
+            FeatureStoreAiFacade featureStore,
             SessionView session,
             AiControllerSupport aiControllerSupport,
             AiControllerAuthSupport aiControllerAuthSupport
@@ -22,7 +22,7 @@ public class AiControllerRuntimeSupport {
 
     public Map<String, Object> generate(
             AiRuntimeService aiRuntimeService,
-            FeatureStoreService featureStore,
+            FeatureStoreAiFacade featureStore,
             String userId,
             String mode,
             String prompt
@@ -31,7 +31,7 @@ public class AiControllerRuntimeSupport {
     }
 
     public void recordUsage(
-            FeatureStoreService featureStore,
+            FeatureStoreAiFacade featureStore,
             String userId,
             String mode,
             String token

@@ -2,7 +2,7 @@ package com.myway.backendspring.api.support;
 
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreRagFacade;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -16,11 +16,11 @@ import java.util.Map;
 public class AiRequestSupport {
     public record RagScope(String lectureId, String courseId) {}
 
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreRagFacade ragFacade;
     private final DemoLearningService learningService;
 
-    public AiRequestSupport(FeatureStoreService featureStore, DemoLearningService learningService) {
-        this.featureStore = featureStore;
+    public AiRequestSupport(FeatureStoreRagFacade ragFacade, DemoLearningService learningService) {
+        this.ragFacade = ragFacade;
         this.learningService = learningService;
     }
 
@@ -74,7 +74,7 @@ public class AiRequestSupport {
 
     public List<Map<String, Object>> resolveRagSources(String query, String lectureId, String courseId, int limit, List<Map<String, Object>> entities) {
         try {
-            Map<String, Object> rag = featureStore.ragOverview(query, lectureId, courseId, limit, 0.0, false, entities);
+            Map<String, Object> rag = ragFacade.ragOverview(query, lectureId, courseId, limit, 0.0, false, entities);
             List<Map<String, Object>> chunks = extractChunkList(rag);
             List<Map<String, Object>> sources = new ArrayList<>();
             for (Map<String, Object> chunk : chunks) {

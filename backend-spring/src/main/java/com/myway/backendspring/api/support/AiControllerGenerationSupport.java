@@ -5,7 +5,7 @@ import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreAiFacade;
 import com.myway.backendspring.feature.ai.AiRuntimeService;
 import com.myway.backendspring.feature.understanding.InputUnderstandingService;
 import com.myway.backendspring.feature.understanding.UnderstandingResult;
@@ -19,7 +19,7 @@ import java.util.Map;
 @Component
 public class AiControllerGenerationSupport {
     private final SessionService sessionService;
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreAiFacade featureStore;
     private final DemoLearningService learningService;
     private final AiRuntimeService aiRuntimeService;
     private final InputUnderstandingService inputUnderstandingService;
@@ -30,7 +30,7 @@ public class AiControllerGenerationSupport {
 
     public AiControllerGenerationSupport(
             SessionService sessionService,
-            FeatureStoreService featureStore,
+            FeatureStoreAiFacade featureStore,
             DemoLearningService learningService,
             AiRuntimeService aiRuntimeService,
             InputUnderstandingService inputUnderstandingService,
