@@ -190,9 +190,6 @@ jobs:
               test -f frontend/vite.config.ts
               test -f backend/wrangler.jsonc
               ;;
-            *)
-              test -f .github/pull_request_template.md
-              ;;
           esac
 
   cd-checks:

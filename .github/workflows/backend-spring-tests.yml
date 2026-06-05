@@ -18,9 +18,6 @@ jobs:
   test-backend-spring:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: backend-spring
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -45,8 +42,10 @@ jobs:
 
       - name: Grant execute permission for Maven Wrapper
         if: steps.detect.outputs.run == 'true'
+        working-directory: backend-spring
         run: chmod +x mvnw
 
       - name: Run tests (Maven Wrapper)
         if: steps.detect.outputs.run == 'true'
+        working-directory: backend-spring
         run: ./mvnw test
