@@ -16,13 +16,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Detect app workspace
+        id: detect
+        shell: bash
+        run: |
+          if [ -f package.json ] && [ -d frontend ] && [ -d backend ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Node.js
+        if: steps.detect.outputs.run == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
 
       - name: Set up Java 21
+        if: steps.detect.outputs.run == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -30,19 +42,24 @@ jobs:
           cache: maven
 
       - name: Install dependencies
+        if: steps.detect.outputs.run == 'true'
         run: npm ci
 
       - name: Patch rollup optional dependency on Linux
+        if: steps.detect.outputs.run == 'true'
         run: npm install --no-save @rollup/rollup-linux-x64-gnu
 
       - name: Install Playwright Chromium
+        if: steps.detect.outputs.run == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Start backend
+        if: steps.detect.outputs.run == 'true'
         run: |
           nohup npm run dev:backend > /tmp/backend.log 2>&1 &
 
       - name: Wait backend health
+        if: steps.detect.outputs.run == 'true'
         run: |
           for i in {1..120}; do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8787/api/v1/health || true)
@@ -56,10 +73,12 @@ jobs:
           exit 1
 
       - name: Start frontend
+        if: steps.detect.outputs.run == 'true'
         run: |
           nohup npm run dev:frontend > /tmp/frontend.log 2>&1 &
 
       - name: Wait frontend
+        if: steps.detect.outputs.run == 'true'
         run: |
           for i in {1..90}; do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5173 || true)
@@ -73,14 +92,15 @@ jobs:
           exit 1
 
       - name: Run demo student E2E
+        if: steps.detect.outputs.run == 'true'
         env:
           E2E_BASE_URL: http://127.0.0.1:5173
         run: npm run test:e2e:demo-student
 
       - name: Print backend log on failure
-        if: failure()
+        if: failure() && steps.detect.outputs.run == 'true'
         run: cat /tmp/backend.log || true
 
       - name: Print frontend log on failure
-        if: failure()
+        if: failure() && steps.detect.outputs.run == 'true'
         run: cat /tmp/frontend.log || true
