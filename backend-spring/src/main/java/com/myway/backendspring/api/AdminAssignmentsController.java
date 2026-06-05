@@ -5,7 +5,7 @@ import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.auth.RolePolicy;
 import com.myway.backendspring.api.support.ApiAuthGuards;
 import com.myway.backendspring.common.ApiResponse;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreDomainFacade;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,9 +22,9 @@ public class AdminAssignmentsController {
     public record AssignmentUpdateRequest(@NotNull List<@NotBlank String> student_ids) {}
 
     private final SessionService sessionService;
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreDomainFacade featureStore;
 
-    public AdminAssignmentsController(SessionService sessionService, FeatureStoreService featureStore) {
+    public AdminAssignmentsController(SessionService sessionService, FeatureStoreDomainFacade featureStore) {
         this.sessionService = sessionService;
         this.featureStore = featureStore;
     }

@@ -1,6 +1,6 @@
 package com.myway.backendspring.feature.understanding;
 
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreAiFacade;
 import com.myway.backendspring.feature.ai.AiRuntimeService;
 import org.springframework.stereotype.Component;
 
@@ -13,13 +13,13 @@ import java.util.Objects;
 @Component
 public class RuleBasedIntentClassificationService implements IntentClassificationService {
     private final AiRuntimeService aiRuntimeService;
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreAiFacade featureStore;
     private final UnderstandingPromptService promptService;
     private final IntentRouterService routerService;
 
     public RuleBasedIntentClassificationService(
             AiRuntimeService aiRuntimeService,
-            FeatureStoreService featureStore,
+            FeatureStoreAiFacade featureStore,
             UnderstandingPromptService promptService,
             IntentRouterService routerService
     ) {

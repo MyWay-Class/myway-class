@@ -3,7 +3,7 @@ package com.myway.backendspring.api;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.common.ApiResponse;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreDomainFacade;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,12 +37,12 @@ public class LegacyShortformBridgeController {
     }
 
     private final ShortformController shortformController;
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreDomainFacade featureStore;
     private final SessionService sessionService;
 
     public LegacyShortformBridgeController(
             ShortformController shortformController,
-            FeatureStoreService featureStore,
+            FeatureStoreDomainFacade featureStore,
             SessionService sessionService
     ) {
         this.shortformController = shortformController;

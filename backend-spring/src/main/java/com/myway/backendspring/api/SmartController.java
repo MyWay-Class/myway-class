@@ -5,7 +5,7 @@ import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.domain.SmartChatResult;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreRagFacade;
 import com.myway.backendspring.feature.understanding.InputUnderstandingService;
 import com.myway.backendspring.feature.understanding.UnderstandingResult;
 import jakarta.validation.Valid;
@@ -23,18 +23,18 @@ import java.util.Map;
 public class SmartController {
     private final SessionService sessionService;
     private final DemoLearningService learningService;
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreRagFacade ragFacade;
     private final InputUnderstandingService inputUnderstandingService;
 
     public SmartController(
             SessionService sessionService,
             DemoLearningService learningService,
-            FeatureStoreService featureStore,
+            FeatureStoreRagFacade ragFacade,
             InputUnderstandingService inputUnderstandingService
     ) {
         this.sessionService = sessionService;
         this.learningService = learningService;
-        this.featureStore = featureStore;
+        this.ragFacade = ragFacade;
         this.inputUnderstandingService = inputUnderstandingService;
     }
 
@@ -63,7 +63,7 @@ public class SmartController {
             return learningService.chat(message);
         }
 
-        Map<String, Object> rag = featureStore.ragOverview(
+        Map<String, Object> rag = ragFacade.ragOverview(
                 message,
                 understanding.lectureId(),
                 understanding.courseId(),
