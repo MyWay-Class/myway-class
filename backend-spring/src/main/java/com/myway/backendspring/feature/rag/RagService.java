@@ -1,7 +1,5 @@
 package com.myway.backendspring.feature.rag;
 
-import com.myway.backendspring.domain.DemoLearningService;
-import com.myway.backendspring.domain.LectureItem;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -15,27 +13,27 @@ import java.util.stream.Collectors;
 
 @Service
 public class RagService {
-    private final DemoLearningService learningService;
     private final RagRetriever retriever;
     private final RagReranker reranker;
     private final RagAnswerGenerator answerGenerator;
     private final RagIndexRepository ragIndexRepository;
     private final RagEvaluationSupport evaluationSupport;
+    private final RagServiceSupport ragServiceSupport;
 
     public RagService(
-            DemoLearningService learningService,
             RagRetriever retriever,
             RagReranker reranker,
             RagAnswerGenerator answerGenerator,
             RagIndexRepository ragIndexRepository,
-            RagEvaluationSupport evaluationSupport
+            RagEvaluationSupport evaluationSupport,
+            RagServiceSupport ragServiceSupport
     ) {
-        this.learningService = learningService;
         this.retriever = retriever;
         this.reranker = reranker;
         this.answerGenerator = answerGenerator;
         this.ragIndexRepository = ragIndexRepository;
         this.evaluationSupport = evaluationSupport;
+        this.ragServiceSupport = ragServiceSupport;
     }
 
     public Map<String, Object> ragOverview(
@@ -60,11 +58,11 @@ public class RagService {
     ) {
         int resolvedLimit = Math.max(1, Math.min(6, limit == null ? 4 : limit));
         String normalizedQuery = normalizeText(query);
-        List<String> targetLectureIds = targetLectureIds(lectureId, courseId);
+        List<String> targetLectureIds = ragServiceSupport.targetLectureIds(lectureId, courseId);
         double threshold = minScore == null ? 0.0 : Math.max(0.0, Math.min(1.0, minScore));
 
         List<Map<String, Object>> retrieved = retriever.retrieve(normalizedQuery, targetLectureIds, threshold, requestEntities);
-        List<Map<String, Object>> rankedChunks = ensureChunkTimestamps(reranker.rerank(retrieved, resolvedLimit));
+        List<Map<String, Object>> rankedChunks = ragServiceSupport.ensureChunkTimestamps(reranker.rerank(retrieved, resolvedLimit));
 
         List<Map<String, Object>> responseEntities = new ArrayList<>();
         if (lectureId != null && !lectureId.isBlank()) {
@@ -74,9 +72,8 @@ public class RagService {
             responseEntities.add(Map.of("kind", "course_id", "label", "코스", "value", courseId));
         }
 
-        String intent = inferIntent(normalizedQuery);
+        String intent = ragServiceSupport.inferIntent(normalizedQuery);
         String answerText = answerGenerator.generate(normalizedQuery, rankedChunks);
-        String searchProvider = "spring-rag-keyword";
         Map<String, Object> intentPayload = Map.of(
                 "intent", intent,
                 "confidence", rankedChunks.isEmpty() ? 0.62 : 0.84,
@@ -99,14 +96,10 @@ public class RagService {
         payload.put("intent", intentPayload);
         payload.put("entities", responseEntities);
         payload.put("chunks", rankedChunks);
-        Map<String, Object> searchPayload = new HashMap<>();
-        searchPayload.put("query", normalizedQuery);
-        searchPayload.put("lecture_id", lectureId);
-        searchPayload.put("hits", rankedChunks);
-        payload.put("search", searchPayload);
+        payload.put("search", Map.of("query", normalizedQuery, "lecture_id", lectureId, "hits", rankedChunks));
         payload.put("answer", answerText);
         payload.put("answer_payload", answerPayload);
-        payload.put("provider", Map.of("search_provider", searchProvider, "answer_provider", "spring-rag-generator"));
+        payload.put("provider", Map.of("search_provider", "spring-rag-keyword", "answer_provider", "spring-rag-generator"));
         payload.put("limit", resolvedLimit);
         payload.put("min_score", threshold);
         if (includeDebug) {
@@ -116,18 +109,17 @@ public class RagService {
                             .map(String::trim)
                             .filter(token -> token.length() > 1)
                             .toList(),
-                "corpus_size", retrieved.size(),
-                "filtered_count", rankedChunks.size(),
-                "avg_similarity", Math.round(avgSimilarity * 1000.0) / 1000.0
-                        ,
-                "entity_count", requestEntities == null ? 0 : requestEntities.size()
+                    "corpus_size", retrieved.size(),
+                    "filtered_count", rankedChunks.size(),
+                    "avg_similarity", Math.round(avgSimilarity * 1000.0) / 1000.0,
+                    "entity_count", requestEntities == null ? 0 : requestEntities.size()
             ));
         }
         return payload;
     }
 
     public Map<String, Object> ragIndexOverview(String lectureId, String courseId) {
-        List<String> lectureIds = targetLectureIds(lectureId, courseId);
+        List<String> lectureIds = ragServiceSupport.targetLectureIds(lectureId, courseId);
         List<Map<String, Object>> chunks = retriever.retrieve("", lectureIds, 0.0, List.of());
         Set<String> indexedLectures = chunks.stream()
                 .map(chunk -> String.valueOf(chunk.getOrDefault("lecture_id", "")))
@@ -142,9 +134,9 @@ public class RagService {
     }
 
     public Map<String, Object> rebuildRagIndex(String lectureId, String courseId) {
-        List<String> lectureIds = targetLectureIds(lectureId, courseId);
+        List<String> lectureIds = ragServiceSupport.targetLectureIds(lectureId, courseId);
         List<Map<String, Object>> chunks = retriever.retrieve("", lectureIds, 0.0, List.of());
-        String key = ragIndexKey(lectureId, courseId);
+        String key = ragServiceSupport.ragIndexKey(lectureId, courseId);
         Map<String, Object> payload = new HashMap<>();
         payload.put("id", key);
         payload.put("lecture_id", lectureId);
@@ -157,7 +149,7 @@ public class RagService {
     }
 
     public Map<String, Object> clearRagIndex(String lectureId, String courseId) {
-        String key = ragIndexKey(lectureId, courseId);
+        String key = ragServiceSupport.ragIndexKey(lectureId, courseId);
         Map<String, Object> payload = new HashMap<>();
         payload.put("id", key);
         payload.put("lecture_id", lectureId);
@@ -174,60 +166,8 @@ public class RagService {
         return evaluationSupport.evaluateBatch(cases, topK, retriever, reranker, answerGenerator);
     }
 
-    private List<String> targetLectureIds(String lectureId, String courseId) {
-        if (lectureId != null && !lectureId.isBlank()) return List.of(lectureId);
-        if (courseId != null && !courseId.isBlank()) {
-            return learningService.getCourseLectures(courseId).stream().map(LectureItem::id).toList();
-        }
-        return learningService.listCourseCards("usr_std_001").stream()
-                .flatMap(card -> learningService.getCourseLectures(card.id()).stream())
-                .map(LectureItem::id)
-                .distinct()
-                .toList();
-    }
-
-    private String ragIndexKey(String lectureId, String courseId) {
-        if (lectureId != null && !lectureId.isBlank()) return "lecture:" + lectureId;
-        if (courseId != null && !courseId.isBlank()) return "course:" + courseId;
-        return "global:all";
-    }
-
-    private String inferIntent(String query) {
-        String normalized = query.toLowerCase();
-        if (normalized.contains("요약") || normalized.contains("핵심")) return "summary";
-        if (normalized.contains("문제") || normalized.contains("시험") || normalized.contains("퀴즈")) return "quiz";
-        if (normalized.contains("숏폼") || normalized.contains("복습")) return "shortform";
-        return "qa";
-    }
-
     private String normalizeText(String text) {
         if (text == null) return "";
         return text.replaceAll("\\s+", " ").trim();
-    }
-
-    private List<Map<String, Object>> ensureChunkTimestamps(List<Map<String, Object>> chunks) {
-        if (chunks == null || chunks.isEmpty()) {
-            return List.of();
-        }
-        List<Map<String, Object>> normalized = new ArrayList<>(chunks.size());
-        for (Map<String, Object> chunk : chunks) {
-            Map<String, Object> row = new HashMap<>(chunk);
-            long start = row.get("start_ms") instanceof Number number ? number.longValue() : 0L;
-            long end;
-            if (row.get("end_ms") instanceof Number number) {
-                end = number.longValue();
-            } else {
-                String lectureId = normalizeText(String.valueOf(row.getOrDefault("lecture_id", "")));
-                LectureItem lecture = lectureId.isBlank() ? null : learningService.getLecture(lectureId);
-                end = lecture == null ? 60_000L : Math.max(60_000L, lecture.duration_minutes() * 60_000L);
-            }
-            if (end < start) {
-                end = start + 1_000L;
-            }
-            row.put("start_ms", start);
-            row.put("end_ms", end);
-            normalized.add(row);
-        }
-        return normalized;
     }
 }
