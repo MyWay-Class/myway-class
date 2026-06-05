@@ -1,0 +1,51 @@
+name: backend-spring-tests
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+  push:
+    branches: [ main, dev ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-spring-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-backend-spring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Detect backend workspace
+        id: detect
+        shell: bash
+        run: |
+          if [ -d backend-spring ] && [ -f backend-spring/mvnw ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Java 21
+        if: steps.detect.outputs.run == 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Grant execute permission for Maven Wrapper
+        if: steps.detect.outputs.run == 'true'
+        working-directory: backend-spring
+        run: chmod +x mvnw
+
+      - name: Run tests (Maven Wrapper)
+        if: steps.detect.outputs.run == 'true'
+        working-directory: backend-spring
+        run: ./mvnw test

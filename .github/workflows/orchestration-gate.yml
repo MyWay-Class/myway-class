@@ -1,0 +1,259 @@
+name: orchestration-gate
+
+on:
+  pull_request:
+    branches: [ dev, main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect project workspace
+        id: detect
+        shell: bash
+        run: |
+          if [ -f package.json ] || [ -d myway-class ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.detect.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java
+        if: steps.detect.outputs.run == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Resolve project paths
+        if: steps.detect.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          if [ -d "myway-class" ]; then
+            project_dir="myway-class"
+          else
+            project_dir="."
+          fi
+          echo "PROJECT_DIR=${project_dir}" >> "$GITHUB_ENV"
+
+          candidates=(
+            "${project_dir}/_workspace/decision.json"
+            "_workspace/decision.json"
+            "decision.json"
+          )
+          for p in "${candidates[@]}"; do
+            if [ -f "$p" ]; then
+              echo "DECISION_PATH=$p" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "DECISION_PATH=" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        if: steps.detect.outputs.run == 'true'
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: npm ci
+
+      - name: Run orchestrator gate
+        if: steps.detect.outputs.run == 'true'
+        run: npm run orch:run
+        working-directory: ${{ env.PROJECT_DIR }}
+        env:
+          ORCH_PROFILE: strict
+          ORCH_TARGET_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
+
+      - name: Refresh decision path after gate run
+        if: steps.detect.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          candidates=(
+            "${PROJECT_DIR}/_workspace/decision.json"
+            "_workspace/decision.json"
+            "decision.json"
+          )
+          for p in "${candidates[@]}"; do
+            if [ -f "$p" ]; then
+              echo "DECISION_PATH=$p" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "DECISION_PATH=" >> "$GITHUB_ENV"
+
+      - name: Ensure decision artifact exists
+        if: steps.detect.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          if [ -z "${DECISION_PATH}" ] || [ ! -f "${DECISION_PATH}" ]; then
+            echo "decision artifact missing. checked: ${PROJECT_DIR}/_workspace/decision.json, _workspace/decision.json, decision.json"
+            exit 1
+          fi
+
+      - name: Enforce approved state
+        if: steps.detect.outputs.run == 'true'
+        run: |
+          node -e "const fs=require('fs');const p=process.env.DECISION_PATH;const d=JSON.parse(fs.readFileSync(p,'utf8'));if(d.state!=='approved'){console.error('state is not approved:',d.state,'path:',p);process.exit(1);}"
+
+      - name: Upload orchestration artifacts
+        if: always() && steps.detect.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchestration-artifacts-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            _workspace/decision.json
+            _workspace/scorecard.json
+            _workspace/remediation.json
+            _workspace/logs/audit-events.jsonl
+            _workspace/logs/state-transitions.jsonl
+            _workspace/reports/*.json
+            _workspace/threads/*.jsonl
+
+      - name: Comment PR with gate result
+        if: always() && github.event_name == 'pull_request' && steps.detect.outputs.run == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const decisionPath = process.env.DECISION_PATH || '_workspace/decision.json';
+            const scorecardPath = decisionPath.replace('decision.json', 'scorecard.json');
+            const remediationPath = decisionPath.replace('decision.json', 'remediation.json');
+            const d = fs.existsSync(decisionPath)
+              ? JSON.parse(fs.readFileSync(decisionPath,'utf8'))
+              : { traceId: 'n/a', taskId: 'n/a', state: 'unknown', decision: 'unknown', reason: 'decision artifact missing', requestChangeCodes: [], nextActions: [] };
+            const s = fs.existsSync(scorecardPath)
+              ? JSON.parse(fs.readFileSync(scorecardPath,'utf8'))
+              : null;
+            const r = fs.existsSync(remediationPath)
+              ? JSON.parse(fs.readFileSync(remediationPath,'utf8'))
+              : null;
+            const codes = Array.isArray(d.requestChangeCodes) && d.requestChangeCodes.length > 0
+              ? d.requestChangeCodes.join(', ')
+              : 'none';
+            const nextActions = Array.isArray(d.nextActions) && d.nextActions.length > 0
+              ? d.nextActions.join(' | ')
+              : 'n/a';
+            const topActions = r && Array.isArray(r.actions)
+              ? r.actions.slice(0, 3).map((a) => `[${a.code}] ${a.action} (${a.owner})`).join(' | ')
+              : 'n/a';
+            const body = [
+              '### Orchestration Gate Result',
+              `- trace id: ${d.traceId || 'n/a'}`,
+              `- task id: ${d.taskId || 'n/a'}`,
+              `- state: ${d.state}`,
+              `- decision: ${d.decision}`,
+              `- reason: ${d.reason}`,
+              s ? `- total score: ${s.total}` : '- total score: n/a',
+              s ? `- required failed: ${(Array.isArray(s.required_failed) && s.required_failed.length > 0) ? s.required_failed.join(', ') : 'none'}` : '- required failed: n/a',
+              s ? `- fail-fast triggered: ${Boolean(s.fail_fast_triggered)}` : '- fail-fast triggered: n/a',
+              `- request change codes: ${codes}`,
+              `- next actions: ${nextActions}`,
+              `- remediation (top 3): ${topActions}`
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            const marker = '### Orchestration Gate Result';
+            const previous = comments
+              .filter((c) => c.user?.type === 'Bot' && typeof c.body === 'string' && c.body.startsWith(marker))
+              .slice(-1)[0];
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: previous.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }
+
+      - name: Notify Slack on gate failure
+        if: failure() && steps.detect.outputs.run == 'true'
+        uses: actions/github-script@v7
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        with:
+          script: |
+            if (!process.env.SLACK_WEBHOOK_URL) return;
+            const fs = require('fs');
+            const decisionPath = process.env.DECISION_PATH || '_workspace/decision.json';
+            const d = fs.existsSync(decisionPath)
+              ? JSON.parse(fs.readFileSync(decisionPath,'utf8'))
+              : { traceId: 'n/a', taskId: 'n/a', state: 'unknown', decision: 'unknown', reason: 'decision artifact missing', requestChangeCodes: [] };
+            const codeText = Array.isArray(d.requestChangeCodes) && d.requestChangeCodes.length > 0
+              ? d.requestChangeCodes.join(', ')
+              : 'none';
+            const pr = context.payload.pull_request;
+            const target = pr ? `PR #${pr.number}` : context.ref;
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'orchestration-gate.yml',
+              branch: context.ref.replace('refs/heads/', ''),
+              per_page: 20
+            });
+            const recentFailures = (runs.data.workflow_runs || [])
+              .filter((r) => r.conclusion === 'failure')
+              .slice(0, 5).length;
+            const escalation = recentFailures >= 3 ? ':fire: repeated failures detected (last5 failures >=3)' : '';
+            const text = [
+              ':rotating_light: orchestration-gate failed',
+              escalation,
+              `repo: ${context.repo.owner}/${context.repo.repo}`,
+              `target: ${target}`,
+              `trace: ${d.traceId || 'n/a'}`,
+              `task: ${d.taskId || 'n/a'}`,
+              `state: ${d.state || 'n/a'} / decision: ${d.decision || 'n/a'}`,
+              `reason: ${d.reason || 'n/a'}`,
+              `codes: ${codeText}`,
+              `recent failures(last5): ${recentFailures}`,
+              `run: ${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
+            ].join('\n');
+            await fetch(process.env.SLACK_WEBHOOK_URL, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ text })
+            });
+
+      - name: Auto-approve PR when gate approved
+        if: github.event_name == 'pull_request' && github.base_ref == 'dev' && steps.detect.outputs.run == 'true'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const p = process.env.DECISION_PATH || '_workspace/decision.json';
+            const d = JSON.parse(fs.readFileSync(p,'utf8'));
+            if (d.state !== 'approved') return;
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              event: 'APPROVE',
+              body: 'Automated orchestration gate approved.'
+            });
