@@ -96,7 +96,13 @@ public class RagService {
         payload.put("intent", intentPayload);
         payload.put("entities", responseEntities);
         payload.put("chunks", rankedChunks);
-        payload.put("search", Map.of("query", normalizedQuery, "lecture_id", lectureId, "hits", rankedChunks));
+        Map<String, Object> searchPayload = new HashMap<>();
+        searchPayload.put("query", normalizedQuery);
+        if (lectureId != null && !lectureId.isBlank()) {
+            searchPayload.put("lecture_id", lectureId);
+        }
+        searchPayload.put("hits", rankedChunks);
+        payload.put("search", searchPayload);
         payload.put("answer", answerText);
         payload.put("answer_payload", answerPayload);
         payload.put("provider", Map.of("search_provider", "spring-rag-keyword", "answer_provider", "spring-rag-generator"));
