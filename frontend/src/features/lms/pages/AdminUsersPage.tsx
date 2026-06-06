@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { AuthUser } from '@myway/shared';
+import { roleLabel } from '../config';
 import { demoUsers } from '../data/demo';
 import { AdminUsersPageSections } from './AdminUsersPageSections';
 
