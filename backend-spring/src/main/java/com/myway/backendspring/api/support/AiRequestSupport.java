@@ -110,7 +110,6 @@ public class AiRequestSupport {
         ));
     }
 
-    @SuppressWarnings("unchecked")
     private List<Map<String, Object>> extractChunkList(Map<String, Object> ragPayload) {
         if (ragPayload == null || ragPayload.isEmpty()) {
             return List.of();
@@ -118,8 +117,8 @@ public class AiRequestSupport {
         Object chunks = ragPayload.get("chunks");
         if (chunks instanceof List<?> list) {
             return list.stream()
-                    .filter(Map.class::isInstance)
-                    .map(item -> (Map<String, Object>) item)
+                .filter(Map.class::isInstance)
+                    .map(this::copyMap)
                     .toList();
         }
         Object search = ragPayload.get("search");
@@ -128,11 +127,24 @@ public class AiRequestSupport {
             if (hits instanceof List<?> list) {
                 return list.stream()
                         .filter(Map.class::isInstance)
-                        .map(item -> (Map<String, Object>) item)
+                        .map(this::copyMap)
                         .toList();
             }
         }
         return List.of();
+    }
+
+    private Map<String, Object> copyMap(Object value) {
+        if (!(value instanceof Map<?, ?> raw)) {
+            return Map.of();
+        }
+        Map<String, Object> copy = new HashMap<>();
+        for (Map.Entry<?, ?> entry : raw.entrySet()) {
+            if (entry.getKey() != null) {
+                copy.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+        }
+        return copy;
     }
 
     private int asInt(Object value) {
