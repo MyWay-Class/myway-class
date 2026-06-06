@@ -65,7 +65,6 @@ public class MediaProcessingService {
         );
     }
 
-    @SuppressWarnings("unchecked")
     public Map<String, Object> processorHealth() {
         Map<String, Object> remoteHealth = dispatchSupport.fetchRemoteProcessorHealth(mediaProcessorUrl, mediaProcessorToken, objectMapper);
         List<Map<String, Object>> rows = repository.listKvByScope(EXTRACTION_SCOPE);
@@ -80,9 +79,7 @@ public class MediaProcessingService {
                 .map(JobView::toMap)
                 .toList();
 
-        Map<String, Object> ffmpeg = remoteHealth == null
-                ? Map.of("available", false, "version", "unavailable", "path", "unknown")
-                : (Map<String, Object>) remoteHealth.getOrDefault("ffmpeg", Map.of("available", false, "path", "unknown"));
+        Map<String, Object> ffmpeg = resolveFfmpegHealth(remoteHealth);
         boolean remoteOk = remoteHealth != null && Boolean.TRUE.equals(remoteHealth.getOrDefault("ok", true));
 
         return Map.of(
@@ -159,6 +156,22 @@ public class MediaProcessingService {
                 .map(item -> MediaStatus.fromNullable(String.valueOf(item.getOrDefault("status", MediaStatus.PROCESSING.name())), MediaStatus.PROCESSING))
                 .filter(status -> status == expected)
                 .count();
+    }
+
+    private Map<String, Object> resolveFfmpegHealth(Map<String, Object> remoteHealth) {
+        if (remoteHealth == null) {
+            return Map.of("available", false, "version", "unavailable", "path", "unknown");
+        }
+        Object ffmpeg = remoteHealth.get("ffmpeg");
+        if (ffmpeg instanceof Map<?, ?> map) {
+            Map<String, Object> typed = new HashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                String key = String.valueOf(entry.getKey());
+                typed.put(key, entry.getValue());
+            }
+            return typed;
+        }
+        return Map.of("available", false, "path", "unknown");
     }
 
     private record ProviderInfo(String name, String label, String description, String status, List<String> capabilities) {

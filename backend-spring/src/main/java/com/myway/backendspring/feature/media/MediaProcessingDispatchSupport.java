@@ -9,6 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class MediaProcessingDispatchSupport {
@@ -54,16 +55,31 @@ public class MediaProcessingDispatchSupport {
     }
 
     DispatchResponse parseDispatchResponse(ObjectMapper objectMapper, String responseBody) throws Exception {
-        Map<String, Object> payload = objectMapper.readValue(responseBody, Map.class);
+        Map<String, Object> payload = objectMapper.readValue(
+                responseBody,
+                objectMapper.getTypeFactory().constructMapType(Map.class, String.class, Object.class)
+        );
         String jobId = payload.get("job_id") == null ? null : String.valueOf(payload.get("job_id"));
         String status = payload.get("status") == null ? null : String.valueOf(payload.get("status"));
         return new DispatchResponse(jobId, status);
     }
 
     RemoteHealth parseRemoteHealth(ObjectMapper objectMapper, String responseBody) throws Exception {
-        Map<String, Object> payload = objectMapper.readValue(responseBody, Map.class);
+        Map<String, Object> payload = objectMapper.readValue(
+                responseBody,
+                objectMapper.getTypeFactory().constructMapType(Map.class, String.class, Object.class)
+        );
         boolean ok = Boolean.TRUE.equals(payload.getOrDefault("ok", false));
-        Map<String, Object> ffmpeg = payload.get("ffmpeg") instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of("available", false, "path", "unknown");
+        Map<String, Object> ffmpeg = payload.get("ffmpeg") instanceof Map<?, ?> map
+                ? map.entrySet().stream()
+                .filter(entry -> entry.getKey() != null)
+                .collect(Collectors.toMap(
+                        entry -> String.valueOf(entry.getKey()),
+                        Map.Entry::getValue,
+                        (left, right) -> right,
+                        HashMap::new
+                ))
+                : Map.of("available", false, "path", "unknown");
         return new RemoteHealth(ok, ffmpeg);
     }
 

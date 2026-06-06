@@ -1,6 +1,7 @@
 package com.myway.backendspring.api.support;
 
 import com.myway.backendspring.common.ApiResponse;
+import com.myway.backendspring.feature.understanding.UnderstandingResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -19,17 +20,21 @@ public class AiControllerSupport {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
     }
 
-    public Map<String, Object> intentResponse(Map<String, Object> runtime, String lectureId) {
+    public Map<String, Object> intentResponse(UnderstandingResult result) {
         Map<String, Object> data = new HashMap<>();
-        data.put("intent", "recommendation");
-        data.put("confidence", 0.82);
-        data.put("action", "show_recommendations");
-        data.put("reason", runtime.getOrDefault("text", "Spring demo intent classifier"));
-        data.put("lecture_id", lectureId);
-        data.put("provider", runtime.getOrDefault("provider", "demo"));
-        data.put("model", runtime.getOrDefault("model", "demo-intent-v1"));
-        data.put("live", runtime.getOrDefault("live", false));
-        if (runtime.containsKey("error")) data.put("error", runtime.get("error"));
+        data.put("input_type", result.inputType());
+        data.put("intent", result.intent());
+        data.put("confidence", result.confidence());
+        data.put("action", actionFor(result.route()));
+        data.put("route", result.route());
+        data.put("lecture_id", result.lectureId());
+        data.put("course_id", result.courseId());
+        data.put("entities", result.entities());
+        data.put("reason", result.debug().getOrDefault("reason", result.debug().getOrDefault("strategy", "understanding pipeline")));
+        data.put("provider", result.debug().getOrDefault("provider", "demo"));
+        data.put("model", result.debug().getOrDefault("model", "demo-intent-v1"));
+        data.put("live", result.debug().getOrDefault("live", false));
+        data.put("debug", result.debug());
         return data;
     }
 
@@ -85,5 +90,15 @@ public class AiControllerSupport {
         data.put("live", runtime.getOrDefault("live", false));
         if (runtime.containsKey("error")) data.put("error", runtime.get("error"));
         return data;
+    }
+
+    private String actionFor(String route) {
+        return switch (route == null ? "chat" : route) {
+            case "rag" -> "show_references";
+            case "summary" -> "show_summary";
+            case "quiz" -> "show_quiz";
+            case "recommendation" -> "show_recommendations";
+            default -> "show_chat";
+        };
     }
 }

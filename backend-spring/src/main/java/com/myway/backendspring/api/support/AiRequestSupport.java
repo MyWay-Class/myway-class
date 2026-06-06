@@ -2,7 +2,7 @@ package com.myway.backendspring.api.support;
 
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreRagFacade;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -16,11 +16,11 @@ import java.util.Map;
 public class AiRequestSupport {
     public record RagScope(String lectureId, String courseId) {}
 
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreRagFacade ragFacade;
     private final DemoLearningService learningService;
 
-    public AiRequestSupport(FeatureStoreService featureStore, DemoLearningService learningService) {
-        this.featureStore = featureStore;
+    public AiRequestSupport(FeatureStoreRagFacade ragFacade, DemoLearningService learningService) {
+        this.ragFacade = ragFacade;
         this.learningService = learningService;
     }
 
@@ -69,8 +69,12 @@ public class AiRequestSupport {
     }
 
     public List<Map<String, Object>> resolveRagSources(String query, String lectureId, String courseId, int limit) {
+        return resolveRagSources(query, lectureId, courseId, limit, List.of());
+    }
+
+    public List<Map<String, Object>> resolveRagSources(String query, String lectureId, String courseId, int limit, List<Map<String, Object>> entities) {
         try {
-            Map<String, Object> rag = featureStore.ragOverview(query, lectureId, courseId, limit, 0.0, false);
+            Map<String, Object> rag = ragFacade.ragOverview(query, lectureId, courseId, limit, 0.0, false, entities);
             List<Map<String, Object>> chunks = extractChunkList(rag);
             List<Map<String, Object>> sources = new ArrayList<>();
             for (Map<String, Object> chunk : chunks) {
@@ -106,7 +110,6 @@ public class AiRequestSupport {
         ));
     }
 
-    @SuppressWarnings("unchecked")
     private List<Map<String, Object>> extractChunkList(Map<String, Object> ragPayload) {
         if (ragPayload == null || ragPayload.isEmpty()) {
             return List.of();
@@ -114,8 +117,8 @@ public class AiRequestSupport {
         Object chunks = ragPayload.get("chunks");
         if (chunks instanceof List<?> list) {
             return list.stream()
-                    .filter(Map.class::isInstance)
-                    .map(item -> (Map<String, Object>) item)
+                .filter(Map.class::isInstance)
+                    .map(this::copyMap)
                     .toList();
         }
         Object search = ragPayload.get("search");
@@ -124,11 +127,24 @@ public class AiRequestSupport {
             if (hits instanceof List<?> list) {
                 return list.stream()
                         .filter(Map.class::isInstance)
-                        .map(item -> (Map<String, Object>) item)
+                        .map(this::copyMap)
                         .toList();
             }
         }
         return List.of();
+    }
+
+    private Map<String, Object> copyMap(Object value) {
+        if (!(value instanceof Map<?, ?> raw)) {
+            return Map.of();
+        }
+        Map<String, Object> copy = new HashMap<>();
+        for (Map.Entry<?, ?> entry : raw.entrySet()) {
+            if (entry.getKey() != null) {
+                copy.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+        }
+        return copy;
     }
 
     private int asInt(Object value) {

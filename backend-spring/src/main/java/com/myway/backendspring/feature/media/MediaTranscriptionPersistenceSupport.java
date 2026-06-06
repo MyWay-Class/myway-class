@@ -31,7 +31,7 @@ public class MediaTranscriptionPersistenceSupport {
         return payload.toMap();
     }
 
-    void persistCompletedExtraction(FeatureStoreRepository repository, String extractionScope, Map<String, Object> extractionInProgress, String transcriptId, int durationMs, String language, String provider, String model, String audioUrl, Map<String, Object> quality, String now) {
+    void persistCompletedExtraction(FeatureStoreRepository repository, String extractionScope, Map<String, Object> extractionInProgress, String extractionId, String transcriptId, int durationMs, String language, String provider, String model, String audioUrl, Map<String, Object> quality, String now) {
         Map<String, Object> extractionPayload = new HashMap<>(extractionInProgress);
         applyExtractionStatusUpdate(extractionPayload, new ExtractionStatusUpdate(
                 MediaStatus.COMPLETED.name(),
@@ -50,7 +50,9 @@ public class MediaTranscriptionPersistenceSupport {
         extractionPayload.put("requested_stt_model", model);
         extractionPayload.put("audio_url", audioUrl);
         extractionPayload.put("stt_quality", quality);
-        repository.upsertKv(extractionScope, transcriptId, extractionPayload);
+        extractionPayload.put("id", extractionId);
+        extractionPayload.put("transcript_id", transcriptId);
+        repository.upsertKv(extractionScope, extractionId, extractionPayload);
     }
 
     ExtractionSnapshot findExtraction(FeatureStoreRepository repository, String extractionScope, String extractionId) {

@@ -3,7 +3,7 @@ package com.myway.backendspring.api.support;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreAiFacade;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +19,7 @@ public class AiControllerAuthSupport {
     }
 
     public ResponseEntity<ApiResponse<Map<String, Object>>> requireAiEligible(
-            FeatureStoreService featureStore,
+            FeatureStoreAiFacade featureStore,
             SessionView session,
             AiControllerSupport aiControllerSupport
     ) {

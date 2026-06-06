@@ -1,6 +1,6 @@
 package com.myway.backendspring.feature.media;
 
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreMediaFacade;
 import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import org.springframework.stereotype.Service;
 
@@ -19,20 +19,20 @@ public class MediaPipelineService {
     private static final String SPEAKER_REVIEW_SCOPE = "media_speaker_review";
 
     private final FeatureStoreRepository repository;
-    private final FeatureStoreService featureStoreService;
+    private final FeatureStoreMediaFacade featureStoreFacade;
     private final MediaPipelineQuerySupport querySupport;
     private final MediaPipelineBatchSupport batchSupport;
     private final MediaPipelineAssetService assetService;
 
     public MediaPipelineService(
             FeatureStoreRepository repository,
-            FeatureStoreService featureStoreService,
+            FeatureStoreMediaFacade featureStoreFacade,
             MediaPipelineQuerySupport querySupport,
             MediaPipelineBatchSupport batchSupport,
             MediaPipelineAssetService assetService
     ) {
         this.repository = repository;
-        this.featureStoreService = featureStoreService;
+        this.featureStoreFacade = featureStoreFacade;
         this.querySupport = querySupport;
         this.batchSupport = batchSupport;
         this.assetService = assetService;
@@ -55,15 +55,15 @@ public class MediaPipelineService {
     }
 
     public Map<String, Object> dispatchExtractionJob(String extractionId, String audioUrl) {
-        return featureStoreService.dispatchExtractionJob(extractionId, audioUrl);
+        return featureStoreFacade.dispatchExtractionJob(extractionId, audioUrl);
     }
 
     public Map<String, Object> transcribe(String lectureId, String language, Integer durationMs, String sttProvider, String sttModel, String audioUrl) {
-        return featureStoreService.transcribe(lectureId, language, durationMs, sttProvider, sttModel, audioUrl);
+        return featureStoreFacade.transcribe(lectureId, language, durationMs, sttProvider, sttModel, audioUrl);
     }
 
     public Map<String, Object> transcribe(String lectureId, String language, Integer durationMs, String sttProvider, String sttModel, String audioUrl, String extractionId) {
-        return featureStoreService.transcribe(lectureId, language, durationMs, sttProvider, sttModel, audioUrl, extractionId);
+        return featureStoreFacade.transcribe(lectureId, language, durationMs, sttProvider, sttModel, audioUrl, extractionId);
     }
 
     public Map<String, Object> summarizeLecture(String lectureId, String style, String language) {
@@ -120,11 +120,11 @@ public class MediaPipelineService {
     }
 
     public Map<String, Object> sttProviders() {
-        return featureStoreService.sttProviders();
+        return featureStoreFacade.sttProviders();
     }
 
     public Map<String, Object> processorHealth() {
-        return featureStoreService.processorHealth();
+        return featureStoreFacade.processorHealth();
     }
 
     public Map<String, Object> mediaAsset(String assetKey) {
@@ -202,7 +202,7 @@ public class MediaPipelineService {
             String approvalState,
             String notificationChannel
     ) {
-        return featureStoreService.completeExtractionCallback(
+        return featureStoreFacade.completeExtractionCallback(
                 extractionId,
                 status,
                 errorMessage,

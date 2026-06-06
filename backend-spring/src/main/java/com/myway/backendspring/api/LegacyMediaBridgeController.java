@@ -3,7 +3,7 @@ package com.myway.backendspring.api;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.common.ApiResponse;
-import com.myway.backendspring.feature.FeatureStoreService;
+import com.myway.backendspring.feature.FeatureStoreMediaFacade;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,13 +41,13 @@ public class LegacyMediaBridgeController {
 
     private final MediaController mediaController;
     private final MediaSttOrchestrationController mediaSttOrchestrationController;
-    private final FeatureStoreService featureStore;
+    private final FeatureStoreMediaFacade featureStore;
     private final SessionService sessionService;
 
     public LegacyMediaBridgeController(
             MediaController mediaController,
             MediaSttOrchestrationController mediaSttOrchestrationController,
-            FeatureStoreService featureStore,
+            FeatureStoreMediaFacade featureStore,
             SessionService sessionService
     ) {
         this.mediaController = mediaController;
