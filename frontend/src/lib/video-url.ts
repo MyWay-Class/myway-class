@@ -6,28 +6,7 @@ function canonicalizeMediaAssetPath(videoUrl: string): string {
   if (markerIndex < 0) {
     return videoUrl;
   }
-
-  const before = videoUrl.slice(0, markerIndex + marker.length);
-  const after = videoUrl.slice(markerIndex + marker.length);
-  const [rawAssetKey, queryString = ''] = after.split('?', 2);
-  if (!rawAssetKey) {
-    return videoUrl;
-  }
-
-  let decodedKey = rawAssetKey;
-  try {
-    decodedKey = decodeURIComponent(rawAssetKey);
-  } catch {
-    decodedKey = rawAssetKey;
-  }
-
-  const encodedKey = decodedKey
-    .split('/')
-    .filter((segment) => segment.trim().length > 0)
-    .map((segment) => encodeURIComponent(segment))
-    .join('/');
-  const querySuffix = queryString ? `?${queryString}` : '';
-  return `${before}${encodedKey}${querySuffix}`;
+  return videoUrl;
 }
 
 function resolveMediaUrl(videoUrl: string): string {
