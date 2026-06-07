@@ -64,7 +64,11 @@ export function LoginScreen({ demoUsers, busy, onLogin, onBackToHome }: LoginScr
             <p className="mt-1 text-[13px] leading-6 text-slate-500">이메일과 비밀번호로 로그인하세요.</p>
 
             <div className="mt-6 flex flex-col gap-2.5">
-              {demoUsers.map((user) => {
+              {demoUsers.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-500">
+                  사용자 목록을 불러오지 못했습니다. 백엔드 연결과 DB 시드를 확인한 뒤 다시 시도하세요.
+                </div>
+              ) : demoUsers.map((user) => {
                 const tone = toRoleTone(user.role);
                 return (
                   <button

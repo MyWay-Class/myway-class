@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import {
   canEnroll,
   canManageCourses,
-  demoUsers as defaultDemoUsers,
   type AuthUser,
   type AILogOverview,
   type AIInsights,
@@ -46,7 +45,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [notice, setNotice] = useState('로그인 후 내 정보와 진도가 활성화됩니다.');
-  const [loginUsers, setLoginUsers] = useState<AuthUser[]>(defaultDemoUsers);
+  const [loginUsers, setLoginUsers] = useState<AuthUser[]>([]);
 
   const enrolledCourses = useMemo(() => {
     if (!session) {
