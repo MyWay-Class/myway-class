@@ -10,6 +10,7 @@ backend/tmp/
 tmp/
 frontend.zip
 temp-sample-10s.mp4
+.worktrees/
 
 .github/.tmp_*.md
 _workspace/
