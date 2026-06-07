@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { type CourseCard, type CourseDetail, type LectureDetail, type ShortformCommunityItem, type ShortformVideo } from '@myway/shared';
+import {
+  type CourseCard,
+  type CourseDetail,
+  type LectureDetail,
+  type ShortformCommunityItem,
+  type ShortformExtractionDetail,
+  type ShortformVideo,
+} from '@myway/shared';
 import { loadCourseDetail, loadLectureTranscriptDetailed } from '../../../lib/api';
-import { loadShortformCommunity, loadShortformVideoDraft } from '../../../lib/api-shortforms';
+import { generateShortformExtractionDraft, loadShortformCommunity, loadShortformVideoDraft } from '../../../lib/api-shortforms';
 import { resolvePlayableVideoUrl } from '../../../lib/video-url';
 import type { ClipSuggestion, WizardStep } from './ShortformWizardTypes';
-import { buildClipSuggestions, clipKey, formatDuration, type TranscriptSnapshot } from './shortformWizardUtils';
+import { clipKey, formatDuration, type TranscriptSnapshot } from './shortformWizardUtils';
 import { useShortformWizardActions } from './useShortformWizardActions';
 
 type UseShortformWizardStateParams = {
@@ -26,6 +33,7 @@ export function useShortformWizardState({ highlightedLecture, selectedCourse, co
   const [createdVideo, setCreatedVideo] = useState<ShortformVideo | null>(null);
   const [communityItems, setCommunityItems] = useState<ShortformCommunityItem[]>([]);
   const [transcriptMap, setTranscriptMap] = useState<Record<string, TranscriptSnapshot>>({});
+  const [extractionDraft, setExtractionDraft] = useState<ShortformExtractionDetail | null>(null);
 
   const courseLectures = Array.isArray(courseDetail?.lectures) ? courseDetail.lectures : [];
 
@@ -44,6 +52,7 @@ export function useShortformWizardState({ highlightedLecture, selectedCourse, co
     setSelectedClips([]);
     setLectureFilter('all');
     setCreatedVideo(null);
+    setExtractionDraft(null);
     setStatus('아직 조립된 숏폼이 없습니다.');
     setStep(1);
   }, [activeCourseId]);
@@ -108,7 +117,51 @@ export function useShortformWizardState({ highlightedLecture, selectedCourse, co
     };
   }, [createdVideo?.export_status, createdVideo?.id, sessionToken]);
 
-  const clipSuggestions = useMemo(() => buildClipSuggestions(courseDetail, transcriptMap), [courseDetail, transcriptMap]);
+  useEffect(() => {
+    let alive = true;
+    if (!courseDetail?.id || courseLectures.length === 0) {
+      setExtractionDraft(null);
+      return undefined;
+    }
+
+    const transcriptSegmentsByLecture = Object.fromEntries(
+      Object.entries(transcriptMap)
+        .filter(([, snapshot]) => Boolean(snapshot?.segments?.length))
+        .map(([lectureId, snapshot]) => [
+          lectureId,
+          (snapshot?.segments ?? []).map((segment) => ({
+            start_ms: segment.start_ms,
+            end_ms: segment.end_ms,
+            text: segment.text,
+          })),
+        ]),
+    );
+
+    if (Object.keys(transcriptSegmentsByLecture).length === 0) {
+      setExtractionDraft(null);
+      return undefined;
+    }
+
+    generateShortformExtractionDraft(
+      {
+        course_id: courseDetail.id,
+        mode: 'cross',
+        transcript_segments_by_lecture: transcriptSegmentsByLecture,
+      },
+      sessionToken,
+    ).then((result) => {
+      if (alive) setExtractionDraft(result);
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, [courseDetail?.id, courseLectures.length, transcriptMap, sessionToken]);
+
+  const clipSuggestions = useMemo(
+    () => extractionDraft?.candidates ?? [],
+    [extractionDraft],
+  );
   const lectureTabs = useMemo(() => {
     if (!courseDetail) return [];
     return courseLectures.map((lecture, index) => ({
@@ -131,6 +184,7 @@ export function useShortformWizardState({ highlightedLecture, selectedCourse, co
 
   const { handleCompose, handleShare, toggleClip, removeClip, updateClipTimes } = useShortformWizardActions({
     courseDetail,
+    extractionId: extractionDraft?.extraction.id ?? null,
     selectedClips,
     title,
     description,
@@ -159,6 +213,7 @@ export function useShortformWizardState({ highlightedLecture, selectedCourse, co
     status,
     createdVideo,
     communityItems,
+    extractionDraft,
     courseLectures,
     clipSuggestions,
     lectureTabs,

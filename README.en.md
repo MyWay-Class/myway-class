@@ -10,8 +10,8 @@
 
 [한국어 README](./README.md)
 
-MyWayClass is an LMS platform that restructures lectures into personalized short-form learning flows.  
-It helps learners focus on the exact part they need while giving instructors and operators tools to repurpose and manage lecture content.
+MyWayClass is an AI-based LMS platform that lets learners jump directly to the essential parts of a lecture instead of replaying the entire video.  
+It gives learners fast access to the exact segment they need while providing instructors and operators with tools to repurpose and manage lecture content.
 
 ## Table of Contents
 
@@ -47,12 +47,14 @@ MyWayClass is designed to solve that problem by:
 
 ## Core Features
 
-- Role-based learning experiences (student/instructor/admin)
-- Course/lecture/enrollment management and learning dashboard
-- STT transcript pipeline, timeline summary, and RAG-based Q&A
-- Short-form generation/retry/share/library flows
-- AI summary/chat and operational AI logs/insights
-- Media upload/processing pipeline and asset mapping
+- Lecture viewing with timestamp-based script navigation and resume playback
+- Short-form creation, preview, saving, sharing, and personal library management
+- AI summary, AI chat, and quiz generation
+- RAG-based Q&A with related segment discovery
+- STT pipeline: audio extraction, transcription, chunking, and metadata synchronization
+- Lecture studio and course management
+- Separate student/instructor/admin screens
+- Media upload, processing, and tracking
 
 ## Workflow
 
@@ -83,11 +85,13 @@ The system is built around lecture fragments rather than a single full-length vi
 | Area | Technology |
 |------|------------|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS |
-| Backend (Primary) | Spring Boot (Java 21), Maven Wrapper |
-| Backend (Legacy) | Hono, TypeScript, Cloudflare Workers tooling |
+| Backend (Primary) | Spring Boot (Java 21), Maven Wrapper, Supabase PostgreSQL |
+| Backend (Auxiliary) | Hono, TypeScript, Cloudflare Workers tooling |
 | Shared | Common types and domain logic under `packages/shared` |
 | Build/Test | npm workspaces, Vite, Maven, Playwright, Vitest |
 | Media | `ffmpeg-static` based media processing |
+| AI | Gemini, Whisper, Ollama, Cloudflare AI |
+| Storage | Cloudflare D1, R2 |
 
 ## Project Structure
 
@@ -128,19 +132,17 @@ npm install
 ### Start Development Servers
 
 ```bash
-npm run dev
-```
-
-`npm run dev` currently runs the frontend dev server (`dev:frontend`).
-
-If you want to run frontend and backend separately:
-
-```bash
 npm run dev:frontend
 npm run dev:backend
+npm run dev:backend:legacy
+npx tsx scripts/media-processor/server.ts
 ```
 
-Use `npm run dev:backend:legacy` only when you need the legacy TypeScript backend.
+- `npm run dev:frontend` starts the Vite frontend dev server.
+- `npm run dev:backend` starts the Spring backend.
+- `npm run dev:backend:legacy` starts the legacy Cloudflare Workers backend.
+- `scripts/media-processor/server.ts` starts the local media processor.
+- Set `VITE_API_BASE_URL` when the frontend must target a remote API.
 
 ### Verification and Build
 
@@ -160,10 +162,9 @@ npm run test:frontend
 
 | Command | Description |
 |------|------|
-| `npm run dev` | Run frontend dev server |
-| `npm run dev:frontend` | Run frontend only |
+| `npm run dev:frontend` | Run the frontend dev server |
 | `npm run dev:backend` | Run Spring backend |
-| `npm run dev:backend:legacy` | Run legacy TypeScript backend |
+| `npm run dev:backend:legacy` | Run legacy TypeScript/Workers backend |
 | `npm run check:frontend-deps` | Check frontend workspace dependencies |
 | `npm run check:backend-deps` | Check backend workspace dependencies |
 | `npm run check:deps` | Check frontend/backend dependencies |
@@ -175,6 +176,19 @@ npm run test:frontend
 | `npm run smoke:media-ai-shortform` | Media/AI/shortform smoke test |
 | `npm run orch:run` | Run orchestrator |
 | `npm run orch:checks` | Validate orchestrator policy/results |
+
+## Deployment
+
+| Environment | Frontend | Backend |
+|------|----------|---------|
+| dev | Cloudflare Pages | Spring backend + Worker auxiliary |
+| staging | Cloudflare Pages | Spring backend + Worker auxiliary |
+| production | Cloudflare Pages | Spring backend + Worker auxiliary |
+
+- The frontend is deployed on Cloudflare Pages.
+- The Spring backend is the primary execution path.
+- `backend/` remains as an auxiliary/legacy Cloudflare Workers path.
+- Remote frontend builds receive the API URL through `VITE_API_BASE_URL`.
 
 ## CI Operations
 

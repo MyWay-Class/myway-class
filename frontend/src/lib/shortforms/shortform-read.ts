@@ -33,11 +33,11 @@ export async function loadShortformCommunity(
 export async function generateShortformExtractionDraft(
   input: ShortformGenerateRequest,
   sessionToken?: string | null,
-): Promise<ShortformExtraction | null> {
+): Promise<ShortformExtractionDetail | null> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
   if (!token) return null;
 
-  const response = await request<ShortformExtraction>(
+  const response = await request<ShortformExtractionDetail>(
     '/api/v1/shortform/generate',
     {
       method: 'POST',

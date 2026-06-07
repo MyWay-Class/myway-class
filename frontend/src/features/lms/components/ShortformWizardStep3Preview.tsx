@@ -52,7 +52,7 @@ export function ShortformWizardStep3Preview({
       </div>
       <div className="mt-4 space-y-1.5">
         {selectedClips.map((clip, index) => {
-          const key = `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
+          const key = clip.id;
           return (
             <div key={key} className="space-y-3 rounded-xl bg-white/5 px-3 py-3 text-xs">
               <div className="flex items-center gap-2">
