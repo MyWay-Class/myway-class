@@ -2,9 +2,10 @@ import {
   getCourseDetail,
   getShortformVideoDetail,
   listLectureTranscripts,
+  type TranscriptChunk,
   type ShortformGenerateRequest,
   type ShortformComposeRequest,
-  type ShortformExportVideo,
+  type ShortformVideoDetail,
   type MediaRepository,
   generateShortformExtraction,
   composeShortformVideo,
@@ -20,6 +21,7 @@ export async function generateShortformCandidates(
   if (!courseId) return null;
 
   const transcriptSegmentsByLecture: Record<string, Array<{ start_ms: number; end_ms: number; text: string }>> = {};
+  const transcriptChunksByLecture: Record<string, TranscriptChunk[]> = {};
   const course = getCourseDetail(courseId, userId);
   const lectureIds =
     body?.mode === 'single' && body?.lecture_id?.trim()
@@ -30,6 +32,7 @@ export async function generateShortformCandidates(
     for (const lectureId of lectureIds) {
       const transcript = (await listLectureTranscripts(lectureId, repository))[0] ?? null;
       if (transcript?.segments?.length) {
+        transcriptChunksByLecture[lectureId] = transcript.segments;
         transcriptSegmentsByLecture[lectureId] = transcript.segments.map((segment) => ({
           start_ms: segment.start_ms,
           end_ms: segment.end_ms,
@@ -46,11 +49,12 @@ export async function generateShortformCandidates(
     style: body?.style ?? 'highlight',
     target_duration_sec: body?.target_duration_sec ?? 300,
     language: body?.language ?? 'ko',
+    transcript_chunks_by_lecture: transcriptChunksByLecture,
     transcript_segments_by_lecture: transcriptSegmentsByLecture,
   });
 }
 
-export function composeShortformAndMarkProcessing(userId: string, body: ShortformComposeRequest | null): ShortformExportVideo | null {
+export function composeShortformAndMarkProcessing(userId: string, body: ShortformComposeRequest | null): ShortformVideoDetail | null {
   const extractionId = body?.extraction_id?.trim();
   const title = body?.title?.trim();
   if (!extractionId || !title) return null;
@@ -71,5 +75,5 @@ export function composeShortformAndMarkProcessing(userId: string, body: Shortfor
     export_job_id: null,
     export_retry_count: 0,
   });
-  return getShortformVideoDetail(video.id);
+  return getShortformVideoDetail(video.id) ?? null;
 }

@@ -1,3 +1,5 @@
+import type { TimelineProject, TranscriptChunk } from './transcript';
+
 export type ShortformStyle = 'highlight' | 'exam_prep' | 'quick_review' | 'deep_dive' | 'custom';
 
 export type ShortformStatus = 'DRAFT' | 'GENERATED' | 'REVIEWED' | 'PUBLIC' | 'ARCHIVED';
@@ -107,6 +109,7 @@ export type ShortformGenerateRequest = {
   style?: ShortformStyle;
   target_duration_sec?: number;
   language?: string;
+  transcript_chunks_by_lecture?: Record<string, TranscriptChunk[]>;
   transcript_segments_by_lecture?: Record<string, Array<{ start_ms: number; end_ms: number; text: string }>>;
 };
 
@@ -120,6 +123,7 @@ export type ShortformComposeRequest = {
   course_id?: string;
   title: string;
   candidate_ids?: string[];
+  timeline_project?: TimelineProject;
   clips?: Array<{
     lecture_id: string;
     start_ms: number;

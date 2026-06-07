@@ -50,6 +50,22 @@ export function useShortformWizardActions({
         title: title.trim() || `${courseDetail.title} 숏폼`,
         description,
         candidate_ids: selectedClips.map((clip) => clip.id),
+        timeline_project: {
+          id: extractionId,
+          course_id: courseDetail.id,
+          title: title.trim() || `${courseDetail.title} 숏폼`,
+          description,
+          status: 'selected',
+          clips: selectedClips.map((clip, order_index) => ({
+            lecture_id: clip.lecture_id,
+            start_ms: clip.start_time_ms,
+            end_ms: clip.end_time_ms,
+            text: clip.description,
+            order_index,
+          })),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
       },
       sessionToken,
     );

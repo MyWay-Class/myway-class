@@ -9,7 +9,7 @@ import type {
   AIRagResult,
   AISearchResult,
 } from '../types';
-import { buildAnswerText, buildProviderPlan, buildSuggestions, extractEntities } from './entities';
+import { buildAnswerPolicy, buildAnswerText, buildProviderPlan, buildSuggestions, extractEntities } from './entities';
 import { buildCorpus, rankChunks } from './chunking';
 
 function resolveLabel(input: AIRagRequest): string {
@@ -38,12 +38,13 @@ function buildAnswerResult(
   intent: AIIntentResult,
   chunks: Awaited<ReturnType<typeof rankChunks>>,
   label: string,
+  policy: ReturnType<typeof buildAnswerPolicy>,
 ): AIAnswerResult {
   return {
     question: query,
     lecture_id: lectureId,
     intent,
-    answer: buildAnswerText(query, intent.intent, chunks, label),
+    answer: buildAnswerText(query, intent.intent, chunks, label, policy),
     references: chunks,
     suggestions: buildSuggestions(intent.intent, label),
   };
@@ -61,6 +62,7 @@ export async function buildAIRAGOverview(
   });
   const chunks = await rankChunks(query, await buildCorpus(input, repository), Math.max(1, Math.min(6, input.limit ?? 4)));
   const label = resolveLabel(input);
+  const policy = buildAnswerPolicy(intent.intent, chunks[0]?.similarity ?? 0);
 
   return {
     query,
@@ -70,7 +72,8 @@ export async function buildAIRAGOverview(
     entities: extractEntities(input),
     chunks,
     search: buildSearchResult(query, input.lecture_id ?? null, chunks),
-    answer: buildAnswerResult(query, input.lecture_id ?? null, intent, chunks, label),
+    answer: buildAnswerResult(query, input.lecture_id ?? null, intent, chunks, label, policy),
+    policy,
     provider: buildProviderPlan(input.preferred_provider),
   };
 }
