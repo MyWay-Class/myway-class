@@ -34,7 +34,7 @@ export function mapComposeError(code?: string, message?: string): string {
 }
 
 export function clipKey(clip: ClipSuggestion): string {
-  return `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
+  return clip.id;
 }
 
 function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, transcript: TranscriptSnapshot): ClipSuggestion[] {
@@ -60,6 +60,8 @@ function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, tra
     );
 
     return {
+      id: `${lecture.id}:${start}:${end}:${clipIndex}`,
+      extraction_id: '',
       lecture_id: lecture.id,
       lecture_title: lecture.title,
       start_time_ms: start,
@@ -89,6 +91,8 @@ export function buildClipSuggestions(course: CourseDetail | null, transcriptMap:
       const description = normalizeShortformDescription((lecture.content_text ?? '').slice(0, 120), `${lecture.title} 요약 구간`);
 
       return {
+        id: `${lecture.id}:${start_time_ms}:${end_time_ms}:${clipIndex}`,
+        extraction_id: '',
         lecture_id: lecture.id,
         lecture_title: lecture.title,
         start_time_ms,

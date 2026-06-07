@@ -78,7 +78,7 @@ export function ShortformWizardStep2({
       <div className="mt-4 space-y-2">
         {filteredSuggestions.length > 0 ? (
           filteredSuggestions.map((clip, index) => {
-            const key = `${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`;
+            const key = clip.id;
             const selected = selectedClipKeys.includes(key);
 
             return (

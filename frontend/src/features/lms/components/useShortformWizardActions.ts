@@ -10,6 +10,7 @@ import { clipKey, mapComposeError, MAX_CLIP_MS, MIN_CLIP_MS } from './shortformW
 
 type UseShortformWizardActionsParams = {
   courseDetail: CourseDetail | null;
+  extractionId: string | null;
   selectedClips: ClipSuggestion[];
   title: string;
   description: string;
@@ -24,6 +25,7 @@ type UseShortformWizardActionsParams = {
 
 export function useShortformWizardActions({
   courseDetail,
+  extractionId,
   selectedClips,
   title,
   description,
@@ -36,17 +38,18 @@ export function useShortformWizardActions({
   setSelectedClips,
 }: UseShortformWizardActionsParams) {
   async function handleCompose() {
-    if (!courseDetail || selectedClips.length === 0) {
-      setStatus('조립할 강의와 클립이 필요합니다.');
+    if (!courseDetail || !extractionId || selectedClips.length === 0) {
+      setStatus('숏폼 후보를 먼저 준비해 주세요.');
       return;
     }
     setStatus('선택한 구간으로 숏폼을 생성하는 중입니다.');
     const result = await composeShortformDraft(
       {
+        extraction_id: extractionId,
         course_id: courseDetail.id,
         title: title.trim() || `${courseDetail.title} 숏폼`,
         description,
-        clips: selectedClips.map((clip) => ({ lecture_id: clip.lecture_id, start_ms: clip.start_time_ms, end_ms: clip.end_time_ms })),
+        candidate_ids: selectedClips.map((clip) => clip.id),
       },
       sessionToken,
     );

@@ -10,7 +10,7 @@
 
 [English README](./README.en.md)
 
-강의를 개인화된 숏폼과 학습 흐름으로 다시 구성하는 LMS 플랫폼입니다.  
+강의를 통째로 다시 보지 않아도 되도록, 강의 안의 핵심 구간만 골라 바로 학습할 수 있게 만드는 AI 기반 LMS 플랫폼입니다.  
 학습자에게는 필요한 구간만 빠르게 학습할 수 있는 경험을, 운영자와 강사에게는 강의 콘텐츠를 재가공하고 관리할 수 있는 도구를 제공합니다.
 
 ## 목차
@@ -47,14 +47,15 @@
 
 ## 핵심 기능
 
-- 강의 시청 및 학습 대시보드
-- 강의 스튜디오와 코스 관리
-- 강의 내용을 다시 분해하는 숏폼 생성
+- 강의 시청: 타임스탬프 기반 스크립트, 구간 이동, 이어보기
+- 숏폼 생성: 핵심 구간만 선택해 미리보기, 저장, 공유
 - AI 요약, AI 채팅, 퀴즈 생성
 - RAG 기반 질문 응답 및 관련 구간 탐색
-- 미디어 업로드, 오디오 추출, 처리 파이프라인
+- STT 파이프라인: 오디오 추출, 전사, 청킹, 메타 동기화
+- 강의 스튜디오와 코스 관리
 - 학생, 강사, 관리자 화면 분리
-- 숏폼 커뮤니티 및 공유 흐름
+- 미디어 업로드와 처리 추적
+- 숏폼 커뮤니티 및 내 숏폼 관리
 
 ## 동작 흐름
 
@@ -85,11 +86,13 @@
 | 구분 | 기술 |
 |------|------|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS |
-| Backend (Primary) | Spring Boot (Java 21), Maven Wrapper |
-| Backend (Legacy) | Hono, TypeScript, Cloudflare Workers tooling |
+| Backend (Primary) | Spring Boot (Java 21), Maven Wrapper, Supabase PostgreSQL |
+| Backend (Auxiliary) | Hono, TypeScript, Cloudflare Workers tooling |
 | Shared | `packages/shared` 기반 공용 타입/도메인 로직 |
 | Build/Test | npm workspaces, Vite, Maven, Playwright, Vitest |
 | Media | `ffmpeg-static` 기반 미디어 처리 |
+| AI | Gemini, Whisper, Ollama, Cloudflare AI |
+| Storage | Cloudflare D1, R2 |
 
 ## 프로젝트 구조
 
@@ -130,19 +133,23 @@ npm install
 ### 개발 서버 실행
 
 ```bash
-npm run dev
-```
-
-현재 `npm run dev`는 프론트엔드 개발 서버(`dev:frontend`)를 실행합니다.
-
-프론트엔드와 백엔드를 분리해 실행하려면:
-
-```bash
 npm run dev:frontend
 npm run dev:backend
 ```
 
-레거시 백엔드가 필요하면 `npm run dev:backend:legacy`를 사용합니다.
+```bash
+npm run dev:backend:legacy
+```
+
+```bash
+npx tsx scripts/media-processor/server.ts
+```
+
+- `npm run dev:frontend`는 Vite 프론트엔드 개발 서버를 실행합니다.
+- `npm run dev:backend`는 Spring 백엔드를 실행합니다.
+- `npm run dev:backend:legacy`는 Cloudflare Workers 기반 레거시 백엔드를 실행합니다.
+- `scripts/media-processor/server.ts`는 로컬 미디어 처리 서버입니다.
+- 프론트가 원격 API를 바라봐야 하면 `VITE_API_BASE_URL`을 설정합니다.
 
 ### 검증 및 빌드
 
@@ -162,10 +169,9 @@ npm run test:frontend
 
 | 명령어 | 설명 |
 |------|------|
-| `npm run dev` | 프론트엔드 개발 서버 실행 |
-| `npm run dev:frontend` | frontend만 실행 |
+| `npm run dev:frontend` | frontend 개발 서버 실행 |
 | `npm run dev:backend` | Spring 백엔드 실행 |
-| `npm run dev:backend:legacy` | 레거시(TypeScript) 백엔드 실행 |
+| `npm run dev:backend:legacy` | 레거시(TypeScript/Workers) 백엔드 실행 |
 | `npm run check:frontend-deps` | frontend workspace 의존성 점검 |
 | `npm run check:backend-deps` | backend workspace 의존성 점검 |
 | `npm run check:deps` | frontend/backend 의존성 점검 |
@@ -177,6 +183,19 @@ npm run test:frontend
 | `npm run smoke:media-ai-shortform` | 미디어/AI/숏폼 스모크 실행 |
 | `npm run orch:run` | 오케스트레이터 실행 |
 | `npm run orch:checks` | 오케스트레이터 정책/결과 검증 |
+
+## 배포
+
+| 환경 | Frontend | Backend |
+|------|----------|---------|
+| dev | Cloudflare Pages | Spring backend + Worker auxiliary |
+| staging | Cloudflare Pages | Spring backend + Worker auxiliary |
+| production | Cloudflare Pages | Spring backend + Worker auxiliary |
+
+- 프론트는 Cloudflare Pages에 배포합니다.
+- Spring 백엔드가 주 실행 경로입니다.
+- `backend/`의 Cloudflare Workers 경로는 보조/레거시 경로로 유지합니다.
+- 원격 프론트는 `VITE_API_BASE_URL`로 API 주소를 주입받습니다.
 
 ## CI 운영
 

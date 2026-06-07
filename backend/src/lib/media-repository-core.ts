@@ -23,8 +23,8 @@ import {
   createLectureSummaryNote,
   createLectureTranscript,
   updateAudioExtraction,
-  upsertPipeline,
 } from './media-repository-write-ops';
+import { upsertPipeline } from './media-repository-pipeline-ops';
 
 export function createMediaRepository(db: D1Database): MediaRepository {
   const repository: MediaRepository = {
