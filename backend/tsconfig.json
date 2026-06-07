@@ -6,5 +6,5 @@
     "types": ["@cloudflare/workers-types"]
   },
   "include": ["src", "wrangler.jsonc"],
-  "exclude": ["src/dev-server.ts"]
+  "exclude": ["src/dev-server.ts", "src/dev-server-core.ts"]
 }

@@ -3,6 +3,8 @@ import type { AudioExtraction, LectureNote, LecturePipeline, LectureTranscript }
 import { now } from '@myway/shared/lms/media/helpers';
 import { mapExtractionRow, mapNoteRow, mapPipelineRow, mapTranscriptRow, type ExtractionRow, type NoteRow, type PipelineRow, type TranscriptRow } from './media-repository-mappers';
 
+type Awaitable<T> = T | Promise<T>;
+
 export async function getLectureTranscript(db: D1Database, lectureId: string): Promise<LectureTranscript | undefined> {
   const row = await db
     .prepare('SELECT * FROM lecture_transcripts WHERE lecture_id = ? ORDER BY created_at DESC LIMIT 1')
@@ -44,9 +46,9 @@ export async function getLecturePipeline(
   db: D1Database,
   lectureId: string,
   readers: {
-    getLectureTranscript: (lectureId: string) => Promise<LectureTranscript | undefined>;
-    listLectureNotes: (lectureId: string) => Promise<LectureNote[]>;
-    listAudioExtractions: (lectureId: string) => Promise<AudioExtraction[]>;
+    getLectureTranscript: (lectureId: string) => Awaitable<LectureTranscript | undefined>;
+    listLectureNotes: (lectureId: string) => Awaitable<LectureNote[]>;
+    listAudioExtractions: (lectureId: string) => Awaitable<AudioExtraction[]>;
   },
 ): Promise<LecturePipeline> {
   const row = await db.prepare('SELECT * FROM lecture_pipelines WHERE lecture_id = ? LIMIT 1').bind(lectureId).first<PipelineRow>();
