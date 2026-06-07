@@ -22,16 +22,16 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/shortform")
 public class ShortformController {
-    public record GenerateRequest(String course_id, String mode) {}
+    public record GenerateRequest(String course_id, String mode, Map<String, List<Map<String, Object>>> transcript_segments_by_lecture) {}
     public record SelectCandidatesRequest(@NotBlank String extraction_id, @NotEmpty List<@NotBlank String> candidate_ids) {}
     public record ComposeClipRequest(
             @NotBlank String lecture_id,
             @NotNull @PositiveOrZero Long start_ms,
             @NotNull @PositiveOrZero Long end_ms
     ) {}
-    public record ComposeRequest(String title, String description, String course_id, String extraction_id, List<@Valid ComposeClipRequest> clips) {
+    public record ComposeRequest(String title, String description, String course_id, String extraction_id, List<String> candidate_ids, List<@Valid ComposeClipRequest> clips) {
         public ComposeRequest(String title, String description, String course_id) {
-            this(title, description, course_id, null, List.of());
+            this(title, description, course_id, null, List.of(), List.of());
         }
     }
     public record ShareRequest(@NotBlank String video_id, String course_id, String visibility, String message) {}
@@ -83,7 +83,8 @@ public class ShortformController {
         if (s == null) return support.unauthenticated();
         Map<String, Object> payload = Map.of(
                 "course_id", support.orEmpty(body.course_id()),
-                "mode", support.orEmpty(body.mode())
+                "mode", support.orEmpty(body.mode()),
+                "transcript_segments_by_lecture", body.transcript_segments_by_lecture() == null ? Map.of() : body.transcript_segments_by_lecture()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.createShortformExtraction(s.user().id(), payload), "숏폼 후보가 생성되었습니다."));
     }
@@ -111,6 +112,19 @@ public class ShortformController {
         SessionView s = require(auth);
         if (s == null) return support.unauthenticated();
         List<ComposeClipRequest> sourceClips = body.clips() == null ? List.of() : body.clips();
+        if (sourceClips.isEmpty()) {
+            List<String> candidateIds = body.candidate_ids() == null ? List.of() : body.candidate_ids().stream().map(value -> value == null ? "" : value.trim()).filter(value -> !value.isBlank()).toList();
+            if (!candidateIds.isEmpty() && body.extraction_id() != null && !body.extraction_id().isBlank()) {
+                List<Map<String, Object>> resolvedClips = shortformService.resolveCandidateClips(body.extraction_id().trim(), candidateIds);
+                sourceClips = resolvedClips.stream()
+                        .map(clip -> new ComposeClipRequest(
+                                String.valueOf(clip.getOrDefault("lecture_id", "")).trim(),
+                                Long.valueOf(Long.parseLong(String.valueOf(clip.getOrDefault("start_ms", 0L)))),
+                                Long.valueOf(Long.parseLong(String.valueOf(clip.getOrDefault("end_ms", 0L))))
+                        ))
+                        .toList();
+            }
+        }
         List<ShortformComposeValidationSupport.ComposeClipInput> clipInputs = sourceClips.stream()
                 .map(clip -> new ShortformComposeValidationSupport.ComposeClipInput(clip.lecture_id(), clip.start_ms(), clip.end_ms()))
                 .toList();

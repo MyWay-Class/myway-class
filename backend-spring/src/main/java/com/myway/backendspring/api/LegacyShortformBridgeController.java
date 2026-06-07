@@ -81,7 +81,8 @@ public class LegacyShortformBridgeController {
         Map<String, Object> payload = payloadOf(body);
         return shortformController.generate(auth, new ShortformController.GenerateRequest(
                 text(payload, "course_id"),
-                text(payload, "mode")
+                text(payload, "mode"),
+                transcriptSegmentsByLecture(payload)
         ));
     }
 
@@ -114,7 +115,10 @@ public class LegacyShortformBridgeController {
         return shortformController.compose(auth, new ShortformController.ComposeRequest(
                 text(payload, "title"),
                 text(payload, "description"),
-                text(payload, "course_id")
+                text(payload, "course_id"),
+                text(payload, "extraction_id"),
+                listOfString(payload, "candidate_ids"),
+                List.of()
         ));
     }
 
@@ -194,5 +198,30 @@ public class LegacyShortformBridgeController {
         Object raw = body.get(key);
         if (!(raw instanceof List<?> items)) return List.of();
         return items.stream().map(String::valueOf).toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, List<Map<String, Object>>> transcriptSegmentsByLecture(Map<String, Object> body) {
+        if (body == null) return Map.of();
+        Object raw = body.get("transcript_segments_by_lecture");
+        if (!(raw instanceof Map<?, ?> rawMap)) return Map.of();
+        Map<String, List<Map<String, Object>>> result = new HashMap<>();
+        for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+            String lectureId = String.valueOf(entry.getKey()).trim();
+            if (lectureId.isBlank()) continue;
+            Object rawSegments = entry.getValue();
+            if (!(rawSegments instanceof List<?> items)) continue;
+            List<Map<String, Object>> segments = new java.util.ArrayList<>();
+            for (Object item : items) {
+                if (!(item instanceof Map<?, ?> segmentMap)) continue;
+                Map<String, Object> row = new HashMap<>();
+                for (Map.Entry<?, ?> segmentEntry : segmentMap.entrySet()) {
+                    row.put(String.valueOf(segmentEntry.getKey()), segmentEntry.getValue());
+                }
+                segments.add(row);
+            }
+            result.put(lectureId, segments);
+        }
+        return result;
     }
 }
