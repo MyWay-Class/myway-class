@@ -1,4 +1,5 @@
 export * from './types/common';
+export * from './types/transcript';
 export * from './types/lms';
 export * from './types/ai';
 export * from './types/custom-course';

@@ -22,7 +22,12 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/shortform")
 public class ShortformController {
-    public record GenerateRequest(String course_id, String mode, Map<String, List<Map<String, Object>>> transcript_segments_by_lecture) {}
+    public record GenerateRequest(
+            String course_id,
+            String mode,
+            Map<String, List<Map<String, Object>>> transcript_chunks_by_lecture,
+            Map<String, List<Map<String, Object>>> transcript_segments_by_lecture
+    ) {}
     public record SelectCandidatesRequest(@NotBlank String extraction_id, @NotEmpty List<@NotBlank String> candidate_ids) {}
     public record ComposeClipRequest(
             @NotBlank String lecture_id,
@@ -84,6 +89,7 @@ public class ShortformController {
         Map<String, Object> payload = Map.of(
                 "course_id", support.orEmpty(body.course_id()),
                 "mode", support.orEmpty(body.mode()),
+                "transcript_chunks_by_lecture", body.transcript_chunks_by_lecture() == null ? Map.of() : body.transcript_chunks_by_lecture(),
                 "transcript_segments_by_lecture", body.transcript_segments_by_lecture() == null ? Map.of() : body.transcript_segments_by_lecture()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.createShortformExtraction(s.user().id(), payload), "숏폼 후보가 생성되었습니다."));

@@ -82,6 +82,7 @@ public class LegacyShortformBridgeController {
         return shortformController.generate(auth, new ShortformController.GenerateRequest(
                 text(payload, "course_id"),
                 text(payload, "mode"),
+                transcriptChunksByLecture(payload),
                 transcriptSegmentsByLecture(payload)
         ));
     }
@@ -201,9 +202,17 @@ public class LegacyShortformBridgeController {
     }
 
     @SuppressWarnings("unchecked")
+    private Map<String, List<Map<String, Object>>> transcriptChunksByLecture(Map<String, Object> body) {
+        return transcriptByLecture(body, "transcript_chunks_by_lecture");
+    }
+
     private Map<String, List<Map<String, Object>>> transcriptSegmentsByLecture(Map<String, Object> body) {
+        return transcriptByLecture(body, "transcript_segments_by_lecture");
+    }
+
+    private Map<String, List<Map<String, Object>>> transcriptByLecture(Map<String, Object> body, String keyName) {
         if (body == null) return Map.of();
-        Object raw = body.get("transcript_segments_by_lecture");
+        Object raw = body.get(keyName);
         if (!(raw instanceof Map<?, ?> rawMap)) return Map.of();
         Map<String, List<Map<String, Object>>> result = new HashMap<>();
         for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
