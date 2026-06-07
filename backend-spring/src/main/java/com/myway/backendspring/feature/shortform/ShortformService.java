@@ -1,6 +1,8 @@
 package com.myway.backendspring.feature.shortform;
 
 import com.myway.backendspring.domain.ActivityEventService;
+import com.myway.backendspring.domain.DemoLearningService;
+import com.myway.backendspring.domain.LectureItem;
 import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -21,6 +25,7 @@ public class ShortformService {
     private static final String SHORTFORM_LIKE_SCOPE = "shortform_like";
     private final FeatureStoreRepository repository;
     private final ActivityEventService activityEventService;
+    private final DemoLearningService learningService;
     private final int shortformMaxRetry;
     private final long staleProcessingThresholdMs;
     private final ShortformRetrySupport retrySupport;
@@ -30,6 +35,7 @@ public class ShortformService {
     public ShortformService(
             FeatureStoreRepository repository,
             ActivityEventService activityEventService,
+            DemoLearningService learningService,
             @Value("${myway.shortform.retry.max-attempts:3}") int shortformMaxRetry,
             @Value("${myway.shortform.monitoring.stale-processing-ms:1800000}") long staleProcessingThresholdMs,
             ShortformRetrySupport retrySupport,
@@ -38,6 +44,7 @@ public class ShortformService {
     ) {
         this.repository = repository;
         this.activityEventService = activityEventService;
+        this.learningService = learningService;
         this.shortformMaxRetry = Math.max(1, shortformMaxRetry);
         this.staleProcessingThresholdMs = Math.max(60000L, staleProcessingThresholdMs);
         this.retrySupport = retrySupport;
@@ -55,14 +62,64 @@ public class ShortformService {
 
     public Map<String, Object> createShortformExtraction(String userId, Map<String, Object> payload) {
         String id = UUID.randomUUID().toString();
+        String courseId = String.valueOf(payload.getOrDefault("course_id", "crs_java_01")).trim();
+        String mode = String.valueOf(payload.getOrDefault("mode", "cross")).trim();
+        List<Map<String, Object>> candidates = buildCandidates(id, courseId, payload.get("transcript_segments_by_lecture"));
         Map<String, Object> data = new HashMap<>();
         data.put("id", id);
         data.put("user_id", userId);
-        data.put("course_id", payload.getOrDefault("course_id", "crs_java_01"));
-        data.put("mode", payload.getOrDefault("mode", "cross"));
-        data.put("candidates", List.of(Map.of("id", "cand-1", "selected", true), Map.of("id", "cand-2", "selected", false)));
+        data.put("course_id", courseId);
+        data.put("mode", mode);
+        data.put("candidates", candidates);
         repository.upsertKv(SHORTFORM_EXTRACTION_SCOPE, id, data);
         return data;
+    }
+
+    public List<Map<String, Object>> resolveCandidateClips(String extractionId, List<String> candidateIds) {
+        Map<String, Object> extraction = repository.getKv(SHORTFORM_EXTRACTION_SCOPE, extractionId);
+        if (extraction == null) {
+            return List.of();
+        }
+        Object rawCandidates = extraction.get("candidates");
+        if (!(rawCandidates instanceof List<?> list) || list.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> selectedIds = candidateIds == null || candidateIds.isEmpty()
+                ? null
+                : new LinkedHashSet<>(candidateIds.stream().map(value -> value == null ? "" : value.trim()).filter(value -> !value.isBlank()).toList());
+        List<Map<String, Object>> clips = new ArrayList<>();
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> candidateMap)) {
+                continue;
+            }
+            Map<String, Object> candidate = new HashMap<>();
+            for (Map.Entry<?, ?> entry : candidateMap.entrySet()) {
+                candidate.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+            String candidateId = String.valueOf(candidate.getOrDefault("id", "")).trim();
+            if (candidateId.isBlank()) {
+                continue;
+            }
+            boolean include = selectedIds == null
+                    ? Boolean.TRUE.equals(candidate.get("is_selected")) || Boolean.TRUE.equals(candidate.get("selected"))
+                    : selectedIds.contains(candidateId);
+            if (!include) {
+                continue;
+            }
+            long startMs = asLong(candidate.get("start_time_ms"), asLong(candidate.get("start_ms"), -1L));
+            long endMs = asLong(candidate.get("end_time_ms"), asLong(candidate.get("end_ms"), -1L));
+            String lectureId = String.valueOf(candidate.getOrDefault("lecture_id", "")).trim();
+            if (lectureId.isBlank() || startMs < 0 || endMs <= startMs) {
+                continue;
+            }
+            clips.add(Map.of(
+                    "lecture_id", lectureId,
+                    "start_ms", startMs,
+                    "end_ms", endMs
+            ));
+        }
+        return clips;
     }
 
     public Map<String, Object> selectShortformCandidates(String extractionId, List<String> candidateIds) {
@@ -266,5 +323,132 @@ public class ShortformService {
         }
         composeSupport.dispatchShortformExportJob(video);
         return video;
+    }
+
+    private List<Map<String, Object>> buildCandidates(String extractionId, String courseId, Object rawTranscriptSegmentsByLecture) {
+        if (!(rawTranscriptSegmentsByLecture instanceof Map<?, ?> transcriptMap) || transcriptMap.isEmpty()) {
+            return fallbackCandidates(extractionId, courseId);
+        }
+
+        List<Map<String, Object>> candidates = new ArrayList<>();
+        int candidateIndex = 0;
+        for (Map.Entry<?, ?> lectureEntry : transcriptMap.entrySet()) {
+            String lectureId = String.valueOf(lectureEntry.getKey()).trim();
+            if (lectureId.isBlank()) {
+                continue;
+            }
+            LectureItem lecture = learningService.getLecture(lectureId);
+            String lectureTitle = lecture != null && lecture.title() != null && !lecture.title().isBlank()
+                    ? lecture.title()
+                    : lectureId;
+            String lectureCourseId = lecture != null && lecture.course_id() != null && !lecture.course_id().isBlank()
+                    ? lecture.course_id()
+                    : courseId;
+            Object rawSegments = lectureEntry.getValue();
+            if (!(rawSegments instanceof List<?> segments) || segments.isEmpty()) {
+                continue;
+            }
+            for (Object rawSegment : segments) {
+                if (!(rawSegment instanceof Map<?, ?> segmentMap)) {
+                    continue;
+                }
+                long startMs = asLong(segmentMap.get("start_ms"), -1L);
+                long endMs = asLong(segmentMap.get("end_ms"), -1L);
+                Object rawText = segmentMap.containsKey("text") ? segmentMap.get("text") : "";
+                String text = String.valueOf(rawText).trim();
+                if (startMs < 0 || endMs <= startMs) {
+                    continue;
+                }
+                candidateIndex += 1;
+                candidates.add(buildCandidate(
+                        extractionId,
+                        lectureCourseId,
+                        lectureId,
+                        lectureTitle,
+                        candidateIndex,
+                        startMs,
+                        endMs,
+                        text,
+                        candidateIndex == 1
+                ));
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            return fallbackCandidates(extractionId, courseId);
+        }
+        return candidates;
+    }
+
+    private List<Map<String, Object>> fallbackCandidates(String extractionId, String courseId) {
+        List<LectureItem> lectures = learningService.getCourseLectures(courseId);
+        if (lectures.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> candidates = new ArrayList<>();
+        int candidateIndex = 0;
+        for (LectureItem lecture : lectures) {
+            candidateIndex += 1;
+            long startMs = 0L;
+            long endMs = Math.max(60000L, (long) lecture.duration_minutes() * 1000L);
+            candidates.add(buildCandidate(
+                    extractionId,
+                    courseId,
+                    lecture.id(),
+                    lecture.title(),
+                    candidateIndex,
+                    startMs,
+                    endMs,
+                    lecture.title(),
+                    candidateIndex == 1
+            ));
+        }
+        return candidates;
+    }
+
+    private Map<String, Object> buildCandidate(
+            String extractionId,
+            String courseId,
+            String lectureId,
+            String lectureTitle,
+            int candidateIndex,
+            long startMs,
+            long endMs,
+            String text,
+            boolean selected
+    ) {
+        String normalizedText = text == null ? "" : text.trim();
+        String description = normalizedText.isBlank()
+                ? "핵심 구간"
+                : (normalizedText.length() <= 80 ? normalizedText : normalizedText.substring(0, 77) + "...");
+        Map<String, Object> candidate = new HashMap<>();
+        candidate.put("id", "cand-" + candidateIndex);
+        candidate.put("extraction_id", extractionId);
+        candidate.put("lecture_id", lectureId);
+        candidate.put("lecture_title", lectureTitle);
+        candidate.put("course_id", courseId);
+        candidate.put("start_time_ms", startMs);
+        candidate.put("end_time_ms", endMs);
+        candidate.put("label", lectureTitle + " 핵심 구간 " + candidateIndex);
+        candidate.put("description", description);
+        candidate.put("importance", Math.max(10, 100 - (candidateIndex - 1) * 10));
+        candidate.put("order_index", candidateIndex - 1);
+        candidate.put("is_selected", selected);
+        candidate.put("selected", selected);
+        return candidate;
+    }
+
+    private long asLong(Object value, long fallback) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value).trim());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 }

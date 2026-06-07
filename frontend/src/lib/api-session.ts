@@ -1,4 +1,4 @@
-import { demoUsers, type AuthUser, type LoginResponse } from '@myway/shared';
+import { type AuthUser, type LoginResponse } from '@myway/shared';
 import { clearStoredAuth, getFallbackUserId, getStoredAuth, request, storeAuth } from './api-core';
 
 type BackendHealth = {
@@ -6,6 +6,28 @@ type BackendHealth = {
   service: string;
   timestamp: string;
 };
+
+function normalizeRole(role: string): AuthUser['role'] {
+  const normalized = role.trim().toUpperCase();
+  if (normalized === 'ADMIN' || normalized === 'INSTRUCTOR' || normalized === 'STUDENT') {
+    return normalized;
+  }
+  return 'STUDENT';
+}
+
+function normalizeAuthUser(user: AuthUser): AuthUser {
+  return {
+    ...user,
+    role: normalizeRole(user.role),
+  };
+}
+
+function normalizeLoginResponse(response: LoginResponse): LoginResponse {
+  return {
+    ...response,
+    user: normalizeAuthUser(response.user),
+  };
+}
 
 export async function loadCurrentSession(): Promise<LoginResponse | null> {
   const storedAuth = getStoredAuth();
@@ -17,8 +39,9 @@ export async function loadCurrentSession(): Promise<LoginResponse | null> {
   const response = await request<LoginResponse>('/api/v1/auth/me', undefined, storedAuth.session_token);
 
   if (response?.success && response.data) {
-    storeAuth(response.data);
-    return response.data;
+    const normalized = normalizeLoginResponse(response.data);
+    storeAuth(normalized);
+    return normalized;
   }
 
   clearStoredAuth();
@@ -32,8 +55,9 @@ export async function loginWithUser(userId: string): Promise<LoginResponse | nul
   });
 
   if (response?.success && response.data) {
-    storeAuth(response.data);
-    return response.data;
+    const normalized = normalizeLoginResponse(response.data);
+    storeAuth(normalized);
+    return normalized;
   }
   return null;
 }
@@ -56,9 +80,9 @@ export async function loadBackendHealth(): Promise<boolean> {
 export async function loadLoginUsers(): Promise<AuthUser[]> {
   const response = await request<AuthUser[]>('/api/v1/auth/users');
   if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
-    return response.data;
+    return response.data.map(normalizeAuthUser);
   }
-  return demoUsers;
+  return [];
 }
 
 export { getStoredAuth, getFallbackUserId };
