@@ -5,7 +5,19 @@ export const MIN_CLIP_MS = 1_000;
 export const MAX_CLIP_MS = 300_000;
 
 export type TranscriptSnapshot = {
-  segments: Array<{ start_ms: number; end_ms: number; text: string }>;
+  chunks?: Array<{
+    lecture_id?: string;
+    transcript_id?: string | null;
+    start_ms: number;
+    end_ms: number;
+    text: string;
+    confidence?: number;
+    speaker?: string | null;
+    topic_tags?: string[];
+    chunk_index?: number;
+    index?: number;
+  }>;
+  segments?: Array<{ start_ms: number; end_ms: number; text: string }>;
   duration_ms: number;
 } | null;
 
@@ -40,7 +52,7 @@ export function clipKey(clip: ClipSuggestion): string {
 function buildTranscriptSuggestions(course: CourseDetail, lectureId: string, transcript: TranscriptSnapshot): ClipSuggestion[] {
   const lectures = Array.isArray(course.lectures) ? course.lectures : [];
   const lecture = lectures.find((item) => item.id === lectureId);
-  const segments = transcript?.segments ?? [];
+  const segments = transcript?.chunks ?? transcript?.segments ?? [];
   if (!lecture || segments.length === 0) return [];
 
   const validSegments = segments.filter((segment) => segment.text.trim().length > 0);
@@ -78,7 +90,7 @@ export function buildClipSuggestions(course: CourseDetail | null, transcriptMap:
   const lectures = Array.isArray(course.lectures) ? course.lectures : [];
   return lectures.flatMap((lecture, lectureIndex) => {
     const transcriptSnapshot = transcriptMap[lecture.id] ?? null;
-    if (transcriptSnapshot?.segments && transcriptSnapshot.segments.length > 0) {
+    if ((transcriptSnapshot?.chunks && transcriptSnapshot.chunks.length > 0) || (transcriptSnapshot?.segments && transcriptSnapshot.segments.length > 0)) {
       return buildTranscriptSuggestions(course, lecture.id, transcriptSnapshot);
     }
 

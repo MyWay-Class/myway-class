@@ -1,5 +1,6 @@
 import type { AIProviderName } from '../ai/ai-provider';
 import type { AIAnswerResult, AIChunkSource, AIIntentResult, AISearchResult } from './ai';
+import type { AnswerPolicy } from './transcript';
 
 export type AIRagEntityKind = 'lecture_title' | 'course_title' | 'keyword' | 'quoted_phrase' | 'number' | 'context';
 
@@ -19,6 +20,10 @@ export type AIRagChunk = AISearchResult['hits'][number] & {
   start_ms?: number;
   end_ms?: number;
 };
+
+export type SearchIndexEntry = AIRagChunk;
+
+export type SearchIndex = SearchIndexEntry[];
 
 export type AIRagProviderPlan = {
   preferred_provider: AIProviderName | null;
@@ -46,5 +51,6 @@ export type AIRagResult = {
   chunks: AIRagChunk[];
   search: AISearchResult;
   answer: AIAnswerResult;
+  policy: AnswerPolicy;
   provider: AIRagProviderPlan;
 };

@@ -1,4 +1,5 @@
 import type { CourseDifficulty, EnrollmentStatus, LectureContentType, UserRole } from './common';
+import type { TranscriptChunk, TranscriptChunkInput } from './transcript';
 
 export type Course = {
   id: string;
@@ -144,7 +145,7 @@ export type LectureTranscript = {
   user_id: string;
   language: string;
   full_text: string;
-  segments: TranscriptSegment[];
+  segments: TranscriptChunk[];
   word_count: number;
   duration_ms: number;
   stt_provider: string;
@@ -235,7 +236,7 @@ export type TranscriptCreateRequest = {
   language?: string;
   stt_provider?: string;
   stt_model?: string;
-  segments?: TranscriptSegment[];
+  segments?: TranscriptChunkInput[];
   word_count?: number;
 };
 

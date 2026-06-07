@@ -64,7 +64,9 @@ public class ShortformService {
         String id = UUID.randomUUID().toString();
         String courseId = String.valueOf(payload.getOrDefault("course_id", "crs_java_01")).trim();
         String mode = String.valueOf(payload.getOrDefault("mode", "cross")).trim();
-        List<Map<String, Object>> candidates = buildCandidates(id, courseId, payload.get("transcript_segments_by_lecture"));
+        Object rawTranscriptChunks = payload.get("transcript_chunks_by_lecture");
+        Object rawTranscriptSegments = payload.get("transcript_segments_by_lecture");
+        List<Map<String, Object>> candidates = buildCandidates(id, courseId, rawTranscriptChunks, rawTranscriptSegments);
         Map<String, Object> data = new HashMap<>();
         data.put("id", id);
         data.put("user_id", userId);
@@ -325,8 +327,11 @@ public class ShortformService {
         return video;
     }
 
-    private List<Map<String, Object>> buildCandidates(String extractionId, String courseId, Object rawTranscriptSegmentsByLecture) {
-        if (!(rawTranscriptSegmentsByLecture instanceof Map<?, ?> transcriptMap) || transcriptMap.isEmpty()) {
+    private List<Map<String, Object>> buildCandidates(String extractionId, String courseId, Object rawTranscriptChunksByLecture, Object rawTranscriptSegmentsByLecture) {
+        Object preferredSource = rawTranscriptChunksByLecture instanceof Map<?, ?> chunks && !chunks.isEmpty()
+                ? chunks
+                : rawTranscriptSegmentsByLecture;
+        if (!(preferredSource instanceof Map<?, ?> transcriptMap) || transcriptMap.isEmpty()) {
             return fallbackCandidates(extractionId, courseId);
         }
 
