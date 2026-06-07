@@ -1,0 +1,129 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@config "../tailwind.config.ts";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --app-bg: #f5f7fb;
+    --app-surface: #ffffff;
+    --app-surface-soft: #f0f2f8;
+    --app-surface-hover: #e9ecf4;
+    --app-border: #e3e6ee;
+    --app-border-focus: #818cf8;
+    --app-text: #0f172a;
+    --app-text-secondary: #475569;
+    --app-text-muted: #94a3b8;
+    --app-accent: #6366f1;
+    --app-accent-hover: #5558e6;
+    --app-accent-soft: #eef2ff;
+    --app-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.03);
+    --app-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
+    --app-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06), 0 8px 32px rgba(15, 23, 42, 0.04);
+    --app-shadow-lg: 0 8px 40px rgba(15, 23, 42, 0.08), 0 12px 48px rgba(15, 23, 42, 0.05);
+    --app-radius: 16px;
+    --app-radius-lg: 24px;
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.45);
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --app-bg: #0b0e18;
+    --app-surface: #131722;
+    --app-surface-soft: #191e2e;
+    --app-surface-hover: #1f2538;
+    --app-border: #272d40;
+    --app-border-focus: #818cf8;
+    --app-text: #e8ecf4;
+    --app-text-secondary: #94a3b8;
+    --app-text-muted: #64748b;
+    --app-accent: #818cf8;
+    --app-accent-hover: #6e79f7;
+    --app-accent-soft: rgba(129, 140, 248, 0.10);
+    --app-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.12);
+    --app-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+    --app-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25), 0 8px 32px rgba(0, 0, 0, 0.2);
+    --app-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.3), 0 12px 48px rgba(0, 0, 0, 0.25);
+    --glass-bg: rgba(19, 23, 34, 0.82);
+    --glass-border: rgba(39, 45, 64, 0.6);
+  }
+
+  :root[data-theme='dark'] .bg-white {
+    background-color: var(--app-surface) !important;
+  }
+
+  :root[data-theme='dark'] .bg-slate-50 {
+    background-color: var(--app-surface-soft) !important;
+  }
+
+  :root[data-theme='dark'] .bg-slate-100 {
+    background-color: rgba(148, 163, 184, 0.14) !important;
+  }
+
+  :root[data-theme='dark'] .bg-indigo-50 {
+    background-color: rgba(99, 102, 241, 0.16) !important;
+  }
+
+  :root[data-theme='dark'] .bg-indigo-100 {
+    background-color: rgba(99, 102, 241, 0.22) !important;
+  }
+
+  :root[data-theme='dark'] .border-slate-200 {
+    border-color: var(--app-border) !important;
+  }
+
+  :root[data-theme='dark'] .border-indigo-100 {
+    border-color: rgba(99, 102, 241, 0.3) !important;
+  }
+
+  :root[data-theme='dark'] .text-slate-900,
+  :root[data-theme='dark'] .text-slate-800,
+  :root[data-theme='dark'] .text-slate-700 {
+    color: var(--app-text) !important;
+  }
+
+  :root[data-theme='dark'] .text-slate-600,
+  :root[data-theme='dark'] .text-slate-500,
+  :root[data-theme='dark'] .text-slate-400 {
+    color: var(--app-text-muted) !important;
+  }
+
+  html {
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--app-bg);
+    font-feature-settings: 'ss01' on, 'cv01' on;
+  }
+
+  body {
+    @apply m-0 min-h-screen antialiased;
+    background: var(--app-bg);
+    color: var(--app-text);
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.65;
+    letter-spacing: -0.01em;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  :root[data-theme='dark'] * {
+    scrollbar-color: #334155 transparent;
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "mywayclass",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:frontend",
+    "dev:frontend": "npm --workspace @myway/frontend run dev",
+    "dev:backend": "tsx scripts/run-maven-wrapper.ts spring-boot:run",
+    "dev:backend:legacy": "npm --workspace @myway/backend run dev",
+    "check:frontend-deps": "npm ls --workspace @myway/frontend",
+    "check:backend-deps": "npm ls --workspace @myway/backend",
+    "check:deps": "npm run check:frontend-deps && npm run check:backend-deps",
+    "build:frontend": "npm --workspace @myway/frontend run build",
+    "build:backend": "tsx scripts/run-maven-wrapper.ts -DskipTests package",
+    "test:backend": "tsx scripts/run-maven-wrapper.ts test",
+    "test:frontend": "npm --workspace @myway/frontend run test",
+    "test:backend:clean": "node -e \"const fs=require('fs');fs.rmSync('backend-spring/data',{recursive:true,force:true});\" && npm run test:backend",
+    "build:backend:legacy": "npm --workspace @myway/backend run build",
+    "build": "npm run build:frontend && npm run build:backend",
+    "orch:run": "tsx tools/orchestrator/run.ts",
+    "orch:run:collab": "set \"ORCH_PROFILE=collab\" && tsx tools/orchestrator/run.ts",
+    "orch:checks": "tsx tools/orchestrator/checks.ts",
+    "orch:report": "tsx tools/orchestrator/report.ts",
+    "orch:slack": "tsx tools/orchestrator/slack-bridge.ts",
+    "orch:slack:collab": "set \"ORCH_PROFILE=collab\" && tsx tools/orchestrator/slack-bridge.ts --profile collab",
+    "orch:slack:server": "tsx tools/orchestrator/slack-command-server.ts",
+    "orch:portable:init": "tsx tools/orchestrator/portable/install.ts",
+    "agent-runtime:start": "tsx tools/agent-runtime/server.ts",
+    "lint": "npm --workspace @myway/backend run build && npm --workspace @myway/frontend run build",
+    "perf:smoke": "npm run build:frontend",
+    "smoke:media-ai-shortform": "tsx scripts/smoke-media-ai-shortform.ts",
+    "test:e2e:demo-student": "playwright test e2e/demo-student-journey.spec.ts --reporter=line",
+    "verify": "npm run check:deps && npm run build:frontend && npm run test:backend"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "ffmpeg-static": "^5.3.0",
+    "tsx": "^4.21.0",
+    "yaml": "^2.8.4"
+  }
+}
+

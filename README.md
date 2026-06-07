@@ -1,273 +1,223 @@
-# 내맘대로클래스 (MyWayClass)
+# 내맘대로클래스
 
 <p align="left">
-  <img src="https://img.shields.io/badge/License-MIT-green" />
-  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white" />
-  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" />
-  <img src="https://img.shields.io/badge/Hono-Backend-orange" />
-  <img src="https://img.shields.io/badge/Cloudflare_Workers-F38020?logo=cloudflare&logoColor=white" />
-  <img src="https://img.shields.io/badge/2026_KIT_바이브코딩-공모전-6366f1" />
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License" />
+  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
+  <img src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/Spring_Boot-3.4-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot" />
 </p>
 
-> 강의를 통째로 다시 보지 않아도 되도록,  
-> **강의 안의 핵심 구간만 골라 바로 학습**할 수 있게 만드는 AI 기반 LMS 플랫폼  
-> 2026 KIT 바이브코딩 공모전 제출작 · 제작자: 신동구
+[English README](./README.en.md)
 
----
+강의를 통째로 다시 보지 않아도 되도록, 강의 안의 핵심 구간만 골라 바로 학습할 수 있게 만드는 AI 기반 LMS 플랫폼입니다.  
+학습자에게는 필요한 구간만 빠르게 학습할 수 있는 경험을, 운영자와 강사에게는 강의 콘텐츠를 재가공하고 관리할 수 있는 도구를 제공합니다.
 
-## 📌 해결하는 문제
+## 목차
 
-온라인 강의는 이미 5~10분 단위로 쪼개져 있습니다.  
-하지만 실제로 다시 봐야 하는 핵심은 그중 **2~3분**에 불과합니다.
+- [개요](#개요)
+- [문제 정의](#문제-정의)
+- [핵심 기능](#핵심-기능)
+- [동작 흐름](#동작-흐름)
+- [스크린샷](#스크린샷)
+- [기술 스택](#기술-스택)
+- [프로젝트 구조](#프로젝트-구조)
+- [주요 화면](#주요-화면)
+- [실행 방법](#실행-방법)
+- [스크립트](#스크립트)
+- [CI 운영](#ci-운영)
+- [문서](#문서)
+- [설계 방향](#설계-방향)
 
-- 특정 개념 하나를 위해 전체 영상 반복 탐색
-- 영상이 많아질수록 탐색 비용 증가
-- 결국 “짧은 영상 N개짜리 긴 강의”가 됨
+## 개요
 
-👉 문제의 본질: **탐색 비용**
+긴 강의를 끝까지 다시 보지 않아도 되도록, 강의 안의 핵심 구간만 골라 바로 학습할 수 있게 만드는 AI 기반 학습 플랫폼입니다.
 
----
+## 문제 정의
 
-## 💡 핵심 기능
+온라인 강의는 짧게 쪼개져 보여도, 실제로 다시 확인해야 하는 핵심은 보통 2~3분 정도에 불과한 경우가 많습니다.  
+기존 LMS에서는 전체 영상을 다시 재생하며 원하는 구간을 직접 찾아야 해 탐색 비용이 커집니다.
 
-| 기능 | 설명 |
+`내맘대로클래스`는 이 문제를 해결하기 위해 다음을 목표로 합니다.
+
+- 필요한 구간만 빠르게 찾을 수 있게 한다
+- 강의를 목적별 학습 자료로 재구성한다
+- 숏폼, 요약, 퀴즈, 질의응답을 통해 반복 학습을 줄인다
+- 학습자와 강사 모두가 다시 활용 가능한 콘텐츠 흐름을 만든다
+
+## 핵심 기능
+
+- 강의 시청: 타임스탬프 기반 스크립트, 구간 이동, 이어보기
+- 숏폼 생성: 핵심 구간만 선택해 미리보기, 저장, 공유
+- AI 요약, AI 채팅, 퀴즈 생성
+- RAG 기반 질문 응답 및 관련 구간 탐색
+- STT 파이프라인: 오디오 추출, 전사, 청킹, 메타 동기화
+- 강의 스튜디오와 코스 관리
+- 학생, 강사, 관리자 화면 분리
+- 미디어 업로드와 처리 추적
+- 숏폼 커뮤니티 및 내 숏폼 관리
+
+## 동작 흐름
+
+기본 흐름은 아래와 같습니다.
+
+1. 강의 오디오를 STT로 텍스트화한다
+2. 텍스트를 의미 단위로 청킹한다
+3. RAG로 질문이나 학습 목적에 맞는 근거 구간을 찾는다
+4. AI가 요약, 퀴즈, 질의응답, 의도 분류를 수행한다
+5. 필요한 구간만 남긴 학습용 숏폼으로 연결한다
+6. 생성 결과는 원본 강의와 연결해 문맥을 바로 확인할 수 있게 한다
+
+## 스크린샷
+
+> 현재 저장소에는 실제 캡처 이미지가 없어 자리표시자 기준으로 유지합니다.
+
+| 화면 | 권장 파일명 | 설명 |
+|------|------------|------|
+| Home | `docs/screenshots/home.png` | 공개 홈 또는 랜딩 화면 |
+| Dashboard | `docs/screenshots/dashboard.png` | 학습자 대시보드 |
+| Shortform | `docs/screenshots/shortform.png` | 숏폼 생성/탐색 화면 |
+| Lecture Studio | `docs/screenshots/lecture-studio.png` | 강의 스튜디오 |
+| AI Chat | `docs/screenshots/ai-chat.png` | AI 채팅 화면 |
+| Admin | `docs/screenshots/admin.png` | 관리자 화면 |
+
+## 기술 스택
+
+| 구분 | 기술 |
 |------|------|
-| 강의 시청 | 타임스탬프 기반 스크립트 연동 |
-| 숏폼 생성 | 핵심 구간만 추출 |
-| AI 요약 | 자동 요약 노트 |
-| AI 채팅 | RAG 기반 질의응답 |
-| 퀴즈 생성 | 자동 문제 생성 |
-| STT 파이프라인 | 오디오 → 텍스트 → 청킹 |
-| 강의 스튜디오 | 강의 생성/수정 |
-| 대시보드 | 학생/강사/관리자 분리 |
-| 숏폼 공유 | 수강생 간 공유 |
-| 미디어 파이프라인 | 업로드 → 처리 → 추적 |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS |
+| Backend (Primary) | Spring Boot (Java 21), Maven Wrapper, Supabase PostgreSQL |
+| Backend (Auxiliary) | Hono, TypeScript, Cloudflare Workers tooling |
+| Shared | `packages/shared` 기반 공용 타입/도메인 로직 |
+| Build/Test | npm workspaces, Vite, Maven, Playwright, Vitest |
+| Media | `ffmpeg-static` 기반 미디어 처리 |
+| AI | Gemini, Whisper, Ollama, Cloudflare AI |
+| Storage | Cloudflare D1, R2 |
 
----
+## 프로젝트 구조
 
-## 🔁 동작 흐름
-
-
-영상 업로드
-→ 오디오 추출 (ffmpeg)
-→ STT (텍스트 변환)
-→ 의미 단위 청킹
-→ RAG 검색
-→ AI 처리 (요약/퀴즈/QA)
-→ 핵심 구간 추출
-→ 숏폼 생성
-
-
-👉 결과는 항상 원본 강의와 연결됨
-
----
-
-## ⚙️ 기술 스택
-
-| 영역 | 기술 |
-|------|------|
-| Frontend | React 19, TypeScript, Vite |
-| Backend | Hono, Cloudflare Workers |
-| AI | Gemini, Whisper, Ollama |
-| DB | Cloudflare D1 |
-| Storage | Cloudflare R2 |
-| Media | ffmpeg |
-| Shared | packages/shared |
-
----
-
-## 🧩 프로젝트 구조
-
-
+```text
 myway-class/
-├── frontend/
-├── backend/
-├── packages/shared/
-├── scripts/
-├── docs/
-├── agent.md
-└── README.md
+├── frontend/           # 사용자 화면
+├── backend-spring/     # 기본 백엔드(Spring Boot)
+├── backend/            # 레거시 백엔드(Hono/Workers)
+├── packages/shared/    # 프론트/백엔드 공용 로직
+├── docs/               # 공통 문서 허브
+├── scripts/            # 개발 보조 스크립트
+├── tools/              # 오케스트레이터/에이전트 런타임 도구
+├── agent.md            # AI 협업 규칙
+└── README.md           # 이 문서
+```
 
+## 주요 화면
 
----
+- 공개 홈
+- 학습자 대시보드
+- 강의 목록 및 강의 시청
+- 강의 스튜디오
+- 숏폼 허브 및 내 숏폼 관리
+- AI 요약 페이지
+- AI 채팅 페이지
+- 퀴즈 생성 페이지
+- 관리자 대시보드, 통계, 사용자 관리
+- 미디어 파이프라인 화면
 
-## 🚀 실행 방법
-
-### 요구 사항
-- Node.js 20+
-- npm 10+
+## 실행 방법
 
 ### 설치
 
-git clone https://github.com/MyWay-Class/myway-class.git
-
-cd myway-class
+```bash
 npm install
+```
 
+### 개발 서버 실행
 
-### 실행
+```bash
+npm run dev:frontend
+npm run dev:backend
+```
 
-npm run dev
+```bash
+npm run dev:backend:legacy
+```
 
+```bash
+npx tsx scripts/media-processor/server.ts
+```
 
-- frontend: 5173
-- backend: 8787
-- media: 8788
+- `npm run dev:frontend`는 Vite 프론트엔드 개발 서버를 실행합니다.
+- `npm run dev:backend`는 Spring 백엔드를 실행합니다.
+- `npm run dev:backend:legacy`는 Cloudflare Workers 기반 레거시 백엔드를 실행합니다.
+- `scripts/media-processor/server.ts`는 로컬 미디어 처리 서버입니다.
+- 프론트가 원격 API를 바라봐야 하면 `VITE_API_BASE_URL`을 설정합니다.
 
----
+### 검증 및 빌드
 
-## 🤖 AI 활용 전략
+```bash
+npm run check:deps
+npm run verify
+npm run build
+npm run test:backend
+npm run test:frontend
+```
 
-### 📌 기본 원칙
+- `npm run check:deps`: frontend/backend(workspace) 의존성 점검
+- `npm run verify`: 의존성 점검 후 프론트 빌드 + Spring 백엔드 테스트 실행
+- `npm run build`: 프론트엔드 빌드 + Spring 백엔드 패키징(`-DskipTests`)
 
-LLM은 **확률 기반 시스템**이다.  
-→ 결과는 신뢰 대상이 아니라 **검증 대상**
+## 스크립트
 
----
-
-### 🔥 핵심 구조
-
-
-사람 (기준 정의)
-↓
-AI (실행)
-↓
-사람 (검증 및 채택)
-
-
-👉 Human-in-the-loop 유지
-
----
-
-## ⚙️ AI 협업 시스템
-
-### 1️⃣ 명세 기반 작업
-
-- Pseudo-code 수준 지시
-- 파일 + 라인 지정
-- 모호한 요청 제거
-
----
-
-### 2️⃣ 워킹트리 병렬 비교
-
-
-A안 / B안 생성 → 비교 → 채택
-
-
-#### 기준
-- 기획 의도 일치
-- 최소 변경
-- 검증 용이성
-- 문서 일치
-
-👉 결과 편차를 구조적으로 제어
-
----
-
-### 3️⃣ agent.md 기반 제어
-
-AI 행동을 제한하는 계약서
-
-구성:
-- Role
-- Scope
-- Constraints
-- Output
-- Validation
-
----
-
-### 4️⃣ 검증 시스템
-
-- 타입 체크
-- JSON 파싱
-- fallback 동작
-- 사이드이펙트 검증
-
----
-
-### 5️⃣ 문서 중심 개발
-
-
-docs/
-├── architecture/
-├── conventions/
-├── ai-context/
-├── dev-logs/
-
-
-👉 문서 = 기준 / 코드 = 결과
-
----
-
-### 6️⃣ 토큰 최적화
-
-- 문서 참조 방식
-- 병렬 생성 후 선택
-- agent.md 최소화
-
----
-
-### 7️⃣ 재현성 확보
-
-
-docs/dev-logs/
-
-A안 vs B안
-선택 근거
-
-👉 동일 문제 재사용 가능
-
----
-
-## 🧑‍💻 역할
-
-> Product Architect & Implementation Orchestrator
-
-- AI 사용 ❌  
-- AI 시스템 설계 ✅
-
----
-
-## 🔁 개발 프로세스
-
-
-설계 → 문서화 → 구현 → 검증 → 기록
-
-
----
-
-## 📚 문서
-
-| 문서 | 설명 |
+| 명령어 | 설명 |
 |------|------|
-| agent.md | AI 협업 기준 |
-| docs/dev-logs | 의사결정 기록 |
-| docs/ai-context | AI 컨텍스트 |
-| docs/conventions | 코드 규칙 |
+| `npm run dev:frontend` | frontend 개발 서버 실행 |
+| `npm run dev:backend` | Spring 백엔드 실행 |
+| `npm run dev:backend:legacy` | 레거시(TypeScript/Workers) 백엔드 실행 |
+| `npm run check:frontend-deps` | frontend workspace 의존성 점검 |
+| `npm run check:backend-deps` | backend workspace 의존성 점검 |
+| `npm run check:deps` | frontend/backend 의존성 점검 |
+| `npm run verify` | 의존성 점검 + 프론트 빌드 + Spring 테스트 |
+| `npm run build` | 프론트엔드 + Spring 백엔드 빌드 |
+| `npm run test:backend` | Spring 백엔드 테스트 |
+| `npm run test:frontend` | 프론트엔드 단위 테스트(Vitest) |
+| `npm run test:e2e:demo-student` | Playwright 데모 학습자 여정 E2E |
+| `npm run smoke:media-ai-shortform` | 미디어/AI/숏폼 스모크 실행 |
+| `npm run orch:run` | 오케스트레이터 실행 |
+| `npm run orch:checks` | 오케스트레이터 정책/결과 검증 |
 
----
-
-## 🚀 배포
+## 배포
 
 | 환경 | Frontend | Backend |
-|------|----------|--------|
-| dev | Vite | Wrangler |
-| prod | Cloudflare Pages | Workers |
+|------|----------|---------|
+| dev | Cloudflare Pages | Spring backend + Worker auxiliary |
+| staging | Cloudflare Pages | Spring backend + Worker auxiliary |
+| production | Cloudflare Pages | Spring backend + Worker auxiliary |
 
----
+- 프론트는 Cloudflare Pages에 배포합니다.
+- Spring 백엔드가 주 실행 경로입니다.
+- `backend/`의 Cloudflare Workers 경로는 보조/레거시 경로로 유지합니다.
+- 원격 프론트는 `VITE_API_BASE_URL`로 API 주소를 주입받습니다.
 
-## 🎯 핵심 철학
+## CI 운영
 
-- AI는 대체자가 아니라 **실행 도구**
-- 사람은 기준을 정의
-- 결과는 항상 검증
-- 강의는 “재생”이 아니라 “재구성”
+- 수동 실행: GitHub Actions에서 `backend-spring-tests` 워크플로우를 `Run workflow`로 직접 실행할 수 있습니다(`workflow_dispatch`).
+- 동시 실행 제어: 같은 브랜치/워크플로우 조합으로 새 실행이 시작되면 기존 실행은 자동 취소됩니다(`concurrency`, `cancel-in-progress: true`).
+- 타임아웃: `backend-spring-tests` 잡은 15분 제한이며, 초과 시 실패 처리됩니다(`timeout-minutes: 15`).
 
----
+## 문서
 
-## 📜 라이선스
+- [`docs/README.md`](./docs/README.md): 전체 문서 허브
+- [`docs/project/20-status-and-next-steps.md`](./docs/project/20-status-and-next-steps.md): 최신 상태/다음 단계
+- [`backend-spring/README.md`](./backend-spring/README.md): Spring 백엔드 기준 문서
+- [`backend/docs/README.md`](./backend/docs/README.md): 백엔드 문서 허브
+- [`README.en.md`](./README.en.md): 영문 README
 
-MIT License  
-2026 KIT 바이브코딩 공모전 제출작
+## 설계 방향
+
+- AI는 대체자가 아니라 보조자입니다.
+- 결과는 가능한 한 구조화하고, fallback 경로를 둡니다.
+- 문서와 코드의 기준을 맞추고, 변경 이유를 추적 가능하게 남깁니다.
+- 강의는 단순 재생 대상이 아니라, 다시 조합 가능한 학습 자원으로 다룹니다.
+
+## 라이선스
+
+MIT License

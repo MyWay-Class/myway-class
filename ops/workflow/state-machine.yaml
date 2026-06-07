@@ -1,0 +1,31 @@
+﻿version: 1
+initial_state: draft
+final_states:
+  - approved
+  - merged
+  - rejected
+states:
+  draft:
+    allowed_roles: [manager]
+    transitions: [debate, rejected]
+  debate:
+    allowed_roles: [manager, worker]
+    transitions: [review, rejected]
+  review:
+    allowed_roles: [reviewer]
+    transitions: [approved, rejected, debate]
+  approved:
+    allowed_roles: [manager, reviewer]
+    transitions: [merged]
+  merged:
+    allowed_roles: [manager]
+    transitions: []
+  rejected:
+    allowed_roles: [manager, reviewer]
+    transitions: []
+rules:
+  max_debate_rounds: 2
+  reopen_debate_from_review_max: 1
+  approval_requires:
+    - checks.pass == true
+    - scorecard.required_pass == true

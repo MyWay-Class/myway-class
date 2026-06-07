@@ -1,0 +1,80 @@
+import { Hono } from 'hono';
+import { buildPipelineOverview, listAudioExtractions, listLectureNotes, listLectureTranscripts } from '@myway/shared';
+import { jsonFailure, jsonSuccess } from '../lib/http';
+import { readLectureVideoAsset } from '../lib/media-assets';
+import type { RuntimeBindings } from '../lib/runtime-env';
+import { ensureLectureExists, getMediaRepository, requireAssetAccess, requireLectureAccess } from './media-route-guards';
+
+async function withLectureAccessResponse<T>(
+  c: { req: { raw: Request; param: (name: string) => string }; env: unknown },
+  lectureId: string,
+  unauthMessage: string,
+  forbiddenMessage: string,
+  producer: (repository: ReturnType<typeof getMediaRepository>) => Promise<T>,
+): Promise<Response> {
+  const access = requireLectureAccess(c.req.raw, lectureId, unauthMessage, forbiddenMessage);
+  if ('error' in access) return access.error;
+  if (!ensureLectureExists(lectureId, access.user.id)) {
+    return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
+  }
+  return jsonSuccess(await producer(getMediaRepository(c.env as RuntimeBindings | undefined)));
+}
+
+export function registerMediaPublicRoutes(media: Hono): void {
+  media.get('/assets/:assetKey', async (c) => {
+    const assetKey = c.req.param('assetKey');
+    const accessError = requireAssetAccess(c.req.raw, assetKey, c.env as RuntimeBindings | undefined);
+    if (accessError) return accessError;
+
+    const response = await readLectureVideoAsset(assetKey, c.env as RuntimeBindings | undefined);
+    if (!response) {
+      return jsonFailure('ASSET_NOT_FOUND', '미디어 파일을 찾을 수 없습니다.', 404);
+    }
+
+    return response;
+  });
+
+  media.get('/transcript/:lectureId', async (c) => {
+    const lectureId = c.req.param('lectureId');
+    return withLectureAccessResponse(
+      c,
+      lectureId,
+      '강의 수강 후에 스크립트를 볼 수 있습니다.',
+      '강의 수강 후에 스크립트를 볼 수 있습니다.',
+      async (repository) => (await listLectureTranscripts(lectureId, repository))[0] ?? null,
+    );
+  });
+
+  media.get('/notes/:lectureId', async (c) => {
+    const lectureId = c.req.param('lectureId');
+    return withLectureAccessResponse(
+      c,
+      lectureId,
+      '강의 수강 후에 자료를 볼 수 있습니다.',
+      '강의 수강 후에 자료를 볼 수 있습니다.',
+      async (repository) => listLectureNotes(lectureId, repository),
+    );
+  });
+
+  media.get('/audio-extractions/:lectureId', async (c) => {
+    const lectureId = c.req.param('lectureId');
+    return withLectureAccessResponse(
+      c,
+      lectureId,
+      '강의 수강 후에 추출 기록을 볼 수 있습니다.',
+      '강의 수강 후에 추출 기록을 볼 수 있습니다.',
+      async (repository) => listAudioExtractions(lectureId, repository),
+    );
+  });
+
+  media.get('/pipeline/:lectureId', async (c) => {
+    const lectureId = c.req.param('lectureId');
+    return withLectureAccessResponse(
+      c,
+      lectureId,
+      '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.',
+      '강의 수강 후에 파이프라인 상태를 볼 수 있습니다.',
+      async (repository) => buildPipelineOverview(lectureId, repository),
+    );
+  });
+}

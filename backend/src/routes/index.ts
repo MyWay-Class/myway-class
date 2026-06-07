@@ -1,0 +1,40 @@
+import type { Hono } from 'hono';
+import auth from './auth';
+import customCourses from './custom-courses';
+import aiInsights from './ai-insights';
+import aiLogs from './ai-logs';
+import aiRecommendations from './ai-recommendations';
+import aiProviders from './ai-providers';
+import aiRag from './ai-rag';
+import ai from './ai';
+import dev from './dev';
+import courses from './courses';
+import dashboard from './dashboard';
+import enrollments from './enrollments';
+import health from './health';
+import media from './media';
+import lectures from './lectures';
+import lectureDrafts from './lecture-drafts';
+import smart from './smart';
+import shortform from './shortform';
+
+export function registerRoutes(app: Hono): void {
+  app.route('/api/v1/health', health);
+  app.route('/api/v1/auth', auth);
+  app.route('/api/v1/ai/insights', aiInsights);
+  app.route('/api/v1/ai/logs', aiLogs);
+  app.route('/api/v1/ai', aiRecommendations);
+  app.route('/api/v1/ai/providers', aiProviders);
+  app.route('/api/v1/ai/rag', aiRag);
+  app.route('/api/v1/ai', ai);
+  app.route('/api/v1/dev', dev);
+  app.route('/api/v1/custom-courses', customCourses);
+  app.route('/api/v1/dashboard', dashboard);
+  app.route('/api/v1/courses', courses);
+  app.route('/api/v1/lectures', lectures);
+  app.route('/api/v1/lecture-drafts', lectureDrafts);
+  app.route('/api/v1/media', media);
+  app.route('/api/v1/smart', smart);
+  app.route('/api/v1/shortform', shortform);
+  app.route('/api/v1/enrollments', enrollments);
+}

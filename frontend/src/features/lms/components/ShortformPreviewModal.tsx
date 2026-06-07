@@ -1,0 +1,149 @@
+import { useEffect } from 'react';
+import type { ShortformCommunityItem } from '@myway/shared';
+import { resolvePlayableVideoUrl } from '../../../lib/video-url';
+
+type ShortformPreviewModalProps = {
+  item: ShortformCommunityItem | null;
+  onClose: () => void;
+};
+
+function formatDuration(ms: number): string {
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds < 60) {
+    return `${seconds}초`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remain = seconds % 60;
+  return remain > 0 ? `${minutes}분 ${remain}초` : `${minutes}분`;
+}
+
+export function ShortformPreviewModal({ item, onClose }: ShortformPreviewModalProps) {
+  useEffect(() => {
+    if (!item) {
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [item, onClose]);
+
+  if (!item) {
+    return null;
+  }
+
+  const totalDuration = item.clips.reduce((sum, clip) => sum + (clip.end_time_ms - clip.start_time_ms), 0);
+  const playbackUrl =
+    resolvePlayableVideoUrl(item.export_result_url ?? undefined) ??
+    (item.video_url && !item.video_url.startsWith('/static/shortforms/') ? resolvePlayableVideoUrl(item.video_url) : null);
+
+  return (
+    <div
+      role="presentation"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={item.title}
+        className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[22px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.3)] md:rounded-[28px]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">Shortform Preview</div>
+            <h3 className="mt-1 text-[18px] font-extrabold tracking-[-0.03em] text-slate-900">{item.title}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+          >
+            <i className="ri-close-line text-[18px]" />
+          </button>
+        </div>
+
+        <div className="grid gap-4 p-4 md:gap-5 md:p-5 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-4">
+            <div className="rounded-[20px] bg-slate-950 px-4 py-4 text-white md:rounded-[24px] md:px-5 md:py-5">
+              {playbackUrl ? (
+                <video className="aspect-video w-full rounded-2xl border border-white/10 bg-black" controls preload="metadata" src={playbackUrl} />
+              ) : (
+                <div className="flex aspect-video items-center justify-center rounded-2xl border border-white/10 bg-[linear-gradient(135deg,#111827,#334155)] text-white/60">
+                  <div className="text-center">
+                    <i className="ri-film-line text-[34px]" />
+                    <p className="mt-2 text-[13px]">숏폼 미리보기</p>
+                  </div>
+                </div>
+              )}
+              <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold text-white/90">
+                <span className="rounded-full bg-white/10 px-2.5 py-1">{item.course_title}</span>
+                <span className="rounded-full bg-white/10 px-2.5 py-1">{item.clips.length}클립</span>
+                <span className="rounded-full bg-white/10 px-2.5 py-1">{formatDuration(totalDuration)}</span>
+              </div>
+            </div>
+
+            <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 md:rounded-[24px] md:px-5 md:py-4">
+              <div className="text-[12px] font-semibold text-slate-900">상세 설명</div>
+              <p className="mt-2 line-clamp-3 text-[12px] leading-6 text-slate-600 md:line-clamp-none md:text-[13px] md:leading-7">{item.description || '설명 없음'}</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 overflow-y-auto pr-1">
+            <div className="text-[12px] font-semibold text-slate-500">클립 구성</div>
+            {item.clips.length > 0 ? (
+              item.clips.slice(0, 4).map((clip, index) => (
+                <article key={`${clip.lecture_id}:${clip.start_time_ms}:${clip.end_time_ms}`} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-[11px] font-bold text-cyan-700">
+                      {index + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-semibold text-slate-900">{clip.lecture_title}</div>
+                      <p className="mt-1 text-[12px] leading-6 text-slate-500">
+                        {clip.label || '구간'} · {formatDuration(clip.end_time_ms - clip.start_time_ms)}
+                      </p>
+                      {clip.description ? <p className="mt-1 hidden text-[12px] leading-6 text-slate-500 md:block">{clip.description}</p> : null}
+                    </div>
+                    <div className="flex-shrink-0 text-[11px] text-slate-400">
+                      {Math.floor(clip.start_time_ms / 1000)}s ~ {Math.floor(clip.end_time_ms / 1000)}s
+                    </div>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-[13px] text-slate-500">
+                아직 미리보기할 클립이 없습니다.
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2 pt-2 text-center">
+              <div className="rounded-2xl bg-slate-50 px-3 py-3">
+                <div className="text-[18px] font-extrabold text-slate-900">{item.view_count}</div>
+                <div className="text-[11px] text-slate-500">조회</div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-3 py-3">
+                <div className="text-[18px] font-extrabold text-slate-900">{item.like_count}</div>
+                <div className="text-[11px] text-slate-500">좋아요</div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-3 py-3">
+                <div className="text-[18px] font-extrabold text-slate-900">{item.save_count}</div>
+                <div className="text-[11px] text-slate-500">저장</div>
+              </div>
+            </div>
+            {item.clips.length > 4 ? (
+              <div className="text-center text-[11px] font-semibold text-slate-500">모바일에서는 상위 4개 클립만 표시됩니다.</div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
