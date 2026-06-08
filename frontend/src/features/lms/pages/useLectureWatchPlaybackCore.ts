@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CourseDetail, LectureDetail, LectureTranscript } from '@myway/shared';
-import { loadLectureTranscriptDetailed, saveLectureVideoMappingDetailed } from '../../../lib/api-media';
+import { loadLectureTranscriptDetailedResult, saveLectureVideoMappingDetailed } from '../../../lib/api-media';
 import { buildProtectedVideoUrl, resolveLectureVideoUrl } from '../../../lib/video-url';
 
 type VideoPlaybackErrorKind = 'forbidden' | 'not_found' | 'unknown' | null;
+type TranscriptAccessState = 'loading' | 'ready' | 'empty' | 'forbidden' | 'error';
 
 type Params = {
   selectedCourse: CourseDetail | null;
@@ -27,6 +28,7 @@ export function useLectureWatchPlayback({
   const [activePanelTab, setActivePanelTab] = useState<'sessions' | 'script' | 'chat'>('sessions');
   const [transcript, setTranscript] = useState<LectureTranscript | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
+  const [transcriptAccessState, setTranscriptAccessState] = useState<TranscriptAccessState>('ready');
   const [videoErrorKind, setVideoErrorKind] = useState<VideoPlaybackErrorKind>(null);
   const [videoErrorMessage, setVideoErrorMessage] = useState<string | null>(null);
   const [videoChecking, setVideoChecking] = useState(false);
@@ -53,14 +55,34 @@ export function useLectureWatchPlayback({
     let active = true;
     if (!currentLecture?.id || isLocked || !sessionToken) {
       setTranscript(null);
+      setTranscriptAccessState('ready');
       return () => {
         active = false;
       };
     }
     setTranscriptLoading(true);
-    void loadLectureTranscriptDetailed(currentLecture.id, sessionToken)
-      .then((nextTranscript) => {
-        if (active) setTranscript(nextTranscript);
+    setTranscriptAccessState('loading');
+    void loadLectureTranscriptDetailedResult(currentLecture.id, sessionToken)
+      .then((response) => {
+        if (!active) return;
+        if (!response) {
+          setTranscript(null);
+          setTranscriptAccessState('error');
+          return;
+        }
+        if (response.success && response.data) {
+          setTranscript(response.data);
+          setTranscriptAccessState('ready');
+          return;
+        }
+        setTranscript(null);
+        if (response.status === 403) {
+          setTranscriptAccessState('forbidden');
+        } else if (response.success && response.data === null) {
+          setTranscriptAccessState('empty');
+        } else {
+          setTranscriptAccessState('error');
+        }
       })
       .finally(() => {
         if (active) setTranscriptLoading(false);
@@ -174,6 +196,7 @@ export function useLectureWatchPlayback({
     setActivePanelTab,
     transcript,
     transcriptLoading,
+    transcriptAccessState,
     videoErrorKind,
     setVideoErrorKind,
     videoErrorMessage,

@@ -17,6 +17,7 @@ export {
 export {
   loadAudioExtractions,
   loadLectureTranscriptDetailed,
+  loadLectureTranscriptDetailedResult,
   loadMediaPipeline,
   loadTranscriptSpeakerReview,
   saveTranscriptSpeakerReviewDetailed,

@@ -9,8 +9,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,6 +68,75 @@ class ShortformComposeClipsIntegrationTest {
         assertThat(payload.path("clips").size()).isEqualTo(2);
         assertThat(payload.path("clips").get(0).path("start_time_ms").asLong()).isEqualTo(120000);
         assertThat(payload.path("clips").get(1).path("start_time_ms").asLong()).isEqualTo(60000);
+    }
+
+    @Test
+    void generate_shouldBuildCandidatesFromSeedTranscript_thenComposeFromSelection() throws Exception {
+        String auth = "Bearer " + loginAndGetToken("usr_admin_001");
+
+        JsonNode transcript = readData(mockMvc.perform(get("/api/v1/media/transcript/{lectureId}", "lec_react_01")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andReturn());
+        assertThat(transcript.path("segments").isArray()).isTrue();
+        assertThat(transcript.path("segments").size()).isGreaterThan(0);
+
+        Map<String, List<Map<String, Object>>> transcriptMap = Map.of(
+                "lec_react_01",
+                objectMapper.convertValue(
+                        transcript.path("segments"),
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class)
+                )
+        );
+
+        JsonNode generated = readData(mockMvc.perform(post("/api/v1/shortform/generate")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "course_id", "crs_react_01",
+                                "mode", "cross",
+                                "transcript_chunks_by_lecture", transcriptMap,
+                                "transcript_segments_by_lecture", transcriptMap
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn());
+
+        assertThat(generated.path("candidates").isArray()).isTrue();
+        assertThat(generated.path("candidates").size()).isGreaterThan(0);
+        String extractionId = generated.path("id").asText();
+        String candidateId = generated.path("candidates").get(0).path("id").asText();
+        assertThat(extractionId).isNotBlank();
+        assertThat(candidateId).isNotBlank();
+
+        JsonNode selected = readData(mockMvc.perform(put("/api/v1/shortform/candidates/select")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "extraction_id", extractionId,
+                                "candidate_ids", List.of(candidateId)
+                        ))))
+                .andExpect(status().isOk())
+                .andReturn());
+        assertThat(selected.path("candidates").isArray()).isTrue();
+        assertThat(selected.path("candidates").get(0).path("selected").asBoolean()).isTrue();
+
+        JsonNode composed = readData(mockMvc.perform(post("/api/v1/shortform/compose")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "seed transcript shortform",
+                                "description", "generated from transcript seed",
+                                "course_id", "crs_react_01",
+                                "extraction_id", extractionId,
+                                "candidate_ids", List.of(candidateId)
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn());
+
+        assertThat(composed.path("id").asText()).isNotBlank();
+        assertThat(composed.path("clips").isArray()).isTrue();
+        assertThat(composed.path("clips").size()).isGreaterThan(0);
+        assertThat(composed.path("clips").get(0).path("lecture_id").asText()).isEqualTo("lec_react_01");
     }
 
     @Test
@@ -163,5 +237,11 @@ class ShortformComposeClipsIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         return objectMapper.readTree(response).path("data").path("session_token").asText();
+    }
+
+    private JsonNode readData(org.springframework.test.web.servlet.MvcResult result) throws Exception {
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(root.path("success").asBoolean()).isTrue();
+        return root.path("data");
     }
 }

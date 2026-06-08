@@ -16,6 +16,7 @@ public class DemoLearningService {
     private static final String COURSE_SCOPE = "learning_course";
     private static final String MATERIAL_SCOPE = "learning_material";
     private static final String NOTICE_SCOPE = "learning_notice";
+    private static final String TRANSCRIPT_SCOPE = "media_transcript";
     private static final String DEFAULT_DEMO_STUDENT_ID = "usr_std_001";
     private final Map<String, CourseDetail> courses = new LinkedHashMap<>();
     private final Map<String, List<MaterialItem>> materialsByCourse = new ConcurrentHashMap<>();
@@ -125,6 +126,7 @@ public class DemoLearningService {
     private void initSeedData() {
         if (useStore()) {
             courseCatalogStoreSupport.seedStoreDataIfMissing(store, COURSE_SCOPE, MATERIAL_SCOPE, NOTICE_SCOPE, learningPayloadMapper);
+            seedTranscriptStoreDataIfMissing();
             ensureDefaultDemoStudentEnrollmentsInStore();
             return;
         }
@@ -147,6 +149,99 @@ public class DemoLearningService {
                 new NoticeItem("not_java_01", "crs_java_01", "과제 공지", "1주차 과제를 제출하세요.", true)
         )));
         ensureDefaultDemoStudentEnrollmentsInMemory();
+    }
+
+    private void seedTranscriptStoreDataIfMissing() {
+        seedTranscriptIfMissing(
+                "lec_react_01",
+                "trs_ai_seed_001",
+                "ko",
+                """
+                        안녕하세요. 오늘부터 인공지능 강의를 시작합니다. 인공지능은 현재 우리 삶의 여러 영역에 영향을 미치고 있습니다.
+                        스마트폰의 음성인식, 추천 알고리즘, 자율주행 자동차까지 모두 인공지능 기술의 예시입니다.
+                        인공지능이란 무엇일까요? 간단히 말하면 컴퓨터가 인간처럼 생각하고 학습할 수 있도록 만드는 기술입니다.
+                        인공지능의 핵심 기술은 머신러닝, 딥러닝, 자연어처리로 나뉘며, 최근에는 생성형 인공지능이 큰 주목을 받고 있습니다.
+                        다음 시간에는 머신러닝의 핵심 개념을 더 자세히 살펴보겠습니다.
+                        """.replace("\n", " ").replaceAll("\\s+", " ").trim(),
+                List.of(
+                        transcriptSegment(0, 0, 36000, "안녕하세요. 오늘부터 인공지능 강의를 시작합니다. 인공지능은 현재 우리 삶의 여러 영역에 영향을 미치고 있습니다."),
+                        transcriptSegment(1, 36000, 76000, "스마트폰의 음성인식, 추천 알고리즘, 자율주행 자동차까지 모두 인공지능 기술의 예시입니다."),
+                        transcriptSegment(2, 76000, 118000, "인공지능이란 무엇일까요? 간단히 말하면 컴퓨터가 인간처럼 생각하고 학습할 수 있도록 만드는 기술입니다."),
+                        transcriptSegment(3, 118000, 141000, "인공지능의 핵심 기술은 머신러닝, 딥러닝, 자연어처리로 나뉘며, 최근에는 생성형 인공지능이 큰 주목을 받고 있습니다."),
+                        transcriptSegment(4, 141000, 141000, "다음 시간에는 머신러닝의 핵심 개념을 더 자세히 살펴보겠습니다.")
+                ),
+                43,
+                141000,
+                "seed-stt",
+                "ai-seed-v1"
+        );
+    }
+
+    private void seedTranscriptIfMissing(
+            String lectureId,
+            String transcriptId,
+            String language,
+            String fullText,
+            List<Map<String, Object>> segments,
+            int wordCount,
+            int durationMs,
+            String provider,
+            String model
+    ) {
+        if (store == null || store.getKv(TRANSCRIPT_SCOPE, lectureId) != null) {
+            return;
+        }
+        List<Map<String, Object>> speakerSegments = new ArrayList<>();
+        for (Map<String, Object> segment : segments) {
+            speakerSegments.add(transcriptSpeakerSegment(segment));
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", transcriptId);
+        payload.put("lecture_id", lectureId);
+        payload.put("language", language);
+        payload.put("full_text", fullText);
+        payload.put("segments", segments);
+        payload.put("speaker_segments", speakerSegments);
+        payload.put("word_count", wordCount);
+        payload.put("duration_ms", durationMs);
+        payload.put("stt_provider", provider);
+        payload.put("stt_model", model);
+        payload.put("quality", Map.of(
+                "avg_confidence", 0.97,
+                "segment_count", segments.size(),
+                "transcript_seed", true
+        ));
+        payload.put("instructor_guess", Map.of(
+                "speaker_label", "SPEAKER_01",
+                "instructor_name", "강사",
+                "confidence", 0.9
+        ));
+        payload.put("speaker_review", Map.of(
+                "speaker_label", "SPEAKER_01",
+                "instructor_name", "강사",
+                "status", "CONFIRMED",
+                "confidence", 0.95
+        ));
+        payload.put("created_at", "2026-04-13T09:00:00.000Z");
+        store.upsertKv(TRANSCRIPT_SCOPE, lectureId, payload);
+    }
+
+    private Map<String, Object> transcriptSegment(int index, int startMs, int endMs, String text) {
+        Map<String, Object> segment = new HashMap<>();
+        segment.put("index", index);
+        segment.put("start_ms", startMs);
+        segment.put("end_ms", endMs);
+        segment.put("text", text);
+        return segment;
+    }
+
+    private Map<String, Object> transcriptSpeakerSegment(Map<String, Object> segment) {
+        Map<String, Object> speakerSegment = new HashMap<>();
+        speakerSegment.put("index", segment.get("index"));
+        speakerSegment.put("start_ms", segment.get("start_ms"));
+        speakerSegment.put("end_ms", segment.get("end_ms"));
+        speakerSegment.put("speaker_label", "SPEAKER_01");
+        return speakerSegment;
     }
 
     public List<CourseCard> listCourseCards(String userId) {
