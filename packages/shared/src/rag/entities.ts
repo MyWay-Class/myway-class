@@ -194,12 +194,15 @@ export function buildProviderPlan(preferredProvider?: AIRagRequest['preferred_pr
     ...(preferredProvider ? [preferredProvider] : []),
     ...DEFAULT_FALLBACK_ORDER.search,
   ]);
+  const resolvedProvider = preferredProvider ?? 'ollama';
 
   return {
     preferred_provider: preferredProvider ?? null,
-    intent_provider: preferredProvider ?? 'ollama',
-    search_provider: preferredProvider ?? 'ollama',
-    answer_provider: preferredProvider ?? 'ollama',
+    intent_provider: resolvedProvider,
+    search_provider: resolvedProvider,
+    answer_provider: resolvedProvider,
+    vector_store_provider: 'feature_store',
+    rerank_provider: resolvedProvider,
     fallback_chain,
   };
 }
