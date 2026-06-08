@@ -13,9 +13,12 @@
 
 ## 검증
 - [ ] 로컬 확인 완료
+- [ ] 실행한 명령과 결과를 본문에 적었다
+- [ ] 실패가 있었다면 실패 링크/재현 명령을 본문에 적었다
 - [ ] 문서 갱신 완료
 - [ ] 영향 범위 점검 완료
 - [ ] (설계 변경 시) ADR 상태 갱신 완료 (Proposed/Accepted/Superseded)
+- [ ] AI/Media/STT/Shortform 변경이면 `npm run smoke:media-ai-shortform` 결과를 적었다
 
 ## 코드리뷰
 - [ ] CODEOWNERS 자동 리뷰 요청이 걸린다
@@ -46,6 +49,7 @@
 ## 검증 로그 요약
 - verify: <!-- 예: npm run verify 통과 -->
 - layer tests: <!-- 예: npm run test:backend 통과 -->
+- smoke: <!-- 예: npm run smoke:media-ai-shortform 통과 / 실패 링크 -->
 - risk/rollback: <!-- 변경 리스크와 롤백 방법 -->
 
 ## ADR 링크
