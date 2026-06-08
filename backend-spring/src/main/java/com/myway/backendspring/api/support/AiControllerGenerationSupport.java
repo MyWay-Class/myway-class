@@ -52,7 +52,7 @@ public class AiControllerGenerationSupport {
 
     public ResponseEntity<ApiResponse<Map<String, Object>>> intent(String auth, AiController.IntentRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session, "intent");
         if (guard != null) return guard;
         String message = aiRequestSupport.normalize(body.message());
         UnderstandingResult result = inputUnderstandingService.understandMessage(
@@ -68,7 +68,7 @@ public class AiControllerGenerationSupport {
 
     public ResponseEntity<ApiResponse<Map<String, Object>>> search(String auth, AiController.SearchRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session, "search");
         if (guard != null) return guard;
         String query = aiRequestSupport.normalize(body.query());
         String lectureId = aiRequestSupport.optionalNormalized(body.lecture_id());
@@ -91,7 +91,7 @@ public class AiControllerGenerationSupport {
 
     public ResponseEntity<ApiResponse<Map<String, Object>>> answer(String auth, AiController.AnswerRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session, "answer");
         if (guard != null) return guard;
         String question = aiRequestSupport.normalize(body.question());
         String lectureId = aiRequestSupport.optionalNormalized(body.lecture_id());
@@ -106,7 +106,7 @@ public class AiControllerGenerationSupport {
 
     public ResponseEntity<ApiResponse<Map<String, Object>>> summary(String auth, AiController.SummaryRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session, "summary");
         if (guard != null) return guard;
         String lectureId = aiRequestSupport.requireLectureId(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLectureExists(lectureId);
@@ -125,7 +125,7 @@ public class AiControllerGenerationSupport {
 
     public ResponseEntity<ApiResponse<Map<String, Object>>> quiz(String auth, AiController.QuizRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session, "quiz");
         if (guard != null) return guard;
         String lectureId = aiRequestSupport.requireLectureId(body.lecture_id());
         ResponseEntity<ApiResponse<Map<String, Object>>> lectureError = validateLectureExists(lectureId);
@@ -144,8 +144,8 @@ public class AiControllerGenerationSupport {
         return aiControllerAuthSupport.requireSession(sessionService, auth);
     }
 
-    private ResponseEntity<ApiResponse<Map<String, Object>>> requireAiGuard(SessionView session) {
-        return aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+    private ResponseEntity<ApiResponse<Map<String, Object>>> requireAiGuard(SessionView session, String feature) {
+        return aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport, feature);
     }
 
     private ResponseEntity<ApiResponse<Map<String, Object>>> validateLectureExists(String lectureId) {

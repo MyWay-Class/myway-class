@@ -1,6 +1,7 @@
 package com.myway.backendspring.feature;
 
 import com.myway.backendspring.feature.ai.AiFeatureService;
+import com.myway.backendspring.feature.quota.AiUsageQuotaService;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -39,8 +40,8 @@ public class FeatureStoreAiFacade {
         return aiSupport.aiProviders(aiFeatureService, userId);
     }
 
-    public boolean canConsumeAi(String userId) {
-        return aiSupport.canConsumeAi(aiFeatureService, userId);
+    public AiUsageQuotaService.QuotaDecision canConsumeAi(String userId, String role, String feature) {
+        return aiSupport.canConsumeAi(aiFeatureService, userId, role, feature);
     }
 
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
