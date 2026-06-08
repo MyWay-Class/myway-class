@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Connection;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -78,6 +79,21 @@ public class FeatureJdbcStore {
                 "INSERT INTO scoped_events(scope, owner_id, id, payload, created_at) VALUES(?, ?, ?, ?, CURRENT_TIMESTAMP)",
                 scope, ownerId, id, toJson(payload)
         );
+    }
+
+    public boolean claimCallbackNonce(String scope, String nonce, Instant expiresAt) {
+        jdbcTemplate.update("DELETE FROM callback_nonce_guard WHERE expires_at <= CURRENT_TIMESTAMP");
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO callback_nonce_guard(scope, nonce, expires_at, created_at) VALUES(?, ?, ?, CURRENT_TIMESTAMP)",
+                    scope,
+                    nonce,
+                    Timestamp.from(expiresAt)
+            );
+            return true;
+        } catch (DataAccessException ex) {
+            return false;
+        }
     }
 
     public List<Map<String, Object>> listEventsByOwner(String scope, String ownerId) {

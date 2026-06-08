@@ -5,6 +5,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 
 @Repository
 public class FeatureStoreRepository {
@@ -36,6 +37,10 @@ public class FeatureStoreRepository {
 
     public void insertEvent(String scope, String ownerId, String id, Map<String, Object> payload) {
         store.insertEvent(scope, ownerId, id, payload);
+    }
+
+    public boolean claimCallbackNonce(String scope, String nonce, Instant expiresAt) {
+        return store.claimCallbackNonce(scope, nonce, expiresAt);
     }
 
     public List<Map<String, Object>> listKvByScope(String scope) {

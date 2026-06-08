@@ -2,9 +2,11 @@ package com.myway.backendspring.api;
 
 import com.myway.backendspring.api.support.ShortformControllerSupport;
 import com.myway.backendspring.api.support.ShortformComposeValidationSupport;
+import com.myway.backendspring.api.support.CallbackSecuritySupport;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
+import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import com.myway.backendspring.feature.shortform.ShortformService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -43,10 +45,28 @@ public class ShortformController {
     public record SaveRequest(@NotBlank String video_id, String note, String folder) {}
     public record LikeRequest(@NotBlank String video_id) {}
     public record RetryFailedExportsRequest(Boolean include_permanent, Integer limit) {}
+    public record ExportCallbackRequest(
+            @NotBlank String shortform_id,
+            String video_id,
+            String status,
+            String video_url,
+            String error_message,
+            String failure_reason,
+            String processing_job_id,
+            String processing_stage,
+            String processing_step,
+            @NotNull Long event_version,
+            String issued_at,
+            String nonce,
+            String signature
+    ) {}
 
     private final SessionService sessionService;
     private final ShortformService shortformService;
     private final String callbackToken;
+    private final FeatureStoreRepository featureStoreRepository;
+    private final CallbackSecuritySupport callbackSecuritySupport;
+    private final long callbackTtlSeconds;
     private final long maxClipDurationMs;
     private final ShortformControllerSupport support;
     private final ShortformComposeValidationSupport composeSupport;
@@ -55,6 +75,9 @@ public class ShortformController {
             SessionService sessionService,
             ShortformService shortformService,
             @Value("${myway.shortform.callback.token:dev-shortform-callback-token}") String callbackToken,
+            @Value("${myway.shortform.callback.ttl-seconds:300}") long callbackTtlSeconds,
+            FeatureStoreRepository featureStoreRepository,
+            CallbackSecuritySupport callbackSecuritySupport,
             @Value("${myway.shortform.compose.max-clip-duration-ms:300000}") long maxClipDurationMs,
             ShortformControllerSupport support,
             ShortformComposeValidationSupport composeSupport
@@ -62,6 +85,9 @@ public class ShortformController {
         this.sessionService = sessionService;
         this.shortformService = shortformService;
         this.callbackToken = callbackToken;
+        this.featureStoreRepository = featureStoreRepository;
+        this.callbackSecuritySupport = callbackSecuritySupport;
+        this.callbackTtlSeconds = Math.max(60L, callbackTtlSeconds);
         this.maxClipDurationMs = Math.max(1000L, maxClipDurationMs);
         this.support = support;
         this.composeSupport = composeSupport;
@@ -256,15 +282,6 @@ public class ShortformController {
         return ResponseEntity.ok(ApiResponse.success(result, "실패한 숏폼 export 재시도가 실행되었습니다."));
     }
 
-    public record ExportCallbackRequest(
-            @NotBlank String shortform_id,
-            String video_id,
-            String status,
-            String video_url,
-            String error_message,
-            @NotNull Long event_version
-    ) {}
-
     @PostMapping("/export/callback")
     public ResponseEntity<ApiResponse<Map<String, Object>>> exportCallback(
             @RequestHeader(value = "X-Callback-Token", required = false) String token,
@@ -280,6 +297,36 @@ public class ShortformController {
         ShortformControllerSupport.CallbackPolicyDecision decision = support.decideExportCallbackState(body.status(), body.event_version());
         if (!decision.valid()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", decision.errorMessage()));
+        }
+        Map<String, Object> replayPayload = new java.util.LinkedHashMap<>();
+        replayPayload.put("shortform_id", shortformId);
+        replayPayload.put("video_id", body.video_id());
+        replayPayload.put("status", decision.status());
+        replayPayload.put("event_version", decision.eventVersion());
+        replayPayload.put("video_url", body.video_url());
+        replayPayload.put("error_message", body.error_message());
+        replayPayload.put("failure_reason", body.failure_reason());
+        replayPayload.put("processing_job_id", body.processing_job_id());
+        replayPayload.put("processing_stage", body.processing_stage());
+        replayPayload.put("processing_step", body.processing_step());
+
+        CallbackSecuritySupport.CallbackDecision replayDecision = callbackSecuritySupport.verifyShortformCallback(
+                featureStoreRepository,
+                "shortform_export",
+                callbackToken,
+                body.issued_at(),
+                body.nonce(),
+                body.signature(),
+                replayPayload,
+                callbackTtlSeconds
+        );
+        if (replayDecision.signed() && !replayDecision.valid()) {
+            HttpStatus responseStatus = switch (replayDecision.errorCode()) {
+                case "REPLAY_DETECTED" -> HttpStatus.CONFLICT;
+                case "CALLBACK_EXPIRED" -> HttpStatus.GONE;
+                default -> HttpStatus.FORBIDDEN;
+            };
+            return ResponseEntity.status(responseStatus).body(ApiResponse.failure(replayDecision.errorCode(), replayDecision.errorMessage()));
         }
 
         Map<String, Object> updated = shortformService.applyShortformExportCallback(
