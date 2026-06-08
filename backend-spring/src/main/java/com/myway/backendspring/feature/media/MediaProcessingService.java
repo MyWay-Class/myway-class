@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 
 import java.net.http.HttpResponse;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +24,10 @@ public class MediaProcessingService {
     private final String mediaProcessorToken;
     private final String mediaCallbackSecret;
     private final String mediaPublicBaseUrl;
+    private final int dispatchTimeoutMs;
+    private final int dispatchMaxAttempts;
+    private final long dispatchBackoffMs;
+    private final long longInputThresholdMs;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final MediaProcessingDispatchSupport dispatchSupport;
 
@@ -31,6 +37,10 @@ public class MediaProcessingService {
             @Value("${myway.media.processor.token:}") String mediaProcessorToken,
             @Value("${myway.media.callback.secret:}") String mediaCallbackSecret,
             @Value("${myway.media.public-base-url:http://127.0.0.1:8787}") String mediaPublicBaseUrl,
+            @Value("${myway.media.dispatch.timeout-ms:10000}") int dispatchTimeoutMs,
+            @Value("${myway.media.dispatch.max-attempts:3}") int dispatchMaxAttempts,
+            @Value("${myway.media.dispatch.backoff-ms:250}") long dispatchBackoffMs,
+            @Value("${myway.media.stt.long-input-threshold-ms:1200000}") long longInputThresholdMs,
             MediaProcessingDispatchSupport dispatchSupport
     ) {
         this.repository = repository;
@@ -38,6 +48,10 @@ public class MediaProcessingService {
         this.mediaProcessorToken = mediaProcessorToken == null ? "" : mediaProcessorToken.trim();
         this.mediaCallbackSecret = mediaCallbackSecret == null ? "" : mediaCallbackSecret.trim();
         this.mediaPublicBaseUrl = mediaPublicBaseUrl == null ? "http://127.0.0.1:8787" : mediaPublicBaseUrl.trim();
+        this.dispatchTimeoutMs = Math.max(1000, dispatchTimeoutMs);
+        this.dispatchMaxAttempts = Math.max(1, dispatchMaxAttempts);
+        this.dispatchBackoffMs = Math.max(0L, dispatchBackoffMs);
+        this.longInputThresholdMs = Math.max(0L, longInputThresholdMs);
         this.dispatchSupport = dispatchSupport;
     }
 
@@ -81,18 +95,39 @@ public class MediaProcessingService {
 
         Map<String, Object> ffmpeg = resolveFfmpegHealth(remoteHealth);
         boolean remoteOk = remoteHealth != null && Boolean.TRUE.equals(remoteHealth.getOrDefault("ok", true));
+        Map<String, Object> dispatchPolicy = new HashMap<>();
+        dispatchPolicy.put("timeout_ms", dispatchTimeoutMs);
+        dispatchPolicy.put("max_attempts", dispatchMaxAttempts);
+        dispatchPolicy.put("backoff_ms", dispatchBackoffMs);
+        dispatchPolicy.put("retryable_statuses", List.of(429, 500, 502, 503, 504));
 
-        return Map.of(
-                "ok", remoteOk,
-                "ffmpeg", ffmpeg,
-                "token_configured", !mediaProcessorToken.isBlank(),
-                "callback_secret_configured", !mediaCallbackSecret.isBlank(),
-                "jobs", Map.of("total", rows.size(), "processing", processing, "completed", completed, "failed", failed),
-                "work_dir", "backend-spring/data",
-                "public_base_url", mediaPublicBaseUrl + "/api/v1/media",
-                "recent_jobs", recentJobs,
-                "updated_at", Instant.now().toString()
-        );
+        Map<String, Object> longInputPolicy = new HashMap<>();
+        longInputPolicy.put("threshold_ms", longInputThresholdMs);
+        longInputPolicy.put("threshold_minutes", longInputThresholdMs / 60000L);
+        longInputPolicy.put("strategy", "manual_split_or_batch_queue");
+
+        Map<String, Object> jobTiming = processingTimingSummary(rows);
+
+        Map<String, Object> jobs = new HashMap<>();
+        jobs.put("total", rows.size());
+        jobs.put("processing", processing);
+        jobs.put("completed", completed);
+        jobs.put("failed", failed);
+
+        Map<String, Object> health = new HashMap<>();
+        health.put("ok", remoteOk);
+        health.put("ffmpeg", ffmpeg);
+        health.put("token_configured", !mediaProcessorToken.isBlank());
+        health.put("callback_secret_configured", !mediaCallbackSecret.isBlank());
+        health.put("dispatch_policy", dispatchPolicy);
+        health.put("long_input_policy", longInputPolicy);
+        health.put("timing", jobTiming);
+        health.put("jobs", jobs);
+        health.put("work_dir", "backend-spring/data");
+        health.put("public_base_url", mediaPublicBaseUrl + "/api/v1/media");
+        health.put("recent_jobs", recentJobs);
+        health.put("updated_at", Instant.now().toString());
+        return health;
     }
 
     public Map<String, Object> dispatchExtractionJob(String extractionId, String sourceVideoUrl) {
@@ -104,7 +139,7 @@ public class MediaProcessingService {
         }
 
         try {
-            HttpResponse<String> response = dispatchSupport.dispatchRequest(
+            MediaProcessingDispatchSupport.DispatchResult dispatchResult = dispatchSupport.dispatchRequest(
                     objectMapper,
                     mediaProcessorUrl,
                     mediaProcessorToken,
@@ -114,6 +149,8 @@ public class MediaProcessingService {
                     sourceVideoUrl,
                     mutable
             );
+            mutable.put("dispatch_attempts", dispatchResult.attempts());
+            HttpResponse<String> response = dispatchResult.response();
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 applyDispatchSuccess(mutable, response.body());
             } else {
@@ -137,6 +174,7 @@ public class MediaProcessingService {
         extraction.put("stt_status", MediaStatus.PENDING.name());
         extraction.put("processing_error_code", null);
         extraction.put("processing_error", null);
+        extraction.put("dispatch_retry_count", Math.max(0, ((Number) extraction.getOrDefault("dispatch_attempts", 1)).intValue() - 1));
     }
 
     private Map<String, Object> saveFailedDispatch(Map<String, Object> extraction, String extractionId, String step, String errorCode, String errorMessage) {
@@ -146,6 +184,8 @@ public class MediaProcessingService {
         extraction.put("processing_error_code", errorCode);
         extraction.put("processing_error", errorMessage);
         extraction.put("stt_status", MediaStatus.FAILED.name());
+        extraction.putIfAbsent("dispatch_attempts", 1);
+        extraction.put("dispatch_retry_count", Math.max(0, ((Number) extraction.getOrDefault("dispatch_attempts", 1)).intValue() - 1));
         extraction.put("updated_at", Instant.now().toString());
         repository.upsertKv(EXTRACTION_SCOPE, extractionId, extraction);
         return extraction;
@@ -172,6 +212,70 @@ public class MediaProcessingService {
             return typed;
         }
         return Map.of("available", false, "path", "unknown");
+    }
+
+    private Map<String, Object> processingTimingSummary(List<Map<String, Object>> rows) {
+        long nowEpochMs = Instant.now().toEpochMilli();
+        long completedCount = 0L;
+        long completedAgeSumMs = 0L;
+        long failedCount = 0L;
+        long failedAgeSumMs = 0L;
+        long dispatchAttemptsSum = 0L;
+        long dispatchRetrySum = 0L;
+        long dispatchRetryingJobs = 0L;
+        long processingOlderThanThreshold = 0L;
+
+        for (Map<String, Object> row : rows) {
+            long createdAtMs = parseInstantMillis(row.get("created_at"), nowEpochMs);
+            long updatedAtMs = parseInstantMillis(row.get("updated_at"), createdAtMs);
+            String status = String.valueOf(row.getOrDefault("status", "")).toUpperCase();
+            long ageMs = Math.max(0L, nowEpochMs - createdAtMs);
+            int dispatchAttempts = Math.max(1, ((Number) row.getOrDefault("dispatch_attempts", 1)).intValue());
+            int dispatchRetryCount = Math.max(0, dispatchAttempts - 1);
+            dispatchAttemptsSum += dispatchAttempts;
+            dispatchRetrySum += dispatchRetryCount;
+            if (dispatchRetryCount > 0) {
+                dispatchRetryingJobs++;
+            }
+            if ("COMPLETED".equals(status)) {
+                completedCount++;
+                completedAgeSumMs += Math.max(0L, updatedAtMs - createdAtMs);
+            } else if ("FAILED".equals(status)) {
+                failedCount++;
+                failedAgeSumMs += Math.max(0L, updatedAtMs - createdAtMs);
+            } else if ("PROCESSING".equals(status) && ageMs >= longInputThresholdMs && longInputThresholdMs > 0L) {
+                processingOlderThanThreshold++;
+            }
+        }
+
+        Map<String, Object> timing = new HashMap<>();
+        timing.put("completed_average_age_ms", completedCount == 0L ? 0L : completedAgeSumMs / completedCount);
+        timing.put("failed_average_age_ms", failedCount == 0L ? 0L : failedAgeSumMs / failedCount);
+        timing.put("average_dispatch_attempts", rows.isEmpty() ? 0L : dispatchAttemptsSum / rows.size());
+        timing.put("total_dispatch_retry_count", dispatchRetrySum);
+        timing.put("dispatch_retrying_jobs", dispatchRetryingJobs);
+        timing.put("stale_processing_count", processingOlderThanThreshold);
+        timing.put("long_input_threshold_ms", longInputThresholdMs);
+        return timing;
+    }
+
+    private long parseInstantMillis(Object value, long fallbackMillis) {
+        if (value == null) {
+            return fallbackMillis;
+        }
+        String text = String.valueOf(value).trim();
+        if (text.isBlank()) {
+            return fallbackMillis;
+        }
+        try {
+            return Instant.parse(text).toEpochMilli();
+        } catch (DateTimeParseException ignored) {
+            try {
+                return OffsetDateTime.parse(text).toInstant().toEpochMilli();
+            } catch (DateTimeParseException ignoredAgain) {
+                return fallbackMillis;
+            }
+        }
     }
 
     private record ProviderInfo(String name, String label, String description, String status, List<String> capabilities) {
