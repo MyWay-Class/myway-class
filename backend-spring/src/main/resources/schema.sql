@@ -51,6 +51,16 @@ CREATE TABLE IF NOT EXISTS activity_event (
 CREATE INDEX IF NOT EXISTS idx_activity_event_user_time ON activity_event(user_id, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_event_user_type_time ON activity_event(user_id, type, occurred_at DESC);
 
+CREATE TABLE IF NOT EXISTS callback_nonce_guard (
+  scope VARCHAR(64) NOT NULL,
+  nonce VARCHAR(128) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (scope, nonce)
+);
+
+CREATE INDEX IF NOT EXISTS idx_callback_nonce_guard_expires_at ON callback_nonce_guard(expires_at);
+
 CREATE TABLE IF NOT EXISTS auth_users (
   id VARCHAR(128) NOT NULL,
   name VARCHAR(128) NOT NULL,
