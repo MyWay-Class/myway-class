@@ -26,7 +26,9 @@ export async function processAudioExtractionJob(
     await ensureWorkDirs(config.workDir);
     await downloadSourceVideo(job.sourceVideoUrl, paths.videoPath, {
       Authorization: `Bearer ${config.token}`,
-      'X-Processor-Token': config.callbackSecret ?? config.token,
+      'x-myway-media-processor-token': config.token,
+      'x-media-processor-token': config.token,
+      'x-processor-token': config.token,
     });
     jobStore.updateJob(job.id, {
       stage: 'extracting',
@@ -131,7 +133,9 @@ export async function processShortformExportJob(
       });
       await downloadSourceVideo(clip.source_video_url, clipSourcePath, {
         Authorization: `Bearer ${config.token}`,
-        'X-Processor-Token': config.callbackSecret ?? config.token,
+        'x-myway-media-processor-token': config.token,
+        'x-media-processor-token': config.token,
+        'x-processor-token': config.token,
       });
 
       jobStore.updateJob(job.id, {

@@ -105,7 +105,7 @@ export function requireAssetAccess(
   assetKey: string,
   env: RuntimeBindings | undefined,
 ): Response | null {
-  if (request.headers.get('x-media-processor-token') && verifyMediaProcessorToken(request, env)) {
+  if (verifyMediaProcessorToken(request, env)) {
     return null;
   }
 

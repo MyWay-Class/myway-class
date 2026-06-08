@@ -133,6 +133,9 @@ public class MediaProcessingDispatchSupport {
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
         if (!mediaProcessorToken.isBlank()) {
             builder.header("Authorization", "Bearer " + mediaProcessorToken);
+            builder.header("x-myway-media-processor-token", mediaProcessorToken);
+            builder.header("x-media-processor-token", mediaProcessorToken);
+            builder.header("x-processor-token", mediaProcessorToken);
         }
         return builder.build();
     }
@@ -186,6 +189,9 @@ public class MediaProcessingDispatchSupport {
             HttpRequest.Builder builder = HttpRequest.newBuilder().uri(URI.create(mediaProcessorUrl + "/health")).GET();
             if (!mediaProcessorToken.isBlank()) {
                 builder.header("Authorization", "Bearer " + mediaProcessorToken);
+                builder.header("x-myway-media-processor-token", mediaProcessorToken);
+                builder.header("x-media-processor-token", mediaProcessorToken);
+                builder.header("x-processor-token", mediaProcessorToken);
             }
             HttpResponse<String> response = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) return null;

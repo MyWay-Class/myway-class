@@ -54,22 +54,30 @@ export async function startShortformExport(
   );
 
   if (!exportResult.ok) {
-    updateVideoExport(shortformId, {
-      export_status: 'FAILED',
-      export_error_message: exportResult.message,
-      export_failure_reason: exportResult.reason,
+    const isDeferredExport = exportResult.reason === 'not_configured';
+    const updated = updateVideoExport(shortformId, {
+      export_status: isDeferredExport ? 'PENDING' : 'FAILED',
+      export_error_message: isDeferredExport ? null : exportResult.message,
+      export_failure_reason: isDeferredExport ? null : exportResult.reason,
       export_result_url: null,
       export_job_id: null,
     });
 
+    if (isDeferredExport) {
+      return {
+        ok: true,
+        payload: jsonSuccess(
+          updated,
+          '숏폼은 생성되었고 export는 배포 환경에서 보류되었습니다.',
+          201,
+        ),
+      };
+    }
+
     return {
       ok: false,
       response: jsonSuccess(
-        updateVideoExport(shortformId, {
-          export_status: 'FAILED',
-          export_error_message: exportResult.message,
-          export_failure_reason: exportResult.reason,
-        }),
+        updated,
         '숏폼은 생성되었지만 export job을 시작하지 못했습니다.',
         201,
       ),
