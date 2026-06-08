@@ -46,8 +46,8 @@
 
 ## Phase 6: Polish
 
-- [ ] T021 Update `backend-spring/README.md` with persistence architecture and retry policy
-- [ ] T022 [P] Add troubleshooting notes for callback/version conflicts
+- [x] T021 Update `backend-spring/README.md` with persistence architecture and retry policy
+- [x] T022 [P] Add troubleshooting notes for callback/version conflicts
 - [ ] T023 Run full verification and capture outputs in PR body
 
 ## Dependencies & Execution Order
