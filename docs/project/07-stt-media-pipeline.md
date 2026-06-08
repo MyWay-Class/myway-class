@@ -83,6 +83,20 @@
 - 로컬 개발용 구현은 `scripts/media-processor/server.ts`에서 제공한다.
 - 로컬 media processor는 `ffmpeg -i <video> -vn -acodec pcm_s16le -ar 16000 -ac 1 <audio.wav>` 형식으로 WAV를 만든다.
 
+## 운영 안정화
+- dispatch 요청은 기본적으로 timeout, retry, backoff를 가진다.
+- transient failure(예: `429`, `500`, `502`, `503`, `504`)는 재시도 대상으로 본다.
+- `GET /api/v1/media/processor-health`는 dispatch 정책과 긴 입력 정책, 최근 job 상태 요약을 함께 노출한다.
+- 긴 입력은 즉시 단일 요청으로 끝내기보다, `manual_split_or_batch_queue` 정책을 기준으로 분할/배치 처리 여부를 먼저 판단한다.
+- 장시간 처리 중인 job은 health의 `timing.stale_processing_count`와 `recent_jobs`를 보고 운영자가 추적한다.
+
+## 장애 대응 Runbook
+1. `GET /api/v1/media/processor-health`로 processor 상태, retry 정책, stale job 여부를 확인한다.
+2. `dispatch_policy.max_attempts`와 `dispatch_policy.timeout_ms`가 운영 환경과 맞는지 확인한다.
+3. `processing_error_code`가 `PROCESSOR_DISPATCH_FAILED` 또는 `PROCESSOR_DISPATCH_TIMEOUT`이면 외부 media processor 가용성을 먼저 점검한다.
+4. callback이 오지 않는 경우 `recent_jobs`와 extraction state를 확인하고, 필요하면 수동 retry를 수행한다.
+5. 긴 영상은 먼저 batch 또는 분할 전략으로 처리하고, 단일 job이 장시간 점유하지 않도록 운영한다.
+
 ## 검증 기준
 - 미디어 내용을 검색 가능한 트랜스크립트 데이터로 바꿀 수 있다.
 - 데모 경로와 운영 경로를 구분할 수 있다.
