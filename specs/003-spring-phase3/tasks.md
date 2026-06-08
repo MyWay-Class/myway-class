@@ -5,17 +5,22 @@
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create `backend-spring/src/main/java/com/myway/backendspring/persistence/` package skeleton
-- [ ] T002 Add persistence dependencies and test dependencies in `backend-spring/pom.xml`
-- [ ] T003 [P] Create migration/schema bootstrap files in `backend-spring/src/main/resources/`
+- [x] T001 Create `backend-spring/src/main/java/com/myway/backendspring/persistence/` package skeleton
+- [x] T002 Add persistence dependencies and test dependencies in `backend-spring/pom.xml`
+- [x] T003 [P] Create migration/schema bootstrap files in `backend-spring/src/main/resources/`
 
 ## Phase 2: Foundational (Blocking)
 
-- [ ] T004 Implement `AiRuntimeSettingRepository` and entity mappings
-- [ ] T005 [P] Implement `MediaJobRepository` and entity mappings
-- [ ] T006 [P] Implement `TranscriptRepository` and entity mappings
-- [ ] T007 [P] Implement `ShortformExportJobRepository` and entity mappings
+- [x] T004 Implement persistent AI settings store and entity mappings
+- [x] T005 [P] Implement persistent media job store and entity mappings
+- [x] T006 [P] Implement persistent transcript store and entity mappings
+- [x] T007 [P] Implement persistent shortform export job store and entity mappings
 - [x] T008 Add optimistic versioning/idempotency guard for callbacks
+
+> Implementation note: the repository responsibilities above are realized through the shared
+> `FeatureJdbcStore` persistence core plus `FeatureStoreRepository`, `JdbcAiUsageDailyStore`,
+> and `JdbcActivityEventStore`. The codebase does not need one dedicated repository class per
+> entity to satisfy the persistence contract.
 
 ## Phase 3: User Story 1 - Persistent Media and AI State (P1)
 
