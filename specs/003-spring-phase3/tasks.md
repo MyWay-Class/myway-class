@@ -21,9 +21,9 @@
 
 **Independent Test**: restart-like test scenario with persisted state reload
 
-- [ ] T009 [US1] Replace in-memory AI settings read/write in `AiController` with persistent service
-- [ ] T010 [US1] Replace media transcript/pipeline state storage in `MediaController` with persistent service
-- [ ] T011 [US1] Add integration test for restart persistence in `backend-spring/src/test/java/.../integration/`
+- [x] T009 [US1] Replace in-memory AI settings read/write in `AiController` with persistent service
+- [x] T010 [US1] Replace media transcript/pipeline state storage in `MediaController` with persistent service
+- [x] T011 [US1] Add integration test for restart persistence in `backend-spring/src/test/java/.../integration/`
 
 ## Phase 4: User Story 2 - Reliable Shortform Retry Flow (P2)
 
