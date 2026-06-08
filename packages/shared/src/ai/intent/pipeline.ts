@@ -51,11 +51,12 @@ function isInstructorMetaQuestion(message: string): boolean {
 export function classifyAIIntent(input: AIIntentRequest): AIIntentResult {
   const normalized = normalizeText(input.message);
   const { topRule, hasAmbiguousMatch } = rankIntentRules(normalized);
-  const fallbackIntent: AIIntent = normalized.includes('?') ? 'ask_concept' : 'general_chat';
+  const fallbackIntent: AIIntent = input.lecture_id ? 'ask_concept' : 'general_chat';
   const intent = hasAmbiguousMatch ? 'clarify' : topRule?.intent ?? fallbackIntent;
-  const baseScore = topRule?.score ?? (intent === 'general_chat' ? 0.42 : 0.5);
+  const baseScore = topRule?.score ?? (intent === 'general_chat' ? 0.35 : input.lecture_id ? 0.52 : 0.45);
   const confidence = clampConfidence(baseScore + (input.lecture_id ? 0.05 : 0));
-  const needsClarification = intent === 'clarify' || confidence < 0.6;
+  const needsClarification = intent === 'clarify'
+    || (intent !== 'general_chat' && confidence < (input.lecture_id ? 0.58 : 0.6));
   let action: AIAction = 'DIRECT_ANSWER';
   if (hasAmbiguousMatch) {
     action = 'CLARIFY';

@@ -17,12 +17,12 @@ export const INTENT_RULES: Array<{
   action: AIAction;
   keywords: string[];
 }> = [
-  { intent: 'request_summary', action: 'DIRECT_ANSWER', keywords: ['요약', '정리', '핵심', 'summary'] },
+  { intent: 'request_summary', action: 'DIRECT_ANSWER', keywords: ['요약', '정리', '핵심만', '핵심 정리', '복습', 'summary'] },
   { intent: 'generate_quiz', action: 'DECOMPOSE', keywords: ['퀴즈', '문제', '문항', '플래시카드', 'flashcard'] },
-  { intent: 'search_content', action: 'SEARCH', keywords: ['검색', '찾', '어디', '근거', '검색해', 'search'] },
-  { intent: 'ask_concept', action: 'DIRECT_ANSWER', keywords: ['무엇', '뭐', '왜', '어떻게', '설명', '알려줘'] },
+  { intent: 'search_content', action: 'SEARCH', keywords: ['검색', '찾아줘', '찾아', '어디', '근거', '관련 근거', '검색해', 'search'] },
+  { intent: 'ask_concept', action: 'DIRECT_ANSWER', keywords: ['무엇', '뭐', '왜', '어떻게', '알려줘', '무슨 뜻', '무슨 의미'] },
   { intent: 'ask_recommendation', action: 'SEARCH', keywords: ['추천', '무슨', '어떤 강의', '골라', 'recommend'] },
-  { intent: 'explain_deeper', action: 'DIRECT_ANSWER', keywords: ['자세히', '깊게', '더 설명', '왜 그런지'] },
+  { intent: 'explain_deeper', action: 'DIRECT_ANSWER', keywords: ['자세히', '깊게', '더 설명', '설명해줘', '왜 그런지', '풀어서'] },
   { intent: 'translate', action: 'DIRECT_ANSWER', keywords: ['번역', 'translate'] },
   { intent: 'compare', action: 'DECOMPOSE', keywords: ['비교', '차이', '다른 점'] },
   { intent: 'create_shortform', action: 'DECOMPOSE', keywords: ['숏폼', 'shortform', '클립'] },
@@ -159,7 +159,7 @@ export function rankIntentRules(normalized: string): {
       matchedKeywords,
       score: matchedKeywords.length * 0.2 + (matchedKeywords.length > 0 ? 0.45 : 0),
     };
-  });
+  }).filter((rule) => rule.score > 0);
   rankedRules.sort((left, right) => right.score - left.score);
 
   const topRule = rankedRules[0];
@@ -168,7 +168,7 @@ export function rankIntentRules(normalized: string): {
   return {
     topRule,
     secondRule,
-    hasAmbiguousMatch: Boolean(topRule && secondRule && topRule.score >= 0.5 && Math.abs(topRule.score - secondRule.score) < 0.1),
+    hasAmbiguousMatch: Boolean(topRule && secondRule && topRule.score >= 0.5 && Math.abs(topRule.score - secondRule.score) < 0.08),
   };
 }
 
