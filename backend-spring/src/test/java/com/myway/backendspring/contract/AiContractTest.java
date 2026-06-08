@@ -98,6 +98,16 @@ class AiContractTest {
                         .andReturn(),
                 "UNAUTHENTICATED");
 
+        assertFailureEnvelope(mockMvc.perform(get("/api/v1/ai/providers"))
+                        .andExpect(status().isUnauthorized())
+                        .andReturn(),
+                "UNAUTHENTICATED");
+
+        assertFailureEnvelope(mockMvc.perform(get("/api/v1/ai/settings"))
+                        .andExpect(status().isUnauthorized())
+                        .andReturn(),
+                "UNAUTHENTICATED");
+
         assertFailureEnvelope(mockMvc.perform(post("/api/v1/ai/intent")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"message\":\"테스트\"}"))
@@ -122,6 +132,30 @@ class AiContractTest {
                             .header("Authorization", authHeader)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"message\":\"2차 호출\"}"))
+                            .andExpect(status().isTooManyRequests())
+                            .andReturn(),
+                    "DAILY_LIMIT_EXCEEDED");
+        } finally {
+            setDailyLimit(authHeader, 999999);
+        }
+    }
+
+    @Test
+    void aiEndpoints_shouldReturnQuotaEnvelope_whenSummaryLimitExceeded() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+        try {
+            setDailyLimit(authHeader, 1);
+
+            mockMvc.perform(post("/api/v1/ai/summary")
+                            .header("Authorization", authHeader)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"lecture_id\":\"lec_java_01\",\"style\":\"brief\"}"))
+                    .andExpect(status().isOk());
+
+            assertFailureEnvelope(mockMvc.perform(post("/api/v1/ai/summary")
+                            .header("Authorization", authHeader)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"lecture_id\":\"lec_java_01\",\"style\":\"brief\"}"))
                             .andExpect(status().isTooManyRequests())
                             .andReturn(),
                     "DAILY_LIMIT_EXCEEDED");
