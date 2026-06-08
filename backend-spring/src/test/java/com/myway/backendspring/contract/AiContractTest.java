@@ -271,6 +271,32 @@ class AiContractTest {
         assertThat(ragData.path("answer").asText()).isNotBlank();
     }
 
+    @Test
+    void aiRag_shouldExposeHybridRetrievalSignals_whenSemanticQueryIsUsed() throws Exception {
+        String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
+        setDailyLimit(authHeader, 999999);
+
+        JsonNode ragData = readData(mockMvc.perform(post("/api/v1/ai/rag")
+                        .header("Authorization", authHeader)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"의미 검색으로 관련 근거를 찾아줘\",\"lecture_id\":\"lec_java_01\"}"))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        JsonNode provider = ragData.path("provider");
+        assertThat(provider.path("search_provider").asText()).isNotBlank();
+        assertThat(provider.path("vector_store_provider").asText()).isEqualTo("feature_store");
+        assertThat(provider.path("rerank_provider").asText()).isNotBlank();
+
+        JsonNode firstChunk = ragData.path("chunks").get(0);
+        assertThat(firstChunk.path("retrieval_mode").asText()).isEqualTo("hybrid");
+        assertThat(firstChunk.path("keyword_similarity").isNumber()).isTrue();
+        assertThat(firstChunk.path("vector_similarity").isNumber()).isTrue();
+        assertThat(firstChunk.path("hybrid_similarity").isNumber()).isTrue();
+        assertThat(firstChunk.path("score_breakdown").path("keyword").isNumber()).isTrue();
+        assertThat(firstChunk.path("score_breakdown").path("vector").isNumber()).isTrue();
+    }
+
     private String loginAndGetToken(String userId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

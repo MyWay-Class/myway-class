@@ -105,7 +105,12 @@ public class RagService {
         payload.put("search", searchPayload);
         payload.put("answer", answerText);
         payload.put("answer_payload", answerPayload);
-        payload.put("provider", Map.of("search_provider", "spring-rag-keyword", "answer_provider", "spring-rag-generator"));
+        payload.put("provider", Map.of(
+                "search_provider", "spring-rag-hybrid",
+                "vector_store_provider", "feature_store",
+                "rerank_provider", "spring-rag-reranker",
+                "answer_provider", "spring-rag-generator"
+        ));
         payload.put("limit", resolvedLimit);
         payload.put("min_score", threshold);
         if (includeDebug) {
@@ -118,7 +123,8 @@ public class RagService {
                     "corpus_size", retrieved.size(),
                     "filtered_count", rankedChunks.size(),
                     "avg_similarity", Math.round(avgSimilarity * 1000.0) / 1000.0,
-                    "entity_count", requestEntities == null ? 0 : requestEntities.size()
+                    "entity_count", requestEntities == null ? 0 : requestEntities.size(),
+                    "vector_indexed_count", rankedChunks.stream().filter(item -> item.containsKey("vector_embedding")).count()
             ));
         }
         return payload;

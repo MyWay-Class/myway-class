@@ -128,6 +128,9 @@ public class KeywordRagCorpusSupport {
         chunk.put("source_scope", sourceType);
         chunk.put("token_count", scoringSupport.tokenize(excerpt).size());
         chunk.put("similarity", 0.0);
+        chunk.put("retrieval_mode", "hybrid");
+        chunk.put("vector_embedding", scoringSupport.buildEmbedding(title + " " + excerpt));
+        chunk.put("embedding_dimensions", 12);
         return chunk;
     }
 

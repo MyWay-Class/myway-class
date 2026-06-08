@@ -32,7 +32,19 @@ public class KeywordRagRetriever implements RagRetriever {
         List<Map<String, Object>> scored = new ArrayList<>();
         for (Map<String, Object> chunk : corpus) {
             Map<String, Object> mutable = new HashMap<>(chunk);
-            mutable.put("similarity", scoringSupport.scoreChunk(query, mutable, entities));
+            double keywordScore = scoringSupport.keywordScoreChunk(query, mutable, entities);
+            double vectorScore = scoringSupport.vectorScoreChunk(query, mutable);
+            double hybridScore = scoringSupport.scoreChunk(query, mutable, entities);
+            mutable.put("keyword_similarity", Math.round(keywordScore * 1000.0) / 1000.0);
+            mutable.put("vector_similarity", Math.round(vectorScore * 1000.0) / 1000.0);
+            mutable.put("hybrid_similarity", Math.round(hybridScore * 1000.0) / 1000.0);
+            mutable.put("similarity", hybridScore);
+            mutable.put("retrieval_mode", "hybrid");
+            mutable.put("score_breakdown", Map.of(
+                    "keyword", Math.round(keywordScore * 1000.0) / 1000.0,
+                    "vector", Math.round(vectorScore * 1000.0) / 1000.0,
+                    "hybrid", Math.round(hybridScore * 1000.0) / 1000.0
+            ));
             if (asDouble(mutable.get("similarity")) >= minScore) {
                 scored.add(mutable);
             }
