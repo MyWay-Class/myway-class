@@ -43,7 +43,7 @@ public class RuleBasedIntentClassificationService implements IntentClassificatio
         debug.put("source", context.sourceType());
         debug.put("rule_score", score.confidence);
 
-        if (score.confidence < 0.72 && aiRuntimeService != null) {
+        if (score.confidence < 0.68 && aiRuntimeService != null) {
             Map<String, Object> runtime = aiRuntimeService.generate(
                     "intent",
                     promptService.buildIntentPrompt(context, entities),
@@ -52,7 +52,7 @@ public class RuleBasedIntentClassificationService implements IntentClassificatio
             String runtimeText = String.valueOf(runtime.getOrDefault("text", ""));
             String runtimeIntent = inferIntentFromText(runtimeText);
             if (!"unknown".equals(runtimeIntent)) {
-                score = new IntentScore(runtimeIntent, Math.max(score.confidence, 0.76));
+                score = new IntentScore(runtimeIntent, Math.max(score.confidence, 0.74));
             }
             debug.put("provider", runtime.getOrDefault("provider", "demo"));
             debug.put("model", runtime.getOrDefault("model", "demo-intent-v1"));

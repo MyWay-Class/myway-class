@@ -51,4 +51,32 @@ class InputUnderstandingServiceTest {
         assertThat(result.entities()).isNotEmpty();
         assertThat(result.debug()).containsKey("source");
     }
+
+    @Test
+    void understandMessage_shouldPreferSummaryForShortformSummaryQuery() {
+        UnderstandingResult result = service.understandMessage(
+                "usr_std_001",
+                "숏폼으로 요약해줘",
+                "lec_java_01",
+                null
+        );
+
+        assertThat(result.intent()).isEqualTo("summary");
+        assertThat(result.route()).isEqualTo("summary");
+        assertThat(result.confidence()).isGreaterThanOrEqualTo(0.9);
+    }
+
+    @Test
+    void understandMessage_shouldKeepRecommendationForSuggestionQuery() {
+        UnderstandingResult result = service.understandMessage(
+                "usr_std_001",
+                "추천 강의 알려줘",
+                "lec_java_01",
+                null
+        );
+
+        assertThat(result.intent()).isEqualTo("recommendation");
+        assertThat(result.route()).isEqualTo("recommendation");
+        assertThat(result.confidence()).isGreaterThanOrEqualTo(0.8);
+    }
 }

@@ -55,7 +55,7 @@ export function classifyAIIntent(input: AIIntentRequest): AIIntentResult {
   const intent = hasAmbiguousMatch ? 'clarify' : topRule?.intent ?? fallbackIntent;
   const baseScore = topRule?.score ?? (intent === 'general_chat' ? 0.42 : 0.5);
   const confidence = clampConfidence(baseScore + (input.lecture_id ? 0.05 : 0));
-  const needsClarification = intent === 'clarify' || confidence < 0.6;
+  const needsClarification = intent === 'clarify' || confidence < 0.55;
   let action: AIAction = 'DIRECT_ANSWER';
   if (hasAmbiguousMatch) {
     action = 'CLARIFY';

@@ -16,18 +16,19 @@ export const INTENT_RULES: Array<{
   intent: AIIntent;
   action: AIAction;
   keywords: string[];
+  priority: number;
 }> = [
-  { intent: 'request_summary', action: 'DIRECT_ANSWER', keywords: ['요약', '정리', '핵심', 'summary'] },
-  { intent: 'generate_quiz', action: 'DECOMPOSE', keywords: ['퀴즈', '문제', '문항', '플래시카드', 'flashcard'] },
-  { intent: 'search_content', action: 'SEARCH', keywords: ['검색', '찾', '어디', '근거', '검색해', 'search'] },
-  { intent: 'ask_concept', action: 'DIRECT_ANSWER', keywords: ['무엇', '뭐', '왜', '어떻게', '설명', '알려줘'] },
-  { intent: 'ask_recommendation', action: 'SEARCH', keywords: ['추천', '무슨', '어떤 강의', '골라', 'recommend'] },
-  { intent: 'explain_deeper', action: 'DIRECT_ANSWER', keywords: ['자세히', '깊게', '더 설명', '왜 그런지'] },
-  { intent: 'translate', action: 'DIRECT_ANSWER', keywords: ['번역', 'translate'] },
-  { intent: 'compare', action: 'DECOMPOSE', keywords: ['비교', '차이', '다른 점'] },
-  { intent: 'create_shortform', action: 'DECOMPOSE', keywords: ['숏폼', 'shortform', '클립'] },
-  { intent: 'extract_audio', action: 'DIRECT_ANSWER', keywords: ['오디오', '음성 추출', 'extract audio'] },
-  { intent: 'analyze_progress', action: 'DIRECT_ANSWER', keywords: ['진도', '진행', '수강 현황', 'progress'] },
+  { intent: 'request_summary', action: 'DIRECT_ANSWER', keywords: ['요약', '정리', '핵심', 'summary'], priority: 60 },
+  { intent: 'generate_quiz', action: 'DECOMPOSE', keywords: ['퀴즈', '문제', '문항', '플래시카드', 'flashcard'], priority: 55 },
+  { intent: 'search_content', action: 'SEARCH', keywords: ['검색', '찾', '어디', '근거', '검색해', 'search'], priority: 50 },
+  { intent: 'compare', action: 'DECOMPOSE', keywords: ['비교', '차이', '다른 점'], priority: 48 },
+  { intent: 'ask_recommendation', action: 'SEARCH', keywords: ['추천', '무슨', '어떤 강의', '골라', 'recommend'], priority: 45 },
+  { intent: 'create_shortform', action: 'DECOMPOSE', keywords: ['숏폼', 'shortform', '클립'], priority: 44 },
+  { intent: 'explain_deeper', action: 'DIRECT_ANSWER', keywords: ['자세히', '깊게', '더 설명', '왜 그런지'], priority: 40 },
+  { intent: 'ask_concept', action: 'DIRECT_ANSWER', keywords: ['무엇', '뭐', '왜', '어떻게', '설명', '알려줘'], priority: 35 },
+  { intent: 'translate', action: 'DIRECT_ANSWER', keywords: ['번역', 'translate'], priority: 30 },
+  { intent: 'extract_audio', action: 'DIRECT_ANSWER', keywords: ['오디오', '음성 추출', 'extract audio'], priority: 25 },
+  { intent: 'analyze_progress', action: 'DIRECT_ANSWER', keywords: ['진도', '진행', '수강 현황', 'progress'], priority: 25 },
 ];
 
 export function normalizeText(text: string): string {
@@ -160,7 +161,7 @@ export function rankIntentRules(normalized: string): {
       score: matchedKeywords.length * 0.2 + (matchedKeywords.length > 0 ? 0.45 : 0),
     };
   });
-  rankedRules.sort((left, right) => right.score - left.score);
+  rankedRules.sort((left, right) => right.score - left.score || right.priority - left.priority || right.matchedKeywords.length - left.matchedKeywords.length);
 
   const topRule = rankedRules[0];
   const secondRule = rankedRules[1];
@@ -168,7 +169,13 @@ export function rankIntentRules(normalized: string): {
   return {
     topRule,
     secondRule,
-    hasAmbiguousMatch: Boolean(topRule && secondRule && topRule.score >= 0.5 && Math.abs(topRule.score - secondRule.score) < 0.1),
+    hasAmbiguousMatch: Boolean(
+      topRule &&
+      secondRule &&
+      topRule.score >= 0.5 &&
+      Math.abs(topRule.score - secondRule.score) < 0.1 &&
+      topRule.priority === secondRule.priority,
+    ),
   };
 }
 

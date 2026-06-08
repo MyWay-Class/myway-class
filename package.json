@@ -18,6 +18,7 @@
     "build:frontend": "npm --workspace @myway/frontend run build",
     "build:backend": "tsx scripts/run-maven-wrapper.ts -DskipTests package",
     "test:backend": "tsx scripts/run-maven-wrapper.ts test",
+    "test:shared:intent": "tsx packages/shared/src/ai/intent/intent-regression.test.ts",
     "test:frontend": "npm --workspace @myway/frontend run test",
     "test:backend:clean": "node -e \"const fs=require('fs');fs.rmSync('backend-spring/data',{recursive:true,force:true});\" && npm run test:backend",
     "build:backend:legacy": "npm --workspace @myway/backend run build",
@@ -35,7 +36,7 @@
     "perf:smoke": "npm run build:frontend",
     "smoke:media-ai-shortform": "tsx scripts/smoke-media-ai-shortform.ts",
     "test:e2e:demo-student": "playwright test e2e/demo-student-journey.spec.ts --reporter=line",
-    "verify": "npm run check:deps && npm run build:frontend && npm run test:backend"
+    "verify": "npm run check:deps && npm run build:frontend && npm run test:shared:intent && npm run test:backend"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
