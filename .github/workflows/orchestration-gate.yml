@@ -55,7 +55,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ${{ env.PROJECT_DIR }}
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run orchestrator gate
         run: npm run orch:run

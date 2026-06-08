@@ -34,7 +34,7 @@ jobs:
           cache: maven
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Patch rollup optional dependency on Linux
         run: npm install --no-save @rollup/rollup-linux-x64-gnu

@@ -28,9 +28,8 @@ public class ShortformService {
     private final DemoLearningService learningService;
     private final int shortformMaxRetry;
     private final long staleProcessingThresholdMs;
-    private final ShortformRetrySupport retrySupport;
     private final ShortformComposeSupport composeSupport;
-    private final ShortformStatusSupport statusSupport;
+    private final ShortformExportStateMachineService exportStateMachineService;
 
     public ShortformService(
             FeatureStoreRepository repository,
@@ -38,18 +37,16 @@ public class ShortformService {
             DemoLearningService learningService,
             @Value("${myway.shortform.retry.max-attempts:3}") int shortformMaxRetry,
             @Value("${myway.shortform.monitoring.stale-processing-ms:1800000}") long staleProcessingThresholdMs,
-            ShortformRetrySupport retrySupport,
             ShortformComposeSupport composeSupport,
-            ShortformStatusSupport statusSupport
+            ShortformExportStateMachineService exportStateMachineService
     ) {
         this.repository = repository;
         this.activityEventService = activityEventService;
         this.learningService = learningService;
         this.shortformMaxRetry = Math.max(1, shortformMaxRetry);
         this.staleProcessingThresholdMs = Math.max(60000L, staleProcessingThresholdMs);
-        this.retrySupport = retrySupport;
         this.composeSupport = composeSupport;
-        this.statusSupport = statusSupport;
+        this.exportStateMachineService = exportStateMachineService;
     }
 
     public List<Map<String, Object>> shortformLibrary(String userId) {
@@ -276,7 +273,7 @@ public class ShortformService {
 
     public Map<String, Object> shortformExportStatus() {
         List<Map<String, Object>> videos = repository.listKvByScope(SHORTFORM_VIDEO_SCOPE);
-        return statusSupport.shortformExportStatus(videos, staleProcessingThresholdMs, retrySupport);
+        return exportStateMachineService.exportStatus(videos, staleProcessingThresholdMs);
     }
 
     public Map<String, Object> retryFailedShortformExports(boolean includePermanent, int limit) {
@@ -313,13 +310,13 @@ public class ShortformService {
     public Map<String, Object> applyShortformExportCallback(String shortformId, String status, long eventVersion, String videoUrl, String errorMessage) {
         Map<String, Object> video = repository.getKv(SHORTFORM_VIDEO_SCOPE, shortformId);
         if (video == null) return null;
-        retrySupport.applyExportCallback(video, status, eventVersion, videoUrl, errorMessage, shortformMaxRetry);
+        exportStateMachineService.applyExportCallback(video, status, eventVersion, videoUrl, errorMessage, shortformMaxRetry);
         repository.upsertKv(SHORTFORM_VIDEO_SCOPE, shortformId, video);
         return video;
     }
 
     private Map<String, Object> retryShortformExportInternal(Map<String, Object> video) {
-        retrySupport.retryExport(video, shortformMaxRetry);
+        exportStateMachineService.retryExport(video, shortformMaxRetry);
         if (!"PROCESSING".equals(String.valueOf(video.getOrDefault("export_status", "")))) {
             return video;
         }
