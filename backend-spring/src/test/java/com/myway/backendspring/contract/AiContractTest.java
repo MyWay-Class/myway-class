@@ -131,6 +131,76 @@ class AiContractTest {
     }
 
     @Test
+    void aiEndpoints_shouldRespectRoleAwareQuotaPolicy_andExposeQuotaMetadata() throws Exception {
+        String studentAuth = "Bearer " + loginAndGetToken("usr_std_001");
+        String instructorAuth = "Bearer " + loginAndGetToken("usr_ins_001");
+        String quotaPatch = """
+                {
+                  "role_daily_limits": {"student": 2, "instructor": 4, "admin": 6},
+                  "feature_weights": {"summary": 2, "quiz": 1, "answer": 1, "rag": 2}
+                }
+                """;
+
+        try {
+            setDailyLimit(studentAuth, 0);
+            setDailyLimit(instructorAuth, 0);
+
+            mockMvc.perform(put("/api/v1/ai/settings")
+                            .header("Authorization", studentAuth)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(quotaPatch))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/api/v1/ai/summary")
+                            .header("Authorization", studentAuth)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"lecture_id\":\"lec_java_01\",\"style\":\"brief\"}"))
+                    .andExpect(status().isOk());
+
+            MvcResult studentQuotaExceeded = mockMvc.perform(post("/api/v1/ai/summary")
+                            .header("Authorization", studentAuth)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"lecture_id\":\"lec_java_01\",\"style\":\"brief\"}"))
+                    .andExpect(status().isTooManyRequests())
+                    .andReturn();
+
+            assertFailureEnvelope(studentQuotaExceeded, "DAILY_LIMIT_EXCEEDED");
+            assertQuotaMetadata(studentQuotaExceeded, "student", "summary", 1, 0);
+
+            mockMvc.perform(put("/api/v1/ai/settings")
+                            .header("Authorization", instructorAuth)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(quotaPatch))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/api/v1/ai/summary")
+                            .header("Authorization", instructorAuth)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"lecture_id\":\"lec_java_01\",\"style\":\"brief\"}"))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/api/v1/ai/summary")
+                            .header("Authorization", instructorAuth)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"lecture_id\":\"lec_java_01\",\"style\":\"brief\"}"))
+                    .andExpect(status().isOk());
+
+            MvcResult instructorQuotaExceeded = mockMvc.perform(post("/api/v1/ai/summary")
+                            .header("Authorization", instructorAuth)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"lecture_id\":\"lec_java_01\",\"style\":\"brief\"}"))
+                    .andExpect(status().isTooManyRequests())
+                    .andReturn();
+
+            assertFailureEnvelope(instructorQuotaExceeded, "DAILY_LIMIT_EXCEEDED");
+            assertQuotaMetadata(instructorQuotaExceeded, "instructor", "summary", 2, 0);
+        } finally {
+            setDailyLimit(studentAuth, 999999);
+            setDailyLimit(instructorAuth, 999999);
+        }
+    }
+
+    @Test
     void aiEndpoints_shouldReturnNotFoundEnvelope_whenLectureOrCourseMissing() throws Exception {
         String authHeader = "Bearer " + loginAndGetToken("usr_std_001");
         setDailyLimit(authHeader, 999999);
@@ -330,6 +400,18 @@ class AiContractTest {
         assertThat(root.path("data").isNull()).isTrue();
         assertThat(root.path("error").path("code").asText()).isEqualTo(expectedCode);
         assertThat(root.path("message").asText()).isNotBlank();
+    }
+
+    private void assertQuotaMetadata(MvcResult result, String expectedRole, String expectedFeature, int expectedLimit, int expectedRemaining) throws Exception {
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        JsonNode meta = root.path("error").path("meta");
+        assertThat(meta.path("role").asText()).isEqualTo(expectedRole);
+        assertThat(meta.path("feature").asText()).isEqualTo(expectedFeature);
+        assertThat(meta.path("limit").asInt()).isEqualTo(expectedLimit);
+        assertThat(meta.path("remaining").asInt()).isEqualTo(expectedRemaining);
+        assertThat(meta.path("reset_at").asText()).isNotBlank();
+        assertThat(result.getResponse().getHeader("X-AI-Quota-Remaining")).isEqualTo(String.valueOf(expectedRemaining));
+        assertThat(result.getResponse().getHeader("X-AI-Quota-Reset")).isNotBlank();
     }
 
     private JsonNode readData(MvcResult result) throws Exception {

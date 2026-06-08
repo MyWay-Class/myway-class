@@ -2,6 +2,7 @@ package com.myway.backendspring.feature;
 
 import com.myway.backendspring.feature.ai.AiFeatureService;
 import com.myway.backendspring.feature.repository.FeatureStoreRepository;
+import com.myway.backendspring.feature.quota.AiUsageQuotaService;
 import com.myway.backendspring.persistence.FeatureJdbcStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -68,8 +69,8 @@ public class FeatureStoreService {
         return aiFacade.aiProviders(userId);
     }
 
-    public boolean canConsumeAi(String userId) {
-        return aiFacade.canConsumeAi(userId);
+    public AiUsageQuotaService.QuotaDecision canConsumeAi(String userId, String role, String feature) {
+        return aiFacade.canConsumeAi(userId, role, feature);
     }
 
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {

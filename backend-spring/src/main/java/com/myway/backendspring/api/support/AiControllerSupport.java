@@ -17,7 +17,25 @@ public class AiControllerSupport {
     }
 
     public ResponseEntity<ApiResponse<Map<String, Object>>> dailyLimitExceeded() {
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
+        return dailyLimitExceeded(Map.of());
+    }
+
+    public ResponseEntity<ApiResponse<Map<String, Object>>> dailyLimitExceeded(Map<String, Object> meta) {
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
+        if (meta != null) {
+            Object remaining = meta.get("remaining");
+            Object resetAt = meta.get("reset_at");
+            Object role = meta.get("role");
+            Object feature = meta.get("feature");
+            Object limit = meta.get("limit");
+            if (remaining != null) builder.header("X-AI-Quota-Remaining", String.valueOf(remaining));
+            if (resetAt != null) builder.header("X-AI-Quota-Reset", String.valueOf(resetAt));
+            if (role != null) builder.header("X-AI-Quota-Role", String.valueOf(role));
+            if (feature != null) builder.header("X-AI-Quota-Feature", String.valueOf(feature));
+            if (limit != null) builder.header("X-AI-Quota-Limit", String.valueOf(limit));
+            return builder.body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다.", meta));
+        }
+        return builder.body(ApiResponse.failure("DAILY_LIMIT_EXCEEDED", "일일 사용량을 초과했습니다."));
     }
 
     public Map<String, Object> intentResponse(UnderstandingResult result) {

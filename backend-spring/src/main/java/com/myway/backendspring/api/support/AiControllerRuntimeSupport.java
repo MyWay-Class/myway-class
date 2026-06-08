@@ -15,9 +15,10 @@ public class AiControllerRuntimeSupport {
             FeatureStoreAiFacade featureStore,
             SessionView session,
             AiControllerSupport aiControllerSupport,
-            AiControllerAuthSupport aiControllerAuthSupport
+            AiControllerAuthSupport aiControllerAuthSupport,
+            String feature
     ) {
-        return aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+        return aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport, feature);
     }
 
     public Map<String, Object> generate(
