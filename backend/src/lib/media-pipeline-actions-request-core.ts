@@ -1,10 +1,8 @@
 import type { AudioExtraction, LecturePipeline, MediaRepository, AudioExtractionRequest } from '@myway/shared';
-import { createAudioExtraction, createLectureSummaryNote, updateAudioExtraction } from './media-repository-write-ops';
 import { dispatchMediaProcessorJob } from './media-processor';
 import { runTranscriptGeneration, type STTAdapterResult } from './stt-adapter';
 import { persistLectureDuration } from './learning-store';
 import type { RuntimeBindings } from './runtime-env';
-import { listLectureNotes } from './media-repository-read-ops';
 
 export type MediaExtractionRequestResult =
   | {
@@ -30,20 +28,20 @@ async function ensureAutoTimelineSummary(
   lectureId: string,
   repository?: MediaRepository,
 ): Promise<void> {
-  const notes = await listLectureNotes(lectureId, repository);
+  const notes = repository ? await repository.listLectureNotes(lectureId) : [];
   if (notes.some((note) => note.note_type === 'ai_timeline')) {
     return;
   }
 
-  await createLectureSummaryNote(
-    userId,
-    {
-      lecture_id: lectureId,
-      style: 'timeline',
-      language: 'ko',
-    },
-    repository,
-  );
+  if (!repository) {
+    return;
+  }
+
+  await repository.createLectureSummaryNote(userId, {
+    lecture_id: lectureId,
+    style: 'timeline',
+    language: 'ko',
+  });
 }
 
 export async function createMediaExtractionJob(
@@ -82,7 +80,8 @@ export async function createMediaExtractionJob(
     await ensureAutoTimelineSummary(userId, input.lecture_id, repository);
   }
 
-  const extractionResult = await createAudioExtraction(userId, {
+  const extractionResult = repository
+    ? await repository.createAudioExtraction(userId, {
     lecture_id: input.lecture_id,
     video_url: input.video_url?.trim(),
     video_asset_key: input.video_asset_key?.trim(),
@@ -93,7 +92,8 @@ export async function createMediaExtractionJob(
     language: input.language ?? 'ko',
     stt_provider: input.stt_provider?.trim(),
     stt_model: input.stt_model?.trim(),
-  }, repository);
+  })
+    : null;
 
   if (!extractionResult) {
     return {
@@ -122,12 +122,14 @@ export async function createMediaExtractionJob(
   );
 
   if (!dispatchResult.ok) {
-    await updateAudioExtraction({
-      extraction_id: extractionResult.extraction.id,
-      lecture_id: extractionResult.extraction.lecture_id,
-      status: 'FAILED',
-      error_message: dispatchResult.message,
-    }, repository);
+    if (repository) {
+      await repository.updateAudioExtraction({
+        extraction_id: extractionResult.extraction.id,
+        lecture_id: extractionResult.extraction.lecture_id,
+        status: 'FAILED',
+        error_message: dispatchResult.message,
+      });
+    }
     return {
       ok: false,
       reason: dispatchResult.reason === 'not_configured' ? 'processor_not_configured' : 'dispatch_failed',
@@ -135,12 +137,14 @@ export async function createMediaExtractionJob(
     };
   }
 
-  const updated = await updateAudioExtraction({
-    extraction_id: extractionResult.extraction.id,
-    lecture_id: extractionResult.extraction.lecture_id,
-    status: dispatchResult.status,
-    processing_job_id: dispatchResult.job_id ?? undefined,
-  }, repository);
+  const updated = repository
+    ? await repository.updateAudioExtraction({
+        extraction_id: extractionResult.extraction.id,
+        lecture_id: extractionResult.extraction.lecture_id,
+        status: dispatchResult.status,
+        processing_job_id: dispatchResult.job_id ?? undefined,
+      })
+    : null;
 
   return {
     ok: true,

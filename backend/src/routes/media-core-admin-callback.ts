@@ -18,12 +18,13 @@ export function registerMediaAdminCallbackRoutes(media: Hono): void {
     }
 
     const callback = await extractionCallbackAction(body, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
-    if ('error' in callback) {
-      if (callback.error === 'CALLBACK_INVALID') {
+    const callbackError = 'error' in callback ? callback.error ?? 'CALLBACK_INVALID' : null;
+    if (callbackError) {
+      if (callbackError === 'CALLBACK_INVALID') {
         return jsonFailure('CALLBACK_INVALID', 'callback payload가 올바르지 않습니다.', 400);
       }
-      const status = callback.error === 'extraction_not_found' ? 404 : callback.error === 'transcript_failed' ? 502 : 400;
-      return jsonFailure(callback.error.toUpperCase(), callback.message ?? 'callback 처리에 실패했습니다.', status);
+      const status = callbackError === 'extraction_not_found' ? 404 : callbackError === 'transcript_failed' ? 502 : 400;
+      return jsonFailure(callbackError.toUpperCase(), callback.message ?? 'callback 처리에 실패했습니다.', status);
     }
 
     if (!callback.payload) {
