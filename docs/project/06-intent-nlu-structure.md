@@ -53,7 +53,7 @@
 - `create_shortform`는 숏폼 생성 흐름으로 보낸다.
 - `search_content`는 RAG 검색으로 연결한다.
 - `general_chat`은 강의 맥락이 약한 경우에만 허용한다.
-- confidence가 애매하면 `CLARIFY`를 우선한다.
+- confidence가 애매하면 `CLARIFY`를 우선하되, 일반 잡담은 불필요하게 확인 질문으로 보내지 않는다.
 
 ## 에이전트 행동
 - `SEARCH`
