@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CourseDetail, LectureDetail, LectureTranscript } from '@myway/shared';
 import { loadLectureTranscriptDetailedResult, saveLectureVideoMappingDetailed } from '../../../lib/api-media';
 import { buildProtectedVideoUrl, resolveLectureVideoUrl } from '../../../lib/video-url';
+import { buildLectureTranscriptFallback } from './lectureTranscriptFallback';
 
 type VideoPlaybackErrorKind = 'forbidden' | 'not_found' | 'unknown' | null;
 type TranscriptAccessState = 'loading' | 'ready' | 'empty' | 'forbidden' | 'error';
@@ -53,8 +54,15 @@ export function useLectureWatchPlayback({
 
   useEffect(() => {
     let active = true;
-    if (!currentLecture?.id || isLocked || !sessionToken) {
+    if (!currentLecture?.id || isLocked) {
       setTranscript(null);
+      setTranscriptAccessState('ready');
+      return () => {
+        active = false;
+      };
+    }
+    if (!sessionToken) {
+      setTranscript(buildLectureTranscriptFallback(currentLecture));
       setTranscriptAccessState('ready');
       return () => {
         active = false;
@@ -75,12 +83,17 @@ export function useLectureWatchPlayback({
           setTranscriptAccessState('ready');
           return;
         }
-        setTranscript(null);
+        const fallbackTranscript = buildLectureTranscriptFallback(currentLecture);
+        setTranscript(fallbackTranscript);
         if (response.status === 403) {
+          setTranscript(null);
           setTranscriptAccessState('forbidden');
+        } else if (fallbackTranscript) {
+          setTranscriptAccessState('ready');
         } else if (response.success && response.data === null) {
           setTranscriptAccessState('empty');
         } else {
+          setTranscript(null);
           setTranscriptAccessState('error');
         }
       })

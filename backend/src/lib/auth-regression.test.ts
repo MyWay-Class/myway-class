@@ -1,4 +1,3 @@
-import assert from 'node:assert/strict';
 import { getSession } from './auth';
 
 const request = new Request('http://localhost/api/v1/auth/me', {
@@ -9,8 +8,8 @@ const request = new Request('http://localhost/api/v1/auth/me', {
 
 const session = getSession(request);
 
-assert.equal(session?.session_token, 'session_usr_std_001');
-assert.equal(session?.user.id, 'usr_std_001');
-assert.equal(session?.user.role, 'STUDENT');
+if (session?.session_token !== 'session_usr_std_001') throw new Error('Unexpected session token');
+if (session?.user.id !== 'usr_std_001') throw new Error('Unexpected user id');
+if (session?.user.role !== 'STUDENT') throw new Error('Unexpected role');
 
 console.log('auth regression passed');

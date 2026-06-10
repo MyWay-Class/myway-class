@@ -23,7 +23,8 @@
   "vars": {
     "MYWAY_CLOUDFLARE_STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
     "MYWAY_GEMINI_MODEL": "gemini-2.0-flash",
-    "MYWAY_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta"
+    "MYWAY_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta",
+    "MYWAY_MEDIA_PROCESSOR_URL": "https://media-processor.mywayclass.com/jobs/audio-extraction"
   },
   "ai": {
     "binding": "AI"
