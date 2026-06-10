@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { buildPipelineOverview, getLectureDetail, listAudioExtractions, listLectureNotes, listLectureTranscripts } from '@myway/shared';
+import { buildPipelineOverview, getCourseDetail, getLectureDetail, listAudioExtractions, listLectureNotes, listLectureTranscripts } from '@myway/shared';
 import { jsonFailure, jsonSuccess } from '../lib/http';
 import { readLectureVideoAsset } from '../lib/media-assets';
 import { buildFallbackLectureTranscript } from '../lib/transcript-fallback';
@@ -51,6 +51,38 @@ export function registerMediaPublicRoutes(media: Hono): void {
         return buildFallbackLectureTranscript(getLectureDetail(lectureId, userId) ?? null);
       },
     );
+  });
+
+  media.get('/lecture-video/:lectureId', async (c) => {
+    const lectureId = c.req.param('lectureId');
+    const access = requireLectureAccess(c.req.raw, lectureId, '강의 수강 후에 영상을 볼 수 있습니다.', '강의 수강 후에 영상을 볼 수 있습니다.');
+    if ('error' in access) return access.error;
+    if (!ensureLectureExists(lectureId, access.user.id)) {
+      return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
+    }
+
+    const lecture = getLectureDetail(lectureId, access.user.id);
+    if (!lecture) {
+      return jsonFailure('LECTURE_VIDEO_NOT_FOUND', '연결된 강의 영상 에셋이 없습니다.', 404);
+    }
+
+    const course = getCourseDetail(lecture.course_id, access.user.id);
+    const courseLecture = course?.lectures.find((item) => item.id === lectureId) ?? lecture;
+    const assetKey =
+      courseLecture.video_asset_key ??
+      (courseLecture.video_url?.includes('/api/v1/media/assets/')
+        ? decodeURIComponent(courseLecture.video_url.slice(courseLecture.video_url.indexOf('/api/v1/media/assets/') + '/api/v1/media/assets/'.length))
+        : undefined);
+
+    if (!assetKey && !courseLecture.video_url && !lecture.video_url) {
+      return jsonFailure('LECTURE_VIDEO_NOT_FOUND', '연결된 강의 영상 에셋이 없습니다.', 404);
+    }
+
+    return jsonSuccess({
+      lecture_id: lecture.id,
+      asset_key: assetKey,
+      video_url: courseLecture.video_url || lecture.video_url,
+    });
   });
 
   media.get('/notes/:lectureId', async (c) => {
