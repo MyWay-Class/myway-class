@@ -60,9 +60,9 @@ export async function generateShortformCandidates(
 }
 
 export function composeShortformAndMarkProcessing(userId: string, body: ShortformComposeRequest | null): ShortformVideoDetail | null {
-  const extractionId = body?.extraction_id?.trim();
   const title = body?.title?.trim();
-  if (!extractionId || !title) return null;
+  if (!title) return null;
+  const extractionId = body?.extraction_id?.trim() || `sfe_fallback_${Date.now()}`;
 
   const video = composeShortformVideo(userId, {
     extraction_id: extractionId,

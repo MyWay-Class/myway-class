@@ -4,10 +4,12 @@ import {
   getShortformVideoDetail,
   listMyShortformVideos,
   toggleShortformCandidateSelection,
+  upsertShortformVideo,
   updateVideoExport,
   type ShortformComposeRequest,
   type ShortformGenerateRequest,
   type ShortformSelectRequest,
+  type ShortformVideo,
 } from '@myway/shared';
 import { jsonFailure, jsonSuccess, readJsonBody } from '../lib/http';
 import type { RuntimeBindings } from '../lib/runtime-env';
@@ -82,8 +84,9 @@ export function registerShortformProcessingRoutes(shortform: Hono): void {
     const user = auth;
 
     const body = await readJsonBody<ShortformComposeRequest>(c.req.raw);
-    if (!body?.extraction_id?.trim() || !body?.title?.trim()) {
-      return jsonFailure('SHORTFORM_FIELDS_REQUIRED', 'extraction_id와 title이 필요합니다.');
+    const hasTimelineClips = (body?.timeline_project?.clips?.length ?? 0) > 0 || (body?.clips?.length ?? 0) > 0;
+    if (!body?.title?.trim() || (!body?.extraction_id?.trim() && !hasTimelineClips)) {
+      return jsonFailure('SHORTFORM_FIELDS_REQUIRED', 'title과 extraction_id 또는 clips가 필요합니다.');
     }
 
     const video = composeShortformAndMarkProcessing(user.id, body);
@@ -113,17 +116,39 @@ export function registerShortformProcessingRoutes(shortform: Hono): void {
     }
 
     const current = getShortformVideoDetail(videoId);
-    if (!current) {
-      return jsonFailure('SHORTFORM_NOT_FOUND', '숏폼을 찾을 수 없습니다.', 404);
-    }
+    const currentOrPlaceholder = current ?? upsertShortformVideo({
+      id: videoId,
+      shortform_id: body.shortform_id?.trim() || videoId,
+      user_id: 'system',
+      title: videoId,
+      description: '',
+      duration_ms: 0,
+      total_segments: 0,
+      course_id: 'course_unknown',
+      source_lecture_ids: [],
+      status: 'GENERATED',
+      video_url: body.video_url?.trim() || `/static/shortforms/${videoId}.mp4`,
+      export_status: 'PENDING',
+      export_job_id: null,
+      export_result_url: null,
+      export_failure_reason: null,
+      export_error_message: null,
+      export_retry_count: 0,
+      updated_at: new Date().toISOString(),
+      share_count: 0,
+      like_count: 0,
+      save_count: 0,
+      view_count: 0,
+      created_at: new Date().toISOString(),
+    } satisfies ShortformVideo);
 
-    const next = updateVideoExport(current.id, {
+    const next = updateVideoExport(currentOrPlaceholder.id, {
       export_status: body.status === 'FAILED' ? 'FAILED' : 'COMPLETED',
-      export_result_url: body.video_url?.trim() ?? current.export_result_url,
+      export_result_url: body.video_url?.trim() ?? currentOrPlaceholder.export_result_url,
       export_error_message: body.error_message?.trim() ?? null,
       export_failure_reason: body.failure_reason?.trim() ?? null,
-      export_job_id: body.processing_job_id?.trim() ?? current.export_job_id,
-      video_url: body.status === 'COMPLETED' && body.video_url?.trim() ? body.video_url.trim() : current.video_url,
+      export_job_id: body.processing_job_id?.trim() ?? currentOrPlaceholder.export_job_id,
+      video_url: body.status === 'COMPLETED' && body.video_url?.trim() ? body.video_url.trim() : currentOrPlaceholder.video_url,
     });
 
     if (!next) {

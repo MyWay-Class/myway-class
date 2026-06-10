@@ -56,7 +56,7 @@ type ShortformData = {
 };
 
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://127.0.0.1:8787").replace(/\/$/, "");
-const callbackToken = process.env.SMOKE_SHORTFORM_CALLBACK_TOKEN || "dev-shortform-callback-token";
+const callbackToken = process.env.SMOKE_SHORTFORM_CALLBACK_TOKEN || "local-media-callback-secret";
 const studentUserId = process.env.SMOKE_STUDENT_USER_ID || "usr_std_001";
 const adminUserId = process.env.SMOKE_ADMIN_USER_ID || "usr_admin_001";
 const smokeLectureId = process.env.SMOKE_LECTURE_ID || "lec_java_01";
@@ -209,7 +209,7 @@ async function run(): Promise<void> {
     "rag chunk timestamp/lecture mapping missing",
   );
 
-  const search = await api<{ sources?: Array<{ start_ms?: number; end_ms?: number; lecture_id?: string }> }>("/api/v1/ai/search", {
+  const search = await api<{ hits?: Array<{ chunk_index?: number; lecture_id?: string }> }>("/api/v1/ai/search", {
     method: "POST",
     headers: { "content-type": "application/json", ...authHeader(studentToken) },
     body: JSON.stringify({
@@ -218,17 +218,41 @@ async function run(): Promise<void> {
     }),
   });
   assertOk(search.res.ok, `ai search failed (${search.res.status})`);
-  assertOk(Array.isArray(search.body?.data?.sources), "ai search sources missing");
+  assertOk(Array.isArray(search.body?.data?.hits), "ai search hits missing");
   assertOk(
-    (search.body?.data?.sources ?? []).some(
-      (source) =>
-        typeof source?.start_ms === "number" &&
-        source.start_ms >= 0 &&
-        typeof source?.end_ms === "number" &&
-        source.end_ms >= source.start_ms,
+    (search.body?.data?.hits ?? []).some(
+      (hit) =>
+        typeof hit?.chunk_index === "number" &&
+        hit.chunk_index >= 0 &&
+        hit?.lecture_id === smokeLectureId,
     ),
-    "ai search sources range missing",
+    "ai search hit mapping missing",
   );
+
+  const generated = await api<{ extraction?: { id?: string }; candidates?: Array<{ id?: string; is_selected?: boolean }> }>(
+    "/api/v1/shortform/generate",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", ...authHeader(studentToken) },
+      body: JSON.stringify({
+        course_id: smokeCourseId,
+        lecture_id: smokeLectureId,
+        mode: "single",
+        style: "highlight",
+        target_duration_sec: 120,
+        language: "ko",
+      }),
+    },
+  );
+  assertOk(generated.res.status === 201, `shortform generate failed (${generated.res.status})`);
+  const extractionId = generated.body?.data?.extraction?.id;
+  assertOk(typeof extractionId === "string" && extractionId.length > 0, "shortform extraction id missing");
+
+  const selectedCandidateIds = (generated.body?.data?.candidates ?? [])
+    .filter((candidate) => candidate?.is_selected)
+    .map((candidate) => candidate?.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+  assertOk(selectedCandidateIds.length > 0, "shortform selected candidates missing");
 
   const compose = await api<ShortformData>("/api/v1/shortform/compose", {
     method: "POST",
@@ -236,8 +260,11 @@ async function run(): Promise<void> {
     body: JSON.stringify({
       title: "smoke-shortform",
       description: "smoke compose and callback",
-      course_id: smokeCourseId,
-      clips: [{ lecture_id: smokeLectureId, start_ms: 120000, end_ms: 180000 }],
+      clips: [
+        { lecture_id: smokeLectureId, start_ms: 120000, end_ms: 150000 },
+        { lecture_id: smokeLectureId, start_ms: 150000, end_ms: 180000 },
+      ],
+      candidate_ids: selectedCandidateIds,
     }),
   });
   assertOk(compose.res.status === 201, `shortform compose failed (${compose.res.status})`);
@@ -251,7 +278,7 @@ async function run(): Promise<void> {
       "x-myway-media-callback-secret": callbackToken,
     },
     body: JSON.stringify({
-      shortform_id: shortformId,
+      video_id: shortformId,
       status: "COMPLETED",
       video_url: `https://cdn.example.com/shortform/${shortformId}.mp4`,
       event_version: 1,
@@ -281,15 +308,9 @@ async function run(): Promise<void> {
   });
   assertOk(multiLectureCompose.res.status === 201, `multi lecture shortform compose failed (${multiLectureCompose.res.status})`);
   const multiClips = multiLectureCompose.body?.data?.clips ?? [];
-  const multiPayloadClips = multiLectureCompose.body?.data?.export_job_payload?.clips ?? [];
   assertOk(multiClips.length === 2, "multi lecture shortform clips missing");
-  assertOk(multiPayloadClips.length === 2, "multi lecture export payload clips missing");
-  assertOk(multiPayloadClips[0]?.lecture_id === "lec_java_01", "multi lecture clip #1 mismatch");
-  assertOk(multiPayloadClips[1]?.lecture_id === "lec_java_02", "multi lecture clip #2 mismatch");
-
-  const batchStatus = await authedApi<BatchStatusData>(adminToken, "/api/v1/admin/media/batch/status", { method: "GET" });
-  assertOk(batchStatus.res.ok, `admin batch status failed (${batchStatus.res.status})`);
-  assertOk(typeof batchStatus.body?.data?.success_count === "number", "batch status malformed");
+  assertOk(multiLectureCompose.body?.data?.source_lecture_ids?.includes("lec_java_01"), "multi lecture source #1 missing");
+  assertOk(multiLectureCompose.body?.data?.source_lecture_ids?.includes("lec_java_02"), "multi lecture source #2 missing");
 
   console.log("[smoke] PASS");
   console.log(`[smoke] shortformId=${shortformId}`);

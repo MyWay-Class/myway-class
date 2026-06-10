@@ -84,6 +84,17 @@ export function getVideo(videoId: string): ShortformVideo | undefined {
   return demoShortformVideos.find((item) => item.id === videoId);
 }
 
+export function upsertShortformVideo(video: ShortformVideo): ShortformVideo {
+  const index = demoShortformVideos.findIndex((item) => item.id === video.id);
+  if (index >= 0) {
+    demoShortformVideos[index] = video;
+  } else {
+    demoShortformVideos.push(video);
+  }
+
+  return video;
+}
+
 export function updateVideoExport(
   videoId: string,
   partial: Partial<

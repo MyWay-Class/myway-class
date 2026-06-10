@@ -2,4 +2,4 @@ export { generateShortformExtraction, listShortformCandidates, toggleShortformCa
 export { shareShortformVideo, listShortformCommunity, saveShortformVideo, toggleShortformLike } from './community';
 export { listMyShortformVideos, listMyShortformLibrary, getShortformVideoDetail } from './library';
 export { createShortformVideoFromCandidates } from './helpers';
-export { updateVideoExport, normalizeShortformDescription } from './data';
+export { upsertShortformVideo, updateVideoExport, normalizeShortformDescription } from './data';
