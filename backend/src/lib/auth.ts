@@ -8,6 +8,7 @@ import {
 } from '@myway/shared';
 
 const sessions = new Map<string, AuthSession>();
+const revokedTokens = new Set<string>();
 
 function createSessionToken(userId: string): string {
   return `session_${userId}`;
@@ -45,7 +46,36 @@ export function getSession(request: Request): AuthSession | null {
     return null;
   }
 
-  return sessions.get(token) ?? null;
+  if (revokedTokens.has(token)) {
+    return null;
+  }
+
+  const existing = sessions.get(token);
+  if (existing) {
+    return existing;
+  }
+
+  if (!token.startsWith('session_')) {
+    return null;
+  }
+
+  const userId = token.slice('session_'.length).trim();
+  if (!userId) {
+    return null;
+  }
+
+  const user = getDemoUser(userId);
+  if (!user) {
+    return null;
+  }
+
+  const fallbackSession: AuthSession = {
+    session_token: token,
+    user,
+    issued_at: new Date().toISOString(),
+  };
+  sessions.set(token, fallbackSession);
+  return fallbackSession;
 }
 
 export function destroySession(request: Request): boolean {
@@ -54,6 +84,7 @@ export function destroySession(request: Request): boolean {
     return false;
   }
 
+  revokedTokens.add(token);
   return sessions.delete(token);
 }
 
