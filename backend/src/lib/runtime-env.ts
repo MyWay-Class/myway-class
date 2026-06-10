@@ -49,6 +49,17 @@ export type RuntimeBindings = {
   MYWAY_AI_DAILY_LIMIT_ANSWER?: string;
   MYWAY_AI_DAILY_LIMIT_GEMINI?: string;
   MYWAY_AI_DAILY_LIMIT_TOTAL?: string;
+  MYWAY_AI_DAILY_LIMIT_STUDENT?: string;
+  MYWAY_AI_DAILY_LIMIT_INSTRUCTOR?: string;
+  MYWAY_AI_DAILY_LIMIT_ADMIN?: string;
+  MYWAY_AI_QUOTA_WEIGHT_INTENT?: string;
+  MYWAY_AI_QUOTA_WEIGHT_SEARCH?: string;
+  MYWAY_AI_QUOTA_WEIGHT_ANSWER?: string;
+  MYWAY_AI_QUOTA_WEIGHT_SUMMARY?: string;
+  MYWAY_AI_QUOTA_WEIGHT_QUIZ?: string;
+  MYWAY_AI_QUOTA_WEIGHT_SMART?: string;
+  MYWAY_AI_QUOTA_WEIGHT_STT?: string;
+  MYWAY_AI_QUOTA_WEIGHT_RAG?: string;
   MYWAY_OLLAMA_BASE_URL?: string;
   OLLAMA_BASE_URL?: string;
   MYWAY_OLLAMA_MODEL?: string;
@@ -139,6 +150,21 @@ export function getAIRuntimePolicy(env?: RuntimeBindings): {
   require_auth: boolean;
   enable_stt: boolean;
   enable_media_upload: boolean;
+  role_limits?: {
+    student?: number;
+    instructor?: number;
+    admin?: number;
+  };
+  feature_weights?: {
+    intent?: number;
+    search?: number;
+    answer?: number;
+    summary?: number;
+    quiz?: number;
+    smart?: number;
+    stt?: number;
+    rag?: number;
+  };
   daily_limits: {
     total?: number;
     smart?: number;
@@ -158,11 +184,35 @@ export function getAIRuntimePolicy(env?: RuntimeBindings): {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
   };
 
+  const parseWeight = (value: string | undefined): number | undefined => {
+    if (!value) {
+      return undefined;
+    }
+
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  };
+
   return {
     public_mode: env?.MYWAY_AI_PUBLIC_MODE ?? 'dev',
     require_auth: (env?.MYWAY_AI_REQUIRE_AUTH ?? 'false') === 'true',
     enable_stt: (env?.MYWAY_AI_ENABLE_STT ?? 'true') === 'true',
     enable_media_upload: (env?.MYWAY_AI_ENABLE_MEDIA_UPLOAD ?? 'true') === 'true',
+    role_limits: {
+      student: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_STUDENT),
+      instructor: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_INSTRUCTOR),
+      admin: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_ADMIN),
+    },
+    feature_weights: {
+      intent: parseWeight(env?.MYWAY_AI_QUOTA_WEIGHT_INTENT),
+      search: parseWeight(env?.MYWAY_AI_QUOTA_WEIGHT_SEARCH),
+      answer: parseWeight(env?.MYWAY_AI_QUOTA_WEIGHT_ANSWER),
+      summary: parseWeight(env?.MYWAY_AI_QUOTA_WEIGHT_SUMMARY),
+      quiz: parseWeight(env?.MYWAY_AI_QUOTA_WEIGHT_QUIZ),
+      smart: parseWeight(env?.MYWAY_AI_QUOTA_WEIGHT_SMART),
+      stt: parseWeight(env?.MYWAY_AI_QUOTA_WEIGHT_STT),
+      rag: parseWeight(env?.MYWAY_AI_QUOTA_WEIGHT_RAG),
+    },
     daily_limits: {
       smart: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_SMART),
       summary: parseLimit(env?.MYWAY_AI_DAILY_LIMIT_SUMMARY),

@@ -24,7 +24,7 @@ export function registerMediaAdminProcessingAIMRoutes(media: Hono): void {
     }
 
     const summary = await summarizeLectureAction(user, body, getMediaRepository(c.env as RuntimeBindings | undefined));
-    if ('error' in summary) {
+    if (!summary || 'error' in summary) {
       return jsonFailure('SUMMARY_FAILED', '요약을 생성할 수 없습니다.', 400);
     }
     const { result } = summary;
@@ -71,11 +71,12 @@ export function registerMediaAdminProcessingAIMRoutes(media: Hono): void {
     }
 
     const extraction = await extractAudioAction(user, body, c.req.url, c.env as RuntimeBindings | undefined, getMediaRepository(c.env as RuntimeBindings | undefined));
-    if ('error' in extraction) {
-      if (extraction.error === 'INVALID_BODY') return jsonFailure('INVALID_BODY', '요청 본문이 올바르지 않습니다.');
-      if (extraction.error === 'LECTURE_ID_REQUIRED') return jsonFailure('LECTURE_ID_REQUIRED', 'lecture_id가 필요합니다.');
-      const status = extraction.error === 'processor_not_configured' ? 503 : extraction.error === 'dispatch_failed' ? 502 : 400;
-      return jsonFailure(extraction.error.toUpperCase(), extraction.message ?? '오디오 추출 요청을 처리할 수 없습니다.', status);
+    const extractionError = 'error' in extraction ? extraction.error ?? 'dispatch_failed' : null;
+    if (extractionError) {
+      if (extractionError === 'INVALID_BODY') return jsonFailure('INVALID_BODY', '요청 본문이 올바르지 않습니다.');
+      if (extractionError === 'LECTURE_ID_REQUIRED') return jsonFailure('LECTURE_ID_REQUIRED', 'lecture_id가 필요합니다.');
+      const status = extractionError === 'processor_not_configured' ? 503 : extractionError === 'dispatch_failed' ? 502 : 400;
+      return jsonFailure(extractionError.toUpperCase(), extraction.message ?? '오디오 추출 요청을 처리할 수 없습니다.', status);
     }
 
     return jsonSuccess(

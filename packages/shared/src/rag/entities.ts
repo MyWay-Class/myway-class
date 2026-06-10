@@ -7,6 +7,7 @@ import type {
   AIRagEntityKind,
   AIRagProviderPlan,
   AIRagRequest,
+  AnswerPolicy,
 } from '../types';
 
 function normalizeText(text: string): string {
@@ -121,17 +122,49 @@ export function buildSuggestions(intent: AIIntent, label: string): string[] {
   return [`${label}를 다른 각도에서 설명해줘.`, `같은 주제를 더 자세히 보여줘.`];
 }
 
+export function buildAnswerPolicy(intent: AIIntent, topHitSimilarity: number): AnswerPolicy {
+  const baseMinConfidence =
+    intent === 'request_summary'
+      ? 0.45
+      : intent === 'generate_quiz'
+        ? 0.5
+        : intent === 'search_content'
+          ? 0.4
+          : 0.42;
+
+  const minConfidence = Math.max(0.35, Math.min(0.7, baseMinConfidence));
+  const clarifyThreshold = Math.max(minConfidence + 0.08, 0.58);
+  const handoffThreshold = Math.max(0.18, Math.min(minConfidence - 0.12, topHitSimilarity * 0.8));
+
+  return {
+    min_confidence: minConfidence,
+    clarify_threshold: clarifyThreshold,
+    handoff_threshold: handoffThreshold,
+    max_clarify_rounds: 1,
+    citation_required: true,
+  };
+}
+
 export function buildAnswerText(
   query: string,
   intent: AIIntent,
   hits: { excerpt: string; title: string; similarity: number }[],
   label: string,
+  policy: AnswerPolicy,
 ): string {
   if (hits.length === 0) {
     return `${label}에서 "${query}"와 관련된 근거를 찾지 못했습니다. 질문을 조금 더 구체적으로 바꿔 주세요.`;
   }
 
   const topHit = hits[0];
+  if (topHit.similarity < policy.handoff_threshold) {
+    return `${label}에서 "${query}"와 관련된 근거를 찾지 못했습니다. 질문을 조금 더 구체적으로 바꿔 주세요.`;
+  }
+
+  if (topHit.similarity < policy.clarify_threshold) {
+    return `${label}에서 근거는 찾았지만 질문과의 연결이 약합니다. 질문을 조금 더 구체적으로 바꿔 주세요.`;
+  }
+
   const nextHit = hits[1];
   const opener =
     intent === 'request_summary'
@@ -161,12 +194,15 @@ export function buildProviderPlan(preferredProvider?: AIRagRequest['preferred_pr
     ...(preferredProvider ? [preferredProvider] : []),
     ...DEFAULT_FALLBACK_ORDER.search,
   ]);
+  const resolvedProvider = preferredProvider ?? 'ollama';
 
   return {
     preferred_provider: preferredProvider ?? null,
-    intent_provider: preferredProvider ?? 'ollama',
-    search_provider: preferredProvider ?? 'ollama',
-    answer_provider: preferredProvider ?? 'ollama',
+    intent_provider: resolvedProvider,
+    search_provider: resolvedProvider,
+    answer_provider: resolvedProvider,
+    vector_store_provider: 'feature_store',
+    rerank_provider: resolvedProvider,
     fallback_chain,
   };
 }

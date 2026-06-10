@@ -1,4 +1,4 @@
-name: orchestration-gate
+﻿name: orchestration-gate
 
 on:
   pull_request:
@@ -18,32 +18,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect project workspace
-        id: detect
-        shell: bash
-        run: |
-          if [ -f package.json ] || [ -d myway-class ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Setup Node
-        if: steps.detect.outputs.run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
       - name: Setup Java
-        if: steps.detect.outputs.run == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Resolve project paths
-        if: steps.detect.outputs.run == 'true'
         run: |
           set -euo pipefail
           if [ -d "myway-class" ]; then
@@ -67,12 +54,10 @@ jobs:
           echo "DECISION_PATH=" >> "$GITHUB_ENV"
 
       - name: Install dependencies
-        if: steps.detect.outputs.run == 'true'
         working-directory: ${{ env.PROJECT_DIR }}
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run orchestrator gate
-        if: steps.detect.outputs.run == 'true'
         run: npm run orch:run
         working-directory: ${{ env.PROJECT_DIR }}
         env:
@@ -80,7 +65,6 @@ jobs:
           ORCH_TARGET_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
 
       - name: Refresh decision path after gate run
-        if: steps.detect.outputs.run == 'true'
         run: |
           set -euo pipefail
           candidates=(
@@ -97,7 +81,6 @@ jobs:
           echo "DECISION_PATH=" >> "$GITHUB_ENV"
 
       - name: Ensure decision artifact exists
-        if: steps.detect.outputs.run == 'true'
         run: |
           set -euo pipefail
           if [ -z "${DECISION_PATH}" ] || [ ! -f "${DECISION_PATH}" ]; then
@@ -106,12 +89,11 @@ jobs:
           fi
 
       - name: Enforce approved state
-        if: steps.detect.outputs.run == 'true'
         run: |
           node -e "const fs=require('fs');const p=process.env.DECISION_PATH;const d=JSON.parse(fs.readFileSync(p,'utf8'));if(d.state!=='approved'){console.error('state is not approved:',d.state,'path:',p);process.exit(1);}"
 
       - name: Upload orchestration artifacts
-        if: always() && steps.detect.outputs.run == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: orchestration-artifacts-${{ github.run_id }}
@@ -127,7 +109,7 @@ jobs:
             _workspace/threads/*.jsonl
 
       - name: Comment PR with gate result
-        if: always() && github.event_name == 'pull_request' && steps.detect.outputs.run == 'true'
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -193,7 +175,7 @@ jobs:
             }
 
       - name: Notify Slack on gate failure
-        if: failure() && steps.detect.outputs.run == 'true'
+        if: failure()
         uses: actions/github-script@v7
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -241,7 +223,7 @@ jobs:
             });
 
       - name: Auto-approve PR when gate approved
-        if: github.event_name == 'pull_request' && github.base_ref == 'dev' && steps.detect.outputs.run == 'true'
+        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
         continue-on-error: true
         uses: actions/github-script@v7
         with:

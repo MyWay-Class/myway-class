@@ -83,7 +83,7 @@ public class AiControllerQuerySupport {
 
     public ResponseEntity<ApiResponse<Map<String, Object>>> rag(String auth, AiController.RagRequest body) {
         SessionView session = require(auth);
-        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session);
+        ResponseEntity<ApiResponse<Map<String, Object>>> guard = requireAiGuard(session, "rag");
         if (guard != null) return guard;
 
         String query = aiRequestSupport.normalize(body.query());
@@ -156,7 +156,7 @@ public class AiControllerQuerySupport {
         return aiControllerAuthSupport.requireSession(sessionService, auth);
     }
 
-    private ResponseEntity<ApiResponse<Map<String, Object>>> requireAiGuard(SessionView session) {
-        return aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport);
+    private ResponseEntity<ApiResponse<Map<String, Object>>> requireAiGuard(SessionView session, String feature) {
+        return aiControllerAuthSupport.requireAiEligible(featureStore, session, aiControllerSupport, feature);
     }
 }

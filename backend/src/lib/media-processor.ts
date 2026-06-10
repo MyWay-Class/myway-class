@@ -32,6 +32,19 @@ function getMediaProcessorOrigin(url: string): string {
   return new URL(url).origin;
 }
 
+function buildMediaProcessorAuthHeaders(token?: string): Record<string, string> {
+  if (!token) {
+    return {};
+  }
+
+  return {
+    Authorization: `Bearer ${token}`,
+    'x-myway-media-processor-token': token,
+    'x-media-processor-token': token,
+    'x-processor-token': token,
+  };
+}
+
 type MediaProcessorHealthResponse = {
   ok?: boolean;
   status?: string;
@@ -72,7 +85,14 @@ export function verifyMediaProcessorToken(request: Request, env?: RuntimeBinding
 
   const authorization = request.headers.get('authorization');
   const customToken = request.headers.get('x-myway-media-processor-token');
-  return authorization === `Bearer ${token}` || customToken === token;
+  const legacyToken = request.headers.get('x-media-processor-token');
+  const serviceToken = request.headers.get('x-processor-token');
+  return (
+    authorization === `Bearer ${token}` ||
+    customToken === token ||
+    legacyToken === token ||
+    serviceToken === token
+  );
 }
 
 export async function dispatchMediaProcessorJob(
@@ -92,7 +112,7 @@ export async function dispatchMediaProcessorJob(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(settings.token ? { Authorization: `Bearer ${settings.token}` } : {}),
+      ...buildMediaProcessorAuthHeaders(settings.token),
     },
     body: JSON.stringify({
       extraction_id: input.extraction.id,
@@ -154,7 +174,7 @@ export async function loadMediaProcessorHealth(env?: RuntimeBindings): Promise<M
 
   const response = await fetch(`${getMediaProcessorOrigin(settings.url)}/health`, {
     headers: {
-      ...(settings.token ? { Authorization: `Bearer ${settings.token}` } : {}),
+      ...buildMediaProcessorAuthHeaders(settings.token),
     },
   });
 

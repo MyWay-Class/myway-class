@@ -37,8 +37,17 @@ function parseBody(request: IncomingMessage): Promise<unknown> {
 }
 
 function isAuthorized(request: IncomingMessage): boolean {
-  const header = request.headers.authorization ?? '';
-  return header === `Bearer ${config.token}`;
+  const authorization = request.headers.authorization ?? '';
+  const legacyToken = request.headers['x-myway-media-processor-token'];
+  const fallbackToken = request.headers['x-media-processor-token'];
+  const serviceToken = request.headers['x-processor-token'];
+  const tokenMatches = (value: unknown): boolean => String(value ?? '') === config.token;
+  return (
+    authorization === `Bearer ${config.token}` ||
+    tokenMatches(legacyToken) ||
+    tokenMatches(fallbackToken) ||
+    tokenMatches(serviceToken)
+  );
 }
 
 async function buildHealthPayload(): Promise<Record<string, unknown>> {

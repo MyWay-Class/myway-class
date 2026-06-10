@@ -1,11 +1,7 @@
 import type { AudioExtraction, AudioExtractionCallbackRequest, LecturePipeline, MediaRepository } from '@myway/shared';
-import { getAudioExtraction } from './media-repository-read-ops';
-import { updateAudioExtraction } from './media-repository-write-ops';
 import { runTranscriptGeneration, type STTAdapterResult } from './stt-adapter';
 import { persistLectureDuration } from './learning-store';
 import type { RuntimeBindings } from './runtime-env';
-import { createLectureSummaryNote } from './media-repository-write-ops';
-import { listLectureNotes } from './media-repository-read-ops';
 
 export type MediaExtractionCallbackResult =
   | {
@@ -25,20 +21,20 @@ async function ensureAutoTimelineSummary(
   lectureId: string,
   repository?: MediaRepository,
 ): Promise<void> {
-  const notes = await listLectureNotes(lectureId, repository);
+  const notes = repository ? await repository.listLectureNotes(lectureId) : [];
   if (notes.some((note) => note.note_type === 'ai_timeline')) {
     return;
   }
 
-  await createLectureSummaryNote(
-    userId,
-    {
-      lecture_id: lectureId,
-      style: 'timeline',
-      language: 'ko',
-    },
-    repository,
-  );
+  if (!repository) {
+    return;
+  }
+
+  await repository.createLectureSummaryNote(userId, {
+    lecture_id: lectureId,
+    style: 'timeline',
+    language: 'ko',
+  });
 }
 
 export async function completeMediaExtractionJob(
@@ -47,7 +43,7 @@ export async function completeMediaExtractionJob(
   env?: RuntimeBindings,
   repository?: MediaRepository,
 ): Promise<MediaExtractionCallbackResult> {
-  const extraction = await getAudioExtraction(payload.extraction_id, repository);
+  const extraction = repository ? await repository.getAudioExtraction(payload.extraction_id) : undefined;
   if (!extraction || extraction.lecture_id !== payload.lecture_id) {
     return {
       ok: false,
@@ -57,7 +53,7 @@ export async function completeMediaExtractionJob(
   }
 
   if (payload.status === 'FAILED') {
-    const failed = await updateAudioExtraction(payload, repository);
+    const failed = repository ? await repository.updateAudioExtraction(payload) : null;
     if (!failed) {
       return {
         ok: false,
@@ -98,11 +94,13 @@ export async function completeMediaExtractionJob(
   );
 
   if (!transcriptResult.ok) {
-    const failed = await updateAudioExtraction({
+    const failed = repository
+      ? await repository.updateAudioExtraction({
       ...payload,
       status: 'FAILED',
       error_message: '오디오 전사를 생성할 수 없습니다.',
-    }, repository);
+    })
+      : null;
 
     return {
       ok: false,
@@ -114,12 +112,14 @@ export async function completeMediaExtractionJob(
   await persistLectureDuration(extraction.lecture_id, Math.max(1, Math.round(transcriptResult.duration_ms / 60_000)), env);
   await ensureAutoTimelineSummary(userId, extraction.lecture_id, repository);
 
-  const completed = await updateAudioExtraction({
+  const completed = repository
+    ? await repository.updateAudioExtraction({
     ...payload,
     status: 'COMPLETED',
     transcript_id: transcriptResult.transcript_id,
     stt_status: 'COMPLETED',
-  }, repository);
+  })
+    : null;
 
   if (!completed) {
     return {

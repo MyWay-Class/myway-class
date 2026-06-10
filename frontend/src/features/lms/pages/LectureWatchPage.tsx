@@ -59,6 +59,7 @@ export function LectureWatchPage({
           currentLecture={playback.currentLecture}
           highlightedLecture={highlightedLecture}
           transcript={playback.transcript}
+          transcriptAccessState={playback.transcriptAccessState}
           isLocked={playback.isLocked}
           canManageCurrent={canManageCurrent}
           onEnroll={onEnroll}

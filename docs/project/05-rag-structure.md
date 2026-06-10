@@ -67,3 +67,5 @@
 - `POST /api/v1/ai/rag`로 청킹, 엔티티 추출, 검색, 답변을 한 번에 묶은 RAG 파이프라인을 조회한다.
 - 검색과 답변의 공통 로직은 `packages/shared/src/ai.ts`에서 재사용한다.
 - 청킹과 검색 후보 조합은 `packages/shared/src/rag`에서 분리 관리한다.
+- 검색은 키워드 점수와 벡터 점수를 합친 hybrid rerank를 사용하고, chunk마다 `keyword_similarity`, `vector_similarity`, `hybrid_similarity`를 함께 기록한다.
+- 응답 provider에는 `feature_store` 기반 vector store와 rerank 경계가 노출된다.

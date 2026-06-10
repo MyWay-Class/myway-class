@@ -84,7 +84,15 @@ export function useShortformWizardState({ highlightedLecture, selectedCourse, co
     Promise.all(
       courseLectures.map(async (lecture) => {
         const transcript = await loadLectureTranscriptDetailed(lecture.id, sessionToken);
-        return [lecture.id, transcript ? { segments: transcript.segments ?? [], duration_ms: transcript.duration_ms } : null] as const;
+        return [
+          lecture.id,
+          transcript
+            ? {
+                chunks: transcript.segments ?? [],
+                duration_ms: transcript.duration_ms,
+              }
+            : null,
+        ] as const;
       }),
     ).then((entries) => {
       if (alive) setTranscriptMap(Object.fromEntries(entries));
@@ -126,13 +134,20 @@ export function useShortformWizardState({ highlightedLecture, selectedCourse, co
 
     const transcriptSegmentsByLecture = Object.fromEntries(
       Object.entries(transcriptMap)
-        .filter(([, snapshot]) => Boolean(snapshot?.segments?.length))
+        .filter(([, snapshot]) => Boolean(snapshot?.chunks?.length))
         .map(([lectureId, snapshot]) => [
           lectureId,
-          (snapshot?.segments ?? []).map((segment) => ({
+          (snapshot?.chunks ?? []).map((segment) => ({
+            lecture_id: lectureId,
+            transcript_id: segment.transcript_id ?? undefined,
             start_ms: segment.start_ms,
             end_ms: segment.end_ms,
             text: segment.text,
+            confidence: segment.confidence,
+            speaker: segment.speaker ?? null,
+            topic_tags: segment.topic_tags ?? [],
+            chunk_index: segment.chunk_index ?? segment.index,
+            index: segment.index ?? segment.chunk_index,
           })),
         ]),
     );
@@ -146,6 +161,7 @@ export function useShortformWizardState({ highlightedLecture, selectedCourse, co
       {
         course_id: courseDetail.id,
         mode: 'cross',
+        transcript_chunks_by_lecture: transcriptSegmentsByLecture,
         transcript_segments_by_lecture: transcriptSegmentsByLecture,
       },
       sessionToken,

@@ -20,6 +20,14 @@ export async function loadLectureTranscriptDetailed(lectureId: string, sessionTo
   return response?.success && response.data ? response.data : null;
 }
 
+export async function loadLectureTranscriptDetailedResult(
+  lectureId: string,
+  sessionToken?: string | null,
+): Promise<import('../api-core').ApiRequestResult<LectureTranscript> | null> {
+  const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  return request<LectureTranscript>(`/api/v1/media/transcript/${encodeURIComponent(lectureId)}`, undefined, token);
+}
+
 export async function loadTranscriptSpeakerReview(
   lectureId: string,
   sessionToken?: string | null,

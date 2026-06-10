@@ -3,6 +3,7 @@ import { getLectureDetail } from '../../lms/learning';
 import { getLectureTranscript, listLectureNotes, type MediaRepository, memoryMediaRepository } from '../../lms/media';
 import type { AIChunkSource, AIReference, AISearchHit, AIRagChunk, AIRagRequest } from '../../types';
 import { buildChunkText as buildChunkTextFromText, scoreChunk as scoreChunkFromText } from './helpers';
+import { buildEmbedding, cosineSimilarity, tokenize } from '../../rag/vector';
 
 export type LectureSourceSnapshot = {
   lecture: NonNullable<ReturnType<typeof getLectureDetail>>;
@@ -48,11 +49,7 @@ export async function buildLectureSourceSnapshot(
 }
 
 function countTokens(text: string): number {
-  return text
-    .toLowerCase()
-    .split(/[^a-zA-Z0-9가-힣]+/g)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 0).length;
+  return tokenize(text).length;
 }
 
 export function createReference(
@@ -179,6 +176,8 @@ export async function buildCorpusForLecture(
       token_count: countTokens(content),
       start_ms: segment.start_ms,
       end_ms: segment.end_ms,
+      retrieval_mode: 'hybrid',
+      vector_embedding: buildEmbedding(`${lecture.title} ${content}`),
     });
   });
 
@@ -197,6 +196,8 @@ export async function buildCorpusForLecture(
         chunk_index: index,
         source_scope: 'note',
         token_count: countTokens(chunk),
+        retrieval_mode: 'hybrid',
+        vector_embedding: buildEmbedding(`${lecture.title} ${chunk}`),
       });
     });
   }
@@ -216,6 +217,8 @@ export async function buildCorpusForLecture(
         chunk_index: index,
         source_scope: 'lecture',
         token_count: countTokens(chunk),
+        retrieval_mode: 'hybrid',
+        vector_embedding: buildEmbedding(`${lecture.title} ${chunk}`),
       });
     });
   }
@@ -247,11 +250,7 @@ export async function buildCorpus(
 }
 
 function scoreCorpusChunk(query: string, chunk: AIRagChunk): number {
-  const queryTokens = query
-    .toLowerCase()
-    .split(/[^a-zA-Z0-9가-힣]+/g)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 1);
+  const queryTokens = tokenize(query);
 
   if (queryTokens.length === 0) {
     if (chunk.source_scope === 'transcript') {
@@ -263,11 +262,7 @@ function scoreCorpusChunk(query: string, chunk: AIRagChunk): number {
     return 0.55;
   }
 
-  const haystackTokens = `${chunk.title} ${chunk.content}`
-    .toLowerCase()
-    .split(/[^a-zA-Z0-9가-힣]+/g)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 1);
+  const haystackTokens = tokenize(`${chunk.title} ${chunk.content}`);
   const overlap = queryTokens.filter((token) => haystackTokens.includes(token)).length;
   const coverage = overlap / Math.max(3, queryTokens.length);
   const exactMatch = chunk.content.includes(query) ? 0.14 : 0;
@@ -282,12 +277,25 @@ function scoreCorpusChunk(query: string, chunk: AIRagChunk): number {
 }
 
 export async function rankChunks(query: string, chunks: AIRagChunk[], limit: number): Promise<AIRagChunk[]> {
+  const queryEmbedding = buildEmbedding(query);
   const rankedChunks = chunks
     .map((chunk) => ({
       ...chunk,
-      similarity: scoreCorpusChunk(query, chunk),
+      keyword_similarity: Math.round(scoreCorpusChunk(query, chunk) * 1000) / 1000,
+      vector_similarity: Math.round(cosineSimilarity(queryEmbedding, chunk.vector_embedding ?? buildEmbedding(`${chunk.title} ${chunk.content}`)) * 1000) / 1000,
     }))
-    .filter((chunk) => chunk.similarity > 0 || query.trim().length === 0);
-  rankedChunks.sort((left, right) => right.similarity - left.similarity || left.title.localeCompare(right.title));
+    .map((chunk) => ({
+      ...chunk,
+      hybrid_similarity: Math.round(Math.min(0.99, Math.max(0.0, (chunk.keyword_similarity ?? 0) * 0.68 + (chunk.vector_similarity ?? 0) * 0.32)) * 1000) / 1000,
+      similarity: Math.round(Math.min(0.99, Math.max(0.0, (chunk.keyword_similarity ?? 0) * 0.68 + (chunk.vector_similarity ?? 0) * 0.32)) * 1000) / 1000,
+      retrieval_mode: 'hybrid' as const,
+      score_breakdown: {
+        keyword: chunk.keyword_similarity ?? 0,
+        vector: chunk.vector_similarity ?? 0,
+        hybrid: Math.round(Math.min(0.99, Math.max(0.0, (chunk.keyword_similarity ?? 0) * 0.68 + (chunk.vector_similarity ?? 0) * 0.32)) * 1000) / 1000,
+      },
+    }))
+    .filter((chunk) => (chunk.similarity ?? 0) > 0 || query.trim().length === 0);
+  rankedChunks.sort((left, right) => (right.hybrid_similarity ?? 0) - (left.hybrid_similarity ?? 0) || (right.vector_similarity ?? 0) - (left.vector_similarity ?? 0) || left.title.localeCompare(right.title));
   return rankedChunks.slice(0, limit);
 }

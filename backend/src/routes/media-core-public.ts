@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
-import { buildPipelineOverview, listAudioExtractions, listLectureNotes, listLectureTranscripts } from '@myway/shared';
+import { buildPipelineOverview, getLectureDetail, listAudioExtractions, listLectureNotes, listLectureTranscripts } from '@myway/shared';
 import { jsonFailure, jsonSuccess } from '../lib/http';
 import { readLectureVideoAsset } from '../lib/media-assets';
+import { buildFallbackLectureTranscript } from '../lib/transcript-fallback';
 import type { RuntimeBindings } from '../lib/runtime-env';
 import { ensureLectureExists, getMediaRepository, requireAssetAccess, requireLectureAccess } from './media-route-guards';
 
@@ -10,14 +11,17 @@ async function withLectureAccessResponse<T>(
   lectureId: string,
   unauthMessage: string,
   forbiddenMessage: string,
-  producer: (repository: ReturnType<typeof getMediaRepository>) => Promise<T>,
+  producer: (
+    repository: ReturnType<typeof getMediaRepository>,
+    userId: string,
+  ) => Promise<T>,
 ): Promise<Response> {
   const access = requireLectureAccess(c.req.raw, lectureId, unauthMessage, forbiddenMessage);
   if ('error' in access) return access.error;
   if (!ensureLectureExists(lectureId, access.user.id)) {
     return jsonFailure('LECTURE_NOT_FOUND', '강의를 찾을 수 없습니다.', 404);
   }
-  return jsonSuccess(await producer(getMediaRepository(c.env as RuntimeBindings | undefined)));
+  return jsonSuccess(await producer(getMediaRepository(c.env as RuntimeBindings | undefined), access.user.id));
 }
 
 export function registerMediaPublicRoutes(media: Hono): void {
@@ -41,7 +45,11 @@ export function registerMediaPublicRoutes(media: Hono): void {
       lectureId,
       '강의 수강 후에 스크립트를 볼 수 있습니다.',
       '강의 수강 후에 스크립트를 볼 수 있습니다.',
-      async (repository) => (await listLectureTranscripts(lectureId, repository))[0] ?? null,
+      async (repository, userId) => {
+        const transcript = (await listLectureTranscripts(lectureId, repository))[0] ?? null;
+        if (transcript) return transcript;
+        return buildFallbackLectureTranscript(getLectureDetail(lectureId, userId) ?? null);
+      },
     );
   });
 

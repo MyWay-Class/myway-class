@@ -29,6 +29,28 @@ function getMediaProcessorOrigin(url: string): string {
   return new URL(url).origin;
 }
 
+function isLoopbackMediaProcessor(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1';
+  } catch {
+    return false;
+  }
+}
+
+function buildMediaProcessorAuthHeaders(token?: string): Record<string, string> {
+  if (!token) {
+    return {};
+  }
+
+  return {
+    Authorization: `Bearer ${token}`,
+    'x-myway-media-processor-token': token,
+    'x-media-processor-token': token,
+    'x-processor-token': token,
+  };
+}
+
 export async function dispatchShortformExportJob(
   input: ShortformExportDispatchInput,
   env?: RuntimeBindings,
@@ -41,12 +63,19 @@ export async function dispatchShortformExportJob(
       message: 'MYWAY_MEDIA_PROCESSOR_URL이 설정되지 않았습니다.',
     };
   }
+  if (isLoopbackMediaProcessor(settings.url)) {
+    return {
+      ok: false,
+      reason: 'not_configured',
+      message: '배포 환경에서는 로컬 미디어 처리 서비스 URL을 사용할 수 없습니다.',
+    };
+  }
 
   const response = await fetch(`${getMediaProcessorOrigin(settings.url)}/jobs/shortform-export`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(settings.token ? { Authorization: `Bearer ${settings.token}` } : {}),
+      ...buildMediaProcessorAuthHeaders(settings.token),
     },
     body: JSON.stringify({
       shortform_id: input.shortform.id,

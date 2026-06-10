@@ -2,9 +2,11 @@ package com.myway.backendspring.api;
 
 import com.myway.backendspring.api.support.ShortformControllerSupport;
 import com.myway.backendspring.api.support.ShortformComposeValidationSupport;
+import com.myway.backendspring.api.support.CallbackSecuritySupport;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
+import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import com.myway.backendspring.feature.shortform.ShortformService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -22,26 +24,49 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/shortform")
 public class ShortformController {
-    public record GenerateRequest(String course_id, String mode) {}
+    public record GenerateRequest(
+            String course_id,
+            String mode,
+            Map<String, List<Map<String, Object>>> transcript_chunks_by_lecture,
+            Map<String, List<Map<String, Object>>> transcript_segments_by_lecture
+    ) {}
     public record SelectCandidatesRequest(@NotBlank String extraction_id, @NotEmpty List<@NotBlank String> candidate_ids) {}
     public record ComposeClipRequest(
             @NotBlank String lecture_id,
             @NotNull @PositiveOrZero Long start_ms,
             @NotNull @PositiveOrZero Long end_ms
     ) {}
-    public record ComposeRequest(String title, String description, String course_id, String extraction_id, List<@Valid ComposeClipRequest> clips) {
+    public record ComposeRequest(String title, String description, String course_id, String extraction_id, List<String> candidate_ids, List<@Valid ComposeClipRequest> clips) {
         public ComposeRequest(String title, String description, String course_id) {
-            this(title, description, course_id, null, List.of());
+            this(title, description, course_id, null, List.of(), List.of());
         }
     }
     public record ShareRequest(@NotBlank String video_id, String course_id, String visibility, String message) {}
     public record SaveRequest(@NotBlank String video_id, String note, String folder) {}
     public record LikeRequest(@NotBlank String video_id) {}
     public record RetryFailedExportsRequest(Boolean include_permanent, Integer limit) {}
+    public record ExportCallbackRequest(
+            @NotBlank String shortform_id,
+            String video_id,
+            String status,
+            String video_url,
+            String error_message,
+            String failure_reason,
+            String processing_job_id,
+            String processing_stage,
+            String processing_step,
+            @NotNull Long event_version,
+            String issued_at,
+            String nonce,
+            String signature
+    ) {}
 
     private final SessionService sessionService;
     private final ShortformService shortformService;
     private final String callbackToken;
+    private final FeatureStoreRepository featureStoreRepository;
+    private final CallbackSecuritySupport callbackSecuritySupport;
+    private final long callbackTtlSeconds;
     private final long maxClipDurationMs;
     private final ShortformControllerSupport support;
     private final ShortformComposeValidationSupport composeSupport;
@@ -50,6 +75,9 @@ public class ShortformController {
             SessionService sessionService,
             ShortformService shortformService,
             @Value("${myway.shortform.callback.token:dev-shortform-callback-token}") String callbackToken,
+            @Value("${myway.shortform.callback.ttl-seconds:300}") long callbackTtlSeconds,
+            FeatureStoreRepository featureStoreRepository,
+            CallbackSecuritySupport callbackSecuritySupport,
             @Value("${myway.shortform.compose.max-clip-duration-ms:300000}") long maxClipDurationMs,
             ShortformControllerSupport support,
             ShortformComposeValidationSupport composeSupport
@@ -57,6 +85,9 @@ public class ShortformController {
         this.sessionService = sessionService;
         this.shortformService = shortformService;
         this.callbackToken = callbackToken;
+        this.featureStoreRepository = featureStoreRepository;
+        this.callbackSecuritySupport = callbackSecuritySupport;
+        this.callbackTtlSeconds = Math.max(60L, callbackTtlSeconds);
         this.maxClipDurationMs = Math.max(1000L, maxClipDurationMs);
         this.support = support;
         this.composeSupport = composeSupport;
@@ -83,7 +114,9 @@ public class ShortformController {
         if (s == null) return support.unauthenticated();
         Map<String, Object> payload = Map.of(
                 "course_id", support.orEmpty(body.course_id()),
-                "mode", support.orEmpty(body.mode())
+                "mode", support.orEmpty(body.mode()),
+                "transcript_chunks_by_lecture", body.transcript_chunks_by_lecture() == null ? Map.of() : body.transcript_chunks_by_lecture(),
+                "transcript_segments_by_lecture", body.transcript_segments_by_lecture() == null ? Map.of() : body.transcript_segments_by_lecture()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(shortformService.createShortformExtraction(s.user().id(), payload), "숏폼 후보가 생성되었습니다."));
     }
@@ -111,6 +144,19 @@ public class ShortformController {
         SessionView s = require(auth);
         if (s == null) return support.unauthenticated();
         List<ComposeClipRequest> sourceClips = body.clips() == null ? List.of() : body.clips();
+        if (sourceClips.isEmpty()) {
+            List<String> candidateIds = body.candidate_ids() == null ? List.of() : body.candidate_ids().stream().map(value -> value == null ? "" : value.trim()).filter(value -> !value.isBlank()).toList();
+            if (!candidateIds.isEmpty() && body.extraction_id() != null && !body.extraction_id().isBlank()) {
+                List<Map<String, Object>> resolvedClips = shortformService.resolveCandidateClips(body.extraction_id().trim(), candidateIds);
+                sourceClips = resolvedClips.stream()
+                        .map(clip -> new ComposeClipRequest(
+                                String.valueOf(clip.getOrDefault("lecture_id", "")).trim(),
+                                Long.valueOf(Long.parseLong(String.valueOf(clip.getOrDefault("start_ms", 0L)))),
+                                Long.valueOf(Long.parseLong(String.valueOf(clip.getOrDefault("end_ms", 0L))))
+                        ))
+                        .toList();
+            }
+        }
         List<ShortformComposeValidationSupport.ComposeClipInput> clipInputs = sourceClips.stream()
                 .map(clip -> new ShortformComposeValidationSupport.ComposeClipInput(clip.lecture_id(), clip.start_ms(), clip.end_ms()))
                 .toList();
@@ -236,15 +282,6 @@ public class ShortformController {
         return ResponseEntity.ok(ApiResponse.success(result, "실패한 숏폼 export 재시도가 실행되었습니다."));
     }
 
-    public record ExportCallbackRequest(
-            @NotBlank String shortform_id,
-            String video_id,
-            String status,
-            String video_url,
-            String error_message,
-            @NotNull Long event_version
-    ) {}
-
     @PostMapping("/export/callback")
     public ResponseEntity<ApiResponse<Map<String, Object>>> exportCallback(
             @RequestHeader(value = "X-Callback-Token", required = false) String token,
@@ -260,6 +297,36 @@ public class ShortformController {
         ShortformControllerSupport.CallbackPolicyDecision decision = support.decideExportCallbackState(body.status(), body.event_version());
         if (!decision.valid()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_BODY", decision.errorMessage()));
+        }
+        Map<String, Object> replayPayload = new java.util.LinkedHashMap<>();
+        replayPayload.put("shortform_id", shortformId);
+        replayPayload.put("video_id", body.video_id());
+        replayPayload.put("status", decision.status());
+        replayPayload.put("event_version", decision.eventVersion());
+        replayPayload.put("video_url", body.video_url());
+        replayPayload.put("error_message", body.error_message());
+        replayPayload.put("failure_reason", body.failure_reason());
+        replayPayload.put("processing_job_id", body.processing_job_id());
+        replayPayload.put("processing_stage", body.processing_stage());
+        replayPayload.put("processing_step", body.processing_step());
+
+        CallbackSecuritySupport.CallbackDecision replayDecision = callbackSecuritySupport.verifyShortformCallback(
+                featureStoreRepository,
+                "shortform_export",
+                callbackToken,
+                body.issued_at(),
+                body.nonce(),
+                body.signature(),
+                replayPayload,
+                callbackTtlSeconds
+        );
+        if (replayDecision.signed() && !replayDecision.valid()) {
+            HttpStatus responseStatus = switch (replayDecision.errorCode()) {
+                case "REPLAY_DETECTED" -> HttpStatus.CONFLICT;
+                case "CALLBACK_EXPIRED" -> HttpStatus.GONE;
+                default -> HttpStatus.FORBIDDEN;
+            };
+            return ResponseEntity.status(responseStatus).body(ApiResponse.failure(replayDecision.errorCode(), replayDecision.errorMessage()));
         }
 
         Map<String, Object> updated = shortformService.applyShortformExportCallback(

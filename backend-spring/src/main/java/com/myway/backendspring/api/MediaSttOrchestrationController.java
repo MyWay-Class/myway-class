@@ -1,12 +1,14 @@
 package com.myway.backendspring.api;
 
 import com.myway.backendspring.api.support.MediaCallbackPolicy;
+import com.myway.backendspring.api.support.CallbackSecuritySupport;
 import com.myway.backendspring.auth.RolePolicy;
 import com.myway.backendspring.auth.SessionService;
 import com.myway.backendspring.auth.SessionView;
 import com.myway.backendspring.common.ApiResponse;
 import com.myway.backendspring.domain.DemoLearningService;
 import com.myway.backendspring.feature.media.MediaPipelineService;
+import com.myway.backendspring.feature.repository.FeatureStoreRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +27,9 @@ public class MediaSttOrchestrationController {
             String status,
             String error_message,
             Long event_version,
+            String issued_at,
+            String nonce,
+            String signature,
             String audio_url,
             String processing_job_id,
             String processing_stage,
@@ -49,18 +54,28 @@ public class MediaSttOrchestrationController {
     private final SessionService sessionService;
     private final MediaPipelineService mediaPipelineService;
     private final DemoLearningService learningService;
+    private final FeatureStoreRepository featureStoreRepository;
+    private final CallbackSecuritySupport callbackSecuritySupport;
     private final String callbackToken;
+    private final long callbackTtlSeconds;
 
     public MediaSttOrchestrationController(
             SessionService sessionService,
             MediaPipelineService mediaPipelineService,
             DemoLearningService learningService,
+            FeatureStoreRepository featureStoreRepository,
+            CallbackSecuritySupport callbackSecuritySupport,
             @Value("${myway.media.callback.token:dev-media-callback-token}") String callbackToken
+            ,
+            @Value("${myway.media.callback.ttl-seconds:300}") long callbackTtlSeconds
     ) {
         this.sessionService = sessionService;
         this.mediaPipelineService = mediaPipelineService;
         this.learningService = learningService;
+        this.featureStoreRepository = featureStoreRepository;
+        this.callbackSecuritySupport = callbackSecuritySupport;
         this.callbackToken = callbackToken;
+        this.callbackTtlSeconds = Math.max(60L, callbackTtlSeconds);
     }
 
     @PostMapping("/extract-audio/callback")
@@ -83,6 +98,42 @@ public class MediaSttOrchestrationController {
         );
         if (!sttPolicy.valid()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("CALLBACK_INVALID_PAYLOAD", sttPolicy.errorMessage()));
+        }
+        Map<String, Object> replayPayload = new java.util.LinkedHashMap<>();
+        replayPayload.put("extraction_id", extractionId);
+        replayPayload.put("lecture_id", body.lecture_id());
+        replayPayload.put("status", decision.status());
+        replayPayload.put("event_version", decision.eventVersion());
+        replayPayload.put("error_message", body.error_message());
+        replayPayload.put("audio_url", optionalOrNull(body.audio_url()));
+        replayPayload.put("processing_job_id", body.processing_job_id());
+        replayPayload.put("processing_stage", body.processing_stage());
+        replayPayload.put("processing_step", body.processing_step());
+        replayPayload.put("audio_format", body.audio_format());
+        replayPayload.put("sample_rate", body.sample_rate());
+        replayPayload.put("channels", body.channels());
+        replayPayload.put("sync_mode", sttPolicy.syncMode());
+        replayPayload.put("overwrite_policy", sttPolicy.overwritePolicy());
+        replayPayload.put("approval_state", sttPolicy.approvalState());
+        replayPayload.put("notification_channel", sttPolicy.notificationChannel());
+
+        CallbackSecuritySupport.CallbackDecision replayDecision = callbackSecuritySupport.verifyMediaCallback(
+                featureStoreRepository,
+                "media_extraction",
+                callbackToken,
+                body.issued_at(),
+                body.nonce(),
+                body.signature(),
+                replayPayload,
+                callbackTtlSeconds
+        );
+        if (replayDecision.signed() && !replayDecision.valid()) {
+            HttpStatus status = switch (replayDecision.errorCode()) {
+                case "REPLAY_DETECTED" -> HttpStatus.CONFLICT;
+                case "CALLBACK_EXPIRED" -> HttpStatus.GONE;
+                default -> HttpStatus.FORBIDDEN;
+            };
+            return ResponseEntity.status(status).body(ApiResponse.failure(replayDecision.errorCode(), replayDecision.errorMessage()));
         }
         String errorMessage = body.error_message();
         String audioUrl = optionalOrNull(body.audio_url());

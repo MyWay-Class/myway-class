@@ -55,6 +55,7 @@ jobs:
               ;;
             *)
               test -f README.md
+              test -f agent.md
               ;;
           esac
 
@@ -78,7 +79,6 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Check agent guide size
-        if: hashFiles('agent.md') != ''
         run: |
           lines=$(wc -l < agent.md)
           test "$lines" -le 200
@@ -189,6 +189,9 @@ jobs:
               test -f packages/shared/package.json
               test -f frontend/vite.config.ts
               test -f backend/wrangler.jsonc
+              ;;
+            *)
+              test -f .github/pull_request_template.md
               ;;
           esac
 

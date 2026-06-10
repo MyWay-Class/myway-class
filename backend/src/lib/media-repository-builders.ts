@@ -8,6 +8,7 @@ import type {
   MediaSummaryRequest,
   TranscriptCreateRequest,
 } from '@myway/shared';
+import { buildTranscriptChunks } from '@myway/shared';
 import {
   buildTimelineMarkers,
   extractKeyConcepts,
@@ -47,19 +48,38 @@ export function buildLectureTranscript(
     return null;
   }
   const fallbackDurationMs = Math.max(lecture.duration_minutes * 60_000, fullText.length * 40, 180_000);
+  const transcriptId = createId('trs');
   const segments = input.segments?.length
-    ? input.segments.map((segment, index) => ({
-        index,
-        start_ms: Math.max(0, Math.round(segment.start_ms)),
-        end_ms: Math.max(Math.round(segment.start_ms), Math.round(segment.end_ms)),
-        text: normalizeText(segment.text),
-      }))
-    : splitIntoSegments(fullText, input.duration_ms ?? fallbackDurationMs);
+    ? buildTranscriptChunks(
+        lecture.id,
+        input.segments.map((segment, index) => ({
+          ...segment,
+          text: normalizeText(segment.text),
+          chunk_index: segment.chunk_index ?? segment.index ?? index,
+          index: segment.index ?? segment.chunk_index ?? index,
+        })),
+        transcriptId,
+      )
+    : buildTranscriptChunks(
+        lecture.id,
+        splitIntoSegments(fullText, input.duration_ms ?? fallbackDurationMs).map((segment) => ({
+          lecture_id: lecture.id,
+          start_ms: segment.start_ms,
+          end_ms: segment.end_ms,
+          text: segment.text,
+          chunk_index: segment.index,
+          index: segment.index,
+          confidence: 0.9,
+          speaker: null,
+          topic_tags: [],
+        })),
+        transcriptId,
+      );
   const durationMs =
     input.duration_ms ?? (segments.length > 0 ? segments[segments.length - 1]?.end_ms ?? fallbackDurationMs : fallbackDurationMs);
   const wordCount = input.word_count ?? fullText.split(/\s+/).filter(Boolean).length;
   return {
-    id: createId('trs'),
+    id: transcriptId,
     lecture_id: lecture.id,
     user_id: userId,
     language: input.language ?? 'ko',

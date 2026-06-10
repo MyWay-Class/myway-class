@@ -32,13 +32,23 @@ type TranscriptSegmentLike = {
   text: string;
 };
 
+type TranscriptChunkLike = TranscriptSegmentLike & {
+  lecture_id?: string;
+  transcript_id?: string | null;
+  confidence?: number;
+  speaker?: string | null;
+  topic_tags?: string[];
+  chunk_index?: number;
+  index?: number;
+};
+
 function buildTranscriptCandidates(
   extractionId: string,
   lectureId: string,
   lectureTitle: string,
   courseId: string,
   style: ShortformStyle,
-  segments: TranscriptSegmentLike[],
+  segments: TranscriptChunkLike[],
   startOrderIndex: number,
 ): ShortformCandidate[] {
   const validSegments = segments.filter((segment) => segment.text.trim().length > 0);
@@ -112,17 +122,18 @@ export function generateShortformExtraction(userId: string, input: ShortformGene
       return;
     }
 
+    const transcriptChunks = input.transcript_chunks_by_lecture?.[lecture.id];
     const transcriptSegments = input.transcript_segments_by_lecture?.[lecture.id];
     const baseOrderIndex = demoShortformCandidates.filter((item) => item.extraction_id === extraction.id).length;
     const candidates =
-      transcriptSegments && transcriptSegments.length > 0
+      (transcriptChunks && transcriptChunks.length > 0) || (transcriptSegments && transcriptSegments.length > 0)
         ? buildTranscriptCandidates(
             extraction.id,
             lecture.id,
             lecture.title,
             lecture.course_id,
             extraction.style,
-            transcriptSegments,
+            (transcriptChunks ?? transcriptSegments) as TranscriptChunkLike[],
             baseOrderIndex,
           )
         : Array.from({ length: 3 }, (_, index) =>
@@ -165,12 +176,17 @@ export function toggleShortformCandidateSelection(input: ShortformSelectRequest)
 }
 
 export function composeShortformVideo(userId: string, input: ShortformComposeRequest): ShortformVideo | null {
-  const extraction = getExtraction(input.extraction_id);
+  const extractionId = input.extraction_id?.trim();
+  if (!extractionId) {
+    return null;
+  }
+
+  const extraction = getExtraction(extractionId);
   if (!extraction) {
     return null;
   }
 
-  const candidates = getSelectedShortformCandidates(input.extraction_id, input.candidate_ids);
+  const candidates = getSelectedShortformCandidates(extractionId, input.candidate_ids);
   return createShortformVideoFromCandidates(userId, extraction, input.title, input.description ?? '', candidates);
 }
 

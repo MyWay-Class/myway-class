@@ -126,6 +126,9 @@ public class ShortformComposeSupport {
                     .POST(HttpRequest.BodyPublishers.ofString(body));
             if (!mediaProcessorToken.isBlank()) {
                 builder.header("Authorization", "Bearer " + mediaProcessorToken);
+                builder.header("x-myway-media-processor-token", mediaProcessorToken);
+                builder.header("x-media-processor-token", mediaProcessorToken);
+                builder.header("x-processor-token", mediaProcessorToken);
             }
             HttpResponse<String> response = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {

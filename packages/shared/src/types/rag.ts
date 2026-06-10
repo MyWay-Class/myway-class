@@ -1,5 +1,6 @@
 import type { AIProviderName } from '../ai/ai-provider';
 import type { AIAnswerResult, AIChunkSource, AIIntentResult, AISearchResult } from './ai';
+import type { AnswerPolicy } from './transcript';
 
 export type AIRagEntityKind = 'lecture_title' | 'course_title' | 'keyword' | 'quoted_phrase' | 'number' | 'context';
 
@@ -18,13 +19,29 @@ export type AIRagChunk = AISearchResult['hits'][number] & {
   source_scope: AIChunkSource;
   start_ms?: number;
   end_ms?: number;
+  retrieval_mode?: 'keyword' | 'hybrid';
+  keyword_similarity?: number;
+  vector_similarity?: number;
+  hybrid_similarity?: number;
+  vector_embedding?: number[];
+  score_breakdown?: {
+    keyword: number;
+    vector: number;
+    hybrid: number;
+  };
 };
+
+export type SearchIndexEntry = AIRagChunk;
+
+export type SearchIndex = SearchIndexEntry[];
 
 export type AIRagProviderPlan = {
   preferred_provider: AIProviderName | null;
   intent_provider: AIProviderName;
   search_provider: AIProviderName;
   answer_provider: AIProviderName;
+  vector_store_provider: 'feature_store';
+  rerank_provider: AIProviderName;
   fallback_chain: AIProviderName[];
 };
 
@@ -46,5 +63,6 @@ export type AIRagResult = {
   chunks: AIRagChunk[];
   search: AISearchResult;
   answer: AIAnswerResult;
+  policy: AnswerPolicy;
   provider: AIRagProviderPlan;
 };

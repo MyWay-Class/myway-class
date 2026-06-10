@@ -40,6 +40,21 @@ export type AIRuntimePolicy = {
   require_auth: boolean;
   enable_stt: boolean;
   enable_media_upload: boolean;
+  role_limits?: {
+    student?: number;
+    instructor?: number;
+    admin?: number;
+  };
+  feature_weights?: {
+    intent?: number;
+    search?: number;
+    answer?: number;
+    summary?: number;
+    quiz?: number;
+    smart?: number;
+    stt?: number;
+    rag?: number;
+  };
   daily_limits: {
     total?: number;
     smart?: number;

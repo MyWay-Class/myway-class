@@ -2,9 +2,9 @@ name: verify-workspace
 
 on:
   pull_request:
-    branches: [ main, dev ]
+    branches: [ dev ]
   push:
-    branches: [ main, dev ]
+    branches: [ dev ]
   workflow_dispatch:
 
 permissions:
@@ -22,25 +22,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Detect workspace layout
-        id: detect
-        shell: bash
-        run: |
-          if [ -f package.json ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Set up Node.js
-        if: steps.detect.outputs.run == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
 
       - name: Set up Java 21
-        if: steps.detect.outputs.run == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -48,13 +36,11 @@ jobs:
           cache: maven
 
       - name: Install dependencies
-        if: steps.detect.outputs.run == 'true'
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Patch rollup optional dependency on Linux
-        if: steps.detect.outputs.run == 'true' && runner.os == 'Linux'
+        if: runner.os == 'Linux'
         run: npm install --no-save @rollup/rollup-linux-x64-gnu
 
       - name: Verify workspace
-        if: steps.detect.outputs.run == 'true'
         run: npm run verify

@@ -104,11 +104,20 @@ public class AiFeatureService {
         return Map.of("providers", List.of("demo", "ollama", "gemini"), "current", aiSettings(userId).getOrDefault("provider", "demo"));
     }
 
-    public boolean canConsumeAi(String userId) {
+    public AiUsageQuotaService.QuotaDecision canConsumeAi(String userId, String role, String feature) {
         if (aiUsageQuotaService == null) {
-            return true;
+            return new AiUsageQuotaService.QuotaDecision(true, Integer.MAX_VALUE, 0, Integer.MAX_VALUE, role, feature, Instant.now().toString(), Map.of(
+                    "role", role,
+                    "feature", feature,
+                    "limit", Integer.MAX_VALUE,
+                    "used", 0,
+                    "remaining", Integer.MAX_VALUE,
+                    "reset_at", Instant.now().toString(),
+                    "base_limit", Integer.MAX_VALUE,
+                    "feature_weight", 1.0
+            ));
         }
-        return aiUsageQuotaService.canConsumeAi(userId, aiSettings(userId));
+        return aiUsageQuotaService.evaluateQuota(userId, role, feature, aiSettings(userId));
     }
 
     public void recordAiUsage(String userId, String feature, boolean success, String inputText) {
@@ -124,6 +133,21 @@ public class AiFeatureService {
         if (settings == null) {
             repository.upsertKv(AI_SETTINGS_SCOPE, "global", new HashMap<>(Map.of(
                     "daily_limit", 100,
+                    "role_daily_limits", Map.of(
+                            "student", 100,
+                            "instructor", 200,
+                            "admin", 500
+                    ),
+                    "feature_weights", Map.of(
+                            "intent", 1.0,
+                            "search", 1.0,
+                            "answer", 1.0,
+                            "summary", 1.2,
+                            "quiz", 1.1,
+                            "smart", 1.25,
+                            "stt", 1.5,
+                            "rag", 1.5
+                    ),
                     "provider", policyProvider,
                     "model", policyModel
             )));
@@ -133,6 +157,27 @@ public class AiFeatureService {
         boolean changed = false;
         if (!settings.containsKey("daily_limit")) {
             settings.put("daily_limit", 100);
+            changed = true;
+        }
+        if (!settings.containsKey("role_daily_limits")) {
+            settings.put("role_daily_limits", Map.of(
+                    "student", 100,
+                    "instructor", 200,
+                    "admin", 500
+            ));
+            changed = true;
+        }
+        if (!settings.containsKey("feature_weights")) {
+            settings.put("feature_weights", Map.of(
+                    "intent", 1.0,
+                    "search", 1.0,
+                    "answer", 1.0,
+                    "summary", 1.2,
+                    "quiz", 1.1,
+                    "smart", 1.25,
+                    "stt", 1.5,
+                    "rag", 1.5
+            ));
             changed = true;
         }
         if (!settings.containsKey("provider") || !policyProvider.equals(String.valueOf(settings.get("provider")))) {
