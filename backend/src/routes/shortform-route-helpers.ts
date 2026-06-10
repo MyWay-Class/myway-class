@@ -67,7 +67,7 @@ export async function startShortformExport(
       return {
         ok: true,
         payload: jsonSuccess(
-          updated,
+          getShortformVideoDetail(shortformId) ?? updated,
           '숏폼은 생성되었고 export는 배포 환경에서 보류되었습니다.',
           201,
         ),
@@ -77,7 +77,7 @@ export async function startShortformExport(
     return {
       ok: false,
       response: jsonSuccess(
-        updated,
+        getShortformVideoDetail(shortformId) ?? updated,
         '숏폼은 생성되었지만 export job을 시작하지 못했습니다.',
         201,
       ),
@@ -93,6 +93,6 @@ export async function startShortformExport(
 
   return {
     ok: true,
-    payload: jsonSuccess(updated ?? detail, '숏폼 export job이 시작되었습니다.', 201),
+    payload: jsonSuccess(getShortformVideoDetail(shortformId) ?? updated ?? detail, '숏폼 export job이 시작되었습니다.', 201),
   };
 }
