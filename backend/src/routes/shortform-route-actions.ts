@@ -1,5 +1,6 @@
 import {
   getCourseDetail,
+  getLectureDetail,
   getShortformVideoDetail,
   listLectureTranscripts,
   type TranscriptChunk,
@@ -11,6 +12,7 @@ import {
   composeShortformVideo,
   updateVideoExport,
 } from '@myway/shared';
+import { buildFallbackLectureTranscript } from '../lib/transcript-fallback';
 
 export async function generateShortformCandidates(
   userId: string,
@@ -30,7 +32,7 @@ export async function generateShortformCandidates(
 
   if (repository && lectureIds.length > 0) {
     for (const lectureId of lectureIds) {
-      const transcript = (await listLectureTranscripts(lectureId, repository))[0] ?? null;
+      const transcript = (await listLectureTranscripts(lectureId, repository))[0] ?? buildFallbackLectureTranscript(getLectureDetail(lectureId, userId));
       if (transcript?.segments?.length) {
         transcriptChunksByLecture[lectureId] = transcript.segments;
         transcriptSegmentsByLecture[lectureId] = transcript.segments.map((segment) => ({
