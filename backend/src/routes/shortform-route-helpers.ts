@@ -54,7 +54,7 @@ export async function startShortformExport(
   );
 
   if (!exportResult.ok) {
-    const isDeferredExport = exportResult.reason === 'not_configured';
+    const isDeferredExport = exportResult.reason === 'not_configured' || exportResult.reason === 'dispatch_failed';
     const updated = updateVideoExport(shortformId, {
       export_status: isDeferredExport ? 'PENDING' : 'FAILED',
       export_error_message: isDeferredExport ? null : exportResult.message,
