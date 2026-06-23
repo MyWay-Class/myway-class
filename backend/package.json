@@ -11,7 +11,7 @@
     "@cloudflare/workers-types": "^4.20260405.0",
     "@types/node": "^22.13.0",
     "typescript": "^5.8.3",
-    "wrangler": "^4.103.0"
+    "wrangler": "^4.15.1"
   },
   "scripts": {
     "dev": "npx esbuild src/dev-server.ts --bundle --platform=node --format=esm --outfile=dist/dev-server.bundle.js && node dist/dev-server.bundle.js",

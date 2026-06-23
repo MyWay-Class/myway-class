@@ -86,7 +86,7 @@ export async function collectLectureReferences(
   const { lecture, transcript, note } = snapshot;
   const references: AIReference[] = [];
   const lectureChunks = buildChunkText(`${lecture.title}. ${lecture.content_text}`, 2);
-  transcript?.segments?.slice(0, 2).forEach((segment, index) => {
+  transcript?.segments.slice(0, 2).forEach((segment, index) => {
     references.push(
       createReference(
         lecture.id,
@@ -156,7 +156,7 @@ export async function buildCorpusForLecture(
   const chunks: AIRagChunk[] = [];
   const hasExtractedSource = Boolean(transcript || note);
 
-  transcript?.segments?.forEach((segment) => {
+  transcript?.segments.forEach((segment) => {
     const content = segment.text.trim();
     if (!content) {
       return;

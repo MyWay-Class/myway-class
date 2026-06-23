@@ -70,7 +70,6 @@
 - 보조 문서는 역할이 다를 때만 유지한다.
 - 문서 경계가 흐려지면 먼저 요약 문서와 상세 문서를 분리한다.
 - 루트 `agent.md`와 충돌하면 루트와 프로젝트 상세 문서를 우선한다.
-- 새 레포용 범용 시작점은 `harness-template/`에 둔다.
 - 브랜치 최신화는 `git pull --rebase` 또는 `git fetch` 후 `git rebase`로 한다.
 - merge 커밋이 꼭 필요하면 작업 이유를 `docs/dev-logs/`에 남긴다.
 

@@ -108,62 +108,54 @@ export async function guardAiRequest(
 
   const db = env?.DB;
   if (!db) {
+    return jsonFailure('AI_QUOTA_STORAGE_REQUIRED', '공개 테스트 quota 저장소가 필요합니다.', 503);
+  }
+
+  await ensureSchema(db);
+
+  const ip = getClientIp(request);
+  const minuteWindow = getMinuteWindowKey();
+  const hourWindow = getHourWindowKey();
+
+  const minuteLimit = await bumpRateLimit(db, `minute:${feature}:${ip}:${minuteWindow}`, 'minute', RATE_LIMITS.perMinute);
+  if (!minuteLimit.allowed) {
+    return jsonFailure('RATE_LIMIT_EXCEEDED', '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.', 429);
+  }
+
+  const hourLimit = await bumpRateLimit(db, `hour:${feature}:${ip}:${hourWindow}`, 'hour', RATE_LIMITS.perHour);
+  if (!hourLimit.allowed) {
+    return jsonFailure('RATE_LIMIT_EXCEEDED', '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.', 429);
+  }
+
+  if (feature === 'search') {
     return { user, policy };
   }
 
-  try {
-    await ensureSchema(db);
-
-    const ip = getClientIp(request);
-    const minuteWindow = getMinuteWindowKey();
-    const hourWindow = getHourWindowKey();
-
-    const minuteLimit = await bumpRateLimit(db, `minute:${feature}:${ip}:${minuteWindow}`, 'minute', RATE_LIMITS.perMinute);
-    if (!minuteLimit.allowed) {
-      return jsonFailure('RATE_LIMIT_EXCEEDED', '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.', 429);
-    }
-
-    const hourLimit = await bumpRateLimit(db, `hour:${feature}:${ip}:${hourWindow}`, 'hour', RATE_LIMITS.perHour);
-    if (!hourLimit.allowed) {
-      return jsonFailure('RATE_LIMIT_EXCEEDED', '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.', 429);
-    }
-
-    if (feature === 'search') {
-      return { user, policy };
-    }
-
-    const quotaLimit = getQuotaLimit(policy, user?.role, feature);
-    if (!quotaLimit) {
-      return { user, policy };
-    }
-
-    const actorId = user?.id ?? 'anonymous';
-
-    const dailyUsage = await bumpDailyUsage(db, actorId, feature, quotaLimit);
-    if (!dailyUsage.allowed) {
-      return jsonFailure('AI_QUOTA_EXCEEDED', '일일 사용 한도를 초과했습니다.', 429, buildQuotaMeta(user?.role, feature, quotaLimit, 0));
-    }
-
-    if (policy.daily_limits.total && shouldCountTotal(feature)) {
-      const totalUsage = await bumpDailyTotal(db, actorId, policy.daily_limits.total);
-      if (!totalUsage.allowed) {
-        return jsonFailure('AI_TOTAL_QUOTA_EXCEEDED', '일일 AI 총 사용 한도를 초과했습니다.', 429, buildQuotaMeta(user?.role, feature, policy.daily_limits.total, 0));
-      }
-    }
-
-    if (policy.daily_limits.gemini && shouldCountGemini(feature)) {
-      const geminiUsage = await bumpGlobalQuota(db, 'gemini', policy.daily_limits.gemini);
-      if (!geminiUsage.allowed) {
-        return jsonFailure('AI_GEMINI_QUOTA_EXCEEDED', 'Gemini 일일 사용 한도를 초과했습니다.', 429, buildQuotaMeta(user?.role, feature, policy.daily_limits.gemini, 0));
-      }
-    }
-
-    return { user, policy };
-  } catch (error) {
-    console.warn('[ai-controls] quota gate fallback', {
-      feature,
-      error: error instanceof Error ? error.message : String(error),
-    });
+  const quotaLimit = getQuotaLimit(policy, user?.role, feature);
+  if (!quotaLimit) {
     return { user, policy };
   }
+
+  const actorId = user?.id ?? 'anonymous';
+
+  const dailyUsage = await bumpDailyUsage(db, actorId, feature, quotaLimit);
+  if (!dailyUsage.allowed) {
+    return jsonFailure('AI_QUOTA_EXCEEDED', '일일 사용 한도를 초과했습니다.', 429, buildQuotaMeta(user?.role, feature, quotaLimit, 0));
+  }
+
+  if (policy.daily_limits.total && shouldCountTotal(feature)) {
+    const totalUsage = await bumpDailyTotal(db, actorId, policy.daily_limits.total);
+    if (!totalUsage.allowed) {
+      return jsonFailure('AI_TOTAL_QUOTA_EXCEEDED', '일일 AI 총 사용 한도를 초과했습니다.', 429, buildQuotaMeta(user?.role, feature, policy.daily_limits.total, 0));
+    }
+  }
+
+  if (policy.daily_limits.gemini && shouldCountGemini(feature)) {
+    const geminiUsage = await bumpGlobalQuota(db, 'gemini', policy.daily_limits.gemini);
+    if (!geminiUsage.allowed) {
+      return jsonFailure('AI_GEMINI_QUOTA_EXCEEDED', 'Gemini 일일 사용 한도를 초과했습니다.', 429, buildQuotaMeta(user?.role, feature, policy.daily_limits.gemini, 0));
+    }
+  }
+
+  return { user, policy };
 }

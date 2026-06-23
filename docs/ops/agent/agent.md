@@ -19,7 +19,6 @@
 - worktree가 남아 있으면 정리한다.
 - `git pull`은 merge가 아니라 rebase로 최신화하는지 확인한다.
 - GitHub Actions 체크 이름이 문서와 일치하는지 본다.
-- 다른 레포로 옮길 하네스는 `harness-template/`부터 복사하는지 확인한다.
 
 ## 인코딩
 ```powershell
