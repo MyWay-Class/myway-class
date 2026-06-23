@@ -252,9 +252,11 @@ async function run(): Promise<void> {
   }
 
   if (requirePlayback) {
-    const playback = await fetch(`${baseUrl}/api/v1/media/assets/${lectureAssetKey}?token=${encodeURIComponent(studentToken)}`, {
+    const playbackUrl = lectureVideo.body?.data?.video_url?.trim() || `/api/v1/media/assets/${encodeURIComponent(lectureAssetKey)}`;
+    const playbackTarget = playbackUrl.startsWith("http") ? playbackUrl : `${baseUrl}${playbackUrl}`;
+    const playback = await fetch(playbackTarget, {
       method: "GET",
-      headers: { accept: "video/mp4", range: "bytes=0-1023" },
+      headers: { accept: "video/mp4", ...authHeader(studentToken) },
     });
     assertOk(
       playback.status === 200 || playback.status === 206,
