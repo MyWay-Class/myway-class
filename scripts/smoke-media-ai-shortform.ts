@@ -25,6 +25,13 @@ type EnrollmentCreateResponse = {
   course?: CourseDetailData;
 };
 
+type CourseListData = {
+  id?: string;
+  lecture_count?: number;
+  enrolled?: boolean;
+  title?: string;
+};
+
 type CourseLecture = {
   id?: string;
   course_id?: string;
@@ -58,14 +65,15 @@ type ShortformData = {
   export_job_payload?: {
     clips?: Array<{ lecture_id?: string; start_time_ms?: number; end_time_ms?: number }>;
   };
+  source_lecture_ids?: string[];
 };
 
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://127.0.0.1:8787").replace(/\/$/, "");
 const callbackToken = process.env.SMOKE_SHORTFORM_CALLBACK_TOKEN || "local-media-callback-secret";
 const studentUserId = process.env.SMOKE_STUDENT_USER_ID || "usr_std_001";
 const adminUserId = process.env.SMOKE_ADMIN_USER_ID || "usr_admin_001";
-const smokeLectureId = process.env.SMOKE_LECTURE_ID || "lec_java_01";
-const smokeCourseId = process.env.SMOKE_COURSE_ID || "crs_java_01";
+const smokeLectureIdEnv = process.env.SMOKE_LECTURE_ID?.trim();
+const smokeCourseIdEnv = process.env.SMOKE_COURSE_ID?.trim();
 const requirePlayback = (process.env.SMOKE_REQUIRE_PLAYBACK || "").toLowerCase() === "true";
 
 function assertOk(condition: unknown, message: string): asserts condition {
@@ -102,6 +110,14 @@ async function authedApi<T>(
   return api<T>(path, { ...options, headers });
 }
 
+function authHeader(token: string): Record<string, string> {
+  return { authorization: `Bearer ${token}` };
+}
+
+function uniqueStrings(values: Array<string | undefined>): string[] {
+  return Array.from(new Set(values.filter((value): value is string => typeof value === "string" && value.length > 0)));
+}
+
 async function login(userId: string): Promise<string> {
   const { res, body } = await api<{ session_token?: string }>("/api/v1/auth/login", {
     method: "POST",
@@ -114,8 +130,55 @@ async function login(userId: string): Promise<string> {
   return token;
 }
 
-function authHeader(token: string): Record<string, string> {
-  return { authorization: `Bearer ${token}` };
+async function fetchCourseDetail(token: string, courseId: string): Promise<CourseDetailData | null> {
+  const courseDetail = await authedApi<CourseDetailData>(token, `/api/v1/courses/${encodeURIComponent(courseId)}`, { method: "GET" });
+  if (!courseDetail.res.ok) {
+    return null;
+  }
+
+  return courseDetail.body?.data ?? null;
+}
+
+async function resolveSmokeCourse(token: string): Promise<CourseDetailData> {
+  const courseList = await authedApi<CourseListData[]>(token, "/api/v1/courses", { method: "GET" });
+  assertOk(courseList.res.ok, `course list failed (${courseList.res.status})`);
+  assertOk(Array.isArray(courseList.body?.data), "course list missing");
+
+  const orderedCourseIds = uniqueStrings([
+    smokeCourseIdEnv,
+    ...((courseList.body?.data ?? []).map((course) => course?.id) as Array<string | undefined>),
+  ]);
+
+  let fallbackCourse: CourseDetailData | null = null;
+
+  for (const courseId of orderedCourseIds) {
+    const detail = await fetchCourseDetail(token, courseId);
+    if (!detail) {
+      continue;
+    }
+
+    const lectures = detail.lectures ?? [];
+    if (lectures.length >= 2) {
+      return detail;
+    }
+
+    if (!fallbackCourse && lectures.length > 0) {
+      fallbackCourse = detail;
+    }
+  }
+
+  assertOk(Boolean(fallbackCourse), "no accessible course with lectures found");
+  return fallbackCourse as CourseDetailData;
+}
+
+function resolveLectureIds(detail: CourseDetailData): { primaryLectureId: string; secondaryLectureId: string } {
+  const lectureIds = uniqueStrings((detail.lectures ?? []).map((lecture) => lecture?.id));
+  assertOk(lectureIds.length > 0, "course lectures missing");
+
+  const primaryLectureId = smokeLectureIdEnv && lectureIds.includes(smokeLectureIdEnv) ? smokeLectureIdEnv : lectureIds[0];
+  const secondaryLectureId = lectureIds.find((lectureId) => lectureId !== primaryLectureId) ?? primaryLectureId;
+
+  return { primaryLectureId, secondaryLectureId };
 }
 
 async function run(): Promise<void> {
@@ -136,6 +199,12 @@ async function run(): Promise<void> {
   assertOk(enrollments.res.ok, `enrollments failed (${enrollments.res.status})`);
   assertOk(Array.isArray(enrollments.body?.data), "enrollments missing");
 
+  const courseDetail = await resolveSmokeCourse(studentToken);
+  const smokeCourseId = courseDetail.id;
+  assertOk(typeof smokeCourseId === "string" && smokeCourseId.length > 0, "smoke course id missing");
+
+  const { primaryLectureId, secondaryLectureId } = resolveLectureIds(courseDetail);
+
   const isEnrolled = (enrollments.body?.data ?? []).some((enrollment) => enrollment?.course_id === smokeCourseId);
   if (!isEnrolled) {
     const enrollmentCreate = await authedApi<EnrollmentCreateResponse>(studentToken, "/api/v1/enrollments", {
@@ -154,22 +223,14 @@ async function run(): Promise<void> {
     "student is not enrolled in smoke course",
   );
 
-  const courseDetail = await authedApi<CourseDetailData>(studentToken, `/api/v1/courses/${encodeURIComponent(smokeCourseId)}`, { method: "GET" });
-  assertOk(courseDetail.res.ok, `course detail failed (${courseDetail.res.status})`);
-  const lectureIds = (courseDetail.body?.data?.lectures ?? [])
-    .map((lecture) => lecture?.id)
-    .filter((id): id is string => typeof id === "string" && id.length > 0);
-  assertOk(lectureIds.length > 0, "course lectures missing");
-  assertOk(lectureIds.includes(smokeLectureId), "smoke lecture missing in course detail");
-
-  const lectureDetail = await authedApi<LectureData>(studentToken, `/api/v1/lectures/${encodeURIComponent(smokeLectureId)}`, { method: "GET" });
+  const lectureDetail = await authedApi<LectureData>(studentToken, `/api/v1/lectures/${encodeURIComponent(primaryLectureId)}`, { method: "GET" });
   assertOk(lectureDetail.res.ok, `lecture detail failed (${lectureDetail.res.status})`);
-  assertOk(lectureDetail.body?.data?.id === smokeLectureId, "lecture detail id mismatch");
+  assertOk(lectureDetail.body?.data?.id === primaryLectureId, "lecture detail id mismatch");
   assertOk(lectureDetail.body?.data?.course_id === smokeCourseId, "lecture detail course mapping mismatch");
 
-  const lectureVideo = await authedApi<LectureVideoData>(studentToken, `/api/v1/media/lecture-video/${encodeURIComponent(smokeLectureId)}`, { method: "GET" });
+  const lectureVideo = await authedApi<LectureVideoData>(studentToken, `/api/v1/media/lecture-video/${encodeURIComponent(primaryLectureId)}`, { method: "GET" });
   assertOk(lectureVideo.res.ok, `lecture video mapping failed (${lectureVideo.res.status})`);
-  assertOk(lectureVideo.body?.data?.lecture_id === smokeLectureId, "lecture video lecture id mismatch");
+  assertOk(lectureVideo.body?.data?.lecture_id === primaryLectureId, "lecture video lecture id mismatch");
   assertOk(
     typeof lectureVideo.body?.data?.asset_key === "string" && lectureVideo.body.data.asset_key.length > 0,
     "lecture video asset key missing",
@@ -201,9 +262,9 @@ async function run(): Promise<void> {
     );
   }
 
-  const transcript = await authedApi<TranscriptData>(studentToken, `/api/v1/media/transcript/${encodeURIComponent(smokeLectureId)}`, { method: "GET" });
+  const transcript = await authedApi<TranscriptData>(studentToken, `/api/v1/media/transcript/${encodeURIComponent(primaryLectureId)}`, { method: "GET" });
   assertOk(transcript.res.ok, `transcript failed (${transcript.res.status})`);
-  assertOk(transcript.body?.data?.lecture_id === smokeLectureId, "transcript lecture mismatch");
+  assertOk(transcript.body?.data?.lecture_id === primaryLectureId, "transcript lecture mismatch");
   assertOk(Array.isArray(transcript.body?.data?.segments), "transcript segments missing");
 
   const rag = await api<{ chunks?: unknown[] }>("/api/v1/ai/rag", {
@@ -211,7 +272,7 @@ async function run(): Promise<void> {
     headers: { "content-type": "application/json", ...authHeader(studentToken) },
     body: JSON.stringify({
       query: "핵심 내용을 요약해줘",
-      lecture_id: smokeLectureId,
+      lecture_id: primaryLectureId,
       limit: 3,
     }),
   });
@@ -223,7 +284,7 @@ async function run(): Promise<void> {
       chunk.start_ms >= 0 &&
       typeof chunk?.end_ms === "number" &&
       chunk.end_ms > chunk.start_ms &&
-      chunk?.lecture_id === smokeLectureId,
+      chunk?.lecture_id === primaryLectureId,
     ),
     "rag chunk timestamp/lecture mapping missing",
   );
@@ -233,7 +294,7 @@ async function run(): Promise<void> {
     headers: { "content-type": "application/json", ...authHeader(studentToken) },
     body: JSON.stringify({
       query: "핵심 개념 찾기",
-      lecture_id: smokeLectureId,
+      lecture_id: primaryLectureId,
     }),
   });
   assertOk(search.res.ok, `ai search failed (${search.res.status})`);
@@ -243,7 +304,7 @@ async function run(): Promise<void> {
       (hit) =>
         typeof hit?.chunk_index === "number" &&
         hit.chunk_index >= 0 &&
-        hit?.lecture_id === smokeLectureId,
+        hit?.lecture_id === primaryLectureId,
     ),
     "ai search hit mapping missing",
   );
@@ -255,7 +316,7 @@ async function run(): Promise<void> {
       headers: { "content-type": "application/json", ...authHeader(studentToken) },
       body: JSON.stringify({
         course_id: smokeCourseId,
-        lecture_id: smokeLectureId,
+        lecture_id: primaryLectureId,
         mode: "single",
         style: "highlight",
         target_duration_sec: 120,
@@ -280,8 +341,8 @@ async function run(): Promise<void> {
       title: "smoke-shortform",
       description: "smoke compose and callback",
       clips: [
-        { lecture_id: smokeLectureId, start_ms: 120000, end_ms: 150000 },
-        { lecture_id: smokeLectureId, start_ms: 150000, end_ms: 180000 },
+        { lecture_id: primaryLectureId, start_ms: 120000, end_ms: 150000 },
+        { lecture_id: primaryLectureId, start_ms: 150000, end_ms: 180000 },
       ],
       candidate_ids: selectedCandidateIds,
     }),
@@ -318,18 +379,18 @@ async function run(): Promise<void> {
     body: JSON.stringify({
       title: "smoke-multi-lecture-shortform",
       description: "multi lecture clip compose",
-      course_id: "crs_java_01",
+      course_id: smokeCourseId,
       clips: [
-        { lecture_id: "lec_java_01", start_ms: 120000, end_ms: 180000 },
-        { lecture_id: "lec_java_02", start_ms: 60000, end_ms: 240000 },
+        { lecture_id: primaryLectureId, start_ms: 120000, end_ms: 180000 },
+        { lecture_id: secondaryLectureId, start_ms: 60000, end_ms: 240000 },
       ],
     }),
   });
   assertOk(multiLectureCompose.res.status === 201, `multi lecture shortform compose failed (${multiLectureCompose.res.status})`);
   const multiClips = multiLectureCompose.body?.data?.clips ?? [];
   assertOk(multiClips.length === 2, "multi lecture shortform clips missing");
-  assertOk(multiLectureCompose.body?.data?.source_lecture_ids?.includes("lec_java_01"), "multi lecture source #1 missing");
-  assertOk(multiLectureCompose.body?.data?.source_lecture_ids?.includes("lec_java_02"), "multi lecture source #2 missing");
+  assertOk(multiLectureCompose.body?.data?.source_lecture_ids?.includes(primaryLectureId), "multi lecture source #1 missing");
+  assertOk(multiLectureCompose.body?.data?.source_lecture_ids?.includes(secondaryLectureId), "multi lecture source #2 missing");
 
   console.log("[smoke] PASS");
   console.log(`[smoke] shortformId=${shortformId}`);
@@ -340,4 +401,3 @@ run().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });
-
