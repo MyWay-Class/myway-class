@@ -20,6 +20,11 @@ type EnrollmentData = {
   user_id?: string;
 };
 
+type EnrollmentCreateResponse = {
+  enrollmentId?: string;
+  course?: CourseDetailData;
+};
+
 type CourseLecture = {
   id?: string;
   course_id?: string;
@@ -130,8 +135,22 @@ async function run(): Promise<void> {
   const enrollments = await authedApi<EnrollmentData[]>(studentToken, "/api/v1/enrollments", { method: "GET" });
   assertOk(enrollments.res.ok, `enrollments failed (${enrollments.res.status})`);
   assertOk(Array.isArray(enrollments.body?.data), "enrollments missing");
+
+  const isEnrolled = (enrollments.body?.data ?? []).some((enrollment) => enrollment?.course_id === smokeCourseId);
+  if (!isEnrolled) {
+    const enrollmentCreate = await authedApi<EnrollmentCreateResponse>(studentToken, "/api/v1/enrollments", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ courseId: smokeCourseId }),
+    });
+    assertOk(enrollmentCreate.res.ok, `enrollment create failed (${enrollmentCreate.res.status})`);
+    assertOk(enrollmentCreate.body?.data?.course?.id === smokeCourseId, "created enrollment course mismatch");
+  }
+
+  const refreshedEnrollments = await authedApi<EnrollmentData[]>(studentToken, "/api/v1/enrollments", { method: "GET" });
+  assertOk(refreshedEnrollments.res.ok, `refreshed enrollments failed (${refreshedEnrollments.res.status})`);
   assertOk(
-    (enrollments.body?.data ?? []).some((enrollment) => enrollment?.course_id === smokeCourseId),
+    (refreshedEnrollments.body?.data ?? []).some((enrollment) => enrollment?.course_id === smokeCourseId),
     "student is not enrolled in smoke course",
   );
 
