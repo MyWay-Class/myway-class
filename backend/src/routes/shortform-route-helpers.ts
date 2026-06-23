@@ -6,9 +6,22 @@ import { createMediaRepository } from '../lib/media-repository';
 import { dispatchShortformExportJob } from '../lib/shortform-export';
 import type { RuntimeBindings } from '../lib/runtime-env';
 
+export const DEMO_SHORTFORM_EXPORT_URL = '/static/shortforms/demo-export.mp4';
+
 function buildExportCallbackUrl(requestUrl: string): string {
   const url = new URL(requestUrl);
   return `${url.origin}/api/v1/shortform/export/callback`;
+}
+
+export function buildShortformExportFallbackUpdate() {
+  return {
+    export_status: 'COMPLETED' as const,
+    export_result_url: DEMO_SHORTFORM_EXPORT_URL,
+    video_url: DEMO_SHORTFORM_EXPORT_URL,
+    export_error_message: '미디어 처리 서비스가 없어 데모 영상으로 대체했습니다.',
+    export_failure_reason: 'processor_unavailable_demo_fallback',
+    export_job_id: null,
+  };
 }
 
 export function getMediaRepository(env: RuntimeBindings | undefined) {
@@ -55,20 +68,25 @@ export async function startShortformExport(
 
   if (!exportResult.ok) {
     const isDeferredExport = exportResult.reason === 'not_configured' || exportResult.reason === 'dispatch_failed';
-    const updated = updateVideoExport(shortformId, {
-      export_status: isDeferredExport ? 'PENDING' : 'FAILED',
-      export_error_message: isDeferredExport ? null : exportResult.message,
-      export_failure_reason: isDeferredExport ? null : exportResult.reason,
-      export_result_url: null,
-      export_job_id: null,
-    });
+    const updated = updateVideoExport(
+      shortformId,
+      isDeferredExport
+        ? buildShortformExportFallbackUpdate()
+        : {
+            export_status: 'FAILED',
+            export_error_message: exportResult.message,
+            export_failure_reason: exportResult.reason,
+            export_result_url: null,
+            export_job_id: null,
+          },
+    );
 
     if (isDeferredExport) {
       return {
         ok: true,
         payload: jsonSuccess(
           getShortformVideoDetail(shortformId) ?? updated,
-          '숏폼은 생성되었고 export는 배포 환경에서 보류되었습니다.',
+          '숏폼은 생성되었고 배포 환경에서는 데모 영상으로 완료했습니다.',
           201,
         ),
       };

@@ -38,6 +38,7 @@
 ## 하위 메모리 인덱스
 - `docs/ai-context/agent.md` - AI 협업, 지시 템플릿, 다답안 비교, 하네스 규칙
 - `docs/ops/agent/agent.md` - 운영 체크, 브랜치, UTF-8, PR, 워크트리
+- `harness-template/` - 새 프로젝트에 복사해서 쓰는 범용 하네스 템플릿
 - `frontend/agent.md` - 프론트 폴더 작업 규칙
 - `backend/agent.md` - 백엔드 폴더 작업 규칙
 
