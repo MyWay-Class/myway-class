@@ -3,6 +3,7 @@ import type { CourseDetail, LectureDetail, LectureTranscript } from '@myway/shar
 import { loadLectureTranscriptDetailedResult, saveLectureVideoMappingDetailed } from '../../../lib/api-media';
 import { buildProtectedVideoUrl, resolveLectureVideoUrl } from '../../../lib/video-url';
 import { buildLectureTranscriptFallback } from './lectureTranscriptFallback';
+import { seekLectureVideo } from './lectureSeek';
 
 type VideoPlaybackErrorKind = 'forbidden' | 'not_found' | 'unknown' | null;
 type TranscriptAccessState = 'loading' | 'ready' | 'empty' | 'forbidden' | 'error';
@@ -152,13 +153,7 @@ export function useLectureWatchPlayback({
   }, [resolvedLectureVideoUrl, isLocked, protectedVideoUrl]);
 
   function seekVideoTo(startMs: number) {
-    const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = Math.max(0, Math.floor(startMs / 1000));
-    const playResult = video.play();
-    if (playResult && typeof playResult.catch === 'function') {
-      void playResult.catch(() => {});
-    }
+    seekLectureVideo(videoRef.current, startMs);
   }
 
   async function handleRemapAssetKey() {
