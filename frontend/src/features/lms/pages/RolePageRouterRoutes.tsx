@@ -74,7 +74,7 @@ function renderMediaPipeline(args: SharedRouteArgs) {
 }
 
 export function renderHomeRoute(args: SharedRouteArgs) {
-  return <HomePage session={args.session} dashboard={args.dashboard} courses={args.enrolledCourses} highlightedLecture={args.highlightedLecture} onNavigate={args.onNavigate} onSelectCourse={args.onSelectCourse} />;
+  return <HomePage session={args.session} dashboard={args.dashboard} courses={args.courseCards} highlightedLecture={args.highlightedLecture} onNavigate={args.onNavigate} onSelectCourse={args.onSelectCourse} />;
 }
 
 export function renderLoadingRoute() {

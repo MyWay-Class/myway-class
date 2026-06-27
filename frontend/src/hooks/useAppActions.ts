@@ -85,6 +85,7 @@ export function useAppActions(input: UseAppActionsInput) {
     const result = await enrollCourse(courseId, session.session_token);
     await refreshLearningState(learningDeps, session);
     if (result?.course) {
+      setSelectedCourseId(result.course.id);
       setSelectedCourse(result.course);
       setSelectedLectureId(result.course.lectures[0]?.id ?? '');
       setSelectedLecture(result.course.lectures[0] ? await loadLectureDetail(result.course.lectures[0].id, session.session_token) : null);

@@ -66,7 +66,7 @@
 ## GitHub 수동 실행
 - workflow: `.github/workflows/smoke-media-ai-shortform.yml`
 - 입력: `base_url` 필수, 나머지 ID는 선택
-- secret: `SMOKE_SHORTFORM_CALLBACK_TOKEN` 권장
+- secret: `SMOKE_SHORTFORM_CALLBACK_TOKEN` 필수
 - timeout/concurrency: manual/schedule 실행은 중복 실행 방지를 위해 workflow concurrency를 유지하는 쪽이 안전하다.
 
 ## GitHub 스케줄 실행

@@ -14,9 +14,11 @@ import { mergeCourseDetailWithFallback, normalizeCourseId, normalizeLectureId } 
 
 export async function loadCourses(sessionToken?: string | null): Promise<CourseCard[]> {
   const token = sessionToken ?? getStoredAuth()?.session_token ?? null;
+  const storedAuth = getStoredAuth();
   const userId = getFallbackUserId();
   const response = await request<CourseCard[]>('/api/v1/courses', undefined, token);
   const fallbackCourses = getDashboard(userId).courses;
+  const fallbackEnrolledCourseIds = new Set(fallbackCourses.filter((course) => course.enrolled).map((course) => course.id));
   const sourceCourses = unwrap(response, () => fallbackCourses);
 
   const fallbackById = new Map(fallbackCourses.map((course) => [course.id, course]));
@@ -43,10 +45,20 @@ export async function loadCourses(sessionToken?: string | null): Promise<CourseC
 
   const enrollmentsResponse = await request<EnrollmentItem[]>('/api/v1/enrollments', undefined, token);
   if (!enrollmentsResponse?.success || !enrollmentsResponse.data) {
-    return merged;
+    return merged.map((course) => ({
+      ...course,
+      enrolled: course.enrolled || fallbackEnrolledCourseIds.has(course.id),
+    }));
   }
 
   const enrolledCourseIds = new Set(enrollmentsResponse.data.map((item) => item.course_id));
+  if (storedAuth?.user?.role === 'STUDENT' && enrolledCourseIds.size === 0 && fallbackEnrolledCourseIds.size > 0) {
+    return merged.map((course) => ({
+      ...course,
+      enrolled: course.enrolled || fallbackEnrolledCourseIds.has(course.id),
+    }));
+  }
+
   return merged.map((course) => ({ ...course, enrolled: enrolledCourseIds.has(course.id) }));
 }
 

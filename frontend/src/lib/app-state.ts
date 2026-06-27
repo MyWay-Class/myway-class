@@ -23,6 +23,35 @@ type RefreshLearningStateDeps = {
   setNotice: Dispatch<SetStateAction<string>>;
 };
 
+export function resolveSelectedCourseId(
+  courses: CourseCard[],
+  currentSelectedCourseId: string,
+  role?: LoginResponse['user']['role'],
+): string {
+  if (courses.length === 0) {
+    return '';
+  }
+
+  const currentCourse = currentSelectedCourseId
+    ? courses.find((course) => course.id === currentSelectedCourseId) ?? null
+    : null;
+
+  if (role === 'STUDENT') {
+    if (currentCourse?.enrolled) {
+      return currentSelectedCourseId;
+    }
+
+    const firstEnrolledCourse = courses.find((course) => course.enrolled);
+    if (firstEnrolledCourse) {
+      return firstEnrolledCourse.id;
+    }
+  } else if (currentCourse) {
+    return currentSelectedCourseId;
+  }
+
+  return courses[0].id;
+}
+
 export async function refreshLearningState(
   deps: RefreshLearningStateDeps,
   activeSession: LoginResponse | null,
@@ -39,17 +68,7 @@ export async function refreshLearningState(
 
   deps.setCourseCards(courses);
 
-  if (courses.length > 0) {
-    deps.setSelectedCourseId((current) => {
-      if (!current) {
-        return courses[0].id;
-      }
-
-      return courses.some((course) => course.id === current) ? current : courses[0].id;
-    });
-  } else {
-    deps.setSelectedCourseId('');
-  }
+  deps.setSelectedCourseId((current) => resolveSelectedCourseId(courses, current, activeSession?.user.role));
 
   if (activeSession) {
     deps.setDashboard(dashboardData);

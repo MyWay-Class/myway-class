@@ -76,6 +76,10 @@ const smokeLectureIdEnv = process.env.SMOKE_LECTURE_ID?.trim();
 const smokeCourseIdEnv = process.env.SMOKE_COURSE_ID?.trim();
 const requirePlayback = (process.env.SMOKE_REQUIRE_PLAYBACK || "").toLowerCase() === "true";
 
+if (baseUrl !== "http://127.0.0.1:8787" && callbackToken === "local-media-callback-secret") {
+  throw new Error("SMOKE_SHORTFORM_CALLBACK_TOKEN is required for remote smoke runs");
+}
+
 function assertOk(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
