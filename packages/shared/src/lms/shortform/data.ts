@@ -24,7 +24,12 @@ export function now(): string {
 }
 
 export function createId(prefix: string, size: number): string {
-  return `${prefix}_${String(size + 1).padStart(3, '0')}`;
+  const unique =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID().replace(/-/g, '')
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+  return `${prefix}_${String(size + 1).padStart(3, '0')}_${unique}`;
 }
 
 export function isEnrolled(userId: string, courseId: string): boolean {
